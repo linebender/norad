@@ -4,8 +4,9 @@ mod glyph;
 
 use serde::Deserialize;
 
-use fontinfo::FontInfo;
-use layercontents::LayerContents;
+pub use fontinfo::FontInfo;
+pub use layercontents::LayerContents;
+pub use glyph::{Color, Contour, ContourPoint, Identifier, Guideline, GlifVersion, Glyph, Outline, AffineTransform, Anchor, PointType};
 
 pub struct Ufo {
     meta_info: MetaInfo,

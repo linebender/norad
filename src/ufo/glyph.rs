@@ -27,24 +27,36 @@ pub enum Error {
 
 }
 
-struct Glyph {
-    name: String,
-    format: GlifVersion,
-    width: Option<f64>,
-    height: Option<f64>,
-    codepoints: Option<Vec<char>>,
-    note: Option<String>,
-    guidelines: Option<Vec<Guideline>>,
-    anchors: Option<Vec<Anchor>>,
-    outline: Option<Outline>,
-    image: Option<Image>,
-    lib: Option<Plist>,
+pub struct Glyph {
+    pub name: String,
+    pub format: GlifVersion,
+    pub width: Option<f64>,
+    pub height: Option<f64>,
+    pub codepoints: Option<Vec<char>>,
+    pub note: Option<String>,
+    pub guidelines: Option<Vec<Guideline>>,
+    pub anchors: Option<Vec<Anchor>>,
+    pub outline: Option<Outline>,
+    pub image: Option<Image>,
+    pub lib: Option<Plist>,
 }
 
-enum ParseState {
-    Ready,
-    Parsing()
-
+impl Glyph {
+    pub(crate) fn new(name: String, format: GlifVersion) -> Self {
+        Glyph {
+            name,
+            format,
+            width: None,
+            height: None,
+            codepoints: None,
+            note: None,
+            guidelines: None,
+            anchors: None,
+            outline: None,
+            image: None,
+            lib: None,
+        }
+    }
 }
 
 //impl Glyph {
@@ -94,7 +106,8 @@ enum ParseState {
     //}
 //}
 
-enum GlifVersion {
+#[derive(Debug, Clone)]
+pub enum GlifVersion {
     V1 = 1,
     V2 = 2,
 }
@@ -104,21 +117,24 @@ enum GlifVersion {
 /// as defined on a per object basis throughout this specification.
 /// Identifiers are specified as a string between one and 100 characters long.
 /// All characters must be in the printable ASCII range, 0x20 to 0x7E.
-struct Identifier(String);
+#[derive(Debug, Clone)]
+pub struct Identifier(pub(crate) String);
 
 /// A guideline associated with a glyph.
+#[derive(Debug, Clone)]
 pub struct Guideline {
     /// The line itself.
-    line: Line,
+    pub line: Line,
     /// An arbitrary name for the guideline.
-    name: Option<String>,
+    pub name: Option<String>,
     /// The color of the line.
-    color: Option<Color>,
+    pub color: Option<Color>,
     /// Unique identifier for the guideline. This attribute is not required
     /// and should only be added to guidelines as needed.
-    identifier: Option<Identifier>,
+    pub identifier: Option<Identifier>,
 }
 
+#[derive(Debug, Clone)]
 pub enum Line {
     /// A vertical line, passing through a given `x` coordinate.
     Vertical(f32),
@@ -129,44 +145,50 @@ pub enum Line {
     Angle { x: f32, y: f32, degrees: f32 },
 }
 
-struct Anchor {
-    x: f32,
-    y: f32,
+#[derive(Debug, Clone)]
+pub struct Anchor {
+    pub x: f32,
+    pub y: f32,
     /// An arbitrary name for the anchor.
-    name: Option<String>,
-    color: Option<Color>,
-    identifier: Option<Identifier>,
+    pub name: Option<String>,
+    pub color: Option<Color>,
+    pub identifier: Option<Identifier>,
 }
 
-struct Outline {
-    component: Vec<Component>,
-    contour: Vec<Contour>,
+#[derive(Debug, Clone, Default)]
+pub struct Outline {
+    pub components: Vec<Component>,
+    pub contours: Vec<Contour>,
 }
 
 /// Another glyph inserted as part of the outline.
+#[derive(Debug, Clone)]
 pub struct Component {
     /// The name of the base glyph.
-    base: Option<String>,
-    transform: AffineTransform,
-    identifier: Option<Identifier>,
+    pub base: Option<String>,
+    pub transform: AffineTransform,
+    pub identifier: Option<Identifier>,
 }
 
-struct Contour {
-    identifier: Option<Identifier>,
-
+#[derive(Debug, Clone)]
+pub struct Contour {
+    pub identifier: Option<Identifier>,
+    pub points: Vec<ContourPoint>,
 }
 
-struct ContourPoint {
-    name: Option<String>,
-    x: f32,
-    y: f32,
-    typ: PointType,
-    smooth: bool,
-    identifier: Option<Identifier>,
+#[derive(Debug, Clone)]
+pub struct ContourPoint {
+    pub name: Option<String>,
+    pub x: f32,
+    pub y: f32,
+    pub typ: PointType,
+    pub smooth: bool,
+    pub identifier: Option<Identifier>,
 }
 
 
-enum PointType {
+#[derive(Debug, Clone)]
+pub enum PointType {
     /// A point of this type must be the first in a contour. The reverse is not true:
     /// a contour does not necessarily start with a move point. When a contour
     /// does start with a move point, it signifies the beginning of an open contour.
@@ -197,13 +219,14 @@ enum PointType {
 }
 
 /// Taken together in order, these fields represent an affine transformation matrix.
-struct AffineTransform {
-    x_scale: f32,
-    xy_scale: f32,
-    yx_scale: f32,
-    y_scale: f32,
-    x_offset: f32,
-    y_offset: f32,
+#[derive(Debug, Clone)]
+pub struct AffineTransform {
+    pub x_scale: f32,
+    pub xy_scale: f32,
+    pub yx_scale: f32,
+    pub y_scale: f32,
+    pub x_offset: f32,
+    pub y_offset: f32,
 }
 
 impl AffineTransform {
@@ -220,23 +243,24 @@ impl AffineTransform {
     }
 }
 
-
 impl std::default::Default for AffineTransform {
     fn default() -> Self {
         Self::identity()
     }
 }
 
-struct Color {
-    red: f32,
-    green: f32,
-    blue: f32,
-    alpha: f32,
+#[derive(Debug, Clone)]
+pub struct Color {
+    pub red: f32,
+    pub green: f32,
+    pub blue: f32,
+    pub alpha: f32,
 }
 
-struct Image {
+#[derive(Debug, Clone)]
+pub struct Image {
     /// Not an absolute / relative path, but the name of the image file.
-    file_name: PathBuf,
-    color: Option<Color>,
+    pub file_name: PathBuf,
+    pub color: Option<Color>,
 }
 
