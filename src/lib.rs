@@ -5,3 +5,5 @@ mod error;
 mod load;
 mod parse;
 mod ufo;
+
+pub use parse::parse_glyph;

@@ -2,13 +2,13 @@
 //mod layercontents;
 mod glyph;
 
-use serde::Deserialize;
+//use serde::Deserialize;
 
 //pub use fontinfo::FontInfo;
 //pub use layercontents::LayerContents;
 pub use glyph::{
-    AffineTransform, Anchor, Color, Contour, ContourPoint, GlifVersion, Glyph, Guideline,
-    Identifier, Outline, PointType,
+    AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
+    Guideline, Identifier, Image, Line, Outline, PointType,
 };
 
 pub struct Ufo {
@@ -17,9 +17,9 @@ pub struct Ufo {
 //layer_contents: Vec<LayerContents>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MetaInfo {
-    pub creator: String,
-    pub format_version: u32,
-}
+//#[derive(Debug, Clone, Deserialize)]
+//#[serde(rename_all = "camelCase")]
+//pub struct MetaInfo {
+//pub creator: String,
+//pub format_version: u32,
+//}

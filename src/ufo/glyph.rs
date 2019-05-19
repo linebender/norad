@@ -2,13 +2,9 @@
 #[path = "glyph_tests.rs"]
 mod tests;
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 
-use quick_xml::{
-    events::{attributes::Attribute, Event},
-    Reader,
-};
+//use quick_xml::{events::{attributes::Attribute, Event}, Reader};
 
 //use crate::error::Error;
 
@@ -28,6 +24,7 @@ pub enum Error {
     UnsupportedGlifVersion(String),
 }
 
+#[derive(Debug, Clone)]
 pub struct Glyph {
     pub name: String,
     pub format: GlifVersion,
@@ -59,52 +56,6 @@ impl Glyph {
         }
     }
 }
-
-//impl Glyph {
-//pub fn from_xml(xml: &str) -> Result<Glyph, Error> {
-//let mut reader = Reader::from_str(xml);
-//let mut buf = Vec::new();
-//reader.trim_text(true);
-
-//let mut name = String::new();
-//let mut format: Option<GlifVersion> = None;
-//let mut width: Option<f64> = None;
-//let mut height: Option<f64> = None;
-//let mut codepoints: Option<Vec<char>> = None;
-//let mut note: Option<String> = None;
-//let mut guidelines: Option<Vec<Guideline>> = None;
-//let mut anchors: Option<Vec<Anchor>> = None;
-//let mut outline: Option<Outline> = None;
-//let mut image: Option<Image> = None;
-//let mut lib: Option<Plist> = None;
-
-//fn start(r: &mut Reader, b: &mut [u8]) -> Result<(String, GlifVersion), Error> {
-//loop {
-//match reader.read_event(&mut buf) {
-//Ok(Event::Decl(_)) => (),
-//Ok(Event::Start(ref tag)) if tag.name() == "glyphs".as_bytes() => {
-//let mut name: Option<String> = None;
-//let mut format: Option<GlifVersion> = None;
-//for attr in tag.attributes() {
-//let Attribute { key, value } = attr.map_err(|e| Error::ParseError(e))?;
-//match key {
-//b"name" => {
-//name = value.unescape_and_decode(&reader).ok();
-//}
-//b"format" if value == b"2" => {
-//format = Some(GlifVersion::V2);
-//}
-//b"format" => return Err(Error::UnsupportedGlifVersion(String::from_utf8_lossy(value).to_owned())),
-//_other => (), // ignore unknown attrs for now?
-//}
-//}
-
-//}
-//}
-//}
-//}
-//}
-//}
 
 #[derive(Debug, Clone)]
 pub enum GlifVersion {
@@ -165,7 +116,7 @@ pub struct Outline {
 #[derive(Debug, Clone)]
 pub struct Component {
     /// The name of the base glyph.
-    pub base: Option<String>,
+    pub base: String,
     pub transform: AffineTransform,
     pub identifier: Option<Identifier>,
 }
@@ -260,4 +211,5 @@ pub struct Image {
     /// Not an absolute / relative path, but the name of the image file.
     pub file_name: PathBuf,
     pub color: Option<Color>,
+    pub transform: AffineTransform,
 }

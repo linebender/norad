@@ -1,12 +1,14 @@
-use std::borrow::{Borrow, Cow};
+use std::borrow::Borrow;
 use std::convert::TryFrom;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use crate::ufo::{
-    Anchor, Color, Contour, ContourPoint, GlifVersion, Glyph, Identifier, Outline, PointType,
+    AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
+    Guideline, Identifier, Image, Line, Outline, PointType,
 };
 use quick_xml::{
-    events::{attributes::Attribute, BytesStart, Event},
+    events::{BytesStart, Event},
     Error as XmlError, Reader,
 };
 
@@ -22,6 +24,9 @@ pub enum Error {
     BadColor(String),
     BadAnchor(usize),
     BadPoint(usize),
+    BadGuideline(usize),
+    BadComponent(usize),
+    BadImage(usize),
     UnexpectedDuplicate(&'static str),
     UnexpectedXml(Event<'static>),
     UnexpectedEof,
@@ -46,7 +51,7 @@ impl GlifParser {
         reader.trim_text(true);
 
         let glyph = start(&mut reader, &mut buf)?;
-        let mut this = GlifParser(glyph);
+        let this = GlifParser(glyph);
         this.parse_body(&mut reader, &mut buf)
     }
 
@@ -91,7 +96,7 @@ impl GlifParser {
                     let mut new_buf = Vec::new(); // borrowck :/
                     match tag_name.borrow() {
                         "contour" => self.parse_contour(start, reader, &mut new_buf)?,
-                        "component" => self.parse_component(reader, buf)?,
+                        "component" => self.parse_component(reader, start)?,
                         _other => eprintln!("unexpected tag in outline {}", tag_name),
                     }
                 }
@@ -136,8 +141,54 @@ impl GlifParser {
     fn parse_component(
         &mut self,
         reader: &mut Reader<&[u8]>,
-        buf: &mut Vec<u8>,
+        start: BytesStart,
     ) -> Result<(), Error> {
+        let mut base: Option<String> = None;
+        let mut identifier: Option<Identifier> = None;
+        let mut x_scale = 1.0;
+        let mut xy_scale = 1.0;
+        let mut yx_scale = 2.0;
+        let mut y_scale = 1.0;
+        let mut x_offset = 1.0;
+        let mut y_offset = 1.0;
+
+        for attr in start.attributes() {
+            let attr = attr?;
+            let value = attr.unescaped_value()?;
+            let value = reader.decode(&value);
+            match attr.key {
+                b"xScale" => {
+                    x_scale = value.parse().map_err(|_| Error::BadNumber(value.to_string()))?
+                }
+                b"xyScale" => {
+                    xy_scale = value.parse().map_err(|_| Error::BadNumber(value.to_string()))?
+                }
+                b"yxScale" => {
+                    yx_scale = value.parse().map_err(|_| Error::BadNumber(value.to_string()))?
+                }
+                b"yScale" => {
+                    y_scale = value.parse().map_err(|_| Error::BadNumber(value.to_string()))?
+                }
+                b"xOffset" => {
+                    x_offset = value.parse().map_err(|_| Error::BadNumber(value.to_string()))?
+                }
+                b"yOffset" => {
+                    y_offset = value.parse().map_err(|_| Error::BadNumber(value.to_string()))?
+                }
+                b"base" => base = Some(value.to_string()),
+                b"identifier" => identifier = Some(Identifier(value.to_string())),
+                _other => eprintln!("unexpected component field {}", value),
+            }
+        }
+
+        if base.is_none() {
+            return Err(Error::BadComponent(reader.buffer_position()));
+        }
+
+        let transform =
+            AffineTransform { x_scale, xy_scale, yx_scale, y_scale, y_offset, x_offset };
+        let component = Component { base: base.unwrap(), transform, identifier };
+        self.0.outline.as_mut().unwrap().components.push(component);
         Ok(())
     }
 
@@ -286,6 +337,44 @@ impl GlifParser {
         reader: &Reader<&[u8]>,
         data: BytesStart<'a>,
     ) -> Result<(), Error> {
+        let mut x: Option<f32> = None;
+        let mut y: Option<f32> = None;
+        let mut angle: Option<f32> = None;
+        let mut name: Option<String> = None;
+        let mut color: Option<Color> = None;
+        let mut identifier: Option<Identifier> = None;
+
+        for attr in data.attributes() {
+            let attr = attr?;
+            let value = attr.unescaped_value()?;
+            let value = reader.decode(&value);
+            match attr.key {
+                b"x" => {
+                    x = Some(value.parse().map_err(|_| Error::BadNumber(value.to_string()))?);
+                }
+                b"y" => {
+                    y = Some(value.parse().map_err(|_| Error::BadNumber(value.to_string()))?);
+                }
+                b"angle" => {
+                    angle = Some(value.parse().map_err(|_| Error::BadNumber(value.to_string()))?);
+                }
+                b"name" => name = Some(value.to_string()),
+                b"color" => color = Some(value.parse()?),
+                b"identifier" => identifier = Some(Identifier(value.to_string())),
+                _other => eprintln!("unexpected guideline field {}", value),
+            }
+        }
+
+        let line = match (x, y, angle) {
+            (Some(x), None, None) => Line::Vertical(x),
+            (None, Some(y), None) => Line::Horizontal(y),
+            (Some(x), Some(y), Some(degrees)) => Line::Angle { x, y, degrees },
+            _other => return Err(Error::BadGuideline(reader.buffer_position())),
+        };
+
+        let guideline = Guideline { line, name, color, identifier };
+        self.0.guidelines.get_or_insert(Vec::new()).push(guideline);
+
         Ok(())
     }
 
@@ -294,6 +383,57 @@ impl GlifParser {
         reader: &Reader<&[u8]>,
         data: BytesStart<'a>,
     ) -> Result<(), Error> {
+        if self.0.image.is_some() {
+            return Err(Error::UnexpectedDuplicate("image"));
+        }
+
+        let mut filename: Option<PathBuf> = None;
+        let mut color: Option<Color> = None;
+        let mut x_scale = 1.0;
+        let mut xy_scale = 1.0;
+        let mut yx_scale = 2.0;
+        let mut y_scale = 1.0;
+        let mut x_offset = 1.0;
+        let mut y_offset = 1.0;
+
+        for attr in data.attributes() {
+            let attr = attr?;
+            let value = attr.unescaped_value()?;
+            let value = reader.decode(&value);
+            match attr.key {
+                b"xScale" => {
+                    x_scale = value.parse().map_err(|_| Error::BadNumber(value.to_string()))?
+                }
+                b"xyScale" => {
+                    xy_scale = value.parse().map_err(|_| Error::BadNumber(value.to_string()))?
+                }
+                b"yxScale" => {
+                    yx_scale = value.parse().map_err(|_| Error::BadNumber(value.to_string()))?
+                }
+                b"yScale" => {
+                    y_scale = value.parse().map_err(|_| Error::BadNumber(value.to_string()))?
+                }
+                b"xOffset" => {
+                    x_offset = value.parse().map_err(|_| Error::BadNumber(value.to_string()))?
+                }
+                b"yOffset" => {
+                    y_offset = value.parse().map_err(|_| Error::BadNumber(value.to_string()))?
+                }
+                b"color" => color = Some(value.parse()?),
+                b"fileName" => filename = Some(PathBuf::from(value.to_string())),
+                _other => eprintln!("unexpected image field {}", value),
+            }
+        }
+
+        if filename.is_none() {
+            return Err(Error::BadImage(reader.buffer_position()));
+        }
+
+        let transform =
+            AffineTransform { x_scale, xy_scale, yx_scale, y_scale, y_offset, x_offset };
+        let image = Image { file_name: filename.unwrap(), color, transform };
+        self.0.image = Some(image);
+
         Ok(())
     }
 }
@@ -301,7 +441,7 @@ impl GlifParser {
 fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, Error> {
     loop {
         match reader.read_event(buf) {
-            Ok(Event::Decl(decl)) => (),
+            Ok(Event::Decl(_decl)) => (),
             Ok(Event::Start(ref start)) if start.name() == b"glyph" => {
                 let mut name = String::new();
                 let mut format: Option<GlifVersion> = None;
@@ -347,7 +487,7 @@ impl FromStr for Color {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut iter =
-            s.split(',').map(|s| s.parse::<f32>().map_err(|e| Error::BadColor(s.to_string())));
+            s.split(',').map(|s| s.parse::<f32>().map_err(|_| Error::BadColor(s.to_string())));
         Ok(Color {
             red: iter.next().ok_or_else(|| Error::BadColor(s.to_string())).and_then(|r| r)?,
             green: iter.next().ok_or_else(|| Error::BadColor(s.to_string())).and_then(|r| r)?,
