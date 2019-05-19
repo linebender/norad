@@ -1,9 +1,14 @@
 use std::borrow::{Borrow, Cow};
-use std::str::FromStr;
 use std::convert::TryFrom;
+use std::str::FromStr;
 
-use crate::ufo::{Anchor, Color, Contour, ContourPoint, Outline, GlifVersion, Glyph, Identifier, PointType};
-use quick_xml::{Error as XmlError, events::{attributes::Attribute, BytesStart, Event}, Reader};
+use crate::ufo::{
+    Anchor, Color, Contour, ContourPoint, GlifVersion, Glyph, Identifier, Outline, PointType,
+};
+use quick_xml::{
+    events::{attributes::Attribute, BytesStart, Event},
+    Error as XmlError, Reader,
+};
 
 #[derive(Debug)]
 pub enum Error {
@@ -68,7 +73,11 @@ impl GlifParser {
         Ok(self.0)
     }
 
-    fn parse_outline(&mut self, reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<(), Error> {
+    fn parse_outline(
+        &mut self,
+        reader: &mut Reader<&[u8]>,
+        buf: &mut Vec<u8>,
+    ) -> Result<(), Error> {
         if self.0.outline.is_some() {
             return Err(Error::UnexpectedDuplicate("outline"));
         }
@@ -94,7 +103,12 @@ impl GlifParser {
         Ok(())
     }
 
-    fn parse_contour(&mut self, data: BytesStart, reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<(), Error> {
+    fn parse_contour(
+        &mut self,
+        data: BytesStart,
+        reader: &mut Reader<&[u8]>,
+        buf: &mut Vec<u8>,
+    ) -> Result<(), Error> {
         let mut identifier = None;
         for attr in data.attributes() {
             let attr = attr?;
@@ -119,7 +133,11 @@ impl GlifParser {
         Ok(())
     }
 
-    fn parse_component(&mut self, reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<(), Error> {
+    fn parse_component(
+        &mut self,
+        reader: &mut Reader<&[u8]>,
+        buf: &mut Vec<u8>,
+    ) -> Result<(), Error> {
         Ok(())
     }
 
@@ -141,7 +159,7 @@ impl GlifParser {
                 Event::Text(text) => {
                     self.0.note = Some(text.unescape_and_decode(reader)?);
                     break;
-                },
+                }
                 Event::Eof => return Err(Error::UnexpectedEof),
                 _other => (),
             }
@@ -149,8 +167,11 @@ impl GlifParser {
         Ok(())
     }
 
-    fn parse_point<'a>(&mut self, reader: &Reader<&[u8]>, data: &BytesStart<'a>) -> Result<ContourPoint, Error> {
-
+    fn parse_point<'a>(
+        &mut self,
+        reader: &Reader<&[u8]>,
+        data: &BytesStart<'a>,
+    ) -> Result<ContourPoint, Error> {
         let mut name: Option<String> = None;
         let mut x: Option<f32> = None;
         let mut y: Option<f32> = None;
@@ -174,20 +195,19 @@ impl GlifParser {
                 b"smooth" => smooth = value == "yes",
                 b"identifier" => identifier = Some(Identifier(value.to_string())),
                 _other => eprintln!("unexpected point field {}", value),
-
             }
         }
         if x.is_none() || y.is_none() {
             return Err(Error::BadPoint(reader.buffer_position()));
         }
-        Ok(ContourPoint {
-            x: x.unwrap(),
-            y: y.unwrap(),
-            typ, name, identifier, smooth,
-        })
+        Ok(ContourPoint { x: x.unwrap(), y: y.unwrap(), typ, name, identifier, smooth })
     }
 
-    fn parse_advance<'a>(&mut self, reader: &Reader<&[u8]>, data: BytesStart<'a>) -> Result<(), Error> {
+    fn parse_advance<'a>(
+        &mut self,
+        reader: &Reader<&[u8]>,
+        data: BytesStart<'a>,
+    ) -> Result<(), Error> {
         for attr in data.attributes() {
             let attr = attr?;
             if attr.key == b"width" || attr.key == b"height" {
@@ -204,22 +224,31 @@ impl GlifParser {
         Ok(())
     }
 
-    fn parse_unicode<'a>(&mut self, reader: &Reader<&[u8]>, data: BytesStart<'a>) -> Result<(), Error> {
+    fn parse_unicode<'a>(
+        &mut self,
+        reader: &Reader<&[u8]>,
+        data: BytesStart<'a>,
+    ) -> Result<(), Error> {
         for attr in data.attributes() {
             let attr = attr?;
             if attr.key == b"hex" {
                 let value = attr.unescaped_value()?;
                 let value = reader.decode(&value);
-                let chr = u32::from_str_radix(&value, 16).map_err(|_| value.to_string())
+                let chr = u32::from_str_radix(&value, 16)
+                    .map_err(|_| value.to_string())
                     .and_then(|n| char::try_from(n).map_err(|_| value.to_string()))
                     .map_err(|e| Error::BadHexValue(e))?;
-                 self.0.codepoints.get_or_insert(Vec::new()).push(chr);
+                self.0.codepoints.get_or_insert(Vec::new()).push(chr);
             }
         }
         Ok(())
     }
 
-    fn parse_anchor<'a>(&mut self, reader: &Reader<&[u8]>, data: BytesStart<'a>) -> Result<(), Error> {
+    fn parse_anchor<'a>(
+        &mut self,
+        reader: &Reader<&[u8]>,
+        data: BytesStart<'a>,
+    ) -> Result<(), Error> {
         let mut x: Option<f32> = None;
         let mut y: Option<f32> = None;
         let mut name: Option<String> = None;
@@ -248,19 +277,23 @@ impl GlifParser {
             return Err(Error::BadAnchor(reader.buffer_position()));
         }
         let anchors = self.0.anchors.get_or_insert(Vec::new());
-        anchors.push(Anchor {
-            x: x.unwrap(),
-            y: y.unwrap(),
-            name, color, identifier,
-        });
+        anchors.push(Anchor { x: x.unwrap(), y: y.unwrap(), name, color, identifier });
         Ok(())
     }
 
-    fn parse_guideline<'a>(&mut self, reader: &Reader<&[u8]>, data: BytesStart<'a>) -> Result<(), Error> {
+    fn parse_guideline<'a>(
+        &mut self,
+        reader: &Reader<&[u8]>,
+        data: BytesStart<'a>,
+    ) -> Result<(), Error> {
         Ok(())
     }
 
-    fn parse_image<'a>(&mut self, reader: &Reader<&[u8]>, data: BytesStart<'a>) -> Result<(), Error> {
+    fn parse_image<'a>(
+        &mut self,
+        reader: &Reader<&[u8]>,
+        data: BytesStart<'a>,
+    ) -> Result<(), Error> {
         Ok(())
     }
 }
@@ -305,7 +338,7 @@ impl FromStr for GlifVersion {
         match s {
             "1" => Ok(GlifVersion::V1),
             "2" => Ok(GlifVersion::V2),
-            other => Err(Error::UnsupportedGlifVersion(other.to_string()))
+            other => Err(Error::UnsupportedGlifVersion(other.to_string())),
         }
     }
 }
@@ -313,7 +346,8 @@ impl FromStr for GlifVersion {
 impl FromStr for Color {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut iter = s.split(',').map(|s| s.parse::<f32>().map_err(|e| Error::BadColor(s.to_string())));
+        let mut iter =
+            s.split(',').map(|s| s.parse::<f32>().map_err(|e| Error::BadColor(s.to_string())));
         Ok(Color {
             red: iter.next().ok_or_else(|| Error::BadColor(s.to_string())).and_then(|r| r)?,
             green: iter.next().ok_or_else(|| Error::BadColor(s.to_string())).and_then(|r| r)?,
@@ -336,4 +370,3 @@ impl FromStr for PointType {
         }
     }
 }
-

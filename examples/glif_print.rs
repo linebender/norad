@@ -1,10 +1,13 @@
-use std::{env, fs, io};
 use std::borrow::Cow;
-use std::path::PathBuf;
 use std::ffi::OsStr;
+use std::path::PathBuf;
+use std::{env, fs, io};
 
 use failure::Error;
-use quick_xml::{events::{attributes::Attribute, Event}, Reader};
+use quick_xml::{
+    events::{attributes::Attribute, Event},
+    Reader,
+};
 
 fn main() -> Result<(), io::Error> {
     let path = match env::args().skip(1).next().map(PathBuf::from) {
@@ -31,7 +34,6 @@ fn main() -> Result<(), io::Error> {
 }
 
 fn print_tokens(xml: &str) -> Result<(), Error> {
-
     let mut reader = Reader::from_str(&xml);
     let mut buf = Vec::new();
     reader.trim_text(true);
