@@ -1,14 +1,36 @@
+use std::io::Error as IoError;
+use std::rc::Rc;
+
+use plist::Error as PlistError;
 use quick_xml::Error as XmlError;
 
 #[derive(Debug)]
 pub enum Error {
+    IoError(IoError),
     ParseError(XmlError),
     ParseGlif(ParseGlifError),
+    MissingFile(&'static str),
+    PlistError(PlistError),
+    MissingGlyph,
+    /// A wrapper for stashing errors for later use.
+    SavedError(Rc<Error>),
 }
 
 impl From<XmlError> for Error {
     fn from(src: XmlError) -> Error {
         Error::ParseError(src)
+    }
+}
+
+impl From<PlistError> for Error {
+    fn from(src: PlistError) -> Error {
+        Error::PlistError(src)
+    }
+}
+
+impl From<IoError> for Error {
+    fn from(src: IoError) -> Error {
+        Error::IoError(src)
     }
 }
 

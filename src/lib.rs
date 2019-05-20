@@ -6,4 +6,5 @@ mod load;
 mod parse;
 mod ufo;
 
+pub use error::Error;
 pub use parse::parse_glyph;

@@ -4,25 +4,7 @@ mod tests;
 
 use std::path::PathBuf;
 
-//use quick_xml::{events::{attributes::Attribute, Event}, Reader};
-
-//use crate::error::Error;
-
 type Plist = ();
-
-//type Contents = HashMap<String, PathBuf>;
-
-////Placeholder; documentation is vague
-//struct LayerInfo {
-//color: String,
-//lib: String,
-//}
-
-pub enum Error {
-    ParseError(quick_xml::Error),
-    BadXmlDeclaration(String),
-    UnsupportedGlifVersion(String),
-}
 
 #[derive(Debug, Clone)]
 pub struct Glyph {

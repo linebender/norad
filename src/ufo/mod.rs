@@ -1,11 +1,9 @@
 //mod fontinfo;
-//mod layercontents;
 mod glyph;
+mod layer;
 
-//use serde::Deserialize;
+pub use layer::Layer;
 
-//pub use fontinfo::FontInfo;
-//pub use layercontents::LayerContents;
 pub use glyph::{
     AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
     Guideline, Identifier, Image, Line, Outline, PointType,
