@@ -22,6 +22,10 @@ pub struct Glyph {
 }
 
 impl Glyph {
+    pub fn new_named<S: Into<String>>(name: S) -> Self {
+        Glyph::new(name.into(), GlifVersion::V2)
+    }
+
     pub(crate) fn new(name: String, format: GlifVersion) -> Self {
         Glyph {
             name,

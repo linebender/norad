@@ -9,16 +9,16 @@ use crate::Error;
 static LAYER_CONTENTS_FILE: &str = "contents.plist";
 static LAYER_INFO_FILE: &str = "layerinfo.plist";
 
-enum Glif {
-    Loaded(Glyph),
-    // Boxed so we can clone
-    Errored(Rc<Error>),
-}
-
 pub struct Layer {
     path: PathBuf,
     contents: BTreeMap<String, PathBuf>,
-    loaded: BTreeMap<String, Glif>,
+    loaded: BTreeMap<String, Entry>,
+}
+
+enum Entry {
+    Loaded(Glyph),
+    // Boxed so we can clone
+    Errored(Rc<Error>),
 }
 
 impl Layer {
@@ -29,22 +29,45 @@ impl Layer {
         Ok(Layer { path, contents, loaded: BTreeMap::new() })
     }
 
+    /// Attempt to load and return the glyph with this name.
+    ///
+    /// Glyphs are lazily loaded from files on disk, so this function may
+    /// fail if a glyph file cannot be read.
     pub fn get_glyph(&mut self, glyph: &str) -> Result<&Glyph, Error> {
         if !self.loaded.contains_key(glyph) {
             self.load_glyph(glyph);
         }
 
         match self.loaded.get(glyph).expect("glyph always loaded before get") {
-            Glif::Loaded(ref g) => return Ok(g),
-            Glif::Errored(e) => return Err(Error::SavedError(e.clone())),
+            Entry::Loaded(ref g) => return Ok(g),
+            Entry::Errored(e) => return Err(Error::SavedError(e.clone())),
             _ => unreachable!(),
         }
     }
 
+    /// Returns `true` if this layer contains a glyph with this name.
+    pub fn contains_glyph(&self, name: &str) -> bool {
+        self.loaded.contains_key(name) | self.contents.contains_key(name)
+    }
+
+    /// Set the given glyph. The name is taken from the glyph's `name` field.
+    /// This replaces any existing glyph with this name.
+    pub fn set_glyph<P: Into<PathBuf>>(&mut self, path: P, glyph: Glyph) {
+        let path = path.into();
+        let name = glyph.name.clone();
+        self.loaded.insert(name.clone(), Entry::Loaded(glyph));
+    }
+
+    /// Remove the named glyph from this layer.
+    pub fn delete_glyph(&mut self, name: &str) {
+        self.loaded.remove(name);
+        self.contents.remove(name);
+    }
+
     fn load_glyph(&mut self, glyph: &str) {
         let glif = match self.load_glyph_impl(&glyph) {
-            Ok(g) => Glif::Loaded(g),
-            Err(e) => Glif::Errored(Rc::new(e)),
+            Ok(g) => Entry::Loaded(g),
+            Err(e) => Entry::Errored(Rc::new(e)),
         };
         self.loaded.insert(glyph.to_owned(), glif);
     }
@@ -71,5 +94,27 @@ mod tests {
         assert_eq!(glyph.width, Some(1290.));
         assert_eq!(glyph.codepoints.as_ref().map(Vec::len), Some(1));
         assert_eq!(glyph.codepoints.as_ref().unwrap()[0], 'A');
+    }
+
+    #[test]
+    fn delete() {
+        let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
+        let mut layer = Layer::load(layer_path).unwrap();
+        layer.delete_glyph("A");
+        if let Ok(glyph) = layer.get_glyph("A") {
+            panic!("{:?}", glyph);
+        }
+    }
+
+    #[test]
+    fn set_glyph() {
+        let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
+        let mut layer = Layer::load(layer_path).unwrap();
+        let mut glyph = Glyph::new_named("A");
+        glyph.height = Some(69.);
+        layer.set_glyph("A_.glif", glyph);
+        let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
+        assert_eq!(glyph.width, None);
+        assert_eq!(glyph.height, Some(69.));
     }
 }
