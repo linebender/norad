@@ -25,7 +25,7 @@ fn guidelines() {
     let glyph = parse_glyph(bytes).unwrap();
     assert_eq!(glyph.guidelines.as_ref().map(Vec::len), Some(8));
     assert_eq!(glyph.outline.as_ref().map(|o| o.contours.len()), Some(2));
-    assert_eq!(glyph.width, Some(364.));
+    assert_eq!(glyph.advance, Some(Advance::Width(364.)));
 }
 
 //#[test]

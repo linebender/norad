@@ -10,8 +10,7 @@ type Plist = ();
 pub struct Glyph {
     pub name: String,
     pub format: GlifVersion,
-    pub width: Option<f64>,
-    pub height: Option<f64>,
+    pub advance: Option<Advance>,
     pub codepoints: Option<Vec<char>>,
     pub note: Option<String>,
     pub guidelines: Option<Vec<Guideline>>,
@@ -30,8 +29,7 @@ impl Glyph {
         Glyph {
             name,
             format,
-            width: None,
-            height: None,
+            advance: None,
             codepoints: None,
             note: None,
             guidelines: None,
@@ -47,6 +45,12 @@ impl Glyph {
 pub enum GlifVersion {
     V1 = 1,
     V2 = 2,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Advance {
+    Width(f32),
+    Height(f32),
 }
 
 /// Identifiers are optional attributes of several objects in the UFO.

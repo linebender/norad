@@ -83,6 +83,7 @@ impl Layer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ufo::Advance;
     use std::path::Path;
 
     #[test]
@@ -91,7 +92,7 @@ mod tests {
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
         let mut layer = Layer::load(layer_path).unwrap();
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
-        assert_eq!(glyph.width, Some(1290.));
+        assert_eq!(glyph.advance, Some(Advance::Width(1290.)));
         assert_eq!(glyph.codepoints.as_ref().map(Vec::len), Some(1));
         assert_eq!(glyph.codepoints.as_ref().unwrap()[0], 'A');
     }
@@ -111,10 +112,9 @@ mod tests {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         let mut layer = Layer::load(layer_path).unwrap();
         let mut glyph = Glyph::new_named("A");
-        glyph.height = Some(69.);
+        glyph.advance = Some(Advance::Height(69.));
         layer.set_glyph("A_.glif", glyph);
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
-        assert_eq!(glyph.width, None);
-        assert_eq!(glyph.height, Some(69.));
+        assert_eq!(glyph.advance, Some(Advance::Height(69.)));
     }
 }

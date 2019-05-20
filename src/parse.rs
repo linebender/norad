@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use crate::ufo::{
-    AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
+    Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
     Guideline, Identifier, Image, Line, Outline, PointType,
 };
 
@@ -261,12 +261,13 @@ impl GlifParser {
             if attr.key == b"width" || attr.key == b"height" {
                 let value = attr.unescaped_value()?;
                 let value = reader.decode(&value);
-                let value: f64 = value.parse().map_err(|_| err!(reader, ErrorKind::BadNumber))?;
-                if attr.key == b"width" {
-                    self.0.width = Some(value);
-                } else {
-                    self.0.height = Some(value);
-                }
+                let value: f32 = value.parse().map_err(|_| err!(reader, ErrorKind::BadNumber))?;
+                let advance = match attr.key {
+                    b"width" => Advance::Width(value),
+                    b"height" => Advance::Height(value),
+                    _ => unreachable!(),
+                };
+                self.0.advance = Some(advance);
             }
         }
         Ok(())

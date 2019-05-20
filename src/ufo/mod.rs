@@ -5,7 +5,7 @@ mod layer;
 pub use layer::Layer;
 
 pub use glyph::{
-    AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
+    Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
     Guideline, Identifier, Image, Line, Outline, PointType,
 };
 
