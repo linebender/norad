@@ -7,7 +7,7 @@ use crate::ufo::Glyph;
 use crate::Error;
 
 static LAYER_CONTENTS_FILE: &str = "contents.plist";
-static LAYER_INFO_FILE: &str = "layerinfo.plist";
+//static LAYER_INFO_FILE: &str = "layerinfo.plist";
 
 pub struct Layer {
     path: PathBuf,
@@ -53,7 +53,8 @@ impl Layer {
     /// Set the given glyph. The name is taken from the glyph's `name` field.
     /// This replaces any existing glyph with this name.
     pub fn set_glyph<P: Into<PathBuf>>(&mut self, path: P, glyph: Glyph) {
-        let path = path.into();
+        //FIXME: figure out what bookkeeping we have to do with this path
+        let _path = path.into();
         let name = glyph.name.clone();
         self.loaded.insert(name.clone(), Entry::Loaded(glyph));
     }
