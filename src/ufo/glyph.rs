@@ -2,11 +2,14 @@
 #[path = "glyph_tests.rs"]
 mod tests;
 
+#[path = "glyph_save.rs"]
+mod save;
+
 use std::path::PathBuf;
 
 type Plist = ();
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Glyph {
     pub name: String,
     pub format: GlifVersion,
@@ -41,7 +44,7 @@ impl Glyph {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum GlifVersion {
     V1 = 1,
     V2 = 2,
@@ -58,11 +61,11 @@ pub enum Advance {
 /// as defined on a per object basis throughout this specification.
 /// Identifiers are specified as a string between one and 100 characters long.
 /// All characters must be in the printable ASCII range, 0x20 to 0x7E.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Identifier(pub(crate) String);
 
 /// A guideline associated with a glyph.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Guideline {
     /// The line itself.
     pub line: Line,
@@ -75,7 +78,7 @@ pub struct Guideline {
     pub identifier: Option<Identifier>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Line {
     /// A vertical line, passing through a given `x` coordinate.
     Vertical(f32),
@@ -86,7 +89,7 @@ pub enum Line {
     Angle { x: f32, y: f32, degrees: f32 },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Anchor {
     pub x: f32,
     pub y: f32,
@@ -96,14 +99,14 @@ pub struct Anchor {
     pub identifier: Option<Identifier>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Outline {
     pub components: Vec<Component>,
     pub contours: Vec<Contour>,
 }
 
 /// Another glyph inserted as part of the outline.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Component {
     /// The name of the base glyph.
     pub base: String,
@@ -111,13 +114,13 @@ pub struct Component {
     pub identifier: Option<Identifier>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Contour {
     pub identifier: Option<Identifier>,
     pub points: Vec<ContourPoint>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ContourPoint {
     pub name: Option<String>,
     pub x: f32,
@@ -127,7 +130,7 @@ pub struct ContourPoint {
     pub identifier: Option<Identifier>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PointType {
     /// A point of this type must be the first in a contour. The reverse is not true:
     /// a contour does not necessarily start with a move point. When a contour
@@ -158,7 +161,7 @@ pub enum PointType {
 }
 
 /// Taken together in order, these fields represent an affine transformation matrix.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AffineTransform {
     pub x_scale: f32,
     pub xy_scale: f32,
@@ -188,7 +191,7 @@ impl std::default::Default for AffineTransform {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Color {
     pub red: f32,
     pub green: f32,
@@ -196,7 +199,7 @@ pub struct Color {
     pub alpha: f32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Image {
     /// Not an absolute / relative path, but the name of the image file.
     pub file_name: PathBuf,

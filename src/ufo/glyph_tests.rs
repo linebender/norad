@@ -28,6 +28,27 @@ fn guidelines() {
     assert_eq!(glyph.advance, Some(Advance::Width(364.)));
 }
 
+#[test]
+fn save() {
+    let bytes = include_bytes!("../../testdata/sample_period.glif");
+    let glyph = parse_glyph(bytes).expect("initial load failed");
+    let buf = glyph.encode_xml().expect("encode failed");
+
+    println!("{}", String::from_utf8_lossy(&buf));
+    //panic!("ahh");
+
+    let glyph2 = parse_glyph(buf.as_slice()).expect("re-parse failed");
+    assert_eq!(glyph.name, glyph2.name);
+    assert_eq!(glyph.format, glyph2.format);
+    assert_eq!(glyph.advance, glyph2.advance);
+    assert_eq!(glyph.codepoints, glyph2.codepoints);
+    assert_eq!(glyph.note, glyph2.note);
+    assert_eq!(glyph.outline, glyph2.outline);
+    assert_eq!(glyph.image, glyph2.image);
+    assert_eq!(glyph.anchors, glyph2.anchors);
+    assert_eq!(glyph.guidelines, glyph2.guidelines);
+}
+
 //#[test]
 //fn parse_utf16() {
 //let bytes = include_bytes!("../../testdata/utf16-glyph.xml");
