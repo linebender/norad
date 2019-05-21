@@ -42,6 +42,24 @@ fn guidelines() {
 }
 
 #[test]
+#[should_panic(expected = "MissingClose")]
+fn missing_close() {
+    let data = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="period" format="2">
+  <advance width="268"/>
+  <unicode hex="002E"/>
+  <outline>
+    <contour>
+      <point x="237" y="152"/>
+      <point x="193" y="187"/>
+    </contour>
+  </outline>
+"#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
 fn save() {
     let bytes = include_bytes!("../../testdata/sample_period.glif");
     let glyph = parse_glyph(bytes).expect("initial load failed");

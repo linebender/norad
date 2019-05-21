@@ -51,6 +51,7 @@ pub enum ErrorKind {
     UnsupportedGlifVersion,
     UnknownPointType,
     WrongFirstElement,
+    MissingCloseTag,
     UnexpectedTag,
     BadHexValue,
     BadNumber,

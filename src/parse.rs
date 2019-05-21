@@ -55,8 +55,8 @@ impl GlifParser {
                         _other => return Err(err!(reader, ErrorKind::UnexpectedTag))?,
                     }
                 }
-                //FIXME: only break on </glyph>
-                _other => break,
+                Event::End(ref end) if end.name() == b"glyph" => break,
+                _other => return Err(err!(reader, ErrorKind::MissingCloseTag))?,
             }
         }
         Ok(self.0)
