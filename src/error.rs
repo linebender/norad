@@ -1,9 +1,12 @@
+//! Errors, errors, errors
+
 use std::io::Error as IoError;
 use std::rc::Rc;
 
 use plist::Error as PlistError;
 use quick_xml::Error as XmlError;
 
+/// Errors that occur while working with font objects.
 #[derive(Debug)]
 pub enum Error {
     IoError(IoError),
@@ -16,28 +19,32 @@ pub enum Error {
     SavedError(Rc<Error>),
 }
 
+#[doc(hidden)]
 impl From<XmlError> for Error {
     fn from(src: XmlError) -> Error {
         Error::ParseError(src)
     }
 }
 
+#[doc(hidden)]
 impl From<PlistError> for Error {
     fn from(src: PlistError) -> Error {
         Error::PlistError(src)
     }
 }
 
+#[doc(hidden)]
 impl From<IoError> for Error {
     fn from(src: IoError) -> Error {
         Error::IoError(src)
     }
 }
 
+/// The location of a `.glif` parse failure, and the reported reason.
 #[derive(Debug, Clone)]
 pub struct ParseGlifError {
-    kind: ErrorKind,
-    position: usize,
+    pub kind: ErrorKind,
+    pub position: usize,
 }
 
 impl ParseGlifError {
@@ -46,6 +53,7 @@ impl ParseGlifError {
     }
 }
 
+/// The reason for a glif parse failure.
 #[derive(Debug, Clone)]
 pub enum ErrorKind {
     UnsupportedGlifVersion,
@@ -72,15 +80,9 @@ impl ErrorKind {
     }
 }
 
+#[doc(hidden)]
 impl From<ParseGlifError> for Error {
     fn from(src: ParseGlifError) -> Error {
         Error::ParseGlif(src)
     }
-}
-
-#[macro_export]
-macro_rules! err {
-    ($r:expr, $errtype:expr) => {
-        ParseGlifError { kind: $errtype, position: $r.buffer_position() }
-    };
 }

@@ -6,9 +6,13 @@ use crate::parse::parse_glyph;
 use crate::ufo::Glyph;
 use crate::Error;
 
-static LAYER_CONTENTS_FILE: &str = "contents.plist";
+static CONTENTS_FILE: &str = "contents.plist";
 //static LAYER_INFO_FILE: &str = "layerinfo.plist";
 
+/// A [layer], corresponding to a 'glyphs' directory. Conceptually, a layer
+/// is just a collection of glyphs.
+///
+/// [layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
 pub struct Layer {
     path: PathBuf,
     contents: BTreeMap<String, PathBuf>,
@@ -24,7 +28,7 @@ enum Entry {
 impl Layer {
     pub fn load<P: Into<PathBuf>>(path: P) -> Result<Layer, Error> {
         let path = path.into();
-        let contents_path = path.join(LAYER_CONTENTS_FILE);
+        let contents_path = path.join(CONTENTS_FILE);
         let contents = plist::from_file(contents_path)?;
         Ok(Layer { path, contents, loaded: BTreeMap::new() })
     }

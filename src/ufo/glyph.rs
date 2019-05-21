@@ -1,3 +1,5 @@
+//! Data related to individual glyphs.
+
 #[cfg(test)]
 #[path = "glyph_tests.rs"]
 mod tests;
@@ -7,8 +9,12 @@ mod save;
 
 use std::path::PathBuf;
 
+//FIXME: actually load the 'lib' data
 type Plist = ();
 
+/// A glyph, loaded from a [.glif file][glif].
+///
+/// [glif]: http://unifiedfontobject.org/versions/ufo3/glyphs/glif/
 #[derive(Debug, Clone, PartialEq)]
 pub struct Glyph {
     pub name: String,

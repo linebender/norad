@@ -1,6 +1,6 @@
-//! Reading and (maybe) writing Universal Font Object files.
+//! Reading and (maybe) writing Unified Font Object files.
 
-mod glyph;
+pub mod glyph;
 mod layer;
 
 pub use layer::Layer;
@@ -17,7 +17,6 @@ use crate::Error;
 static LAYER_CONTENTS_FILE: &str = "layercontents.plist";
 
 /// A Unified Font Object.
-/// For more details, see http://unifiedfontobject.org/versions/ufo3.
 pub struct Ufo {
     layers: Vec<LayerInfo>,
 }
