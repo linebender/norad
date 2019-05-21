@@ -20,6 +20,19 @@ fn parse() {
 }
 
 #[test]
+fn curve_types() {
+    let bytes = include_bytes!("../../testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs/D_.glif");
+    let glyph = parse_glyph(bytes).unwrap();
+    let outline = glyph.outline.as_ref().unwrap();
+    assert_eq!(outline.contours.len(), 2);
+    assert_eq!(outline.contours[1].points[0].typ, PointType::Line);
+    assert_eq!(outline.contours[1].points[0].smooth, false);
+    assert_eq!(outline.contours[1].points[1].smooth, true);
+    assert_eq!(outline.contours[1].points[2].typ, PointType::OffCurve);
+    assert_eq!(outline.contours[1].points[4].typ, PointType::Curve);
+}
+
+#[test]
 fn guidelines() {
     let bytes = include_bytes!("../../testdata/Blinker_one.glif");
     let glyph = parse_glyph(bytes).unwrap();

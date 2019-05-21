@@ -55,6 +55,7 @@ impl GlifParser {
                         _other => return Err(err!(reader, ErrorKind::UnexpectedTag))?,
                     }
                 }
+                //FIXME: only break on </glyph>
                 _other => break,
             }
         }
@@ -235,14 +236,14 @@ impl GlifParser {
                     );
                 }
                 b"name" => name = Some(value.to_string()),
-                b"typ" => {
+                b"type" => {
                     typ = value
                         .parse()
                         .map_err(|e: ErrorKind| e.to_error(reader.buffer_position()))?
                 }
                 b"smooth" => smooth = value == "yes",
                 b"identifier" => identifier = Some(Identifier(value.to_string())),
-                _other => eprintln!("unexpected point field {}", value),
+                _other => eprintln!("unexpected point field {}", String::from_utf8_lossy(_other)),
             }
         }
         if x.is_none() || y.is_none() {
@@ -267,6 +268,9 @@ impl GlifParser {
                     b"height" => Advance::Height(value),
                     _ => unreachable!(),
                 };
+                if self.0.advance.is_some() {
+                    return Err(err!(reader, ErrorKind::UnexpectedDuplicate))?;
+                }
                 self.0.advance = Some(advance);
             }
         }
