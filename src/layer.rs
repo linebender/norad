@@ -2,9 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::parse::parse_glyph;
-use crate::ufo::Glyph;
-use crate::Error;
+use crate::{Error, Glyph};
 
 static CONTENTS_FILE: &str = "contents.plist";
 //static LAYER_INFO_FILE: &str = "layerinfo.plist";
@@ -80,15 +78,14 @@ impl Layer {
     fn load_glyph_impl(&mut self, glyph: &str) -> Result<Glyph, Error> {
         let path = self.contents.get(glyph).ok_or(Error::MissingGlyph)?;
         let path = self.path.join(path);
-        let data = std::fs::read(&path)?;
-        parse_glyph(&data)
+        Glyph::load(&path)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ufo::Advance;
+    use crate::glyph::Advance;
     use std::path::Path;
 
     #[test]

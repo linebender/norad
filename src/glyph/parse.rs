@@ -3,11 +3,7 @@ use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use crate::ufo::{
-    Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    Guideline, Identifier, Image, Line, Outline, PointType,
-};
-
+use super::*;
 use crate::error::{Error, ErrorKind, ParseGlifError};
 
 use quick_xml::{

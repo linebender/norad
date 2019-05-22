@@ -1,5 +1,5 @@
+use super::parse::parse_glyph;
 use super::*;
-use crate::parse::parse_glyph;
 use std::path::PathBuf;
 
 #[test]

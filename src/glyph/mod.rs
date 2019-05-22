@@ -1,13 +1,12 @@
 //! Data related to individual glyphs.
 
+mod parse;
+mod serialize;
 #[cfg(test)]
-#[path = "glyph_tests.rs"]
 mod tests;
 
-#[path = "glyph_save.rs"]
-mod save;
-
-use std::path::PathBuf;
+use crate::Error;
+use std::path::{Path, PathBuf};
 
 //FIXME: actually load the 'lib' data
 type Plist = ();
@@ -30,6 +29,11 @@ pub struct Glyph {
 }
 
 impl Glyph {
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
+        let data = std::fs::read(path.as_ref())?;
+        parse::parse_glyph(&data)
+    }
+
     pub fn new_named<S: Into<String>>(name: S) -> Self {
         Glyph::new(name.into(), GlifVersion::V2)
     }

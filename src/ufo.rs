@@ -1,15 +1,6 @@
 //! Reading and (maybe) writing Unified Font Object files.
 
-pub mod glyph;
-mod layer;
-
-pub use layer::Layer;
-
-pub use glyph::{
-    Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    Guideline, Identifier, Image, Line, Outline, PointType,
-};
-
+use crate::layer::Layer;
 use std::path::PathBuf;
 
 use crate::Error;
@@ -56,11 +47,11 @@ impl Ufo {
     /// Returns the first layer matching a predicate. The predicate takes a
     /// `LayerInfo` struct, which includes the layer's name and path as well
     /// as the layer itself.
-    pub fn find_layer<P>(&self, mut predicate: P) -> Option<&Layer>
+    pub fn find_layer<P>(&mut self, mut predicate: P) -> Option<&mut Layer>
     where
         P: FnMut(&LayerInfo) -> bool,
     {
-        self.layers.iter().find(|l| predicate(l)).map(|l| &l.layer)
+        self.layers.iter_mut().find(|l| predicate(l)).map(|l| &mut l.layer)
     }
 
     /// Returns an iterator over all layers in this font object.
@@ -76,7 +67,7 @@ mod tests {
     #[test]
     fn loading() {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
-        let font_obj = Ufo::load(path).unwrap();
+        let mut font_obj = Ufo::load(path).unwrap();
         assert_eq!(font_obj.iter().count(), 2);
         font_obj
             .find_layer(|l| l.path.to_str() == Some("glyphs.background"))
