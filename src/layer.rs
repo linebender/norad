@@ -43,7 +43,6 @@ impl Layer {
         match self.loaded.get(glyph).expect("glyph always loaded before get") {
             Entry::Loaded(ref g) => return Ok(g),
             Entry::Errored(e) => return Err(Error::SavedError(e.clone())),
-            _ => unreachable!(),
         }
     }
 

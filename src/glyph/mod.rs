@@ -34,6 +34,14 @@ impl Glyph {
         parse::parse_glyph(&data)
     }
 
+    #[doc(hidden)]
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
+        let data = self.encode_xml()?;
+        std::fs::write(path, &data)?;
+        Ok(())
+    }
+
+    /// Create a new glyph with the given name.
     pub fn new_named<S: Into<String>>(name: S) -> Self {
         Glyph::new(name.into(), GlifVersion::V2)
     }
