@@ -66,6 +66,11 @@ impl Layer {
         self.contents.remove(name);
     }
 
+    /// Returns an iterator over `(String, Path)` for the glyphs in this layer.
+    pub fn iter_contents(&self) -> impl Iterator<Item=(&String, &PathBuf)> {
+        self.contents.iter()
+    }
+
     fn load_glyph(&mut self, glyph: &str) {
         let glif = match self.load_glyph_impl(&glyph) {
             Ok(g) => Entry::Loaded(g),
