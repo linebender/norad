@@ -14,6 +14,9 @@
 //! assert_eq!(glyph_a.name.as_str(), "A");
 //! ```
 
+#[macro_use] extern crate serde_derive;
+#[macro_use] extern crate serde_repr;
+
 pub mod error;
 pub mod glyph;
 mod layer;
