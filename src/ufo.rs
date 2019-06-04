@@ -8,6 +8,7 @@ use crate::Error;
 
 static LAYER_CONTENTS_FILE: &str = "layercontents.plist";
 static METAINFO_FILE: &str = "metainfo.plist";
+static FONTINFO_FILE: &str = "fontinfo.plist";
 static DEFAULT_LAYER_NAME: &str = "public.default";
 static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 
@@ -15,6 +16,7 @@ static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 #[allow(dead_code)] // meta isn't used, but we'll need it when writing
 pub struct Ufo {
     meta: MetaInfo,
+    font: FontInfo,
     layers: Vec<LayerInfo>,
 }
 
@@ -44,6 +46,25 @@ struct MetaInfo {
     format_version: FormatVersion,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FontInfo {
+    family_name: String,
+    style_name: String,
+    style_map_family_name: String,
+    style_map_style_name: String,
+    version_major: u32,
+    version_minor: u32,
+    year: u32,
+    copyright: String,
+    units_per_em: f64,
+    descender: f64,
+    x_height: f64,
+    cap_height: f64,
+    ascender: f64,
+    italic_angle: f64,
+}
+
 impl Ufo {
     /// Attempt to load a font object from a file. `path` must point to
     /// a directory with the structure described in [v3 of the Unified Font Object][v3]
@@ -54,6 +75,8 @@ impl Ufo {
         let path = path.into();
         let meta_path = path.join(METAINFO_FILE);
         let meta: MetaInfo = plist::from_file(meta_path)?;
+        let font_path = path.join(FONTINFO_FILE);
+        let font: FontInfo = plist::from_file(font_path)?;
         let mut contents = match meta.format_version {
             FormatVersion::V3 => {
                 let contents_path = path.join(LAYER_CONTENTS_FILE);
@@ -71,7 +94,7 @@ impl Ufo {
                 Ok(LayerInfo { name, path: p, layer })
             })
             .collect();
-        Ok(Ufo { layers: layers?, meta })
+        Ok(Ufo { layers: layers?, meta, font })
     }
 
     /// Returns the first layer matching a predicate. The predicate takes a
@@ -116,5 +139,12 @@ mod tests {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo/metainfo.plist";
         let meta: MetaInfo = plist::from_file(path).expect("failed to load metainfo");
         assert_eq!(meta.creator, "org.robofab.ufoLib");
+    }
+
+    #[test]
+    fn fontinfo() {
+        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo/fontinfo.plist";
+        let font: FontInfo = plist::from_file(path).expect("failed to load fontinfo");
+        assert_eq!(font.family_name, "MutatorMathTest");
     }
 }
