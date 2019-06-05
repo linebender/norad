@@ -16,7 +16,7 @@ static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 #[allow(dead_code)] // meta isn't used, but we'll need it when writing
 pub struct Ufo {
     meta: MetaInfo,
-    font: FontInfo,
+    font_info: Option<FontInfo>,
     layers: Vec<LayerInfo>,
 }
 
@@ -49,20 +49,22 @@ struct MetaInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct FontInfo {
-    family_name: String,
-    style_name: String,
-    style_map_family_name: String,
-    style_map_style_name: String,
-    version_major: u32,
-    version_minor: u32,
-    year: u32,
-    copyright: String,
-    units_per_em: f64,
-    descender: f64,
-    x_height: f64,
-    cap_height: f64,
-    ascender: f64,
-    italic_angle: f64,
+    family_name: Option<String>,
+    style_name: Option<String>,
+    style_map_family_name: Option<String>,
+    style_map_style_name: Option<String>,
+    version_major: Option<u32>,
+    version_minor: Option<u32>,
+    year: Option<u32>,
+    copyright: Option<String>,
+    trademark: Option<String>,
+    units_per_em: Option<f64>,
+    descender: Option<f64>,
+    x_height: Option<f64>,
+    cap_height: Option<f64>,
+    ascender: Option<f64>,
+    italic_angle: Option<f64>,
+    note: Option<String>,
 }
 
 impl Ufo {
@@ -76,7 +78,12 @@ impl Ufo {
         let meta_path = path.join(METAINFO_FILE);
         let meta: MetaInfo = plist::from_file(meta_path)?;
         let font_path = path.join(FONTINFO_FILE);
-        let font: FontInfo = plist::from_file(font_path)?;
+        let font_info = if font_path.exists() {
+            let font_info = plist::from_file(font_path)?;
+            Some(font_info)
+        } else {
+            None
+        };
         let mut contents = match meta.format_version {
             FormatVersion::V3 => {
                 let contents_path = path.join(LAYER_CONTENTS_FILE);
@@ -94,7 +101,7 @@ impl Ufo {
                 Ok(LayerInfo { name, path: p, layer })
             })
             .collect();
-        Ok(Ufo { layers: layers?, meta, font })
+        Ok(Ufo { layers: layers?, meta, font_info })
     }
 
     /// Returns the first layer matching a predicate. The predicate takes a
@@ -144,7 +151,8 @@ mod tests {
     #[test]
     fn fontinfo() {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo/fontinfo.plist";
-        let font: FontInfo = plist::from_file(path).expect("failed to load fontinfo");
-        assert_eq!(font.family_name, "MutatorMathTest");
+        let font_info: FontInfo = plist::from_file(path).expect("failed to load fontinfo");
+        assert_eq!(font_info.family_name, Some("MutatorMathTest".to_string()));
+        assert_eq!(font_info.trademark, None);
     }
 }
