@@ -16,7 +16,7 @@ static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 #[allow(dead_code)] // meta isn't used, but we'll need it when writing
 pub struct Ufo {
     meta: MetaInfo,
-    font_info: Option<FontInfo>,
+    pub font_info: Option<FontInfo>,
     layers: Vec<LayerInfo>,
 }
 
@@ -48,23 +48,23 @@ struct MetaInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct FontInfo {
-    family_name: Option<String>,
-    style_name: Option<String>,
-    style_map_family_name: Option<String>,
-    style_map_style_name: Option<String>,
-    version_major: Option<u32>,
-    version_minor: Option<u32>,
-    year: Option<u32>,
-    copyright: Option<String>,
-    trademark: Option<String>,
-    units_per_em: Option<f64>,
-    descender: Option<f64>,
-    x_height: Option<f64>,
-    cap_height: Option<f64>,
-    ascender: Option<f64>,
-    italic_angle: Option<f64>,
-    note: Option<String>,
+pub struct FontInfo {
+    pub family_name: Option<String>,
+    pub style_name: Option<String>,
+    pub style_map_family_name: Option<String>,
+    pub style_map_style_name: Option<String>,
+    pub version_major: Option<u32>,
+    pub version_minor: Option<u32>,
+    pub year: Option<u32>,
+    pub copyright: Option<String>,
+    pub trademark: Option<String>,
+    pub units_per_em: Option<f64>,
+    pub descender: Option<f64>,
+    pub x_height: Option<f64>,
+    pub cap_height: Option<f64>,
+    pub ascender: Option<f64>,
+    pub italic_angle: Option<f64>,
+    pub note: Option<String>,
 }
 
 impl Ufo {
