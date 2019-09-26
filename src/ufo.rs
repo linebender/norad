@@ -48,6 +48,9 @@ struct MetaInfo {
     format_version: FormatVersion,
 }
 
+/// The contents of the [`fontinfo.plist`][] file.
+///
+/// [`fontinfo.plist`]: http://unifiedfontobject.org/versions/ufo1/fontinfo.plist/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FontInfo {

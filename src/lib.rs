@@ -27,4 +27,4 @@ mod ufo;
 pub use error::Error;
 pub use glyph::Glyph;
 pub use layer::Layer;
-pub use ufo::Ufo;
+pub use ufo::{FontInfo, LayerInfo, Ufo};
