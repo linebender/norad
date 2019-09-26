@@ -67,7 +67,7 @@ impl Layer {
     }
 
     /// Returns an iterator over `(String, Path)` for the glyphs in this layer.
-    pub fn iter_contents(&self) -> impl Iterator<Item=(&String, &PathBuf)> {
+    pub fn iter_contents(&self) -> impl Iterator<Item = (&String, &PathBuf)> {
         self.contents.iter()
     }
 

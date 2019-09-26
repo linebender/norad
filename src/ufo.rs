@@ -1,8 +1,10 @@
 //! Reading and (maybe) writing Unified Font Object files.
 
+#![deny(intra_doc_link_resolution_failure)]
+
 use crate::layer::Layer;
-use std::path::PathBuf;
 use std::ffi::OsStr;
+use std::path::PathBuf;
 
 use crate::Error;
 
@@ -116,7 +118,8 @@ impl Ufo {
 
     /// Returns the default layer, if it exists.
     pub fn get_default_layer(&mut self) -> Option<&mut Layer> {
-        self.layers.iter_mut()
+        self.layers
+            .iter_mut()
             .find(|l| l.path.file_name() == Some(OsStr::new(DEFAULT_GLYPHS_DIRNAME)))
             .map(|l| &mut l.layer)
     }
