@@ -2,10 +2,10 @@
 
 #![deny(intra_doc_link_resolution_failure)]
 
-use crate::layer::Layer;
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use crate::layer::Layer;
 use crate::Error;
 
 static LAYER_CONTENTS_FILE: &str = "layercontents.plist";
@@ -75,35 +75,40 @@ impl Ufo {
     /// spec.
     ///
     /// [v3]: http://unifiedfontobject.org/versions/ufo3/
-    pub fn load<P: Into<PathBuf>>(path: P) -> Result<Ufo, Error> {
-        let path = path.into();
-        let meta_path = path.join(METAINFO_FILE);
-        let meta: MetaInfo = plist::from_file(meta_path)?;
-        let font_path = path.join(FONTINFO_FILE);
-        let font_info = if font_path.exists() {
-            let font_info = plist::from_file(font_path)?;
-            Some(font_info)
-        } else {
-            None
-        };
-        let mut contents = match meta.format_version {
-            FormatVersion::V3 => {
-                let contents_path = path.join(LAYER_CONTENTS_FILE);
-                let contents: Vec<(String, PathBuf)> = plist::from_file(contents_path)?;
-                contents
-            }
-            _older => vec![(DEFAULT_LAYER_NAME.into(), DEFAULT_GLYPHS_DIRNAME.into())],
-        };
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Ufo, Error> {
+        let path = path.as_ref();
+        return load_impl(path);
 
-        let layers: Result<Vec<LayerInfo>, Error> = contents
-            .drain(..)
-            .map(|(name, p)| {
-                let layer_path = path.join(&p);
-                let layer = Layer::load(layer_path)?;
-                Ok(LayerInfo { name, path: p, layer })
-            })
-            .collect();
-        Ok(Ufo { layers: layers?, meta, font_info })
+        // minimize monomorphization
+        fn load_impl(path: &Path) -> Result<Ufo, Error> {
+            let meta_path = path.join(METAINFO_FILE);
+            let meta: MetaInfo = plist::from_file(meta_path)?;
+            let font_path = path.join(FONTINFO_FILE);
+            let font_info = if font_path.exists() {
+                let font_info = plist::from_file(font_path)?;
+                Some(font_info)
+            } else {
+                None
+            };
+            let mut contents = match meta.format_version {
+                FormatVersion::V3 => {
+                    let contents_path = path.join(LAYER_CONTENTS_FILE);
+                    let contents: Vec<(String, PathBuf)> = plist::from_file(contents_path)?;
+                    contents
+                }
+                _older => vec![(DEFAULT_LAYER_NAME.into(), DEFAULT_GLYPHS_DIRNAME.into())],
+            };
+
+            let layers: Result<Vec<LayerInfo>, Error> = contents
+                .drain(..)
+                .map(|(name, p)| {
+                    let layer_path = path.join(&p);
+                    let layer = Layer::load(layer_path)?;
+                    Ok(LayerInfo { name, path: p, layer })
+                })
+                .collect();
+            Ok(Ufo { layers: layers?, meta, font_info })
+        }
     }
 
     /// Returns the first layer matching a predicate. The predicate takes a
