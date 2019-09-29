@@ -114,18 +114,36 @@ impl Ufo {
         }
     }
 
-    /// Returns the first layer matching a predicate. The predicate takes a
-    /// `LayerInfo` struct, which includes the layer's name and path as well
-    /// as the layer itself.
-    pub fn find_layer<P>(&mut self, mut predicate: P) -> Option<&mut Layer>
+    /// Returns a reference to the first layer matching a predicate.
+    /// The predicate takes a `LayerInfo` struct, which includes the layer's
+    /// name and path as well as the layer itself.
+    pub fn find_layer<P>(&self, mut predicate: P) -> Option<&Layer>
+    where
+        P: FnMut(&LayerInfo) -> bool,
+    {
+        self.layers.iter().find(|l| predicate(l)).map(|l| &l.layer)
+    }
+
+    /// Returns a mutable reference to the first layer matching a predicate.
+    /// The predicate takes a `LayerInfo` struct, which includes the layer's
+    /// name and path as well as the layer itself.
+    pub fn find_layer_mut<P>(&mut self, mut predicate: P) -> Option<&mut Layer>
     where
         P: FnMut(&LayerInfo) -> bool,
     {
         self.layers.iter_mut().find(|l| predicate(l)).map(|l| &mut l.layer)
     }
 
-    /// Returns the default layer, if it exists.
-    pub fn get_default_layer(&mut self) -> Option<&mut Layer> {
+    /// Returns a reference to the default layer, if it exists.
+    pub fn get_default_layer(&self) -> Option<&Layer> {
+        self.layers
+            .iter()
+            .find(|l| l.path.file_name() == Some(OsStr::new(DEFAULT_GLYPHS_DIRNAME)))
+            .map(|l| &l.layer)
+    }
+
+    /// Returns a mutable reference to the default layer, if it exists.
+    pub fn get_default_layer_mut(&mut self) -> Option<&mut Layer> {
         self.layers
             .iter_mut()
             .find(|l| l.path.file_name() == Some(OsStr::new(DEFAULT_GLYPHS_DIRNAME)))
@@ -145,7 +163,7 @@ mod tests {
     #[test]
     fn loading() {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
-        let mut font_obj = Ufo::load(path).unwrap();
+        let font_obj = Ufo::load(path).unwrap();
         assert_eq!(font_obj.iter().count(), 2);
         font_obj
             .find_layer(|l| l.path.to_str() == Some("glyphs.background"))

@@ -5,8 +5,18 @@ mod serialize;
 #[cfg(test)]
 mod tests;
 
-use crate::error::{Error, GlifError, GlifErrorInternal};
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
+
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::error::{Error, GlifError, GlifErrorInternal};
+
+/// The name of a glyph.
+///
+/// This is a newtype so we can work with serde.
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+pub struct GlyphName(Rc<String>);
 
 //FIXME: actually load the 'lib' data
 type Plist = ();
@@ -16,7 +26,7 @@ type Plist = ();
 /// [glif]: http://unifiedfontobject.org/versions/ufo3/glyphs/glif/
 #[derive(Debug, Clone, PartialEq)]
 pub struct Glyph {
-    pub name: String,
+    pub name: GlyphName,
     pub format: GlifVersion,
     pub advance: Option<Advance>,
     pub codepoints: Option<Vec<char>>,
@@ -54,7 +64,7 @@ impl Glyph {
 
     pub(crate) fn new(name: String, format: GlifVersion) -> Self {
         Glyph {
-            name,
+            name: GlyphName::new(name),
             format,
             advance: None,
             codepoints: None,
@@ -229,4 +239,52 @@ pub struct Image {
     pub file_name: PathBuf,
     pub color: Option<Color>,
     pub transform: AffineTransform,
+}
+
+impl GlyphName {
+    /// Create a new `GlyphName`.
+    pub(crate) fn new(s: impl Into<String>) -> Self {
+        GlyphName(Rc::new(s.into()))
+    }
+
+    /// Consumes the `GlyphName` and returns the inner `Rc<String>`.
+    pub fn into_inner(self) -> Rc<String> {
+        self.0
+    }
+
+    /// Returns the name as a string slice.
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl std::convert::AsRef<str> for GlyphName {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Serialize for GlyphName {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for GlyphName {
+    fn deserialize<D>(deserializer: D) -> Result<GlyphName, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let inner = String::deserialize(deserializer)?;
+        Ok(GlyphName(Rc::new(inner)))
+    }
+}
+
+impl std::borrow::Borrow<str> for GlyphName {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
 }
