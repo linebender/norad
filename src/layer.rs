@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use crate::glyph::GlyphName;
 use crate::{Error, Glyph};
 
 static CONTENTS_FILE: &str = "contents.plist";
@@ -11,39 +12,30 @@ static CONTENTS_FILE: &str = "contents.plist";
 /// is just a collection of glyphs.
 ///
 /// [layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
+#[allow(dead_code)] // path is unused, but we'll need it when we save
 pub struct Layer {
     path: PathBuf,
-    contents: BTreeMap<String, PathBuf>,
-    loaded: BTreeMap<String, Entry>,
-}
-
-enum Entry {
-    Loaded(Glyph),
-    // Boxed so we can clone
-    Errored(Rc<Error>),
+    contents: BTreeMap<GlyphName, PathBuf>,
+    loaded: BTreeMap<GlyphName, Rc<Glyph>>,
 }
 
 impl Layer {
     pub fn load<P: Into<PathBuf>>(path: P) -> Result<Layer, Error> {
         let path = path.into();
         let contents_path = path.join(CONTENTS_FILE);
-        let contents = plist::from_file(contents_path)?;
-        Ok(Layer { path, contents, loaded: BTreeMap::new() })
+        let contents: BTreeMap<GlyphName, PathBuf> = plist::from_file(contents_path)?;
+        let mut loaded = BTreeMap::new();
+        for (name, glyph_path) in contents.iter() {
+            let glyph_path = path.join(glyph_path);
+            let glyph = Glyph::load(glyph_path)?;
+            loaded.insert(name.clone(), Rc::new(glyph));
+        }
+        Ok(Layer { path, contents, loaded })
     }
 
-    /// Attempt to load and return the glyph with this name.
-    ///
-    /// Glyphs are lazily loaded from files on disk, so this function may
-    /// fail if a glyph file cannot be read.
-    pub fn get_glyph(&mut self, glyph: &str) -> Result<&Glyph, Error> {
-        if !self.loaded.contains_key(glyph) {
-            self.load_glyph(glyph);
-        }
-
-        match self.loaded.get(glyph).expect("glyph always loaded before get") {
-            Entry::Loaded(ref g) => return Ok(g),
-            Entry::Errored(e) => return Err(Error::SavedError(e.clone())),
-        }
+    /// Returns the glyph with the given name, if it exists.
+    pub fn get_glyph(&self, glyph: &str) -> Option<Rc<Glyph>> {
+        self.loaded.get(glyph).map(Rc::clone)
     }
 
     /// Returns `true` if this layer contains a glyph with this name.
@@ -57,7 +49,7 @@ impl Layer {
         //FIXME: figure out what bookkeeping we have to do with this path
         let _path = path.into();
         let name = glyph.name.clone();
-        self.loaded.insert(name.clone(), Entry::Loaded(glyph));
+        self.loaded.insert(name, Rc::new(glyph));
     }
 
     /// Remove the named glyph from this layer.
@@ -66,23 +58,9 @@ impl Layer {
         self.contents.remove(name);
     }
 
-    /// Returns an iterator over `(String, Path)` for the glyphs in this layer.
-    pub fn iter_contents(&self) -> impl Iterator<Item = (&String, &PathBuf)> {
-        self.contents.iter()
-    }
-
-    fn load_glyph(&mut self, glyph: &str) {
-        let glif = match self.load_glyph_impl(&glyph) {
-            Ok(g) => Entry::Loaded(g),
-            Err(e) => Entry::Errored(Rc::new(e)),
-        };
-        self.loaded.insert(glyph.to_owned(), glif);
-    }
-
-    fn load_glyph_impl(&mut self, glyph: &str) -> Result<Glyph, Error> {
-        let path = self.contents.get(glyph).ok_or(Error::MissingGlyph)?;
-        let path = self.path.join(path);
-        Glyph::load(&path)
+    /// Iterate over the glyphs in this layer.
+    pub fn iter_contents<'a>(&'a self) -> impl Iterator<Item = Rc<Glyph>> + 'a {
+        self.loaded.values().map(Rc::clone)
     }
 }
 
@@ -96,7 +74,7 @@ mod tests {
     fn load_layer() {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
-        let mut layer = Layer::load(layer_path).unwrap();
+        let layer = Layer::load(layer_path).unwrap();
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
         assert_eq!(glyph.advance, Some(Advance::Width(1290.)));
         assert_eq!(glyph.codepoints.as_ref().map(Vec::len), Some(1));
@@ -108,7 +86,7 @@ mod tests {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         let mut layer = Layer::load(layer_path).unwrap();
         layer.delete_glyph("A");
-        if let Ok(glyph) = layer.get_glyph("A") {
+        if let Some(glyph) = layer.get_glyph("A") {
             panic!("{:?}", glyph);
         }
     }

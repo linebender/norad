@@ -12,7 +12,7 @@ fn transform() {
 fn parse() {
     let bytes = include_bytes!("../../testdata/sample_period.glif");
     let glyph = parse_glyph(bytes).unwrap();
-    assert_eq!(&glyph.name, "period");
+    assert_eq!(glyph.name.as_str(), "period");
     assert_eq!(
         glyph.image.as_ref().map(|img| img.file_name.clone()),
         Some(PathBuf::from("period sketch.png"))

@@ -13,7 +13,6 @@ pub enum Error {
     IoError(IoError),
     ParseError(XmlError),
     Glif(GlifError),
-    MissingGlyph,
     PlistError(PlistError),
     /// A wrapper for stashing errors for later use.
     SavedError(Rc<Error>),
@@ -65,7 +64,6 @@ impl std::fmt::Display for Error {
             Error::Glif(GlifError { path, position, kind }) => {
                 write!(f, "Glif error in {:?} index {}: '{}", path, position, kind)
             }
-            Error::MissingGlyph => write!(f, "Missing glyph"),
             Error::PlistError(e) => e.fmt(f),
             Error::SavedError(e) => e.fmt(f),
         }
