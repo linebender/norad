@@ -6,7 +6,10 @@ mod serialize;
 mod tests;
 
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::sync::Arc;
+
+#[cfg(feature = "druid_data")]
+use druid::Data;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -16,7 +19,8 @@ use crate::error::{Error, GlifError, GlifErrorInternal};
 ///
 /// This is a newtype so we can work with serde.
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct GlyphName(Rc<String>);
+#[cfg_attr(feature = "druid_data", derive(Data))]
+pub struct GlyphName(Arc<String>);
 
 //FIXME: actually load the 'lib' data
 type Plist = ();
@@ -78,13 +82,31 @@ impl Glyph {
     }
 }
 
+#[cfg(feature = "druid_data")]
+impl Data for Glyph {
+    fn same(&self, other: &Glyph) -> bool {
+        self.name.same(&other.name)
+            && self.format.same(&other.format)
+            && self.advance.same(&other.advance)
+            && self.codepoints == other.codepoints
+            && self.note == other.note
+            && self.guidelines == other.guidelines
+            && self.anchors == other.anchors
+            && self.outline == other.outline
+            && self.image == other.image
+            && self.lib == other.lib
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "druid_data", derive(Data))]
 pub enum GlifVersion {
     V1 = 1,
     V2 = 2,
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "druid_data", derive(Data))]
 pub enum Advance {
     Width(f32),
     Height(f32),
@@ -196,6 +218,7 @@ pub enum PointType {
 
 /// Taken together in order, these fields represent an affine transformation matrix.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "druid_data", derive(Data))]
 pub struct AffineTransform {
     pub x_scale: f32,
     pub xy_scale: f32,
@@ -226,6 +249,7 @@ impl std::default::Default for AffineTransform {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "druid_data", derive(Data))]
 pub struct Color {
     pub red: f32,
     pub green: f32,
@@ -244,11 +268,11 @@ pub struct Image {
 impl GlyphName {
     /// Create a new `GlyphName`.
     pub(crate) fn new(s: impl Into<String>) -> Self {
-        GlyphName(Rc::new(s.into()))
+        GlyphName(Arc::new(s.into()))
     }
 
-    /// Consumes the `GlyphName` and returns the inner `Rc<String>`.
-    pub fn into_inner(self) -> Rc<String> {
+    /// Consumes the `GlyphName` and returns the inner `Arc<String>`.
+    pub fn into_inner(self) -> Arc<String> {
         self.0
     }
 
@@ -279,7 +303,7 @@ impl<'de> Deserialize<'de> for GlyphName {
         D: Deserializer<'de>,
     {
         let inner = String::deserialize(deserializer)?;
-        Ok(GlyphName(Rc::new(inner)))
+        Ok(GlyphName(Arc::new(inner)))
     }
 }
 
