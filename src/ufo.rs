@@ -2,9 +2,11 @@
 
 #![deny(intra_doc_link_resolution_failure)]
 
+use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
+use crate::glyph::GlyphName;
 use crate::layer::Layer;
 use crate::Error;
 
@@ -20,6 +22,7 @@ pub struct Ufo {
     meta: MetaInfo,
     pub font_info: Option<FontInfo>,
     layers: Vec<LayerInfo>,
+    glyph_names: BTreeSet<GlyphName>,
 }
 
 /// A [font layer], along with its name and path.
@@ -110,7 +113,12 @@ impl Ufo {
                     Ok(LayerInfo { name, path: p, layer })
                 })
                 .collect();
-            Ok(Ufo { layers: layers?, meta, font_info })
+            let layers = layers?;
+            let glyph_names = layers
+                .iter()
+                .flat_map(|info| info.layer.iter_contents().map(|g| g.name.clone()))
+                .collect();
+            Ok(Ufo { layers, meta, font_info, glyph_names })
         }
     }
 
