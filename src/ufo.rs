@@ -2,11 +2,13 @@
 
 #![deny(intra_doc_link_resolution_failure)]
 
+use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
-use crate::glyph::GlyphName;
+use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
 use crate::Error;
 
@@ -19,9 +21,9 @@ static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 /// A Unified Font Object.
 #[allow(dead_code)] // meta isn't used, but we'll need it when writing
 pub struct Ufo {
-    meta: MetaInfo,
+    pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
-    layers: Vec<LayerInfo>,
+    pub layers: Vec<LayerInfo>,
     glyph_names: BTreeSet<GlyphName>,
 }
 
@@ -36,25 +38,31 @@ pub struct LayerInfo {
     pub layer: Layer,
 }
 
+/// A version of the [UFO spec].
+///
+/// [UFO spec]: http://unifiedfontobject.org
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
-enum FormatVersion {
+pub enum FormatVersion {
     V1 = 1,
     V2 = 2,
     V3 = 3,
 }
 
+/// The contents of the [`metainfo.plist`] file.
+///
+/// [`metainfo.plist`]: http://unifiedfontobject.org/versions/ufo1/metainfo.plist/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct MetaInfo {
-    creator: String,
-    format_version: FormatVersion,
+pub struct MetaInfo {
+    pub creator: String,
+    pub format_version: FormatVersion,
 }
 
 /// The contents of the [`fontinfo.plist`][] file.
 ///
 /// [`fontinfo.plist`]: http://unifiedfontobject.org/versions/ufo1/fontinfo.plist/
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FontInfo {
     pub family_name: Option<String>,
@@ -76,6 +84,17 @@ pub struct FontInfo {
 }
 
 impl Ufo {
+    /// Crate a new `Ufo`.
+    pub fn new(meta: MetaInfo) -> Self {
+        let main_layer = LayerInfo {
+            name: DEFAULT_LAYER_NAME.into(),
+            path: PathBuf::from(DEFAULT_GLYPHS_DIRNAME),
+            layer: Layer::default(),
+        };
+
+        Ufo { meta, font_info: None, layers: vec![main_layer], glyph_names: BTreeSet::new() }
+    }
+
     /// Attempt to load a font object from a file. `path` must point to
     /// a directory with the structure described in [v3 of the Unified Font Object][v3]
     /// spec.
@@ -159,8 +178,39 @@ impl Ufo {
     }
 
     /// Returns an iterator over all layers in this font object.
-    pub fn iter(&self) -> impl Iterator<Item = &LayerInfo> {
+    pub fn iter_layers(&self) -> impl Iterator<Item = &LayerInfo> {
         self.layers.iter()
+    }
+
+    /// Returns an iterator over all the glyphs contained in this object.
+    pub fn iter_names<'a>(&'a self) -> impl Iterator<Item = GlyphName> + 'a {
+        self.glyph_names.iter().cloned()
+    }
+
+    //FIXME: support for multiple layers.
+    /// Returns a reference to the glyph with the given name,
+    /// IN THE DEFAULT LAYER, if it exists.
+    pub fn get_glyph<K>(&self, key: &K) -> Option<&Rc<Glyph>>
+    where
+        GlyphName: Borrow<K>,
+        K: Ord + ?Sized,
+    {
+        self.get_default_layer().and_then(|l| l.get_glyph(key))
+    }
+
+    /// Returns a mutable reference to the glyph with the given name,
+    /// IN THE DEFAULT LAYER, if it exists.
+    pub fn get_glyph_mut<K>(&mut self, key: &K) -> Option<&mut Rc<Glyph>>
+    where
+        GlyphName: Borrow<K>,
+        K: Ord + ?Sized,
+    {
+        self.get_default_layer_mut().and_then(|l| l.get_glyph_mut(key))
+    }
+
+    /// Returns the total number of glyphs.
+    pub fn glyph_count(&self) -> usize {
+        self.glyph_names.len()
     }
 }
 
@@ -172,7 +222,7 @@ mod tests {
     fn loading() {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
         let font_obj = Ufo::load(path).unwrap();
-        assert_eq!(font_obj.iter().count(), 2);
+        assert_eq!(font_obj.iter_layers().count(), 2);
         font_obj
             .find_layer(|l| l.path.to_str() == Some("glyphs.background"))
             .expect("missing layer");
