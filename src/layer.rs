@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -14,7 +15,7 @@ static CONTENTS_FILE: &str = "contents.plist";
 /// [layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
 #[derive(Debug, Default)]
 pub struct Layer {
-    glyphs: BTreeMap<GlyphName, Rc<Glyph>>,
+    pub glyphs: BTreeMap<GlyphName, Rc<Glyph>>,
 }
 
 impl Layer {
@@ -31,9 +32,22 @@ impl Layer {
         Ok(Layer { glyphs })
     }
 
-    /// Returns the glyph with the given name, if it exists.
-    pub fn get_glyph(&self, glyph: &str) -> Option<Rc<Glyph>> {
-        self.glyphs.get(glyph).map(Rc::clone)
+    /// Returns a reference the glyph with the given name, if it exists.
+    pub fn get_glyph<K>(&self, glyph: &K) -> Option<&Rc<Glyph>>
+    where
+        GlyphName: Borrow<K>,
+        K: Ord + ?Sized,
+    {
+        self.glyphs.get(glyph)
+    }
+
+    /// Returns a mutable reference to the glyph with the given name, if it exists.
+    pub fn get_glyph_mut<K>(&mut self, glyph: &K) -> Option<&mut Rc<Glyph>>
+    where
+        GlyphName: Borrow<K>,
+        K: Ord + ?Sized,
+    {
+        self.glyphs.get_mut(glyph)
     }
 
     /// Returns `true` if this layer contains a glyph with this name.
