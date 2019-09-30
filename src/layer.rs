@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use crate::glyph::GlyphName;
@@ -12,35 +12,33 @@ static CONTENTS_FILE: &str = "contents.plist";
 /// is just a collection of glyphs.
 ///
 /// [layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
-#[allow(dead_code)] // path is unused, but we'll need it when we save
+#[derive(Debug, Default)]
 pub struct Layer {
-    path: PathBuf,
-    contents: BTreeMap<GlyphName, PathBuf>,
-    loaded: BTreeMap<GlyphName, Rc<Glyph>>,
+    glyphs: BTreeMap<GlyphName, Rc<Glyph>>,
 }
 
 impl Layer {
-    pub fn load<P: Into<PathBuf>>(path: P) -> Result<Layer, Error> {
-        let path = path.into();
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Layer, Error> {
+        let path = path.as_ref();
         let contents_path = path.join(CONTENTS_FILE);
         let contents: BTreeMap<GlyphName, PathBuf> = plist::from_file(contents_path)?;
-        let mut loaded = BTreeMap::new();
+        let mut glyphs = BTreeMap::new();
         for (name, glyph_path) in contents.iter() {
             let glyph_path = path.join(glyph_path);
             let glyph = Glyph::load(glyph_path)?;
-            loaded.insert(name.clone(), Rc::new(glyph));
+            glyphs.insert(name.clone(), Rc::new(glyph));
         }
-        Ok(Layer { path, contents, loaded })
+        Ok(Layer { glyphs })
     }
 
     /// Returns the glyph with the given name, if it exists.
     pub fn get_glyph(&self, glyph: &str) -> Option<Rc<Glyph>> {
-        self.loaded.get(glyph).map(Rc::clone)
+        self.glyphs.get(glyph).map(Rc::clone)
     }
 
     /// Returns `true` if this layer contains a glyph with this name.
     pub fn contains_glyph(&self, name: &str) -> bool {
-        self.loaded.contains_key(name) | self.contents.contains_key(name)
+        self.glyphs.contains_key(name)
     }
 
     /// Set the given glyph. The name is taken from the glyph's `name` field.
@@ -49,18 +47,17 @@ impl Layer {
         //FIXME: figure out what bookkeeping we have to do with this path
         let _path = path.into();
         let name = glyph.name.clone();
-        self.loaded.insert(name, Rc::new(glyph));
+        self.glyphs.insert(name, Rc::new(glyph));
     }
 
     /// Remove the named glyph from this layer.
     pub fn delete_glyph(&mut self, name: &str) {
-        self.loaded.remove(name);
-        self.contents.remove(name);
+        self.glyphs.remove(name);
     }
 
     /// Iterate over the glyphs in this layer.
     pub fn iter_contents<'a>(&'a self) -> impl Iterator<Item = Rc<Glyph>> + 'a {
-        self.loaded.values().map(Rc::clone)
+        self.glyphs.values().map(Rc::clone)
     }
 }
 
