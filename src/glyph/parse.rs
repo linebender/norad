@@ -190,7 +190,6 @@ impl GlifParser {
                 Event::End(ref end) if end.name() == b"note" => break,
                 Event::Text(text) => {
                     self.0.note = Some(text.unescape_and_decode(reader)?);
-                    break;
                 }
                 Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof))?,
                 _other => (),

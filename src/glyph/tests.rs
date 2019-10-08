@@ -60,6 +60,13 @@ fn missing_close() {
 }
 
 #[test]
+fn parse_note() {
+    let bytes = include_bytes!("../../testdata/note.glif");
+    let glyph = parse_glyph(bytes).unwrap();
+    assert_eq!(glyph.note, Some(".notdef".to_string()));
+}
+
+#[test]
 fn save() {
     let bytes = include_bytes!("../../testdata/sample_period.glif");
     let glyph = parse_glyph(bytes).expect("initial load failed");
