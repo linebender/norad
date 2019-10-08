@@ -5,7 +5,7 @@ mod serialize;
 #[cfg(test)]
 mod tests;
 
-use crate::Error;
+use crate::error::{Error, GlifError, GlifErrorInternal};
 use std::path::{Path, PathBuf};
 
 //FIXME: actually load the 'lib' data
@@ -30,8 +30,14 @@ pub struct Glyph {
 
 impl Glyph {
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
-        let data = std::fs::read(path.as_ref())?;
-        parse::parse_glyph(&data)
+        let path = path.as_ref();
+        let data = std::fs::read(path)?;
+        parse::parse_glyph(&data).map_err(|e| match e {
+            GlifErrorInternal::Xml(e) => e.into(),
+            GlifErrorInternal::Spec { kind, position } => {
+                GlifError { kind, position, path: Some(path.to_owned()) }.into()
+            }
+        })
     }
 
     #[doc(hidden)]
