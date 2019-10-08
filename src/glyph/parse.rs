@@ -4,22 +4,24 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use super::*;
-use crate::error::{Error, ErrorKind, ParseGlifError};
+use crate::error::{ErrorKind, GlifErrorInternal};
 
 use quick_xml::{
     events::{BytesStart, Event},
     Reader,
 };
 
-pub fn parse_glyph(xml: &[u8]) -> Result<Glyph, Error> {
+pub(crate) fn parse_glyph(xml: &[u8]) -> Result<Glyph, GlifErrorInternal> {
     GlifParser::from_xml(xml)
 }
 
 macro_rules! err {
     ($r:expr, $errtype:expr) => {
-        ParseGlifError::new($errtype, $r.buffer_position())
+        GlifErrorInternal::Spec { kind: $errtype, position: $r.buffer_position() }
     };
 }
+
+type Error = GlifErrorInternal;
 
 struct GlifParser(Glyph);
 
@@ -132,32 +134,14 @@ impl GlifParser {
             let value = attr.unescaped_value()?;
             let value = reader.decode(&value);
             let pos = reader.buffer_position();
+            let kind = ErrorKind::BadNumber;
             match attr.key {
-                b"xScale" => {
-                    transform.x_scale = value
-                        .parse()
-                        .map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?;
-                }
-                b"xyScale" => {
-                    transform.xy_scale =
-                        value.parse().map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?
-                }
-                b"yxScale" => {
-                    transform.yx_scale =
-                        value.parse().map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?
-                }
-                b"yScale" => {
-                    transform.y_scale =
-                        value.parse().map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?
-                }
-                b"xOffset" => {
-                    transform.x_offset =
-                        value.parse().map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?
-                }
-                b"yOffset" => {
-                    transform.y_offset =
-                        value.parse().map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?
-                }
+                b"xScale" => transform.x_scale = value.parse().map_err(|_| (kind, pos))?,
+                b"xyScale" => transform.xy_scale = value.parse().map_err(|_| (kind, pos))?,
+                b"yxScale" => transform.yx_scale = value.parse().map_err(|_| (kind, pos))?,
+                b"yScale" => transform.y_scale = value.parse().map_err(|_| (kind, pos))?,
+                b"xOffset" => transform.x_offset = value.parse().map_err(|_| (kind, pos))?,
+                b"yOffset" => transform.y_offset = value.parse().map_err(|_| (kind, pos))?,
                 b"base" => base = Some(value.to_string()),
                 b"identifier" => identifier = Some(Identifier(value.to_string())),
                 _other => eprintln!("unexpected component field {}", value),
@@ -218,18 +202,10 @@ impl GlifParser {
             let pos = reader.buffer_position();
             match attr.key {
                 b"x" => {
-                    x = Some(
-                        value
-                            .parse()
-                            .map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?,
-                    );
+                    x = Some(value.parse().map_err(|_| (ErrorKind::BadNumber, pos))?);
                 }
                 b"y" => {
-                    y = Some(
-                        value
-                            .parse()
-                            .map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?,
-                    );
+                    y = Some(value.parse().map_err(|_| (ErrorKind::BadNumber, pos))?);
                 }
                 b"name" => name = Some(value.to_string()),
                 b"type" => {
@@ -397,31 +373,14 @@ impl GlifParser {
             let value = attr.unescaped_value()?;
             let value = reader.decode(&value);
             let pos = reader.buffer_position();
+            let kind = ErrorKind::BadNumber;
             match attr.key {
-                b"xScale" => {
-                    transform.x_scale =
-                        value.parse().map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?
-                }
-                b"xyScale" => {
-                    transform.xy_scale =
-                        value.parse().map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?
-                }
-                b"yxScale" => {
-                    transform.yx_scale =
-                        value.parse().map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?
-                }
-                b"yScale" => {
-                    transform.y_scale =
-                        value.parse().map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?
-                }
-                b"xOffset" => {
-                    transform.x_offset =
-                        value.parse().map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?
-                }
-                b"yOffset" => {
-                    transform.y_offset =
-                        value.parse().map_err(|_| ParseGlifError::new(ErrorKind::BadNumber, pos))?
-                }
+                b"xScale" => transform.x_scale = value.parse().map_err(|_| (kind, pos))?,
+                b"xyScale" => transform.xy_scale = value.parse().map_err(|_| (kind, pos))?,
+                b"yxScale" => transform.yx_scale = value.parse().map_err(|_| (kind, pos))?,
+                b"yScale" => transform.y_scale = value.parse().map_err(|_| (kind, pos))?,
+                b"xOffset" => transform.x_offset = value.parse().map_err(|_| (kind, pos))?,
+                b"yOffset" => transform.y_offset = value.parse().map_err(|_| (kind, pos))?,
                 b"color" => color = Some(value.parse().map_err(|e: ErrorKind| e.to_error(pos))?),
                 b"fileName" => filename = Some(PathBuf::from(value.to_string())),
                 _other => eprintln!("unexpected image field {}", value),
@@ -441,9 +400,9 @@ impl GlifParser {
 
 fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, Error> {
     loop {
-        match reader.read_event(buf) {
-            Ok(Event::Decl(_decl)) => (),
-            Ok(Event::Start(ref start)) if start.name() == b"glyph" => {
+        match reader.read_event(buf)? {
+            Event::Decl(_decl) => (),
+            Event::Start(ref start) if start.name() == b"glyph" => {
                 let mut name = String::new();
                 let mut format: Option<GlifVersion> = None;
                 for attr in start.attributes() {
@@ -467,11 +426,10 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, Error> 
                     return Err(err!(reader, ErrorKind::WrongFirstElement))?;
                 }
             }
-            Ok(_other) => {
-                eprintln!("breaking for {:?}", _other);
+            other => {
+                eprintln!("breaking for {:?}", other);
                 break;
             }
-            Err(e) => return Err(Error::ParseError(e)),
         }
     }
     Err(err!(reader, ErrorKind::WrongFirstElement))?
