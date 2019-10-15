@@ -6,7 +6,7 @@ use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
@@ -190,7 +190,7 @@ impl Ufo {
     //FIXME: support for multiple layers.
     /// Returns a reference to the glyph with the given name,
     /// IN THE DEFAULT LAYER, if it exists.
-    pub fn get_glyph<K>(&self, key: &K) -> Option<&Rc<Glyph>>
+    pub fn get_glyph<K>(&self, key: &K) -> Option<&Arc<Glyph>>
     where
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
@@ -200,7 +200,7 @@ impl Ufo {
 
     /// Returns a mutable reference to the glyph with the given name,
     /// IN THE DEFAULT LAYER, if it exists.
-    pub fn get_glyph_mut<K>(&mut self, key: &K) -> Option<&mut Rc<Glyph>>
+    pub fn get_glyph_mut<K>(&mut self, key: &K) -> Option<&mut Arc<Glyph>>
     where
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
