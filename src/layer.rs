@@ -22,12 +22,15 @@ impl Layer {
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Layer, Error> {
         let path = path.as_ref();
         let contents_path = path.join(CONTENTS_FILE);
-        let contents: BTreeMap<GlyphName, PathBuf> = plist::from_file(contents_path)?;
+        // these keys are never used; a future optimization would be to skip the
+        // names and deserialize to a vec; that would not be a one-liner, though.
+        let contents: BTreeMap<String, PathBuf> = plist::from_file(contents_path)?;
         let mut glyphs = BTreeMap::new();
-        for (name, glyph_path) in contents.iter() {
+        for (_, glyph_path) in contents.iter() {
             let glyph_path = path.join(glyph_path);
             let glyph = Glyph::load(glyph_path)?;
-            glyphs.insert(name.clone(), Rc::new(glyph));
+            // reuse the name in the glyph to avoid having two copies of each
+            glyphs.insert(glyph.name.clone(), Rc::new(glyph));
         }
         Ok(Layer { glyphs })
     }

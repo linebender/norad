@@ -17,7 +17,7 @@ impl Glyph {
         let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b' ', 2);
         writer.write_event(Event::Decl(BytesDecl::new(b"1.1", Some(b"UTF-8"), None)))?;
         let mut start = BytesStart::borrowed_name(b"glyph");
-        start.push_attribute(("name", self.name.as_str()));
+        start.push_attribute(("name", &*self.name));
         start.push_attribute(("format", self.format.as_str()));
         writer.write_event(Event::Start(start))?;
 

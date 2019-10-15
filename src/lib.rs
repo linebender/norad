@@ -11,7 +11,7 @@
 //! let mut font_obj = Ufo::load(path).expect("failed to load font");
 //! let layer = font_obj.find_layer(|layer| layer.name == "glyphs").unwrap();
 //! let glyph_a = layer.get_glyph("A").expect("missing glyph");
-//! assert_eq!(glyph_a.name.as_str(), "A");
+//! assert_eq!(glyph_a.name.as_ref(), "A");
 //! ```
 
 #[macro_use]
