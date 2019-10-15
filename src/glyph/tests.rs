@@ -87,6 +87,14 @@ fn save() {
     assert_eq!(glyph.guidelines, glyph2.guidelines);
 }
 
+#[cfg(feature = "druid")]
+#[test]
+fn druid_from_color() {
+    let color = druid::piet::Color::rgba(1.0, 0.11, 0.5, 0.23);
+    let color2: druid::piet::Color = Color { red: 1.0, green: 0.11, blue: 0.5, alpha: 0.23}.into();
+    assert_eq!(color2.as_rgba_u32(), color.as_rgba_u32());
+}
+
 //#[test]
 //fn parse_utf16() {
 //let bytes = include_bytes!("../../testdata/utf16-glyph.xml");

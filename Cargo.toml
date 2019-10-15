@@ -24,6 +24,3 @@ druid = { git="https://github.com/xi-editor/druid/", rev="22dfeae", optional=tru
 
 [dev-dependencies]
 failure = "0.1.5"
-
-[features]
-druid_data = ["druid"]
