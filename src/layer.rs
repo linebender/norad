@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::glyph::GlyphName;
 use crate::{Error, Glyph};
@@ -15,7 +15,7 @@ static CONTENTS_FILE: &str = "contents.plist";
 /// [layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
 #[derive(Debug, Default)]
 pub struct Layer {
-    pub glyphs: BTreeMap<GlyphName, Rc<Glyph>>,
+    pub glyphs: BTreeMap<GlyphName, Arc<Glyph>>,
 }
 
 impl Layer {
@@ -30,13 +30,13 @@ impl Layer {
             let glyph_path = path.join(glyph_path);
             let glyph = Glyph::load(glyph_path)?;
             // reuse the name in the glyph to avoid having two copies of each
-            glyphs.insert(glyph.name.clone(), Rc::new(glyph));
+            glyphs.insert(glyph.name.clone(), Arc::new(glyph));
         }
         Ok(Layer { glyphs })
     }
 
     /// Returns a reference the glyph with the given name, if it exists.
-    pub fn get_glyph<K>(&self, glyph: &K) -> Option<&Rc<Glyph>>
+    pub fn get_glyph<K>(&self, glyph: &K) -> Option<&Arc<Glyph>>
     where
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
@@ -45,7 +45,7 @@ impl Layer {
     }
 
     /// Returns a mutable reference to the glyph with the given name, if it exists.
-    pub fn get_glyph_mut<K>(&mut self, glyph: &K) -> Option<&mut Rc<Glyph>>
+    pub fn get_glyph_mut<K>(&mut self, glyph: &K) -> Option<&mut Arc<Glyph>>
     where
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
@@ -64,7 +64,7 @@ impl Layer {
         //FIXME: figure out what bookkeeping we have to do with this path
         let _path = path.into();
         let name = glyph.name.clone();
-        self.glyphs.insert(name, Rc::new(glyph));
+        self.glyphs.insert(name, Arc::new(glyph));
     }
 
     /// Remove the named glyph from this layer.
@@ -73,8 +73,8 @@ impl Layer {
     }
 
     /// Iterate over the glyphs in this layer.
-    pub fn iter_contents<'a>(&'a self) -> impl Iterator<Item = Rc<Glyph>> + 'a {
-        self.glyphs.values().map(Rc::clone)
+    pub fn iter_contents<'a>(&'a self) -> impl Iterator<Item = Arc<Glyph>> + 'a {
+        self.glyphs.values().map(Arc::clone)
     }
 }
 
