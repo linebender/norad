@@ -8,7 +8,7 @@ mod tests;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-#[cfg(feature = "druid_data")]
+#[cfg(feature = "druid")]
 use druid::Data;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -19,7 +19,7 @@ use crate::error::{Error, GlifError, GlifErrorInternal};
 ///
 /// This is a newtype so we can work with serde.
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "druid_data", derive(Data))]
+#[cfg_attr(feature = "druid", derive(Data))]
 pub struct GlyphName(Arc<String>);
 
 //FIXME: actually load the 'lib' data
@@ -82,7 +82,7 @@ impl Glyph {
     }
 }
 
-#[cfg(feature = "druid_data")]
+#[cfg(feature = "druid")]
 impl Data for Glyph {
     fn same(&self, other: &Glyph) -> bool {
         self.name.same(&other.name)
@@ -99,14 +99,14 @@ impl Data for Glyph {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "druid_data", derive(Data))]
+#[cfg_attr(feature = "druid", derive(Data))]
 pub enum GlifVersion {
     V1 = 1,
     V2 = 2,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "druid_data", derive(Data))]
+#[cfg_attr(feature = "druid", derive(Data))]
 pub enum Advance {
     Width(f32),
     Height(f32),
@@ -218,7 +218,7 @@ pub enum PointType {
 
 /// Taken together in order, these fields represent an affine transformation matrix.
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "druid_data", derive(Data))]
+#[cfg_attr(feature = "druid", derive(Data))]
 pub struct AffineTransform {
     pub x_scale: f32,
     pub xy_scale: f32,
@@ -249,7 +249,7 @@ impl std::default::Default for AffineTransform {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "druid_data", derive(Data))]
+#[cfg_attr(feature = "druid", derive(Data))]
 pub struct Color {
     pub red: f32,
     pub green: f32,
@@ -310,5 +310,60 @@ impl<'de> Deserialize<'de> for GlyphName {
 impl std::borrow::Borrow<str> for GlyphName {
     fn borrow(&self) -> &str {
         &self.0
+    }
+}
+
+#[cfg(feature = "druid")]
+impl From<AffineTransform> for druid::kurbo::Affine {
+    fn from(src: AffineTransform) -> druid::kurbo::Affine {
+        druid::kurbo::Affine::new([
+            src.x_scale as f64,
+            src.xy_scale as f64,
+            src.yx_scale as f64,
+            src.y_scale as f64,
+            src.x_offset as f64,
+            src.y_offset as f64,
+        ])
+    }
+}
+
+#[cfg(feature = "druid")]
+impl From<druid::kurbo::Affine> for AffineTransform {
+    fn from(src: druid::kurbo::Affine) -> AffineTransform {
+        let coeffs = src.as_coeffs();
+        AffineTransform {
+            x_scale: coeffs[0] as f32,
+            xy_scale: coeffs[1] as f32,
+            yx_scale: coeffs[2] as f32,
+            y_scale: coeffs[3] as f32,
+            x_offset: coeffs[4] as f32,
+            y_offset: coeffs[5] as f32,
+        }
+    }
+}
+
+#[cfg(feature = "druid")]
+impl From<druid::piet::Color> for Color {
+    fn from(src: druid::piet::Color) -> Color {
+        let rgba = src.as_rgba_u32();
+        let r = ((rgba >> 24) & 0xff) as f32 / 255.0;
+        let g = ((rgba >> 16) & 0xff) as f32 / 255.0;
+        let b = ((rgba >> 8) & 0xff) as f32 / 255.0;
+        let a = (rgba & 0xff) as f32 / 255.0;
+        assert!(b >= 0.0 && b <= 1.0, "b: {}, raw {}", b, (rgba & (0xff << 8)));
+
+        Color {
+            red: r.max(0.0).min(1.0),
+            green: g.max(0.0).min(1.0),
+            blue: b.max(0.0).min(1.0),
+            alpha: a.max(0.0).min(1.0),
+        }
+    }
+}
+
+#[cfg(feature = "druid")]
+impl From<Color> for druid::piet::Color {
+    fn from(src: Color) -> druid::piet::Color {
+        druid::piet::Color::rgba(src.red, src.green, src.blue, src.alpha)
     }
 }
