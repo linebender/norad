@@ -12,7 +12,7 @@ fn transform() {
 fn parse() {
     let bytes = include_bytes!("../../testdata/sample_period.glif");
     let glyph = parse_glyph(bytes).unwrap();
-    assert_eq!(glyph.name.as_str(), "period");
+    assert_eq!(&*glyph.name, "period");
     assert_eq!(
         glyph.image.as_ref().map(|img| img.file_name.clone()),
         Some(PathBuf::from("period sketch.png"))
@@ -91,7 +91,7 @@ fn save() {
 #[test]
 fn druid_from_color() {
     let color = druid::piet::Color::rgba(1.0, 0.11, 0.5, 0.23);
-    let color2: druid::piet::Color = Color { red: 1.0, green: 0.11, blue: 0.5, alpha: 0.23}.into();
+    let color2: druid::piet::Color = Color { red: 1.0, green: 0.11, blue: 0.5, alpha: 0.23 }.into();
     assert_eq!(color2.as_rgba_u32(), color.as_rgba_u32());
 }
 
