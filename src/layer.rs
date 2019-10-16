@@ -90,7 +90,7 @@ mod tests {
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
         let layer = Layer::load(layer_path).unwrap();
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
-        assert_eq!(glyph.advance, Some(Advance::Width(1290.)));
+        assert_eq!(glyph.advance, Some(Advance { width: 1290., height: 0. }));
         assert_eq!(glyph.codepoints.as_ref().map(Vec::len), Some(1));
         assert_eq!(glyph.codepoints.as_ref().unwrap()[0], 'A');
     }
@@ -110,9 +110,9 @@ mod tests {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         let mut layer = Layer::load(layer_path).unwrap();
         let mut glyph = Glyph::new_named("A");
-        glyph.advance = Some(Advance::Height(69.));
+        glyph.advance = Some(Advance { height: 69., width: 0. });
         layer.set_glyph("A_.glif", glyph);
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
-        assert_eq!(glyph.advance, Some(Advance::Height(69.)));
+        assert_eq!(glyph.advance, Some(Advance { height: 69., width: 0. }));
     }
 }
