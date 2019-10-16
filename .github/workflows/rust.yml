@@ -29,17 +29,24 @@ jobs:
 
   test:
     name: Test Suite
-    runs-on: ubuntu-latest
+    runs-on: macOS-10.14
     steps:
       - uses: actions/checkout@v1
+
+      - name: install cairo
+        run: brew install cairo
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
-      - uses: textbook/git-checkout-submodule-action@2.0.0
+
+      - run: git submodule update --init --recursive
+
       - uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --all-features
 
   doc:
     name: Docs
