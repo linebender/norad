@@ -99,11 +99,12 @@ pub enum GlifVersion {
     V2 = 2,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+/// Horizontal and vertical metrics.
+#[derive(Debug, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
-pub enum Advance {
-    Width(f32),
-    Height(f32),
+pub struct Advance {
+    pub height: f32,
+    pub width: f32,
 }
 
 /// Identifiers are optional attributes of several objects in the UFO.

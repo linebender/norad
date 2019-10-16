@@ -82,9 +82,12 @@ impl GlifVersion {
 impl Advance {
     fn to_event(&self) -> Event {
         let mut start = BytesStart::borrowed_name(b"advance");
-        match self {
-            Advance::Width(w) => start.push_attribute(("width", w.to_string().as_str())),
-            Advance::Height(h) => start.push_attribute(("height", h.to_string().as_str())),
+        if self.width != 0. {
+            start.push_attribute(("width", self.width.to_string().as_str()));
+        }
+
+        if self.height != 0. {
+            start.push_attribute(("height", self.height.to_string().as_str()));
         }
         Event::Empty(start)
     }

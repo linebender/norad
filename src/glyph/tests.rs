@@ -38,7 +38,7 @@ fn guidelines() {
     let glyph = parse_glyph(bytes).unwrap();
     assert_eq!(glyph.guidelines.as_ref().map(Vec::len), Some(8));
     assert_eq!(glyph.outline.as_ref().map(|o| o.contours.len()), Some(2));
-    assert_eq!(glyph.advance, Some(Advance::Width(364.)));
+    assert_eq!(glyph.advance, Some(Advance { width: 364., height: 0. }));
 }
 
 #[test]
@@ -85,6 +85,12 @@ fn save() {
     assert_eq!(glyph.image, glyph2.image);
     assert_eq!(glyph.anchors, glyph2.anchors);
     assert_eq!(glyph.guidelines, glyph2.guidelines);
+}
+
+#[test]
+fn notdef_failure() {
+    let bytes = include_bytes!("../../testdata/noto-cjk-notdef.glif");
+    let _ = parse_glyph(bytes).unwrap();
 }
 
 #[cfg(feature = "druid")]
