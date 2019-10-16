@@ -2,7 +2,6 @@
 
 use std::io::Error as IoError;
 use std::path::PathBuf;
-use std::rc::Rc;
 
 use plist::Error as PlistError;
 use quick_xml::Error as XmlError;
@@ -14,8 +13,6 @@ pub enum Error {
     ParseError(XmlError),
     Glif(GlifError),
     PlistError(PlistError),
-    /// A wrapper for stashing errors for later use.
-    SavedError(Rc<Error>),
 }
 
 #[derive(Debug)]
@@ -65,7 +62,6 @@ impl std::fmt::Display for Error {
                 write!(f, "Glif error in {:?} index {}: '{}", path, position, kind)
             }
             Error::PlistError(e) => e.fmt(f),
-            Error::SavedError(e) => e.fmt(f),
         }
     }
 }
