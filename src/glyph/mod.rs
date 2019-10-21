@@ -212,7 +212,7 @@ pub enum PointType {
 }
 
 /// Taken together in order, these fields represent an affine transformation matrix.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub struct AffineTransform {
     pub x_scale: f32,
