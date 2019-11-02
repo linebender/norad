@@ -51,12 +51,18 @@ pub enum FormatVersion {
 
 /// The contents of the [`metainfo.plist`] file.
 ///
-/// [`metainfo.plist`]: http://unifiedfontobject.org/versions/ufo1/metainfo.plist/
+/// [`metainfo.plist`]: http://unifiedfontobject.org/versions/ufo3/metainfo.plist/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MetaInfo {
     pub creator: String,
     pub format_version: FormatVersion,
+}
+
+impl Default for MetaInfo {
+    fn default() -> Self {
+        MetaInfo { creator: "org.linebender.norad".to_string(), format_version: FormatVersion::V3 }
+    }
 }
 
 /// The contents of the [`fontinfo.plist`][] file.
@@ -217,6 +223,12 @@ impl Ufo {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn new_is_v3() {
+        let font = Ufo::new(MetaInfo::default());
+        assert_eq!(font.meta.format_version, FormatVersion::V3);
+    }
 
     #[test]
     fn loading() {
