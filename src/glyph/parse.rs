@@ -40,7 +40,7 @@ impl GlifParser {
         loop {
             match reader.read_event(buf)? {
                 Event::Start(start) | Event::Empty(start) => {
-                    let tag_name = reader.decode(&start.name());
+                    let tag_name = reader.decode(&start.name())?;
                     match tag_name.borrow() {
                         "outline" => self.parse_outline(reader, buf)?,
                         "lib" => self.parse_lib(reader, buf)?, // do this at some point?
@@ -74,7 +74,7 @@ impl GlifParser {
         loop {
             match reader.read_event(buf)? {
                 Event::Start(start) | Event::Empty(start) => {
-                    let tag_name = reader.decode(&start.name());
+                    let tag_name = reader.decode(&start.name())?;
                     let mut new_buf = Vec::new(); // borrowck :/
                     match tag_name.borrow() {
                         "contour" => self.parse_contour(start, reader, &mut new_buf)?,
@@ -132,7 +132,7 @@ impl GlifParser {
         for attr in start.attributes() {
             let attr = attr?;
             let value = attr.unescaped_value()?;
-            let value = reader.decode(&value);
+            let value = reader.decode(&value)?;
             let pos = reader.buffer_position();
             let kind = ErrorKind::BadNumber;
             match attr.key {
@@ -197,7 +197,7 @@ impl GlifParser {
         for attr in data.attributes() {
             let attr = attr?;
             let value = attr.unescaped_value()?;
-            let value = reader.decode(&value);
+            let value = reader.decode(&value)?;
             let pos = reader.buffer_position();
             match attr.key {
                 b"x" => {
@@ -233,7 +233,7 @@ impl GlifParser {
             let attr = attr?;
             if attr.key == b"width" || attr.key == b"height" {
                 let value = attr.unescaped_value()?;
-                let value = reader.decode(&value);
+                let value = reader.decode(&value)?;
                 let value: f32 = value.parse().map_err(|_| err!(reader, ErrorKind::BadNumber))?;
                 match attr.key {
                     b"width" => advance.width = value,
@@ -258,7 +258,7 @@ impl GlifParser {
             let attr = attr?;
             if attr.key == b"hex" {
                 let value = attr.unescaped_value()?;
-                let value = reader.decode(&value);
+                let value = reader.decode(&value)?;
                 let chr = u32::from_str_radix(&value, 16)
                     .map_err(|_| value.to_string())
                     .and_then(|n| char::try_from(n).map_err(|_| value.to_string()))
@@ -283,7 +283,7 @@ impl GlifParser {
         for attr in data.attributes() {
             let attr = attr?;
             let value = attr.unescaped_value()?;
-            let value = reader.decode(&value);
+            let value = reader.decode(&value)?;
             match attr.key {
                 b"x" => {
                     x = Some(value.parse().map_err(|_| err!(reader, ErrorKind::BadNumber))?);
@@ -323,7 +323,7 @@ impl GlifParser {
         for attr in data.attributes() {
             let attr = attr?;
             let value = attr.unescaped_value()?;
-            let value = reader.decode(&value);
+            let value = reader.decode(&value)?;
             let pos = reader.buffer_position();
             match attr.key {
                 b"x" => {
@@ -371,7 +371,7 @@ impl GlifParser {
         for attr in data.attributes() {
             let attr = attr?;
             let value = attr.unescaped_value()?;
-            let value = reader.decode(&value);
+            let value = reader.decode(&value)?;
             let pos = reader.buffer_position();
             let kind = ErrorKind::BadNumber;
             match attr.key {
@@ -412,7 +412,7 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, Error> 
                         name = attr.unescape_and_decode_value(&reader)?;
                     } else if attr.key == b"format" {
                         let value = attr.unescaped_value()?;
-                        let value = reader.decode(&value);
+                        let value = reader.decode(&value)?;
                         format = Some(
                             value
                                 .parse()
