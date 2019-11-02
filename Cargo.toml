@@ -1,6 +1,6 @@
 [package]
 name = "norad"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["Colin Rofls <colin@cmyr.net>"]
 license = "MIT/Apache-2.0"
 edition = "2018"
@@ -20,7 +20,10 @@ serde = { version =  "1.0", features = ["rc"] }
 serde_derive = "1.0"
 serde_repr = "0.1"
 quick-xml = "0.17.0"
-druid =  "0.3.0"
+
+[dependencies.druid]
+version = "0.3.0"
+optional = true
 
 [dev-dependencies]
 failure = "0.1.6"
