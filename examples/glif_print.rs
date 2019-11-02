@@ -57,7 +57,7 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
                     let attr = attr?;
                     let key = std::str::from_utf8(&attr.key)?;
                     let value = attr.unescaped_value()?;
-                    let value = reader.decode(&value);
+                    let value = reader.decode(&value)?;
                     eprint!(" {}=\"{}\"", key, value);
                 }
                 eprintln!(">");

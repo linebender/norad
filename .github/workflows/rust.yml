@@ -10,7 +10,7 @@ name: Continuous integration
 
 jobs:
   check:
-    name: Check & Rustfmt
+    name: Rustfmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -23,9 +23,6 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
 
   test:
     name: Test Suite
@@ -50,9 +47,13 @@ jobs:
 
   doc:
     name: Docs
-    runs-on: ubuntu-latest
+    runs-on: macOS-10.14
     steps:
       - uses: actions/checkout@v1
+
+      - name: install cairo
+        run: brew install cairo
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
