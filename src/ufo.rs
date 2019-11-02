@@ -20,7 +20,7 @@ static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
 
 /// A Unified Font Object.
-#[allow(dead_code)] // meta isn't used, but we'll need it when writing
+#[derive(Default)]
 pub struct Ufo {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
@@ -232,6 +232,9 @@ mod tests {
     fn new_is_v3() {
         let font = Ufo::new(MetaInfo::default());
         assert_eq!(font.meta.format_version, FormatVersion::V3);
+
+        let font2 = Ufo::default();
+        assert_eq!(font2.meta.format_version, FormatVersion::V3);
     }
 
     #[test]
