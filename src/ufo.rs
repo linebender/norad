@@ -17,6 +17,7 @@ static METAINFO_FILE: &str = "metainfo.plist";
 static FONTINFO_FILE: &str = "fontinfo.plist";
 static DEFAULT_LAYER_NAME: &str = "public.default";
 static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
+static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
 
 /// A Unified Font Object.
 #[allow(dead_code)] // meta isn't used, but we'll need it when writing
@@ -61,7 +62,10 @@ pub struct MetaInfo {
 
 impl Default for MetaInfo {
     fn default() -> Self {
-        MetaInfo { creator: "org.linebender.norad".to_string(), format_version: FormatVersion::V3 }
+        MetaInfo {
+            creator: DEFAULT_METAINFO_CREATOR.to_string(),
+            format_version: FormatVersion::V3,
+        }
     }
 }
 
