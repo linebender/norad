@@ -7,6 +7,9 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use serde::de::Deserializer;
+use serde::Deserialize;
+
 use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
 use crate::Error;
@@ -70,14 +73,15 @@ impl Default for MetaInfo {
 
 /// The contents of the [`fontinfo.plist`][] file.
 ///
-/// [`fontinfo.plist`]: http://unifiedfontobject.org/versions/ufo1/fontinfo.plist/
+/// [`fontinfo.plist`]: http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FontInfo {
     pub family_name: Option<String>,
     pub style_name: Option<String>,
     pub style_map_family_name: Option<String>,
-    pub style_map_style_name: Option<String>,
+    #[serde(deserialize_with = "deserialize_style_map_style_name")]
+    pub style_map_style_name: Option<StyleMapStyle>,
     pub version_major: Option<u32>,
     pub version_minor: Option<u32>,
     pub year: Option<u32>,
@@ -90,6 +94,31 @@ pub struct FontInfo {
     pub ascender: Option<f64>,
     pub italic_angle: Option<f64>,
     pub note: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub enum StyleMapStyle {
+    Regular,
+    Italic,
+    Bold,
+    BoldItalic,
+}
+
+fn deserialize_style_map_style_name<'de, D>(de: D) -> Result<Option<StyleMapStyle>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Helper(#[serde(with = "String")] String);
+
+    let helper = Option::deserialize(de)?;
+    helper.map_or(Ok(None), |Helper(external)| match external.as_ref() {
+        "regular" => Ok(Some(StyleMapStyle::Regular)),
+        "italic" => Ok(Some(StyleMapStyle::Italic)),
+        "bold" => Ok(Some(StyleMapStyle::Bold)),
+        "bold italic" => Ok(Some(StyleMapStyle::BoldItalic)),
+        _ => Err(serde::de::Error::custom("unknown value for styleMapStyleName.")),
+    })
 }
 
 impl Ufo {
@@ -259,5 +288,6 @@ mod tests {
         let font_info: FontInfo = plist::from_file(path).expect("failed to load fontinfo");
         assert_eq!(font_info.family_name, Some("MutatorMathTest".to_string()));
         assert_eq!(font_info.trademark, None);
+        assert_eq!(font_info.style_map_style_name, Some(StyleMapStyle::Regular));
     }
 }
