@@ -20,11 +20,13 @@ extern crate serde_derive;
 extern crate serde_repr;
 
 pub mod error;
+pub mod fontinfo;
 pub mod glyph;
 mod layer;
 mod ufo;
 
 pub use error::Error;
+pub use fontinfo::FontInfo;
 pub use glyph::{Glyph, GlyphName};
 pub use layer::Layer;
-pub use ufo::{FontInfo, FormatVersion, LayerInfo, MetaInfo, Ufo};
+pub use ufo::{FormatVersion, LayerInfo, MetaInfo, Ufo};
