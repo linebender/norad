@@ -158,28 +158,37 @@ pub struct FontInfo {
 // TODO: validate!
 // http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#guidelines
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Guideline {
     x: Option<f64>,
     y: Option<f64>,
     angle: Option<f64>,
-    name: String,
-    color: String,
-    identifier: String,
+    name: Option<String>,
+    color: Option<String>,
+    identifier: Option<String>,
 }
 
 // TODO: validate!
 // http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-gasp-table-fields
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct GaspRangeRecord {
+    #[serde(rename = "rangeMaxPPEM")]
     range_max_ppem: u16,
     range_gasp_behavior: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct NameRecord {
+    #[serde(rename = "nameID")]
     name_id: u16,
-    paltform_id: u16,
+    #[serde(rename = "platformID")]
+    platform_id: u16,
+    #[serde(rename = "encodingID")]
     encoding_id: u16,
+    #[serde(rename = "languageID")]
     language_id: u16,
     string: String,
 }
@@ -360,5 +369,12 @@ mod tests {
         assert_eq!(font_info.trademark, None);
         assert_eq!(font_info.style_map_style_name, Some(StyleMapStyle::Regular));
         assert_eq!(font_info.open_type_os2_vendor_id, Some("LTTR".into()));
+    }
+
+    #[test]
+    fn fontinfo2() {
+        let path = "testdata/fontinfotest.ufo/fontinfo.plist";
+        let font_info: FontInfo = plist::from_file(path).expect("failed to load fontinfo");
+        assert_eq!(font_info.family_name, Some("a".to_string()));
     }
 }
