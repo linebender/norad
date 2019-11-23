@@ -14,7 +14,7 @@ pub struct FontInfo {
     pub copyright: Option<String>,
     pub descender: Option<f64>,
     pub family_name: Option<String>,
-    pub guidelines: Option<Vec<Guideline>>,
+    pub guidelines: Option<Vec<Guideline>>, // TODO: Use same struct as glyph::guideline
     pub italic_angle: Option<f64>,
     #[serde(rename = "macintoshFONDFamilyID")]
     pub macintosh_fond_family_id: Option<u32>,
