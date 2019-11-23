@@ -57,9 +57,9 @@ pub struct FontInfo {
     #[serde(rename = "openTypeOS2CodePageRanges")]
     pub open_type_os2_code_page_ranges: Option<Vec<u8>>,
     #[serde(rename = "openTypeOS2FamilyClass")]
-    pub open_type_os2_family_class: Option<OS2FamilyClass>, // TODO: validate, de/serialize from list
+    pub open_type_os2_family_class: Option<Vec<u8>>, // TODO: validate, de/serialize from list
     #[serde(rename = "openTypeOS2Panose")]
-    pub open_type_os2_panose: Option<OS2Panose>, // TODO: validate, de/serialize from list
+    pub open_type_os2_panose: Option<Vec<u8>>, // TODO: validate, de/serialize from list
     #[serde(rename = "openTypeOS2Selection")]
     pub open_type_os2_selection: Option<Vec<u8>>, // TODO: validate
     #[serde(rename = "openTypeOS2StrikeoutPosition")]
@@ -193,25 +193,25 @@ pub struct NameRecord {
     string: String,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct OS2FamilyClass {
-    class_id: u8,
-    subclass_id: u8,
-}
+// #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+// pub struct OS2FamilyClass {
+//     class_id: u8,
+//     subclass_id: u8,
+// }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct OS2Panose {
-    family_type: u8,
-    serif_style: u8,
-    weight: u8,
-    proportion: u8,
-    contrast: u8,
-    stroke_variation: u8,
-    arm_style: u8,
-    letterform: u8,
-    midline: u8,
-    x_height: u8,
-}
+// #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+// pub struct OS2Panose {
+//     family_type: u8,
+//     serif_style: u8,
+//     weight: u8,
+//     proportion: u8,
+//     contrast: u8,
+//     stroke_variation: u8,
+//     arm_style: u8,
+//     letterform: u8,
+//     midline: u8,
+//     x_height: u8,
+// }
 
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
