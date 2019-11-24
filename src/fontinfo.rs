@@ -275,7 +275,7 @@ impl<'de> Visitor<'de> for OS2PanoseVisitor {
 
         if let Ok(Some(_)) = seq.next_element::<u8>() {
             return Err(serde::de::Error::custom(
-                "openTypeOS2Panose must have exactly two elements but has more.",
+                "openTypeOS2Panose must have exactly ten elements but has more.",
             ));
         }
 
