@@ -23,12 +23,12 @@
         <integer>720</integer>
       </dict>
       <dict>
-        <key>angle</key>
-        <integer>0</integer>
         <key>x</key>
         <integer>372</integer>
+      </dict>
+      <dict>
         <key>y</key>
-        <integer>142</integer>
+        <integer>123</integer>
       </dict>
       <dict>
         <key>angle</key>
@@ -36,17 +36,13 @@
         <key>name</key>
         <string> [locked]</string>
         <key>x</key>
-        <integer>412</integer>
+        <integer>1</integer>
         <key>y</key>
-        <integer>644</integer>
-      </dict>
-      <dict>
-        <key>angle</key>
-        <integer>45</integer>
-        <key>x</key>
-        <integer>363</integer>
-        <key>y</key>
-        <integer>561</integer>
+        <integer>2</integer>
+        <key>color</key>
+        <string>1,1,1,1</string>
+        <key>identifier</key>
+        <string>abc</string>
       </dict>
     </array>
     <key>italicAngle</key>

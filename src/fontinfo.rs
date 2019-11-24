@@ -2,6 +2,8 @@ use serde::de::{Deserializer, SeqAccess, Visitor};
 use serde::Deserialize;
 use std::fmt;
 
+use crate::shared_types::Guideline;
+
 /// The contents of the [`fontinfo.plist`][] file. This structure is hard-wired to the
 /// available attributes in UFO version 3.
 ///
@@ -153,19 +155,6 @@ pub struct FontInfo {
     pub woff_minor_version: Option<i32>,
     pub x_height: Option<f64>,
     pub year: Option<u32>,
-}
-
-// TODO: validate!
-// http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#guidelines
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Guideline {
-    x: Option<f64>,
-    y: Option<f64>,
-    angle: Option<f64>,
-    name: Option<String>,
-    color: Option<String>,
-    identifier: Option<String>,
 }
 
 // TODO: validate!
@@ -479,6 +468,8 @@ mod tests {
 
     #[test]
     fn fontinfo2() {
+        use crate::shared_types::{Color, Identifier, Line};
+
         let path = "testdata/fontinfotest.ufo/fontinfo.plist";
         let font_info: FontInfo = plist::from_file(path).expect("failed to load fontinfo");
         assert_eq!(font_info.family_name, Some("a".to_string()));
@@ -501,5 +492,34 @@ mod tests {
                 x_height: 5,
             })
         );
+        assert_eq!(
+            font_info.guidelines,
+            Some(vec![
+                Guideline {
+                    line: Line::Angle { x: 82.0, y: 720.0, degrees: 90.0 },
+                    name: None,
+                    color: None,
+                    identifier: None
+                },
+                Guideline {
+                    line: Line::Vertical(372.0),
+                    name: None,
+                    color: None,
+                    identifier: None
+                },
+                Guideline {
+                    line: Line::Horizontal(123.0),
+                    name: None,
+                    color: None,
+                    identifier: None
+                },
+                Guideline {
+                    line: Line::Angle { x: 1.0, y: 2.0, degrees: 0.0 },
+                    name: Some(" [locked]".to_string()),
+                    color: Some(Color { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }),
+                    identifier: Some(Identifier("abc".to_string()))
+                },
+            ])
+        )
     }
 }
