@@ -1,5 +1,6 @@
 use serde::de::{Deserializer, SeqAccess, Visitor};
-use serde::Deserialize;
+use serde::ser::Serializer;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::shared_types::Guideline;
@@ -159,7 +160,7 @@ pub struct FontInfo {
 
 // TODO: validate!
 // http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-gasp-table-fields
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct GaspRangeRecord {
@@ -168,7 +169,7 @@ pub struct GaspRangeRecord {
     range_gasp_behavior: Vec<u8>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NameRecord {
     #[serde(rename = "nameID")]
@@ -317,99 +318,147 @@ pub enum PostscriptWindowsCharacterSet {
     OEM = 20,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCopyright {
     text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCredits {
     credits: Vec<WoffMetadataCredit>, // TODO: validate must have 1+ items
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCredit {
     name: String,
     url: Option<String>,
     role: Option<String>,
-    dir: Option<String>, // TODO: Option<"ltr" | "rtl">
+    dir: Option<WoffAttributeDirection>,
     class: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataDescription {
     url: Option<String>,
     text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataTextRecord {
     text: String,
     language: Option<String>,
-    dir: Option<String>, // TODO: Option<"ltr" | "rtl">
+    dir: Option<WoffAttributeDirection>,
     class: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionRecord {
     id: Option<String>,
     names: Vec<WoffMetadataExtensionNameRecord>,
     items: Vec<WoffMetadataExtensionItemRecord>, // TODO: validate must have 1+ items
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionNameRecord {
     text: String,
     language: Option<String>,
-    dir: Option<String>, // TODO: Option<"ltr" | "rtl">
+    dir: Option<WoffAttributeDirection>,
     class: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionItemRecord {
     id: Option<String>,
     names: Vec<WoffMetadataExtensionNameRecord>, // TODO: validate must have 1+ items
     values: Vec<WoffMetadataExtensionValueRecord>, // TODO: validate must have 1+ items
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionValueRecord {
     text: String,
     language: Option<String>,
-    dir: Option<String>, // TODO: Option<"ltr" | "rtl">
+    dir: Option<WoffAttributeDirection>,
     class: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataLicense {
     url: Option<String>,
     id: Option<String>,
     text: Vec<WoffMetadataTextRecord>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataLicensee {
     name: String,
-    dir: Option<String>, // TODO: Option<"ltr" | "rtl">
+    dir: Option<WoffAttributeDirection>,
     class: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataTrademark {
     text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataUniqueID {
     id: String,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataVendor {
     name: String,
     url: String,
-    dir: Option<String>, // TODO: Option<"ltr" | "rtl">
+    dir: Option<WoffAttributeDirection>,
     class: Option<String>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum WoffAttributeDirection {
+    LeftToRight,
+    RightToLeft,
+}
+
+impl Serialize for WoffAttributeDirection {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            WoffAttributeDirection::LeftToRight => serializer.serialize_str(&"ltr"),
+            WoffAttributeDirection::RightToLeft => serializer.serialize_str(&"rtl"),
+        }
+    }
+}
+
+struct WoffAttributeDirectionVisitor;
+
+impl<'de> Visitor<'de> for WoffAttributeDirectionVisitor {
+    type Value = WoffAttributeDirection;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a string that is either 'ltr' or 'rtl'.")
+    }
+
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        match s {
+            "ltr" => Ok(WoffAttributeDirection::LeftToRight),
+            "rtl" => Ok(WoffAttributeDirection::RightToLeft),
+            _ => Err(serde::de::Error::custom("unknown value for the WOFF direction attribute.")),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for WoffAttributeDirection {
+    fn deserialize<D>(deserializer: D) -> Result<WoffAttributeDirection, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(WoffAttributeDirectionVisitor)
+    }
 }
 
 #[derive(Debug, Serialize, Eq, PartialEq, Clone)]
@@ -520,6 +569,15 @@ mod tests {
                     identifier: Some(Identifier("abc".to_string()))
                 },
             ])
-        )
+        );
+        assert_eq!(
+            font_info.woff_metadata_vendor,
+            Some(WoffMetadataVendor {
+                name: "a".to_string(),
+                url: "b".to_string(),
+                dir: Some(WoffAttributeDirection::RightToLeft),
+                class: Some("c".to_string()),
+            })
+        );
     }
 }
