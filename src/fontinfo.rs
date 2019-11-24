@@ -143,7 +143,7 @@ pub struct FontInfo {
     pub woff_metadata_copyright: Option<WoffMetadataCopyright>,
     pub woff_metadata_credits: Option<WoffMetadataCredits>,
     pub woff_metadata_description: Option<WoffMetadataDescription>,
-    pub woff_metadata_extensions: Option<Vec<WoffMetadataExtensionRecord>>,
+    pub woff_metadata_extensions: Option<Vec<WoffMetadataExtensionRecord>>, // TODO: validate must have 1+ items
     pub woff_metadata_license: Option<WoffMetadataLicense>,
     pub woff_metadata_licensee: Option<WoffMetadataLicensee>,
     pub woff_metadata_trademark: Option<WoffMetadataTrademark>,
@@ -240,12 +240,12 @@ pub enum PostscriptWindowsCharacterSet {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WoffMetadataCopyright {
-    text: Vec<WoffMetadataTextRecord>,
+    text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WoffMetadataCredits {
-    credits: Vec<WoffMetadataCredit>,
+    credits: Vec<WoffMetadataCredit>, // TODO: validate must have 1+ items
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -253,21 +253,21 @@ pub struct WoffMetadataCredit {
     name: String,
     url: Option<String>,
     role: Option<String>,
-    dir: Option<String>,
+    dir: Option<String>, // TODO: Option<"ltr" | "rtl">
     class: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WoffMetadataDescription {
     url: Option<String>,
-    text: Vec<WoffMetadataTextRecord>,
+    text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WoffMetadataTextRecord {
     text: String,
     language: Option<String>,
-    dir: Option<String>,
+    dir: Option<String>, // TODO: Option<"ltr" | "rtl">
     class: Option<String>,
 }
 
@@ -275,29 +275,29 @@ pub struct WoffMetadataTextRecord {
 pub struct WoffMetadataExtensionRecord {
     id: Option<String>,
     names: Vec<WoffMetadataExtensionNameRecord>,
-    items: Vec<WoffMetadataExtensionItemRecord>,
+    items: Vec<WoffMetadataExtensionItemRecord>, // TODO: validate must have 1+ items
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WoffMetadataExtensionNameRecord {
     text: String,
     language: Option<String>,
-    dir: Option<String>,
+    dir: Option<String>, // TODO: Option<"ltr" | "rtl">
     class: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WoffMetadataExtensionItemRecord {
     id: Option<String>,
-    names: Vec<WoffMetadataExtensionNameRecord>,
-    values: Vec<WoffMetadataExtensionValueRecord>,
+    names: Vec<WoffMetadataExtensionNameRecord>, // TODO: validate must have 1+ items
+    values: Vec<WoffMetadataExtensionValueRecord>, // TODO: validate must have 1+ items
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WoffMetadataExtensionValueRecord {
     text: String,
     language: Option<String>,
-    dir: Option<String>,
+    dir: Option<String>, // TODO: Option<"ltr" | "rtl">
     class: Option<String>,
 }
 
@@ -311,13 +311,13 @@ pub struct WoffMetadataLicense {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WoffMetadataLicensee {
     name: String,
-    dir: Option<String>,
+    dir: Option<String>, // TODO: Option<"ltr" | "rtl">
     class: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WoffMetadataTrademark {
-    text: Vec<WoffMetadataTextRecord>,
+    text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -329,7 +329,7 @@ pub struct WoffMetadataUniqueID {
 pub struct WoffMetadataVendor {
     name: String,
     url: String,
-    dir: Option<String>,
+    dir: Option<String>, // TODO: Option<"ltr" | "rtl">
     class: Option<String>,
 }
 
