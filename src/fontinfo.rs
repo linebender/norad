@@ -463,6 +463,7 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
