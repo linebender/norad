@@ -1,5 +1,6 @@
-use serde::de::Deserializer;
+use serde::de::{Deserializer, SeqAccess, Visitor};
 use serde::Deserialize;
+use std::fmt;
 
 /// The contents of the [`fontinfo.plist`][] file. This structure is hard-wired to the
 /// available attributes in UFO version 3.
@@ -59,7 +60,7 @@ pub struct FontInfo {
     #[serde(rename = "openTypeOS2FamilyClass")]
     pub open_type_os2_family_class: Option<OS2FamilyClass>,
     #[serde(rename = "openTypeOS2Panose")]
-    pub open_type_os2_panose: Option<Vec<u8>>, // TODO: validate, de/serialize from list
+    pub open_type_os2_panose: Option<OS2Panose>,
     #[serde(rename = "openTypeOS2Selection")]
     pub open_type_os2_selection: Option<Vec<u8>>, // TODO: validate
     #[serde(rename = "openTypeOS2StrikeoutPosition")]
@@ -199,10 +200,6 @@ pub struct OS2FamilyClass {
     subclass_id: u8,
 }
 
-use std::fmt;
-
-use serde::de::{SeqAccess, Visitor};
-
 struct OS2FamilyClassVisitor;
 
 impl<'de> Visitor<'de> for OS2FamilyClassVisitor {
@@ -219,12 +216,13 @@ impl<'de> Visitor<'de> for OS2FamilyClassVisitor {
         let class_id: u8 = seq.next_element().unwrap().unwrap();
         let subclass_id: u8 = seq.next_element().unwrap().unwrap();
 
-        match seq.next_element::<u8>().unwrap() {
-            None => Ok(OS2FamilyClass { class_id, subclass_id }),
-            _ => Err(serde::de::Error::custom(
+        if let Ok(Some(_)) = seq.next_element::<u8>() {
+            return Err(serde::de::Error::custom(
                 "openTypeOS2FamilyClass must have exactly two elements but has more.",
-            )),
+            ));
         }
+
+        Ok(OS2FamilyClass { class_id, subclass_id })
     }
 }
 
@@ -237,19 +235,73 @@ impl<'de> Deserialize<'de> for OS2FamilyClass {
     }
 }
 
-// #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-// pub struct OS2Panose {
-//     family_type: u8,
-//     serif_style: u8,
-//     weight: u8,
-//     proportion: u8,
-//     contrast: u8,
-//     stroke_variation: u8,
-//     arm_style: u8,
-//     letterform: u8,
-//     midline: u8,
-//     x_height: u8,
-// }
+#[derive(Debug, Clone, Default, Serialize, PartialEq)]
+pub struct OS2Panose {
+    family_type: u8,
+    serif_style: u8,
+    weight: u8,
+    proportion: u8,
+    contrast: u8,
+    stroke_variation: u8,
+    arm_style: u8,
+    letterform: u8,
+    midline: u8,
+    x_height: u8,
+}
+
+struct OS2PanoseVisitor;
+
+impl<'de> Visitor<'de> for OS2PanoseVisitor {
+    type Value = OS2Panose;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a list of ten u8s.")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let family_type: u8 = seq.next_element().unwrap().unwrap();
+        let serif_style: u8 = seq.next_element().unwrap().unwrap();
+        let weight: u8 = seq.next_element().unwrap().unwrap();
+        let proportion: u8 = seq.next_element().unwrap().unwrap();
+        let contrast: u8 = seq.next_element().unwrap().unwrap();
+        let stroke_variation: u8 = seq.next_element().unwrap().unwrap();
+        let arm_style: u8 = seq.next_element().unwrap().unwrap();
+        let letterform: u8 = seq.next_element().unwrap().unwrap();
+        let midline: u8 = seq.next_element().unwrap().unwrap();
+        let x_height: u8 = seq.next_element().unwrap().unwrap();
+
+        if let Ok(Some(_)) = seq.next_element::<u8>() {
+            return Err(serde::de::Error::custom(
+                "openTypeOS2Panose must have exactly two elements but has more.",
+            ));
+        }
+
+        Ok(OS2Panose {
+            family_type,
+            serif_style,
+            weight,
+            proportion,
+            contrast,
+            stroke_variation,
+            arm_style,
+            letterform,
+            midline,
+            x_height,
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for OS2Panose {
+    fn deserialize<D>(deserializer: D) -> Result<OS2Panose, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(OS2PanoseVisitor)
+    }
+}
 
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
@@ -417,6 +469,21 @@ mod tests {
         assert_eq!(
             font_info.open_type_os2_family_class,
             Some(OS2FamilyClass { class_id: 0, subclass_id: 0 })
+        );
+        assert_eq!(
+            font_info.open_type_os2_panose,
+            Some(OS2Panose {
+                family_type: 2,
+                serif_style: 2,
+                weight: 2,
+                proportion: 2,
+                contrast: 6,
+                stroke_variation: 5,
+                arm_style: 11,
+                letterform: 4,
+                midline: 2,
+                x_height: 5,
+            })
         );
     }
 }
