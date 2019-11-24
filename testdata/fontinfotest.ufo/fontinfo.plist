@@ -51,6 +51,10 @@
     </array>
     <key>italicAngle</key>
     <real>2.2</real>
+    <key>macintoshFONDFamilyID</key>
+    <integer>32</integer>
+    <key>macintoshFONDName</key>
+    <string>abc</string>
     <key>note</key>
     <string></string>
     <key>openTypeGaspRangeRecords</key>
@@ -169,6 +173,11 @@
       <integer>57</integer>
       <integer>59</integer>
       <integer>60</integer>
+    </array>
+    <key>openTypeOS2FamilyClass</key>
+    <array>
+      <integer>0</integer>
+      <integer>0</integer>
     </array>
     <key>openTypeOS2Panose</key>
     <array>
@@ -469,6 +478,41 @@
       <key>url</key>
       <string>d</string>
     </dict>
+    <key>woffMetadataExtensions</key>
+    <array>
+      <dict>
+        <key>id</key>
+        <string>a</string>
+        <key>items</key>
+        <array>
+          <dict>
+            <key>id</key>
+            <string>item</string>
+            <key>names</key>
+            <array>
+              <dict>
+                <key>text</key>
+                <string>name</string>
+              </dict>
+            </array>
+            <key>values</key>
+            <array>
+              <dict>
+                <key>text</key>
+                <string>value</string>
+              </dict>
+            </array>
+          </dict>
+        </array>
+        <key>names</key>
+        <array>
+          <dict>
+            <key>text</key>
+            <string>a</string>
+          </dict>
+        </array>
+      </dict>
+    </array>
     <key>woffMetadataLicense</key>
     <dict>
       <key>id</key>
@@ -526,5 +570,7 @@
     <integer>234</integer>
     <key>xHeight</key>
     <integer>500</integer>
+    <key>year</key>
+    <integer>1452</integer>
   </dict>
 </plist>
