@@ -27,3 +27,4 @@ optional = true
 
 [dev-dependencies]
 failure = "0.1.6"
+serde_test = "1.0.102"
