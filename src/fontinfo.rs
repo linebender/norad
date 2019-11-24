@@ -57,7 +57,7 @@ pub struct FontInfo {
     #[serde(rename = "openTypeOS2CodePageRanges")]
     pub open_type_os2_code_page_ranges: Option<Vec<u8>>,
     #[serde(rename = "openTypeOS2FamilyClass")]
-    pub open_type_os2_family_class: Option<Vec<u8>>, // TODO: validate, de/serialize from list
+    pub open_type_os2_family_class: Option<OS2FamilyClass>,
     #[serde(rename = "openTypeOS2Panose")]
     pub open_type_os2_panose: Option<Vec<u8>>, // TODO: validate, de/serialize from list
     #[serde(rename = "openTypeOS2Selection")]
@@ -193,11 +193,49 @@ pub struct NameRecord {
     string: String,
 }
 
-// #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-// pub struct OS2FamilyClass {
-//     class_id: u8,
-//     subclass_id: u8,
-// }
+#[derive(Debug, Clone, Default, Serialize, PartialEq)]
+pub struct OS2FamilyClass {
+    class_id: u8,
+    subclass_id: u8,
+}
+
+use std::fmt;
+
+use serde::de::{SeqAccess, Visitor};
+
+struct OS2FamilyClassVisitor;
+
+impl<'de> Visitor<'de> for OS2FamilyClassVisitor {
+    type Value = OS2FamilyClass;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a list of two u8s.")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let class_id: u8 = seq.next_element().unwrap().unwrap();
+        let subclass_id: u8 = seq.next_element().unwrap().unwrap();
+
+        match seq.next_element::<u8>().unwrap() {
+            None => Ok(OS2FamilyClass { class_id, subclass_id }),
+            _ => Err(serde::de::Error::custom(
+                "openTypeOS2FamilyClass must have exactly two elements but has more.",
+            )),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for OS2FamilyClass {
+    fn deserialize<D>(deserializer: D) -> Result<OS2FamilyClass, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(OS2FamilyClassVisitor)
+    }
+}
 
 // #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 // pub struct OS2Panose {
@@ -376,5 +414,9 @@ mod tests {
         let path = "testdata/fontinfotest.ufo/fontinfo.plist";
         let font_info: FontInfo = plist::from_file(path).expect("failed to load fontinfo");
         assert_eq!(font_info.family_name, Some("a".to_string()));
+        assert_eq!(
+            font_info.open_type_os2_family_class,
+            Some(OS2FamilyClass { class_id: 0, subclass_id: 0 })
+        );
     }
 }
