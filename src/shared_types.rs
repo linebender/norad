@@ -1,6 +1,8 @@
 use std::fmt;
 
+use serde::de;
 use serde::de::{Deserializer, Visitor};
+use serde::ser;
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +16,61 @@ use druid::Data;
 /// All characters must be in the printable ASCII range, 0x20 to 0x7E.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identifier(pub(crate) String);
+
+impl Serialize for Identifier {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.0.len() > 100 {
+            return Err(ser::Error::custom("Identifier must be at most 100 characters long."));
+        }
+        for c in self.0.chars() {
+            if !c.is_ascii_alphanumeric() {
+                return Err(ser::Error::custom(
+                    "Identifiers must contain just alphanumeric characters.",
+                ));
+            }
+        }
+        serializer.serialize_str(&self.0)
+    }
+}
+
+struct IdentifierVisitor;
+
+impl<'de> Visitor<'de> for IdentifierVisitor {
+    type Value = Identifier;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a string conforming to the UFO identifier definition.")
+    }
+
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        if s.len() > 100 {
+            return Err(de::Error::custom("Identifier must be at most 100 characters long."));
+        }
+        for c in s.chars() {
+            if !c.is_ascii_alphanumeric() {
+                return Err(de::Error::custom(
+                    "Identifiers must contain just alphanumeric characters.",
+                ));
+            }
+        }
+        Ok(Identifier(s.to_string()))
+    }
+}
+
+impl<'de> Deserialize<'de> for Identifier {
+    fn deserialize<D>(deserializer: D) -> Result<Identifier, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(IdentifierVisitor)
+    }
+}
 
 /// A guideline associated with a glyph.
 #[derive(Debug, Clone, PartialEq)]
@@ -108,7 +165,7 @@ impl<'de> Deserialize<'de> for Color {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_test::{assert_tokens, Token};
+    use serde_test::{assert_de_tokens_error, assert_ser_tokens_error, assert_tokens, Token};
 
     #[test]
     fn color_parsing() {
@@ -117,5 +174,30 @@ mod tests {
 
         let c2 = Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 };
         assert_tokens(&c2, &[Token::Str("0,0.5,0,0.5")]);
+    }
+
+    #[test]
+    fn identifier_parsing() {
+        let i1 = Identifier(
+            "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890123456789012345678901234567".to_string(),
+        );
+        assert_tokens(
+            &i1,
+            &[Token::Str("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890123456789012345678901234567")],
+        );
+
+        let i2 = Identifier("0aAä".to_string());
+        assert_ser_tokens_error(&i2, &[], "Identifiers must contain just alphanumeric characters.");
+        assert_de_tokens_error::<Identifier>(
+            &[Token::Str("0aAä")],
+            "Identifiers must contain just alphanumeric characters.",
+        );
+
+        let i3 = Identifier("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string());
+        assert_ser_tokens_error(&i3, &[], "Identifier must be at most 100 characters long.");
+        assert_de_tokens_error::<Identifier>(
+            &[Token::Str("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")],
+            "Identifier must be at most 100 characters long.",
+        );
     }
 }
