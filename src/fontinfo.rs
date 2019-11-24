@@ -133,7 +133,6 @@ pub struct FontInfo {
     pub postscript_weight_name: Option<String>,
     pub postscript_windows_character_set: Option<PostscriptWindowsCharacterSet>,
     pub style_map_family_name: Option<String>,
-    #[serde(deserialize_with = "deserialize_style_map_style_name")]
     pub style_map_style_name: Option<StyleMapStyle>,
     pub style_name: Option<String>,
     pub trademark: Option<String>,
@@ -231,6 +230,7 @@ impl<'de> Deserialize<'de> for OS2FamilyClass {
     where
         D: Deserializer<'de>,
     {
+        // Take a plist array and turn it into a Rust struct.
         deserializer.deserialize_seq(OS2FamilyClassVisitor)
     }
 }
@@ -423,7 +423,7 @@ pub struct WoffMetadataVendor {
     class: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Eq, PartialEq, Clone)]
 pub enum StyleMapStyle {
     Regular,
     Italic,
@@ -431,21 +431,36 @@ pub enum StyleMapStyle {
     BoldItalic,
 }
 
-fn deserialize_style_map_style_name<'de, D>(de: D) -> Result<Option<StyleMapStyle>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Helper(#[serde(with = "String")] String);
+struct StyleMapStyleVisitor;
 
-    let helper = Option::deserialize(de)?;
-    helper.map_or(Ok(None), |Helper(external)| match external.as_ref() {
-        "regular" => Ok(Some(StyleMapStyle::Regular)),
-        "italic" => Ok(Some(StyleMapStyle::Italic)),
-        "bold" => Ok(Some(StyleMapStyle::Bold)),
-        "bold italic" => Ok(Some(StyleMapStyle::BoldItalic)),
-        _ => Err(serde::de::Error::custom("unknown value for styleMapStyleName.")),
-    })
+impl<'de> Visitor<'de> for StyleMapStyleVisitor {
+    type Value = StyleMapStyle;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a string that is either 'regular', 'italic', 'bold' or 'bold italic'.")
+    }
+
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        match s.as_ref() {
+            "regular" => Ok(StyleMapStyle::Regular),
+            "italic" => Ok(StyleMapStyle::Italic),
+            "bold" => Ok(StyleMapStyle::Bold),
+            "bold italic" => Ok(StyleMapStyle::BoldItalic),
+            _ => Err(serde::de::Error::custom("unknown value for styleMapStyleName.")),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for StyleMapStyle {
+    fn deserialize<D>(deserializer: D) -> Result<StyleMapStyle, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(StyleMapStyleVisitor)
+    }
 }
 
 mod tests {
