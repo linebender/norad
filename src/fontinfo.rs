@@ -444,7 +444,7 @@ impl<'de> Visitor<'de> for StyleMapStyleVisitor {
     where
         E: serde::de::Error,
     {
-        match s.as_ref() {
+        match s {
             "regular" => Ok(StyleMapStyle::Regular),
             "italic" => Ok(StyleMapStyle::Italic),
             "bold" => Ok(StyleMapStyle::Bold),
