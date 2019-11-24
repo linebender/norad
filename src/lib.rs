@@ -23,6 +23,7 @@ pub mod error;
 pub mod fontinfo;
 pub mod glyph;
 mod layer;
+pub mod shared_types;
 mod ufo;
 
 pub use error::Error;
