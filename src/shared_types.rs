@@ -17,20 +17,28 @@ use druid::Data;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identifier(pub(crate) String);
 
+impl Identifier {
+    fn is_valid(&self) -> bool {
+        if self.0.len() > 100 {
+            return false;
+        }
+        for c in self.0.chars() {
+            if !(0x20..=0x7F).contains(&(c as u8)) {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
 impl Serialize for Identifier {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        if self.0.len() > 100 {
-            return Err(ser::Error::custom("Identifier must be at most 100 characters long."));
-        }
-        for c in self.0.chars() {
-            if !c.is_ascii_alphanumeric() {
-                return Err(ser::Error::custom(
-                    "Identifiers must contain just alphanumeric characters.",
-                ));
-            }
+        if !self.is_valid() {
+            return Err(ser::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7F."));
         }
         serializer.serialize_str(&self.0)
     }
@@ -49,17 +57,11 @@ impl<'de> Visitor<'de> for IdentifierVisitor {
     where
         E: serde::de::Error,
     {
-        if s.len() > 100 {
-            return Err(de::Error::custom("Identifier must be at most 100 characters long."));
+        let identifier = Identifier(s.to_string());
+        if !identifier.is_valid() {
+            return Err(de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7F."));
         }
-        for c in s.chars() {
-            if !c.is_ascii_alphanumeric() {
-                return Err(de::Error::custom(
-                    "Identifiers must contain just alphanumeric characters.",
-                ));
-            }
-        }
-        Ok(Identifier(s.to_string()))
+        Ok(identifier)
     }
 }
 
@@ -256,25 +258,23 @@ mod tests {
     #[test]
     fn identifier_parsing() {
         let i1 = Identifier(
-            "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890123456789012345678901234567".to_string(),
+            " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~".to_string(),
         );
         assert_tokens(
             &i1,
-            &[Token::Str("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890123456789012345678901234567")],
+            &[Token::Str(" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~")],
         );
 
         let i2 = Identifier("0aAä".to_string());
-        assert_ser_tokens_error(&i2, &[], "Identifiers must contain just alphanumeric characters.");
-        assert_de_tokens_error::<Identifier>(
-            &[Token::Str("0aAä")],
-            "Identifiers must contain just alphanumeric characters.",
-        );
+        let error = "Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7F.";
+        assert_ser_tokens_error(&i2, &[], error);
+        assert_de_tokens_error::<Identifier>(&[Token::Str("0aAä")], error);
 
         let i3 = Identifier("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string());
-        assert_ser_tokens_error(&i3, &[], "Identifier must be at most 100 characters long.");
+        assert_ser_tokens_error(&i3, &[], error);
         assert_de_tokens_error::<Identifier>(
             &[Token::Str("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")],
-            "Identifier must be at most 100 characters long.",
+            error,
         );
     }
 
