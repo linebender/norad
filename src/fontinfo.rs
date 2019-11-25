@@ -1,5 +1,5 @@
 use serde::de::{Deserializer, SeqAccess, Visitor};
-use serde::ser::Serializer;
+use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -13,149 +13,181 @@ use crate::shared_types::Guideline;
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct FontInfo {
-    pub ascender: Option<f64>,
-    pub cap_height: Option<f64>,
-    pub copyright: Option<String>,
-    pub descender: Option<f64>,
+    // Generic Identification Information
     pub family_name: Option<String>,
-    pub guidelines: Option<Vec<Guideline>>, // TODO: Use same struct as glyph::guideline
+    pub style_name: Option<String>,
+    pub style_map_family_name: Option<String>,
+    pub style_map_style_name: Option<StyleMapStyle>,
+    pub version_major: Option<i32>,
+    pub version_minor: Option<u32>,
+    pub year: Option<i32>,
+
+    // Generic Legal Information
+    pub copyright: Option<String>,
+    pub trademark: Option<String>,
+
+    // Generic Dimension Information
+    pub units_per_em: Option<f64>, // TODO: validate non-negative???
+    pub descender: Option<f64>,
+    pub x_height: Option<f64>,
+    pub cap_height: Option<f64>,
+    pub ascender: Option<f64>,
     pub italic_angle: Option<f64>,
-    #[serde(rename = "macintoshFONDFamilyID")]
-    pub macintosh_fond_family_id: Option<u32>,
-    #[serde(rename = "macintoshFONDName")]
-    pub macintosh_fond_name: Option<String>,
+
+    // Guidelines
+    pub guidelines: Option<Vec<Guideline>>,
+
+    // Generic Miscellaneous Information
     pub note: Option<String>,
+
+    // OpenType gasp Table Fields
     pub open_type_gasp_range_records: Option<Vec<GaspRangeRecord>>,
-    pub open_type_head_created: Option<String>, // TODO: Validate string
-    pub open_type_head_flags: Option<Vec<u32>>,
+
+    // OpenType head Table Fields
+    pub open_type_head_created: Option<String>, // TODO: Validate string format
     #[serde(rename = "openTypeHeadLowestRecPPEM")]
     pub open_type_head_lowest_rec_ppem: Option<u32>,
+    pub open_type_head_flags: Option<Vec<u8>>,
+
+    // OpenType hhea Table Fields
     pub open_type_hhea_ascender: Option<i32>,
-    pub open_type_hhea_caret_offset: Option<i32>,
-    pub open_type_hhea_caret_slope_rise: Option<i32>,
-    pub open_type_hhea_caret_slope_run: Option<i32>,
     pub open_type_hhea_descender: Option<i32>,
     pub open_type_hhea_line_gap: Option<i32>,
-    pub open_type_name_compatible_full_name: Option<String>,
-    pub open_type_name_description: Option<String>,
+    pub open_type_hhea_caret_slope_rise: Option<i32>,
+    pub open_type_hhea_caret_slope_run: Option<i32>,
+    pub open_type_hhea_caret_offset: Option<i32>,
+
+    // OpenType Name Table Fields
+    pub open_type_name_designer: Option<String>,
     #[serde(rename = "openTypeNameDesignerURL")]
     pub open_type_name_designer_url: Option<String>,
-    pub open_type_name_designer: Option<String>,
-    #[serde(rename = "openTypeNameLicenseURL")]
-    pub open_type_name_license_url: Option<String>,
-    pub open_type_name_license: Option<String>,
+    pub open_type_name_manufacturer: Option<String>,
     #[serde(rename = "openTypeNameManufacturerURL")]
     pub open_type_name_manufacturer_url: Option<String>,
-    pub open_type_name_manufacturer: Option<String>,
-    pub open_type_name_preferred_family_name: Option<String>,
-    pub open_type_name_preferred_subfamily_name: Option<String>,
-    pub open_type_name_records: Option<Vec<NameRecord>>,
-    pub open_type_name_sample_text: Option<String>,
+    pub open_type_name_license: Option<String>,
+    #[serde(rename = "openTypeNameLicenseURL")]
+    pub open_type_name_license_url: Option<String>,
+    pub open_type_name_version: Option<String>,
     #[serde(rename = "openTypeNameUniqueID")]
     pub open_type_name_unique_id: Option<String>,
-    pub open_type_name_version: Option<String>,
+    pub open_type_name_description: Option<String>,
+    pub open_type_name_preferred_family_name: Option<String>,
+    pub open_type_name_preferred_subfamily_name: Option<String>,
+    pub open_type_name_compatible_full_name: Option<String>,
+    pub open_type_name_sample_text: Option<String>,
     #[serde(rename = "openTypeNameWWSFamilyName")]
     pub open_type_name_wws_family_name: Option<String>,
     #[serde(rename = "openTypeNameWWSSubfamilyName")]
     pub open_type_name_wws_subfamily_name: Option<String>,
-    #[serde(rename = "openTypeOS2CodePageRanges")]
-    pub open_type_os2_code_page_ranges: Option<Vec<u8>>,
-    #[serde(rename = "openTypeOS2FamilyClass")]
-    pub open_type_os2_family_class: Option<OS2FamilyClass>,
+    pub open_type_name_records: Option<Vec<NameRecord>>,
+
+    // OpenType OS/2 Table Fields
+    #[serde(rename = "openTypeOS2WeightClass")]
+    pub open_type_os2_weight_class: Option<u32>,
+    #[serde(rename = "openTypeOS2WidthClass")]
+    pub open_type_os2_width_class: Option<OS2WidthClass>,
+    #[serde(rename = "openTypeOS2Selection")]
+    pub open_type_os2_selection: Option<Vec<u8>>, // TODO: validate !contain 0,5,6
+    #[serde(rename = "openTypeOS2VendorID")]
+    pub open_type_os2_vendor_id: Option<String>,
     #[serde(rename = "openTypeOS2Panose")]
     pub open_type_os2_panose: Option<OS2Panose>,
-    #[serde(rename = "openTypeOS2Selection")]
-    pub open_type_os2_selection: Option<Vec<u8>>, // TODO: validate
-    #[serde(rename = "openTypeOS2StrikeoutPosition")]
-    pub open_type_os2_strikeout_position: Option<i32>,
-    #[serde(rename = "openTypeOS2StrikeoutSize")]
-    pub open_type_os2_strikeout_size: Option<i32>,
-    #[serde(rename = "openTypeOS2SubscriptXOffset")]
-    pub open_type_os2_subscript_x_offset: Option<i32>,
-    #[serde(rename = "openTypeOS2SubscriptXSize")]
-    pub open_type_os2_subscript_x_size: Option<i32>,
-    #[serde(rename = "openTypeOS2SubscriptYOffset")]
-    pub open_type_os2_subscript_y_offset: Option<i32>,
-    #[serde(rename = "openTypeOS2SubscriptYSize")]
-    pub open_type_os2_subscript_y_size: Option<i32>,
-    #[serde(rename = "openTypeOS2SuperscriptXOffset")]
-    pub open_type_os2_superscript_x_offset: Option<i32>,
-    #[serde(rename = "openTypeOS2SuperscriptXSize")]
-    pub open_type_os2_superscript_x_size: Option<i32>,
-    #[serde(rename = "openTypeOS2SuperscriptYOffset")]
-    pub open_type_os2_superscript_y_offset: Option<i32>,
-    #[serde(rename = "openTypeOS2SuperscriptYSize")]
-    pub open_type_os2_superscript_y_size: Option<i32>,
-    #[serde(rename = "openTypeOS2Type")]
-    pub open_type_os2_type: Option<Vec<u8>>,
+    #[serde(rename = "openTypeOS2FamilyClass")]
+    pub open_type_os2_family_class: Option<OS2FamilyClass>,
+
+    #[serde(rename = "openTypeOS2UnicodeRanges")]
+    pub open_type_os2_unicode_ranges: Option<Vec<u8>>,
+    #[serde(rename = "openTypeOS2CodePageRanges")]
+    pub open_type_os2_code_page_ranges: Option<Vec<u8>>,
+
     #[serde(rename = "openTypeOS2TypoAscender")]
     pub open_type_os2_typo_ascender: Option<i32>,
     #[serde(rename = "openTypeOS2TypoDescender")]
     pub open_type_os2_typo_descender: Option<i32>,
     #[serde(rename = "openTypeOS2TypoLineGap")]
     pub open_type_os2_typo_line_gap: Option<i32>,
-    #[serde(rename = "openTypeOS2UnicodeRanges")]
-    pub open_type_os2_unicode_ranges: Option<Vec<u8>>,
-    #[serde(rename = "openTypeOS2VendorID")]
-    pub open_type_os2_vendor_id: Option<String>, // TODO: validate, 4 characters.
-    #[serde(rename = "openTypeOS2WeightClass")]
-    pub open_type_os2_weight_class: Option<u32>, // TODO: validate
-    #[serde(rename = "openTypeOS2WidthClass")]
-    pub open_type_os2_width_class: Option<u32>, // TODO: validate
     #[serde(rename = "openTypeOS2WinAscent")]
     pub open_type_os2_win_ascent: Option<u32>,
     #[serde(rename = "openTypeOS2WinDescent")]
     pub open_type_os2_win_descent: Option<u32>,
-    pub open_type_vhea_caret_offset: Option<i32>,
-    pub open_type_vhea_caret_slope_rise: Option<i32>,
-    pub open_type_vhea_caret_slope_run: Option<i32>,
+
+    #[serde(rename = "openTypeOS2Type")]
+    pub open_type_os2_type: Option<Vec<u8>>,
+
+    #[serde(rename = "openTypeOS2SubscriptXSize")]
+    pub open_type_os2_subscript_x_size: Option<i32>,
+    #[serde(rename = "openTypeOS2SubscriptYSize")]
+    pub open_type_os2_subscript_y_size: Option<i32>,
+    #[serde(rename = "openTypeOS2SubscriptXOffset")]
+    pub open_type_os2_subscript_x_offset: Option<i32>,
+    #[serde(rename = "openTypeOS2SubscriptYOffset")]
+    pub open_type_os2_subscript_y_offset: Option<i32>,
+    #[serde(rename = "openTypeOS2SuperscriptXSize")]
+    pub open_type_os2_superscript_x_size: Option<i32>,
+    #[serde(rename = "openTypeOS2SuperscriptYSize")]
+    pub open_type_os2_superscript_y_size: Option<i32>,
+    #[serde(rename = "openTypeOS2SuperscriptXOffset")]
+    pub open_type_os2_superscript_x_offset: Option<i32>,
+    #[serde(rename = "openTypeOS2SuperscriptYOffset")]
+    pub open_type_os2_superscript_y_offset: Option<i32>,
+
+    #[serde(rename = "openTypeOS2StrikeoutSize")]
+    pub open_type_os2_strikeout_size: Option<i32>,
+    #[serde(rename = "openTypeOS2StrikeoutPosition")]
+    pub open_type_os2_strikeout_position: Option<i32>,
+
+    // OpenType vhea Table Fields
     pub open_type_vhea_vert_typo_ascender: Option<i32>,
     pub open_type_vhea_vert_typo_descender: Option<i32>,
     pub open_type_vhea_vert_typo_line_gap: Option<i32>,
-    pub postscript_blue_fuzz: Option<f64>,
-    pub postscript_blue_scale: Option<f64>,
-    pub postscript_blue_shift: Option<f64>,
-    pub postscript_blue_values: Option<Vec<f64>>,
-    pub postscript_default_character: Option<String>,
-    pub postscript_default_width_x: Option<f64>,
-    pub postscript_family_blues: Option<Vec<f64>>,
-    pub postscript_family_other_blues: Option<Vec<f64>>,
+    pub open_type_vhea_caret_slope_rise: Option<i32>,
+    pub open_type_vhea_caret_slope_run: Option<i32>,
+    pub open_type_vhea_caret_offset: Option<i32>,
+
+    // PostScript Specific Data
     pub postscript_font_name: Option<String>,
-    pub postscript_force_bold: Option<bool>,
     pub postscript_full_name: Option<String>,
-    pub postscript_is_fixed_pitch: Option<bool>,
-    pub postscript_nominal_width_x: Option<f64>,
-    pub postscript_other_blues: Option<Vec<f64>>,
     pub postscript_slant_angle: Option<f64>,
-    pub postscript_stem_snap_h: Option<Vec<f64>>, // TODO: validate. (i32|f64)?
-    pub postscript_stem_snap_v: Option<Vec<f64>>, // TODO: validate. (i32|f64)?
-    pub postscript_underline_position: Option<f64>,
-    pub postscript_underline_thickness: Option<f64>,
     #[serde(rename = "postscriptUniqueID")]
     pub postscript_unique_id: Option<i32>,
+    pub postscript_underline_thickness: Option<f64>,
+    pub postscript_underline_position: Option<f64>,
+    pub postscript_is_fixed_pitch: Option<bool>,
+    pub postscript_blue_values: Option<Vec<f64>>, // TODO: validate 0..=14 entries
+    pub postscript_other_blues: Option<Vec<f64>>, // TODO: validate 0..=10 entries
+    pub postscript_family_blues: Option<Vec<f64>>, // TODO: validate 0..=14 entries
+    pub postscript_family_other_blues: Option<Vec<f64>>, // TODO: validate 0..=10 entries
+    pub postscript_stem_snap_h: Option<Vec<f64>>, // TODO: validate 0..=12 entries
+    pub postscript_stem_snap_v: Option<Vec<f64>>, // TODO: validate 0..=12 entries
+    pub postscript_blue_fuzz: Option<f64>,
+    pub postscript_blue_shift: Option<f64>,
+    pub postscript_blue_scale: Option<f64>,
+    pub postscript_force_bold: Option<bool>,
+    pub postscript_default_width_x: Option<f64>,
+    pub postscript_nominal_width_x: Option<f64>,
     pub postscript_weight_name: Option<String>,
+    pub postscript_default_character: Option<String>,
     pub postscript_windows_character_set: Option<PostscriptWindowsCharacterSet>,
-    pub style_map_family_name: Option<String>,
-    pub style_map_style_name: Option<StyleMapStyle>,
-    pub style_name: Option<String>,
-    pub trademark: Option<String>,
-    pub units_per_em: Option<f64>,
-    pub version_major: Option<u32>,
-    pub version_minor: Option<u32>,
-    pub woff_major_version: Option<i32>,
-    pub woff_metadata_copyright: Option<WoffMetadataCopyright>,
-    pub woff_metadata_credits: Option<WoffMetadataCredits>,
-    pub woff_metadata_description: Option<WoffMetadataDescription>,
-    pub woff_metadata_extensions: Option<Vec<WoffMetadataExtensionRecord>>, // TODO: validate must have 1+ items
-    pub woff_metadata_license: Option<WoffMetadataLicense>,
-    pub woff_metadata_licensee: Option<WoffMetadataLicensee>,
-    pub woff_metadata_trademark: Option<WoffMetadataTrademark>,
+
+    // Macintosh FOND Resource Data
+    #[serde(rename = "macintoshFONDFamilyID")]
+    pub macintosh_fond_family_id: Option<i32>,
+    #[serde(rename = "macintoshFONDName")]
+    pub macintosh_fond_name: Option<String>,
+
+    // WOFF Data
+    pub woff_major_version: Option<u32>,
+    pub woff_minor_version: Option<u32>,
     #[serde(rename = "woffMetadataUniqueID")]
     pub woff_metadata_unique_id: Option<WoffMetadataUniqueID>,
     pub woff_metadata_vendor: Option<WoffMetadataVendor>,
-    pub woff_minor_version: Option<i32>,
-    pub x_height: Option<f64>,
-    pub year: Option<u32>,
+    pub woff_metadata_credits: Option<WoffMetadataCredits>,
+    pub woff_metadata_description: Option<WoffMetadataDescription>,
+    pub woff_metadata_license: Option<WoffMetadataLicense>,
+    pub woff_metadata_copyright: Option<WoffMetadataCopyright>,
+    pub woff_metadata_trademark: Option<WoffMetadataTrademark>,
+    pub woff_metadata_licensee: Option<WoffMetadataLicensee>,
+    pub woff_metadata_extensions: Option<Vec<WoffMetadataExtensionRecord>>, // TODO: validate must have 1+ items
 }
 
 // TODO: validate!
@@ -183,10 +215,50 @@ pub struct NameRecord {
     string: String,
 }
 
-#[derive(Debug, Clone, Default, Serialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
+#[repr(u8)]
+pub enum OS2WidthClass {
+    UltraCondensed = 1,
+    ExtraCondensed = 2,
+    Condensed = 3,
+    SemiCondensed = 4,
+    Normal = 5,
+    SemiExpanded = 6,
+    Expanded = 7,
+    ExtraExpanded = 8,
+    UltraExpanded = 9,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct OS2FamilyClass {
     class_id: u8,
     subclass_id: u8,
+}
+
+impl OS2FamilyClass {
+    fn is_valid(&self) -> bool {
+        if (0..=14).contains(&self.class_id) && (0..=15).contains(&self.subclass_id) {
+            true
+        } else {
+            false
+        }
+    }
+}
+
+impl Serialize for OS2FamilyClass {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if !self.is_valid() {
+            return Err(serde::ser::Error::custom("openTypeOS2FamilyClass class ID must be in the range 0-14, subclass ID must be in the range 0-15."));
+        }
+
+        let mut seq = serializer.serialize_seq(Some(2))?;
+        seq.serialize_element(&self.class_id)?;
+        seq.serialize_element(&self.subclass_id)?;
+        seq.end()
+    }
 }
 
 struct OS2FamilyClassVisitor;
@@ -211,7 +283,12 @@ impl<'de> Visitor<'de> for OS2FamilyClassVisitor {
             ));
         }
 
-        Ok(OS2FamilyClass { class_id, subclass_id })
+        let family_class = OS2FamilyClass { class_id, subclass_id };
+        if !family_class.is_valid() {
+            return Err(serde::de::Error::custom("openTypeOS2FamilyClass class ID must be in the range 0-14, subclass ID must be in the range 0-15."));
+        }
+
+        Ok(family_class)
     }
 }
 
@@ -504,6 +581,7 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_test::{assert_tokens, Token};
 
     #[test]
     fn fontinfo() {
@@ -578,6 +656,15 @@ mod tests {
                 dir: Some(WoffAttributeDirection::RightToLeft),
                 class: Some("c".to_string()),
             })
+        );
+    }
+
+    #[test]
+    fn test_serde_os2_family_class() {
+        let c1 = OS2FamilyClass { class_id: 14, subclass_id: 15 };
+        assert_tokens(
+            &c1,
+            &[Token::Seq { len: Some(2) }, Token::U8(14), Token::U8(15), Token::SeqEnd],
         );
     }
 }
