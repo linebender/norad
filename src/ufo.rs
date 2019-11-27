@@ -20,7 +20,6 @@ static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
 
 /// A Unified Font Object.
-#[derive(Default)]
 pub struct Ufo {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
@@ -221,6 +220,24 @@ impl Ufo {
     /// Returns the total number of glyphs.
     pub fn glyph_count(&self) -> usize {
         self.glyph_names.len()
+    }
+}
+
+impl Default for Ufo {
+    fn default() -> Self {
+        let mut layer = Layer::default();
+        let notdef = Glyph::new_named(".notdef");
+        layer.set_glyph("_notdef.glif", notdef);
+        Ufo {
+            meta: MetaInfo::default(),
+            font_info: None,
+            layers: vec![LayerInfo {
+                name: DEFAULT_LAYER_NAME.into(),
+                path: DEFAULT_GLYPHS_DIRNAME.into(),
+                layer,
+            }],
+            glyph_names: Default::default(),
+        }
     }
 }
 
