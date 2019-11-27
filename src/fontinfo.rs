@@ -5,6 +5,16 @@ use std::fmt;
 
 use crate::shared_types::Guideline;
 
+// The specification is vague about data type limits, usually implicitly meaning
+// Python types. Since Python is dynamic, the spec does not nail down the exact type
+// in several locations and we have to assume the biggest type that can hold it.
+type Integer = i32;
+type NonNegativeInteger = u32;
+type IntegerOrFloat = f64;
+type Float = f64;
+type NonNegativeIntegerOrFloat = f64; // Must be validated to be non-negative.
+type Bitlist = Vec<u8>;
+
 /// The contents of the [`fontinfo.plist`][] file. This structure is hard-wired to the
 /// available attributes in UFO version 3.
 ///
@@ -18,21 +28,21 @@ pub struct FontInfo {
     pub style_name: Option<String>,
     pub style_map_family_name: Option<String>,
     pub style_map_style_name: Option<StyleMapStyle>,
-    pub version_major: Option<i32>,
-    pub version_minor: Option<u32>,
-    pub year: Option<i32>,
+    pub version_major: Option<Integer>,
+    pub version_minor: Option<NonNegativeInteger>,
+    pub year: Option<Integer>,
 
     // Generic Legal Information
     pub copyright: Option<String>,
     pub trademark: Option<String>,
 
     // Generic Dimension Information
-    pub units_per_em: Option<f64>, // TODO: validate non-negative???
-    pub descender: Option<f64>,
-    pub x_height: Option<f64>,
-    pub cap_height: Option<f64>,
-    pub ascender: Option<f64>,
-    pub italic_angle: Option<f64>,
+    pub units_per_em: Option<NonNegativeIntegerOrFloat>, // TODO: validate non-negative
+    pub descender: Option<IntegerOrFloat>,
+    pub x_height: Option<IntegerOrFloat>,
+    pub cap_height: Option<IntegerOrFloat>,
+    pub ascender: Option<IntegerOrFloat>,
+    pub italic_angle: Option<IntegerOrFloat>,
 
     // Guidelines
     pub guidelines: Option<Vec<Guideline>>,
@@ -46,16 +56,16 @@ pub struct FontInfo {
     // OpenType head Table Fields
     pub open_type_head_created: Option<String>, // TODO: Validate string format
     #[serde(rename = "openTypeHeadLowestRecPPEM")]
-    pub open_type_head_lowest_rec_ppem: Option<u32>,
-    pub open_type_head_flags: Option<Vec<u8>>,
+    pub open_type_head_lowest_rec_ppem: Option<NonNegativeInteger>,
+    pub open_type_head_flags: Option<Bitlist>,
 
     // OpenType hhea Table Fields
-    pub open_type_hhea_ascender: Option<i32>,
-    pub open_type_hhea_descender: Option<i32>,
-    pub open_type_hhea_line_gap: Option<i32>,
-    pub open_type_hhea_caret_slope_rise: Option<i32>,
-    pub open_type_hhea_caret_slope_run: Option<i32>,
-    pub open_type_hhea_caret_offset: Option<i32>,
+    pub open_type_hhea_ascender: Option<Integer>,
+    pub open_type_hhea_descender: Option<Integer>,
+    pub open_type_hhea_line_gap: Option<Integer>,
+    pub open_type_hhea_caret_slope_rise: Option<Integer>,
+    pub open_type_hhea_caret_slope_run: Option<Integer>,
+    pub open_type_hhea_caret_offset: Option<Integer>,
 
     // OpenType Name Table Fields
     pub open_type_name_designer: Option<String>,
@@ -82,12 +92,12 @@ pub struct FontInfo {
     pub open_type_name_records: Option<Vec<NameRecord>>,
 
     // OpenType OS/2 Table Fields
-    #[serde(rename = "openTypeOS2WeightClass")]
-    pub open_type_os2_weight_class: Option<u32>,
     #[serde(rename = "openTypeOS2WidthClass")]
     pub open_type_os2_width_class: Option<OS2WidthClass>,
+    #[serde(rename = "openTypeOS2WeightClass")]
+    pub open_type_os2_weight_class: Option<NonNegativeInteger>, // Spec says Integer?!
     #[serde(rename = "openTypeOS2Selection")]
-    pub open_type_os2_selection: Option<Vec<u8>>, // TODO: validate !contain 0,5,6
+    pub open_type_os2_selection: Option<Bitlist>, // TODO: validate !contain 0,5,6
     #[serde(rename = "openTypeOS2VendorID")]
     pub open_type_os2_vendor_id: Option<String>,
     #[serde(rename = "openTypeOS2Panose")]
@@ -96,88 +106,88 @@ pub struct FontInfo {
     pub open_type_os2_family_class: Option<OS2FamilyClass>,
 
     #[serde(rename = "openTypeOS2UnicodeRanges")]
-    pub open_type_os2_unicode_ranges: Option<Vec<u8>>,
+    pub open_type_os2_unicode_ranges: Option<Bitlist>,
     #[serde(rename = "openTypeOS2CodePageRanges")]
-    pub open_type_os2_code_page_ranges: Option<Vec<u8>>,
+    pub open_type_os2_code_page_ranges: Option<Bitlist>,
 
     #[serde(rename = "openTypeOS2TypoAscender")]
-    pub open_type_os2_typo_ascender: Option<i32>,
+    pub open_type_os2_typo_ascender: Option<Integer>,
     #[serde(rename = "openTypeOS2TypoDescender")]
-    pub open_type_os2_typo_descender: Option<i32>,
+    pub open_type_os2_typo_descender: Option<Integer>,
     #[serde(rename = "openTypeOS2TypoLineGap")]
-    pub open_type_os2_typo_line_gap: Option<i32>,
+    pub open_type_os2_typo_line_gap: Option<Integer>,
     #[serde(rename = "openTypeOS2WinAscent")]
-    pub open_type_os2_win_ascent: Option<u32>,
+    pub open_type_os2_win_ascent: Option<NonNegativeInteger>,
     #[serde(rename = "openTypeOS2WinDescent")]
-    pub open_type_os2_win_descent: Option<u32>,
+    pub open_type_os2_win_descent: Option<NonNegativeInteger>,
 
     #[serde(rename = "openTypeOS2Type")]
-    pub open_type_os2_type: Option<Vec<u8>>,
+    pub open_type_os2_type: Option<Bitlist>,
 
     #[serde(rename = "openTypeOS2SubscriptXSize")]
-    pub open_type_os2_subscript_x_size: Option<i32>,
+    pub open_type_os2_subscript_x_size: Option<Integer>,
     #[serde(rename = "openTypeOS2SubscriptYSize")]
-    pub open_type_os2_subscript_y_size: Option<i32>,
+    pub open_type_os2_subscript_y_size: Option<Integer>,
     #[serde(rename = "openTypeOS2SubscriptXOffset")]
-    pub open_type_os2_subscript_x_offset: Option<i32>,
+    pub open_type_os2_subscript_x_offset: Option<Integer>,
     #[serde(rename = "openTypeOS2SubscriptYOffset")]
-    pub open_type_os2_subscript_y_offset: Option<i32>,
+    pub open_type_os2_subscript_y_offset: Option<Integer>,
     #[serde(rename = "openTypeOS2SuperscriptXSize")]
-    pub open_type_os2_superscript_x_size: Option<i32>,
+    pub open_type_os2_superscript_x_size: Option<Integer>,
     #[serde(rename = "openTypeOS2SuperscriptYSize")]
-    pub open_type_os2_superscript_y_size: Option<i32>,
+    pub open_type_os2_superscript_y_size: Option<Integer>,
     #[serde(rename = "openTypeOS2SuperscriptXOffset")]
-    pub open_type_os2_superscript_x_offset: Option<i32>,
+    pub open_type_os2_superscript_x_offset: Option<Integer>,
     #[serde(rename = "openTypeOS2SuperscriptYOffset")]
-    pub open_type_os2_superscript_y_offset: Option<i32>,
+    pub open_type_os2_superscript_y_offset: Option<Integer>,
 
     #[serde(rename = "openTypeOS2StrikeoutSize")]
-    pub open_type_os2_strikeout_size: Option<i32>,
+    pub open_type_os2_strikeout_size: Option<Integer>,
     #[serde(rename = "openTypeOS2StrikeoutPosition")]
-    pub open_type_os2_strikeout_position: Option<i32>,
+    pub open_type_os2_strikeout_position: Option<Integer>,
 
     // OpenType vhea Table Fields
-    pub open_type_vhea_vert_typo_ascender: Option<i32>,
-    pub open_type_vhea_vert_typo_descender: Option<i32>,
-    pub open_type_vhea_vert_typo_line_gap: Option<i32>,
-    pub open_type_vhea_caret_slope_rise: Option<i32>,
-    pub open_type_vhea_caret_slope_run: Option<i32>,
-    pub open_type_vhea_caret_offset: Option<i32>,
+    pub open_type_vhea_vert_typo_ascender: Option<Integer>,
+    pub open_type_vhea_vert_typo_descender: Option<Integer>,
+    pub open_type_vhea_vert_typo_line_gap: Option<Integer>,
+    pub open_type_vhea_caret_slope_rise: Option<Integer>,
+    pub open_type_vhea_caret_slope_run: Option<Integer>,
+    pub open_type_vhea_caret_offset: Option<Integer>,
 
     // PostScript Specific Data
     pub postscript_font_name: Option<String>,
     pub postscript_full_name: Option<String>,
-    pub postscript_slant_angle: Option<f64>,
+    pub postscript_slant_angle: Option<IntegerOrFloat>,
     #[serde(rename = "postscriptUniqueID")]
-    pub postscript_unique_id: Option<i32>,
-    pub postscript_underline_thickness: Option<f64>,
-    pub postscript_underline_position: Option<f64>,
+    pub postscript_unique_id: Option<Integer>,
+    pub postscript_underline_thickness: Option<IntegerOrFloat>,
+    pub postscript_underline_position: Option<IntegerOrFloat>,
     pub postscript_is_fixed_pitch: Option<bool>,
-    pub postscript_blue_values: Option<Vec<f64>>, // TODO: validate 0..=14 entries
-    pub postscript_other_blues: Option<Vec<f64>>, // TODO: validate 0..=10 entries
-    pub postscript_family_blues: Option<Vec<f64>>, // TODO: validate 0..=14 entries
-    pub postscript_family_other_blues: Option<Vec<f64>>, // TODO: validate 0..=10 entries
-    pub postscript_stem_snap_h: Option<Vec<f64>>, // TODO: validate 0..=12 entries
-    pub postscript_stem_snap_v: Option<Vec<f64>>, // TODO: validate 0..=12 entries
-    pub postscript_blue_fuzz: Option<f64>,
-    pub postscript_blue_shift: Option<f64>,
-    pub postscript_blue_scale: Option<f64>,
+    pub postscript_blue_values: Option<Vec<IntegerOrFloat>>, // TODO: validate 0..=14 entries
+    pub postscript_other_blues: Option<Vec<IntegerOrFloat>>, // TODO: validate 0..=10 entries
+    pub postscript_family_blues: Option<Vec<IntegerOrFloat>>, // TODO: validate 0..=14 entries
+    pub postscript_family_other_blues: Option<Vec<IntegerOrFloat>>, // TODO: validate 0..=10 entries
+    pub postscript_stem_snap_h: Option<Vec<IntegerOrFloat>>, // TODO: validate 0..=12 entries
+    pub postscript_stem_snap_v: Option<Vec<IntegerOrFloat>>, // TODO: validate 0..=12 entries
+    pub postscript_blue_fuzz: Option<IntegerOrFloat>,
+    pub postscript_blue_shift: Option<IntegerOrFloat>,
+    pub postscript_blue_scale: Option<Float>,
     pub postscript_force_bold: Option<bool>,
-    pub postscript_default_width_x: Option<f64>,
-    pub postscript_nominal_width_x: Option<f64>,
+    pub postscript_default_width_x: Option<IntegerOrFloat>,
+    pub postscript_nominal_width_x: Option<IntegerOrFloat>,
     pub postscript_weight_name: Option<String>,
     pub postscript_default_character: Option<String>,
     pub postscript_windows_character_set: Option<PostscriptWindowsCharacterSet>,
 
     // Macintosh FOND Resource Data
     #[serde(rename = "macintoshFONDFamilyID")]
-    pub macintosh_fond_family_id: Option<i32>,
+    pub macintosh_fond_family_id: Option<Integer>,
     #[serde(rename = "macintoshFONDName")]
     pub macintosh_fond_name: Option<String>,
 
     // WOFF Data
-    pub woff_major_version: Option<u32>,
-    pub woff_minor_version: Option<u32>,
+    pub woff_major_version: Option<NonNegativeInteger>,
+    pub woff_minor_version: Option<NonNegativeInteger>,
     #[serde(rename = "woffMetadataUniqueID")]
     pub woff_metadata_unique_id: Option<WoffMetadataUniqueID>,
     pub woff_metadata_vendor: Option<WoffMetadataVendor>,
@@ -197,21 +207,21 @@ pub struct FontInfo {
 #[serde(rename_all = "camelCase")]
 pub struct GaspRangeRecord {
     #[serde(rename = "rangeMaxPPEM")]
-    range_max_ppem: u16,
-    range_gasp_behavior: Vec<u8>,
+    range_max_ppem: NonNegativeInteger,
+    range_gasp_behavior: Bitlist,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NameRecord {
     #[serde(rename = "nameID")]
-    name_id: u16,
+    name_id: NonNegativeInteger,
     #[serde(rename = "platformID")]
-    platform_id: u16,
+    platform_id: NonNegativeInteger,
     #[serde(rename = "encodingID")]
-    encoding_id: u16,
+    encoding_id: NonNegativeInteger,
     #[serde(rename = "languageID")]
-    language_id: u16,
+    language_id: NonNegativeInteger,
     string: String,
 }
 
@@ -302,18 +312,38 @@ impl<'de> Deserialize<'de> for OS2FamilyClass {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct OS2Panose {
-    family_type: u8,
-    serif_style: u8,
-    weight: u8,
-    proportion: u8,
-    contrast: u8,
-    stroke_variation: u8,
-    arm_style: u8,
-    letterform: u8,
-    midline: u8,
-    x_height: u8,
+    family_type: NonNegativeInteger,
+    serif_style: NonNegativeInteger,
+    weight: NonNegativeInteger,
+    proportion: NonNegativeInteger,
+    contrast: NonNegativeInteger,
+    stroke_variation: NonNegativeInteger,
+    arm_style: NonNegativeInteger,
+    letterform: NonNegativeInteger,
+    midline: NonNegativeInteger,
+    x_height: NonNegativeInteger,
+}
+
+impl Serialize for OS2Panose {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(10))?;
+        seq.serialize_element(&self.family_type)?;
+        seq.serialize_element(&self.serif_style)?;
+        seq.serialize_element(&self.weight)?;
+        seq.serialize_element(&self.proportion)?;
+        seq.serialize_element(&self.contrast)?;
+        seq.serialize_element(&self.stroke_variation)?;
+        seq.serialize_element(&self.arm_style)?;
+        seq.serialize_element(&self.letterform)?;
+        seq.serialize_element(&self.midline)?;
+        seq.serialize_element(&self.x_height)?;
+        seq.end()
+    }
 }
 
 struct OS2PanoseVisitor;
@@ -322,25 +352,25 @@ impl<'de> Visitor<'de> for OS2PanoseVisitor {
     type Value = OS2Panose;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a list of ten u8s.")
+        formatter.write_str("a list of ten non-negative integers.")
     }
 
     fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: SeqAccess<'de>,
     {
-        let family_type: u8 = seq.next_element().unwrap().unwrap();
-        let serif_style: u8 = seq.next_element().unwrap().unwrap();
-        let weight: u8 = seq.next_element().unwrap().unwrap();
-        let proportion: u8 = seq.next_element().unwrap().unwrap();
-        let contrast: u8 = seq.next_element().unwrap().unwrap();
-        let stroke_variation: u8 = seq.next_element().unwrap().unwrap();
-        let arm_style: u8 = seq.next_element().unwrap().unwrap();
-        let letterform: u8 = seq.next_element().unwrap().unwrap();
-        let midline: u8 = seq.next_element().unwrap().unwrap();
-        let x_height: u8 = seq.next_element().unwrap().unwrap();
+        let family_type: NonNegativeInteger = seq.next_element().unwrap().unwrap();
+        let serif_style: NonNegativeInteger = seq.next_element().unwrap().unwrap();
+        let weight: NonNegativeInteger = seq.next_element().unwrap().unwrap();
+        let proportion: NonNegativeInteger = seq.next_element().unwrap().unwrap();
+        let contrast: NonNegativeInteger = seq.next_element().unwrap().unwrap();
+        let stroke_variation: NonNegativeInteger = seq.next_element().unwrap().unwrap();
+        let arm_style: NonNegativeInteger = seq.next_element().unwrap().unwrap();
+        let letterform: NonNegativeInteger = seq.next_element().unwrap().unwrap();
+        let midline: NonNegativeInteger = seq.next_element().unwrap().unwrap();
+        let x_height: NonNegativeInteger = seq.next_element().unwrap().unwrap();
 
-        if let Ok(Some(_)) = seq.next_element::<u8>() {
+        if let Ok(Some(_)) = seq.next_element::<NonNegativeInteger>() {
             return Err(serde::de::Error::custom(
                 "openTypeOS2Panose must have exactly ten elements but has more.",
             ));
@@ -538,12 +568,26 @@ impl<'de> Deserialize<'de> for WoffAttributeDirection {
     }
 }
 
-#[derive(Debug, Serialize, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum StyleMapStyle {
     Regular,
     Italic,
     Bold,
     BoldItalic,
+}
+
+impl Serialize for StyleMapStyle {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            StyleMapStyle::Regular => serializer.serialize_str(&"regular"),
+            StyleMapStyle::Italic => serializer.serialize_str(&"italic"),
+            StyleMapStyle::Bold => serializer.serialize_str(&"bold"),
+            StyleMapStyle::BoldItalic => serializer.serialize_str(&"bold italic"),
+        }
+    }
 }
 
 struct StyleMapStyleVisitor;
@@ -666,5 +710,50 @@ mod tests {
             &c1,
             &[Token::Seq { len: Some(2) }, Token::U8(14), Token::U8(15), Token::SeqEnd],
         );
+    }
+
+    #[test]
+    fn test_serde_os2_panose() {
+        let p1 = OS2Panose {
+            family_type: 1,
+            serif_style: 2,
+            weight: 3,
+            proportion: 4,
+            contrast: 5,
+            stroke_variation: 6,
+            arm_style: 7,
+            letterform: 8,
+            midline: 9,
+            x_height: 10,
+        };
+        assert_tokens(
+            &p1,
+            &[
+                Token::Seq { len: Some(10) },
+                Token::U32(1),
+                Token::U32(2),
+                Token::U32(3),
+                Token::U32(4),
+                Token::U32(5),
+                Token::U32(6),
+                Token::U32(7),
+                Token::U32(8),
+                Token::U32(9),
+                Token::U32(10),
+                Token::SeqEnd,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_serde_style_map_style() {
+        let s1 = StyleMapStyle::Regular;
+        assert_tokens(&s1, &[Token::Str("regular")]);
+        let s2 = StyleMapStyle::Italic;
+        assert_tokens(&s2, &[Token::Str("italic")]);
+        let s3 = StyleMapStyle::Bold;
+        assert_tokens(&s3, &[Token::Str("bold")]);
+        let s4 = StyleMapStyle::BoldItalic;
+        assert_tokens(&s4, &[Token::Str("bold italic")]);
     }
 }
