@@ -96,7 +96,8 @@ impl Ufo {
             let meta: MetaInfo = plist::from_file(meta_path)?;
             let font_path = path.join(FONTINFO_FILE);
             let font_info = if font_path.exists() {
-                let font_info = plist::from_file(font_path)?;
+                let font_info: FontInfo = plist::from_file(font_path)?;
+                font_info.validate()?;
                 Some(font_info)
             } else {
                 None

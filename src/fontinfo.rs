@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::shared_types::Guideline;
+use crate::Error;
 
 // The specification is vague about data type limits, usually implicitly meaning
 // Python types. Since Python is dynamic, the spec does not nail down the exact type
@@ -37,7 +38,7 @@ pub struct FontInfo {
     pub trademark: Option<String>,
 
     // Generic Dimension Information
-    pub units_per_em: Option<NonNegativeIntegerOrFloat>, // TODO: validate non-negative
+    pub units_per_em: Option<NonNegativeIntegerOrFloat>,
     pub descender: Option<IntegerOrFloat>,
     pub x_height: Option<IntegerOrFloat>,
     pub cap_height: Option<IntegerOrFloat>,
@@ -54,7 +55,7 @@ pub struct FontInfo {
     pub open_type_gasp_range_records: Option<Vec<GaspRangeRecord>>,
 
     // OpenType head Table Fields
-    pub open_type_head_created: Option<String>, // TODO: Validate string format
+    pub open_type_head_created: Option<String>,
     #[serde(rename = "openTypeHeadLowestRecPPEM")]
     pub open_type_head_lowest_rec_ppem: Option<NonNegativeInteger>,
     pub open_type_head_flags: Option<Bitlist>,
@@ -97,7 +98,7 @@ pub struct FontInfo {
     #[serde(rename = "openTypeOS2WeightClass")]
     pub open_type_os2_weight_class: Option<NonNegativeInteger>, // Spec says Integer?!
     #[serde(rename = "openTypeOS2Selection")]
-    pub open_type_os2_selection: Option<Bitlist>, // TODO: validate !contain 0,5,6
+    pub open_type_os2_selection: Option<Bitlist>,
     #[serde(rename = "openTypeOS2VendorID")]
     pub open_type_os2_vendor_id: Option<String>,
     #[serde(rename = "openTypeOS2Panose")]
@@ -163,12 +164,12 @@ pub struct FontInfo {
     pub postscript_underline_thickness: Option<IntegerOrFloat>,
     pub postscript_underline_position: Option<IntegerOrFloat>,
     pub postscript_is_fixed_pitch: Option<bool>,
-    pub postscript_blue_values: Option<Vec<IntegerOrFloat>>, // TODO: validate 0..=14 entries
-    pub postscript_other_blues: Option<Vec<IntegerOrFloat>>, // TODO: validate 0..=10 entries
-    pub postscript_family_blues: Option<Vec<IntegerOrFloat>>, // TODO: validate 0..=14 entries
-    pub postscript_family_other_blues: Option<Vec<IntegerOrFloat>>, // TODO: validate 0..=10 entries
-    pub postscript_stem_snap_h: Option<Vec<IntegerOrFloat>>, // TODO: validate 0..=12 entries
-    pub postscript_stem_snap_v: Option<Vec<IntegerOrFloat>>, // TODO: validate 0..=12 entries
+    pub postscript_blue_values: Option<Vec<IntegerOrFloat>>,
+    pub postscript_other_blues: Option<Vec<IntegerOrFloat>>,
+    pub postscript_family_blues: Option<Vec<IntegerOrFloat>>,
+    pub postscript_family_other_blues: Option<Vec<IntegerOrFloat>>,
+    pub postscript_stem_snap_h: Option<Vec<IntegerOrFloat>>,
+    pub postscript_stem_snap_v: Option<Vec<IntegerOrFloat>>,
     pub postscript_blue_fuzz: Option<IntegerOrFloat>,
     pub postscript_blue_shift: Option<IntegerOrFloat>,
     pub postscript_blue_scale: Option<Float>,
@@ -197,7 +198,102 @@ pub struct FontInfo {
     pub woff_metadata_copyright: Option<WoffMetadataCopyright>,
     pub woff_metadata_trademark: Option<WoffMetadataTrademark>,
     pub woff_metadata_licensee: Option<WoffMetadataLicensee>,
-    pub woff_metadata_extensions: Option<Vec<WoffMetadataExtensionRecord>>, // TODO: validate must have 1+ items
+    pub woff_metadata_extensions: Option<Vec<WoffMetadataExtensionRecord>>,
+}
+
+impl FontInfo {
+    pub fn validate(&self) -> Result<(), Error> {
+        if let Some(v) = self.units_per_em {
+            // unitsPerEm must be non-negative.
+            if v < 0.0 {
+                return Err(Error::FontInfoError);
+            }
+        }
+
+        // if let Some(v) = self.open_type_head_created {
+        //     let mut chars = v.chars();
+        //     if !(chars.next().unwrap().is_digit(10) && chars.next().unwrap().is_digit(10)) {
+        //         return Err(Error::FontInfoError);
+        //     }
+        // }
+
+        if let Some(v) = &self.open_type_os2_selection {
+            // openTypeOS2Selection must not contain bits 0, 5 or 6.
+            if v.contains(&0) || v.contains(&5) || v.contains(&6) {
+                return Err(Error::FontInfoError);
+            }
+        }
+
+        // The Postscript blue zone and stem widths lists have a length limitation.
+        if let Some(v) = &self.postscript_blue_values {
+            if v.len() > 14 {
+                return Err(Error::FontInfoError);
+            }
+        }
+        if let Some(v) = &self.postscript_other_blues {
+            if v.len() > 10 {
+                return Err(Error::FontInfoError);
+            }
+        }
+        if let Some(v) = &self.postscript_family_blues {
+            if v.len() > 14 {
+                return Err(Error::FontInfoError);
+            }
+        }
+        if let Some(v) = &self.postscript_family_other_blues {
+            if v.len() > 10 {
+                return Err(Error::FontInfoError);
+            }
+        }
+        if let Some(v) = &self.postscript_stem_snap_h {
+            if v.len() > 12 {
+                return Err(Error::FontInfoError);
+            }
+        }
+        if let Some(v) = &self.postscript_stem_snap_v {
+            if v.len() > 12 {
+                return Err(Error::FontInfoError);
+            }
+        }
+
+        if let Some(v) = &self.woff_metadata_extensions {
+            // There must be at least one extension record in the list.
+            if v.len() == 0 {
+                return Err(Error::FontInfoError);
+            }
+        }
+
+        // pub struct WoffMetadataCopyright {
+        //     text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
+        // }
+        
+        // pub struct WoffMetadataCredits {
+        //     credits: Vec<WoffMetadataCredit>, // TODO: validate must have 1+ items
+        // }
+        
+        // pub struct WoffMetadataDescription {
+        //     url: Option<String>,
+        //     text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
+        // }
+        
+        // pub struct WoffMetadataExtensionRecord {
+        //     id: Option<String>,
+        //     names: Vec<WoffMetadataExtensionNameRecord>,
+        //     items: Vec<WoffMetadataExtensionItemRecord>, // TODO: validate must have 1+ items
+        // }
+        
+        // pub struct WoffMetadataExtensionItemRecord {
+        //     id: Option<String>,
+        //     names: Vec<WoffMetadataExtensionNameRecord>, // TODO: validate must have 1+ items
+        //     values: Vec<WoffMetadataExtensionValueRecord>, // TODO: validate must have 1+ items
+        // }
+        
+        // pub struct WoffMetadataTrademark {
+        //     text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
+        // }
+
+        Ok(())
+    }
 }
 
 // TODO: validate!
@@ -755,5 +851,12 @@ mod tests {
         assert_tokens(&s3, &[Token::Str("bold")]);
         let s4 = StyleMapStyle::BoldItalic;
         assert_tokens(&s4, &[Token::Str("bold italic")]);
+    }
+
+    #[test]
+    fn test_validate_units_per_em() {
+        let mut fi = FontInfo::default();
+        fi.units_per_em = Some(-1.0);
+        assert!(fi.validate().is_err());
     }
 }
