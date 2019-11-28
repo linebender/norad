@@ -3,7 +3,6 @@
 #![deny(intra_doc_link_resolution_failure)]
 
 use std::borrow::Borrow;
-use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -25,7 +24,7 @@ pub struct Ufo {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
     pub layers: Vec<LayerInfo>,
-    glyph_names: BTreeSet<GlyphName>,
+    __non_exhaustive: (),
 }
 
 /// A [font layer], along with its name and path.
@@ -102,7 +101,7 @@ impl Ufo {
             layer: Layer::default(),
         };
 
-        Ufo { meta, font_info: None, layers: vec![main_layer], glyph_names: BTreeSet::new() }
+        Ufo { meta, font_info: None, layers: vec![main_layer], __non_exhaustive: () }
     }
 
     /// Attempt to load a font object from a file. `path` must point to
@@ -143,11 +142,7 @@ impl Ufo {
                 })
                 .collect();
             let layers = layers?;
-            let glyph_names = layers
-                .iter()
-                .flat_map(|info| info.layer.iter_contents().map(|g| g.name.clone()))
-                .collect();
-            Ok(Ufo { layers, meta, font_info, glyph_names })
+            Ok(Ufo { layers, meta, font_info, __non_exhaustive: () })
         }
     }
 
@@ -192,9 +187,13 @@ impl Ufo {
         self.layers.iter()
     }
 
-    /// Returns an iterator over all the glyphs contained in this object.
-    pub fn iter_names<'a>(&'a self) -> impl Iterator<Item = GlyphName> + 'a {
-        self.glyph_names.iter().cloned()
+    /// Returns an iterator over all the glyphs in the default layer.
+    pub fn iter_names(&self) -> impl Iterator<Item = GlyphName> + '_ {
+        // this is overly complicated for opaque lifetime reasons, aka 'trust me'
+        self.layers
+            .iter()
+            .filter(|l| l.path.file_name() == Some(OsStr::new(DEFAULT_GLYPHS_DIRNAME)))
+            .flat_map(|l| l.layer.glyphs.keys().cloned())
     }
 
     //FIXME: support for multiple layers.
@@ -218,9 +217,9 @@ impl Ufo {
         self.get_default_layer_mut().and_then(|l| l.get_glyph_mut(key))
     }
 
-    /// Returns the total number of glyphs.
+    /// Returns the total number of glyphs in the default layer.
     pub fn glyph_count(&self) -> usize {
-        self.glyph_names.len()
+        self.get_default_layer().map(|l| l.glyphs.len()).unwrap_or(0)
     }
 }
 
