@@ -203,7 +203,7 @@ pub struct FontInfo {
 
 impl FontInfo {
     /// Validates various fields according to the [specification][].
-    /// 
+    ///
     /// [specification]: http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
     pub fn validate(&self) -> Result<(), Error> {
         // unitsPerEm must be non-negative.
@@ -347,6 +347,7 @@ impl FontInfo {
     }
 }
 
+/// Corresponds to [gasp Range Record Format](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#gasp-range-record-format).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
@@ -356,6 +357,7 @@ pub struct GaspRangeRecord {
     range_gasp_behavior: Vec<GaspBehavior>,
 }
 
+/// Corresponds to [rangeGaspBehavior Bits](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#rangegaspbehavior-bits).
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum GaspBehavior {
@@ -365,6 +367,7 @@ pub enum GaspBehavior {
     SymmetricSmoothing = 3,
 }
 
+/// Corresponds to [Name Record Format](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#name-record-format).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NameRecord {
@@ -379,6 +382,7 @@ pub struct NameRecord {
     string: String,
 }
 
+/// Corresponds to the allowed values for [openTypeOS2WidthClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum OS2WidthClass {
@@ -393,6 +397,7 @@ pub enum OS2WidthClass {
     UltraExpanded = 9,
 }
 
+/// Corresponds to [openTypeOS2FamilyClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct OS2FamilyClass {
     class_id: u8,
@@ -400,6 +405,8 @@ pub struct OS2FamilyClass {
 }
 
 impl OS2FamilyClass {
+    /// The first number, representing the class ID, must be in the range 0-14.
+    /// The second number, representing the subclass, must be in the range 0-15.
     fn is_valid(&self) -> bool {
         if (0..=14).contains(&self.class_id) && (0..=15).contains(&self.subclass_id) {
             true
@@ -466,6 +473,7 @@ impl<'de> Deserialize<'de> for OS2FamilyClass {
     }
 }
 
+/// Corresponds to [openTypeOS2Panose](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct OS2Panose {
     family_type: NonNegativeInteger,
@@ -554,6 +562,7 @@ impl<'de> Deserialize<'de> for OS2Panose {
     }
 }
 
+/// Corresponds to postscriptWindowsCharacterSet in [PostScript Specific Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#postscript-specific-data).
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum PostscriptWindowsCharacterSet {
@@ -579,11 +588,13 @@ pub enum PostscriptWindowsCharacterSet {
     OEM = 20,
 }
 
+/// Corresponds to woffMetadataCopyright in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCopyright {
     text: Vec<WoffMetadataTextRecord>,
 }
 
+/// Corresponds to woffMetadataCredits in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCredits {
     credits: Vec<WoffMetadataCredit>,
@@ -598,6 +609,7 @@ pub struct WoffMetadataCredit {
     class: Option<String>,
 }
 
+/// Corresponds to woffMetadataDescription in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataDescription {
     url: Option<String>,
@@ -642,6 +654,7 @@ pub struct WoffMetadataExtensionValueRecord {
     class: Option<String>,
 }
 
+/// Corresponds to woffMetadataLicense in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataLicense {
     url: Option<String>,
@@ -649,6 +662,7 @@ pub struct WoffMetadataLicense {
     text: Vec<WoffMetadataTextRecord>,
 }
 
+/// Corresponds to woffMetadataLicensee in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataLicensee {
     name: String,
@@ -656,16 +670,19 @@ pub struct WoffMetadataLicensee {
     class: Option<String>,
 }
 
+/// Corresponds to woffMetadataTrademark in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataTrademark {
     text: Vec<WoffMetadataTextRecord>,
 }
 
+/// Corresponds to woffMetadataUniqueID in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataUniqueID {
     id: String,
 }
 
+/// Corresponds to woffMetadataVendor in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataVendor {
     name: String,
@@ -674,6 +691,8 @@ pub struct WoffMetadataVendor {
     class: Option<String>,
 }
 
+/// Corresponds to the writing direction attribute used in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
+/// If present, is either "ltr" or "rtl".
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum WoffAttributeDirection {
     LeftToRight,
@@ -722,6 +741,8 @@ impl<'de> Deserialize<'de> for WoffAttributeDirection {
     }
 }
 
+/// Corresponds to the styleMapStyleName in [Generic Identification Information](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#generic-identification-information).
+/// If present, is either "regular", "italic", "bold" or "bold italic".
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum StyleMapStyle {
     Regular,
