@@ -421,10 +421,6 @@ impl Serialize for OS2FamilyClass {
     where
         S: Serializer,
     {
-        if !self.is_valid() {
-            return Err(serde::ser::Error::custom("openTypeOS2FamilyClass class ID must be in the range 0-14, subclass ID must be in the range 0-15."));
-        }
-
         let mut seq = serializer.serialize_seq(Some(2))?;
         seq.serialize_element(&self.class_id)?;
         seq.serialize_element(&self.subclass_id)?;
@@ -454,12 +450,7 @@ impl<'de> Visitor<'de> for OS2FamilyClassVisitor {
             ));
         }
 
-        let family_class = OS2FamilyClass { class_id, subclass_id };
-        if !family_class.is_valid() {
-            return Err(serde::de::Error::custom("openTypeOS2FamilyClass class ID must be in the range 0-14, subclass ID must be in the range 0-15."));
-        }
-
-        Ok(family_class)
+        Ok(OS2FamilyClass { class_id, subclass_id })
     }
 }
 
