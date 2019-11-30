@@ -809,6 +809,18 @@ mod tests {
             })
         );
         assert_eq!(
+            font_info.open_type_gasp_range_records,
+            Some(vec![GaspRangeRecord {
+                range_max_ppem: 1,
+                range_gasp_behavior: vec![
+                    GaspBehavior::Gridfit,
+                    GaspBehavior::DoGray,
+                    GaspBehavior::SymmetricGridfit,
+                    GaspBehavior::SymmetricSmoothing
+                ]
+            }])
+        );
+        assert_eq!(
             font_info.guidelines,
             Some(vec![
                 Guideline {
