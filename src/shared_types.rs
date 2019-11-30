@@ -1,7 +1,5 @@
-use std::fmt;
-
 use serde::de;
-use serde::de::{Deserializer, Visitor};
+use serde::de::Deserializer;
 use serde::ser;
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
@@ -44,33 +42,17 @@ impl Serialize for Identifier {
     }
 }
 
-struct IdentifierVisitor;
-
-impl<'de> Visitor<'de> for IdentifierVisitor {
-    type Value = Identifier;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a string conforming to the UFO identifier definition.")
-    }
-
-    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        let identifier = Identifier(s.to_string());
-        if !identifier.is_valid() {
-            return Err(de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7F."));
-        }
-        Ok(identifier)
-    }
-}
-
 impl<'de> Deserialize<'de> for Identifier {
     fn deserialize<D>(deserializer: D) -> Result<Identifier, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_str(IdentifierVisitor)
+        let string = String::deserialize(deserializer)?;
+        let identifier = Identifier(string);
+        if !identifier.is_valid() {
+            return Err(de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7F."));
+        }
+        Ok(identifier)
     }
 }
 
@@ -144,6 +126,7 @@ impl<'de> Deserialize<'de> for Guideline {
         let angle = guideline.angle;
 
         let line = match (x, y, angle) {
+            // Valid data:
             (Some(x), None, None) => Line::Vertical(x),
             (None, Some(y), None) => Line::Horizontal(y),
             (Some(x), Some(y), Some(degrees)) => {
@@ -152,6 +135,7 @@ impl<'de> Deserialize<'de> for Guideline {
                 }
                 Line::Angle { x, y, degrees }
             }
+            // Invalid data:
             (None, None, _) => {
                 return Err(de::Error::custom("x or y must be present in a guideline."))
             }
@@ -195,20 +179,13 @@ impl Serialize for Color {
     }
 }
 
-struct ColorVisitor;
-
-impl<'de> Visitor<'de> for ColorVisitor {
-    type Value = Color;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a string conforming to the UFO color definition.")
-    }
-
-    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+impl<'de> Deserialize<'de> for Color {
+    fn deserialize<D>(deserializer: D) -> Result<Color, D::Error>
     where
-        E: serde::de::Error,
+        D: Deserializer<'de>,
     {
-        let colors: Vec<&str> = s.split(",").collect();
+        let string = String::deserialize(deserializer)?;
+        let colors: Vec<f32> = string.split(",").map(|v| v.parse().unwrap()).collect();
 
         if colors.len() != 4 {
             return Err(serde::de::Error::custom(
@@ -216,10 +193,10 @@ impl<'de> Visitor<'de> for ColorVisitor {
             ));
         }
 
-        let red: f32 = colors[0].parse().unwrap();
-        let green: f32 = colors[1].parse().unwrap();
-        let blue: f32 = colors[2].parse().unwrap();
-        let alpha: f32 = colors[3].parse().unwrap();
+        let red = colors[0];
+        let green = colors[1];
+        let blue = colors[2];
+        let alpha = colors[3];
         if (0.0..=1.0).contains(&red)
             && (0.0..=1.0).contains(&green)
             && (0.0..=1.0).contains(&blue)
@@ -229,15 +206,6 @@ impl<'de> Visitor<'de> for ColorVisitor {
         } else {
             Err(serde::de::Error::custom("Colors must be numbers between 0 and 1 inclusive."))
         }
-    }
-}
-
-impl<'de> Deserialize<'de> for Color {
-    fn deserialize<D>(deserializer: D) -> Result<Color, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(ColorVisitor)
     }
 }
 

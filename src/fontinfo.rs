@@ -1,7 +1,6 @@
-use serde::de::{Deserializer, SeqAccess, Visitor};
+use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 use crate::shared_types::Guideline;
 use crate::Error;
@@ -428,39 +427,19 @@ impl Serialize for OS2FamilyClass {
     }
 }
 
-struct OS2FamilyClassVisitor;
-
-impl<'de> Visitor<'de> for OS2FamilyClassVisitor {
-    type Value = OS2FamilyClass;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a list of two u8s.")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let class_id: u8 = seq.next_element().unwrap().unwrap();
-        let subclass_id: u8 = seq.next_element().unwrap().unwrap();
-
-        if let Ok(Some(_)) = seq.next_element::<u8>() {
-            return Err(serde::de::Error::custom(
-                "openTypeOS2FamilyClass must have exactly two elements but has more.",
-            ));
-        }
-
-        Ok(OS2FamilyClass { class_id, subclass_id })
-    }
-}
-
 impl<'de> Deserialize<'de> for OS2FamilyClass {
     fn deserialize<D>(deserializer: D) -> Result<OS2FamilyClass, D::Error>
     where
         D: Deserializer<'de>,
     {
-        // Take a plist array and turn it into a Rust struct.
-        deserializer.deserialize_seq(OS2FamilyClassVisitor)
+        let values: Vec<u8> = Deserialize::deserialize(deserializer)?;
+        if values.len() != 2 {
+            return Err(serde::de::Error::custom(
+                "openTypeOS2FamilyClass must have exactly two elements.",
+            ));
+        }
+
+        Ok(OS2FamilyClass { class_id: values[0], subclass_id: values[1] })
     }
 }
 
@@ -499,57 +478,30 @@ impl Serialize for OS2Panose {
     }
 }
 
-struct OS2PanoseVisitor;
-
-impl<'de> Visitor<'de> for OS2PanoseVisitor {
-    type Value = OS2Panose;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a list of ten non-negative integers.")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let family_type: NonNegativeInteger = seq.next_element().unwrap().unwrap();
-        let serif_style: NonNegativeInteger = seq.next_element().unwrap().unwrap();
-        let weight: NonNegativeInteger = seq.next_element().unwrap().unwrap();
-        let proportion: NonNegativeInteger = seq.next_element().unwrap().unwrap();
-        let contrast: NonNegativeInteger = seq.next_element().unwrap().unwrap();
-        let stroke_variation: NonNegativeInteger = seq.next_element().unwrap().unwrap();
-        let arm_style: NonNegativeInteger = seq.next_element().unwrap().unwrap();
-        let letterform: NonNegativeInteger = seq.next_element().unwrap().unwrap();
-        let midline: NonNegativeInteger = seq.next_element().unwrap().unwrap();
-        let x_height: NonNegativeInteger = seq.next_element().unwrap().unwrap();
-
-        if let Ok(Some(_)) = seq.next_element::<NonNegativeInteger>() {
-            return Err(serde::de::Error::custom(
-                "openTypeOS2Panose must have exactly ten elements but has more.",
-            ));
-        }
-
-        Ok(OS2Panose {
-            family_type,
-            serif_style,
-            weight,
-            proportion,
-            contrast,
-            stroke_variation,
-            arm_style,
-            letterform,
-            midline,
-            x_height,
-        })
-    }
-}
-
 impl<'de> Deserialize<'de> for OS2Panose {
     fn deserialize<D>(deserializer: D) -> Result<OS2Panose, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_seq(OS2PanoseVisitor)
+        let values: Vec<NonNegativeInteger> = Deserialize::deserialize(deserializer)?;
+        if values.len() != 10 {
+            return Err(serde::de::Error::custom(
+                "openTypeOS2Panose must have exactly ten elements.",
+            ));
+        }
+
+        Ok(OS2Panose {
+            family_type: values[0],
+            serif_style: values[1],
+            weight: values[2],
+            proportion: values[3],
+            contrast: values[4],
+            stroke_variation: values[5],
+            arm_style: values[6],
+            letterform: values[7],
+            midline: values[8],
+            x_height: values[9],
+        })
     }
 }
 
@@ -702,33 +654,17 @@ impl Serialize for WoffAttributeDirection {
     }
 }
 
-struct WoffAttributeDirectionVisitor;
-
-impl<'de> Visitor<'de> for WoffAttributeDirectionVisitor {
-    type Value = WoffAttributeDirection;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a string that is either 'ltr' or 'rtl'.")
-    }
-
-    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        match s {
-            "ltr" => Ok(WoffAttributeDirection::LeftToRight),
-            "rtl" => Ok(WoffAttributeDirection::RightToLeft),
-            _ => Err(serde::de::Error::custom("unknown value for the WOFF direction attribute.")),
-        }
-    }
-}
-
 impl<'de> Deserialize<'de> for WoffAttributeDirection {
     fn deserialize<D>(deserializer: D) -> Result<WoffAttributeDirection, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_str(WoffAttributeDirectionVisitor)
+        let string = String::deserialize(deserializer)?;
+        match string.as_ref() {
+            "ltr" => Ok(WoffAttributeDirection::LeftToRight),
+            "rtl" => Ok(WoffAttributeDirection::RightToLeft),
+            _ => Err(serde::de::Error::custom("unknown value for the WOFF direction attribute.")),
+        }
     }
 }
 
@@ -756,35 +692,19 @@ impl Serialize for StyleMapStyle {
     }
 }
 
-struct StyleMapStyleVisitor;
-
-impl<'de> Visitor<'de> for StyleMapStyleVisitor {
-    type Value = StyleMapStyle;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a string that is either 'regular', 'italic', 'bold' or 'bold italic'.")
-    }
-
-    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+impl<'de> Deserialize<'de> for StyleMapStyle {
+    fn deserialize<D>(deserializer: D) -> Result<StyleMapStyle, D::Error>
     where
-        E: serde::de::Error,
+        D: Deserializer<'de>,
     {
-        match s {
+        let string = String::deserialize(deserializer)?;
+        match string.as_ref() {
             "regular" => Ok(StyleMapStyle::Regular),
             "italic" => Ok(StyleMapStyle::Italic),
             "bold" => Ok(StyleMapStyle::Bold),
             "bold italic" => Ok(StyleMapStyle::BoldItalic),
             _ => Err(serde::de::Error::custom("unknown value for styleMapStyleName.")),
         }
-    }
-}
-
-impl<'de> Deserialize<'de> for StyleMapStyle {
-    fn deserialize<D>(deserializer: D) -> Result<StyleMapStyle, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(StyleMapStyleVisitor)
     }
 }
 
