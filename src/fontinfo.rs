@@ -205,17 +205,36 @@ impl FontInfo {
     pub fn validate(&self) -> Result<(), Error> {
         if let Some(v) = self.units_per_em {
             // unitsPerEm must be non-negative.
-            if v < 0.0 {
+            if v.is_sign_negative() {
                 return Err(Error::FontInfoError);
             }
         }
 
-        // if let Some(v) = self.open_type_head_created {
-        //     let mut chars = v.chars();
-        //     if !(chars.next().unwrap().is_digit(10) && chars.next().unwrap().is_digit(10)) {
-        //         return Err(Error::FontInfoError);
-        //     }
-        // }
+        if let Some(v) = &self.open_type_head_created {
+            const DATE_LENGTH: usize = 19;
+            if v.len() != DATE_LENGTH {
+                return Err(Error::FontInfoError);
+            }
+            if !v.chars().all(|b| b.is_ascii_digit() || b == ' ' || b == '/' || b == ':') {
+                return Err(Error::FontInfoError);
+            }
+
+            // Format is "YYYY/MM/DD HH:MM:SS".
+            if !(v[0..4].parse::<u16>().is_ok()
+                && &v[4..5] == "/"
+                && v[5..7].parse::<u8>().unwrap_or(99) <= 12
+                && &v[7..8] == "/"
+                && v[8..10].parse::<u8>().unwrap_or(99) <= 31
+                && &v[10..11] == " "
+                && v[11..13].parse::<u8>().unwrap_or(99) < 24
+                && &v[13..14] == ":"
+                && v[14..16].parse::<u8>().unwrap_or(99) < 60
+                && &v[16..17] == ":"
+                && v[17..19].parse::<u8>().unwrap_or(99) < 60)
+            {
+                return Err(Error::FontInfoError);
+            }
+        }
 
         if let Some(v) = &self.open_type_os2_selection {
             // openTypeOS2Selection must not contain bits 0, 5 or 6.
@@ -266,28 +285,23 @@ impl FontInfo {
         // pub struct WoffMetadataCopyright {
         //     text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
         // }
-        
         // pub struct WoffMetadataCredits {
         //     credits: Vec<WoffMetadataCredit>, // TODO: validate must have 1+ items
         // }
-        
         // pub struct WoffMetadataDescription {
         //     url: Option<String>,
         //     text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
         // }
-        
         // pub struct WoffMetadataExtensionRecord {
         //     id: Option<String>,
         //     names: Vec<WoffMetadataExtensionNameRecord>,
         //     items: Vec<WoffMetadataExtensionItemRecord>, // TODO: validate must have 1+ items
         // }
-        
         // pub struct WoffMetadataExtensionItemRecord {
         //     id: Option<String>,
         //     names: Vec<WoffMetadataExtensionNameRecord>, // TODO: validate must have 1+ items
         //     values: Vec<WoffMetadataExtensionValueRecord>, // TODO: validate must have 1+ items
         // }
-        
         // pub struct WoffMetadataTrademark {
         //     text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
         // }
@@ -858,5 +872,18 @@ mod tests {
         let mut fi = FontInfo::default();
         fi.units_per_em = Some(-1.0);
         assert!(fi.validate().is_err());
+    }
+
+    #[test]
+    fn test_validate_head_created() {
+        let mut fi = FontInfo::default();
+        fi.open_type_head_created = Some("YYYY/MM/DD HH:MM:SS".to_string());
+        assert!(fi.validate().is_err());
+        fi.open_type_head_created = Some("1230/03/27 99:23:10".to_string());
+        assert!(fi.validate().is_err());
+        fi.open_type_head_created = Some("1230:03/27 99:23:10".to_string());
+        assert!(fi.validate().is_err());
+        fi.open_type_head_created = Some("9999/12/31 23:59:59".to_string());
+        assert!(fi.validate().is_ok());
     }
 }
