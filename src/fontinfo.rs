@@ -202,6 +202,9 @@ pub struct FontInfo {
 }
 
 impl FontInfo {
+    /// Validates various fields according to the [specification][].
+    /// 
+    /// [specification]: http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
     pub fn validate(&self) -> Result<(), Error> {
         // unitsPerEm must be non-negative.
         if let Some(v) = self.units_per_em {
@@ -259,6 +262,12 @@ impl FontInfo {
         // openTypeOS2Selection must not contain bits 0, 5 or 6.
         if let Some(v) = &self.open_type_os2_selection {
             if v.contains(&0) || v.contains(&5) || v.contains(&6) {
+                return Err(Error::FontInfoError);
+            }
+        }
+
+        if let Some(v) = &self.open_type_os2_family_class {
+            if !v.is_valid() {
                 return Err(Error::FontInfoError);
             }
         }
