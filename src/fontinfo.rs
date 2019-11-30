@@ -96,7 +96,7 @@ pub struct FontInfo {
     #[serde(rename = "openTypeOS2WidthClass")]
     pub open_type_os2_width_class: Option<OS2WidthClass>,
     #[serde(rename = "openTypeOS2WeightClass")]
-    pub open_type_os2_weight_class: Option<NonNegativeInteger>, // Spec says Integer?!
+    pub open_type_os2_weight_class: Option<NonNegativeInteger>,
     #[serde(rename = "openTypeOS2Selection")]
     pub open_type_os2_selection: Option<Bitlist>,
     #[serde(rename = "openTypeOS2VendorID")]
@@ -203,13 +203,16 @@ pub struct FontInfo {
 
 impl FontInfo {
     pub fn validate(&self) -> Result<(), Error> {
+        // unitsPerEm must be non-negative.
         if let Some(v) = self.units_per_em {
-            // unitsPerEm must be non-negative.
             if v.is_sign_negative() {
                 return Err(Error::FontInfoError);
             }
         }
 
+        // The date format is "YYYY/MM/DD HH:MM:SS". This does not validate that the
+        // days ceiling is valid for the month, as this would probably need a specialist
+        // datetime library.
         if let Some(v) = &self.open_type_head_created {
             const DATE_LENGTH: usize = 19;
             if v.len() != DATE_LENGTH {
@@ -219,7 +222,6 @@ impl FontInfo {
                 return Err(Error::FontInfoError);
             }
 
-            // Format is "YYYY/MM/DD HH:MM:SS".
             if !(v[0..4].parse::<u16>().is_ok()
                 && &v[4..5] == "/"
                 && v[5..7].parse::<u8>().unwrap_or(99) <= 12
@@ -236,8 +238,26 @@ impl FontInfo {
             }
         }
 
+        // These must be sorted in ascending order based on the rangeMaxPPEM value of
+        // the record.
+        if let Some(v) = &self.open_type_gasp_range_records {
+            // No or one entry are always in the right order.
+            if v.len() > 1 {
+                let vs: Vec<u32> = v.iter().map(|g| g.range_max_ppem).collect();
+
+                let mut vs_iter = vs.iter();
+                let mut last = vs_iter.next().unwrap();
+                while let Some(current) = vs_iter.next() {
+                    if last > current {
+                        return Err(Error::FontInfoError);
+                    }
+                    last = current;
+                }
+            }
+        }
+
+        // openTypeOS2Selection must not contain bits 0, 5 or 6.
         if let Some(v) = &self.open_type_os2_selection {
-            // openTypeOS2Selection must not contain bits 0, 5 or 6.
             if v.contains(&0) || v.contains(&5) || v.contains(&6) {
                 return Err(Error::FontInfoError);
             }
@@ -275,50 +295,65 @@ impl FontInfo {
             }
         }
 
+        // Certain WOFF attributes must contain at least one item if they are present.
         if let Some(v) = &self.woff_metadata_extensions {
-            // There must be at least one extension record in the list.
             if v.len() == 0 {
                 return Err(Error::FontInfoError);
             }
-        }
 
-        // pub struct WoffMetadataCopyright {
-        //     text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
-        // }
-        // pub struct WoffMetadataCredits {
-        //     credits: Vec<WoffMetadataCredit>, // TODO: validate must have 1+ items
-        // }
-        // pub struct WoffMetadataDescription {
-        //     url: Option<String>,
-        //     text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
-        // }
-        // pub struct WoffMetadataExtensionRecord {
-        //     id: Option<String>,
-        //     names: Vec<WoffMetadataExtensionNameRecord>,
-        //     items: Vec<WoffMetadataExtensionItemRecord>, // TODO: validate must have 1+ items
-        // }
-        // pub struct WoffMetadataExtensionItemRecord {
-        //     id: Option<String>,
-        //     names: Vec<WoffMetadataExtensionNameRecord>, // TODO: validate must have 1+ items
-        //     values: Vec<WoffMetadataExtensionValueRecord>, // TODO: validate must have 1+ items
-        // }
-        // pub struct WoffMetadataTrademark {
-        //     text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
-        // }
+            for record in v.iter() {
+                if record.items.len() == 0 {
+                    return Err(Error::FontInfoError);
+                }
+
+                for record_item in record.items.iter() {
+                    if record_item.names.len() == 0 || record_item.values.len() == 0 {
+                        return Err(Error::FontInfoError);
+                    }
+                }
+            }
+        }
+        if let Some(v) = &self.woff_metadata_credits {
+            if v.credits.len() == 0 {
+                return Err(Error::FontInfoError);
+            }
+        }
+        if let Some(v) = &self.woff_metadata_copyright {
+            if v.text.len() == 0 {
+                return Err(Error::FontInfoError);
+            }
+        }
+        if let Some(v) = &self.woff_metadata_description {
+            if v.text.len() == 0 {
+                return Err(Error::FontInfoError);
+            }
+        }
+        if let Some(v) = &self.woff_metadata_trademark {
+            if v.text.len() == 0 {
+                return Err(Error::FontInfoError);
+            }
+        }
 
         Ok(())
     }
 }
 
-// TODO: validate!
-// http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-gasp-table-fields
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct GaspRangeRecord {
     #[serde(rename = "rangeMaxPPEM")]
     range_max_ppem: NonNegativeInteger,
-    range_gasp_behavior: Bitlist,
+    range_gasp_behavior: Vec<GaspBehavior>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
+#[repr(u8)]
+pub enum GaspBehavior {
+    Gridfit = 0,
+    DoGray = 1,
+    SymmetricGridfit = 2,
+    SymmetricSmoothing = 3,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -537,12 +572,12 @@ pub enum PostscriptWindowsCharacterSet {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCopyright {
-    text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
+    text: Vec<WoffMetadataTextRecord>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCredits {
-    credits: Vec<WoffMetadataCredit>, // TODO: validate must have 1+ items
+    credits: Vec<WoffMetadataCredit>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -557,7 +592,7 @@ pub struct WoffMetadataCredit {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataDescription {
     url: Option<String>,
-    text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
+    text: Vec<WoffMetadataTextRecord>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -572,7 +607,7 @@ pub struct WoffMetadataTextRecord {
 pub struct WoffMetadataExtensionRecord {
     id: Option<String>,
     names: Vec<WoffMetadataExtensionNameRecord>,
-    items: Vec<WoffMetadataExtensionItemRecord>, // TODO: validate must have 1+ items
+    items: Vec<WoffMetadataExtensionItemRecord>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -585,9 +620,9 @@ pub struct WoffMetadataExtensionNameRecord {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionItemRecord {
-    id: Option<String>,
-    names: Vec<WoffMetadataExtensionNameRecord>, // TODO: validate must have 1+ items
-    values: Vec<WoffMetadataExtensionValueRecord>, // TODO: validate must have 1+ items
+    id: Option<String>, // XXX: Spec does not specify if required, assume optional.
+    names: Vec<WoffMetadataExtensionNameRecord>,
+    values: Vec<WoffMetadataExtensionValueRecord>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -614,7 +649,7 @@ pub struct WoffMetadataLicensee {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataTrademark {
-    text: Vec<WoffMetadataTextRecord>, // TODO: validate must have 1+ items
+    text: Vec<WoffMetadataTextRecord>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -884,6 +919,69 @@ mod tests {
         fi.open_type_head_created = Some("1230:03/27 99:23:10".to_string());
         assert!(fi.validate().is_err());
         fi.open_type_head_created = Some("9999/12/31 23:59:59".to_string());
+        assert!(fi.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_gasp() {
+        let mut fi = FontInfo::default();
+        assert!(fi.validate().is_ok());
+
+        fi.open_type_gasp_range_records = Some(Vec::new());
+        assert!(fi.validate().is_ok());
+
+        if let Some(v) = &mut fi.open_type_gasp_range_records {
+            v.push(GaspRangeRecord { range_max_ppem: 1, range_gasp_behavior: Vec::new() });
+        }
+        assert!(fi.validate().is_ok());
+
+        if let Some(v) = &mut fi.open_type_gasp_range_records {
+            v.push(GaspRangeRecord { range_max_ppem: 2, range_gasp_behavior: Vec::new() });
+        }
+        assert!(fi.validate().is_ok());
+
+        if let Some(v) = &mut fi.open_type_gasp_range_records {
+            v.push(GaspRangeRecord { range_max_ppem: 1, range_gasp_behavior: Vec::new() });
+        }
+        assert!(fi.validate().is_err());
+    }
+
+    #[test]
+    fn test_validate_woff_extensions() {
+        let mut fi = FontInfo::default();
+        assert!(fi.validate().is_ok());
+
+        fi.woff_metadata_extensions = Some(Vec::new());
+        assert!(fi.validate().is_err());
+
+        if let Some(v) = &mut fi.woff_metadata_extensions {
+            v.push(WoffMetadataExtensionRecord { id: None, names: Vec::new(), items: Vec::new() });
+        }
+        assert!(fi.validate().is_err());
+
+        if let Some(v) = &mut fi.woff_metadata_extensions {
+            v[0].items.push(WoffMetadataExtensionItemRecord {
+                id: Some("a".to_string()),
+                names: Vec::new(),
+                values: Vec::new(),
+            });
+        }
+        assert!(fi.validate().is_err());
+
+        if let Some(v) = &mut fi.woff_metadata_extensions {
+            v[0].items[0].names.push(WoffMetadataExtensionNameRecord {
+                text: "a".to_string(),
+                language: None,
+                dir: None,
+                class: None,
+            });
+            v[0].items[0].values.push(WoffMetadataExtensionValueRecord {
+                text: "b".to_string(),
+                language: None,
+                dir: None,
+                class: None,
+            });
+        }
         assert!(fi.validate().is_ok());
     }
 }
