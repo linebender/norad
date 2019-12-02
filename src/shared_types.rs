@@ -17,16 +17,7 @@ pub struct Identifier(pub(crate) String);
 
 impl Identifier {
     fn is_valid(&self) -> bool {
-        if self.0.len() > 100 {
-            return false;
-        }
-        for c in self.0.chars() {
-            if !(0x20..=0x7F).contains(&(c as u8)) {
-                return false;
-            }
-        }
-
-        true
+        self.0.len() <= 100 && self.0.bytes().all(|b| (0x20..=0x7E).contains(&b))
     }
 }
 
@@ -36,7 +27,7 @@ impl Serialize for Identifier {
         S: Serializer,
     {
         if !self.is_valid() {
-            return Err(ser::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7F."));
+            return Err(ser::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."));
         }
         serializer.serialize_str(&self.0)
     }
@@ -50,7 +41,7 @@ impl<'de> Deserialize<'de> for Identifier {
         let string = String::deserialize(deserializer)?;
         let identifier = Identifier(string);
         if !identifier.is_valid() {
-            return Err(de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7F."));
+            return Err(de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."));
         }
         Ok(identifier)
     }
