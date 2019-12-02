@@ -26,10 +26,11 @@ impl Serialize for Identifier {
     where
         S: Serializer,
     {
-        if !self.is_valid() {
-            return Err(ser::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."));
+        if self.is_valid() {
+            serializer.serialize_str(&self.0)
+        } else {
+            Err(ser::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."))
         }
-        serializer.serialize_str(&self.0)
     }
 }
 
@@ -40,10 +41,12 @@ impl<'de> Deserialize<'de> for Identifier {
     {
         let string = String::deserialize(deserializer)?;
         let identifier = Identifier(string);
-        if !identifier.is_valid() {
+
+        if identifier.is_valid() {
+            Ok(identifier)
+        } else {
             return Err(de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."));
         }
-        Ok(identifier)
     }
 }
 
