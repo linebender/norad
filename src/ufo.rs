@@ -7,6 +7,7 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
 use crate::Error;
@@ -68,30 +69,6 @@ impl Default for MetaInfo {
     }
 }
 
-/// The contents of the [`fontinfo.plist`][] file.
-///
-/// [`fontinfo.plist`]: http://unifiedfontobject.org/versions/ufo1/fontinfo.plist/
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FontInfo {
-    pub family_name: Option<String>,
-    pub style_name: Option<String>,
-    pub style_map_family_name: Option<String>,
-    pub style_map_style_name: Option<String>,
-    pub version_major: Option<u32>,
-    pub version_minor: Option<u32>,
-    pub year: Option<u32>,
-    pub copyright: Option<String>,
-    pub trademark: Option<String>,
-    pub units_per_em: Option<f64>,
-    pub descender: Option<f64>,
-    pub x_height: Option<f64>,
-    pub cap_height: Option<f64>,
-    pub ascender: Option<f64>,
-    pub italic_angle: Option<f64>,
-    pub note: Option<String>,
-}
-
 impl Ufo {
     /// Crate a new `Ufo`.
     pub fn new(meta: MetaInfo) -> Self {
@@ -119,7 +96,8 @@ impl Ufo {
             let meta: MetaInfo = plist::from_file(meta_path)?;
             let font_path = path.join(FONTINFO_FILE);
             let font_info = if font_path.exists() {
-                let font_info = plist::from_file(font_path)?;
+                let font_info: FontInfo = plist::from_file(font_path)?;
+                font_info.validate()?;
                 Some(font_info)
             } else {
                 None
@@ -251,13 +229,5 @@ mod tests {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo/metainfo.plist";
         let meta: MetaInfo = plist::from_file(path).expect("failed to load metainfo");
         assert_eq!(meta.creator, "org.robofab.ufoLib");
-    }
-
-    #[test]
-    fn fontinfo() {
-        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo/fontinfo.plist";
-        let font_info: FontInfo = plist::from_file(path).expect("failed to load fontinfo");
-        assert_eq!(font_info.family_name, Some("MutatorMathTest".to_string()));
-        assert_eq!(font_info.trademark, None);
     }
 }

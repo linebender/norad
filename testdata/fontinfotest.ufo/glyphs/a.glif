@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<glyph name="a" format="2">
+  <advance width="600"/>
+  <unicode hex="0061"/>
+  <guideline x="177" y="401" angle="0" name="f"/>
+  <guideline x="187" y="433" angle="0"/>
+  <guideline x="180" y="347" angle="0" name="s"/>
+  <guideline x="287.039603960396" y="204.48514851485146" angle="0" name="a"/>
+  <outline>
+  </outline>
+</glyph>

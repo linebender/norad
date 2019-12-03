@@ -27,7 +27,7 @@ impl Glyph {
 
         if let Some(codepoints) = self.codepoints.as_ref() {
             for codepoint in codepoints.iter() {
-                writer.write_event(char_to_event(codepoint))?;
+                writer.write_event(char_to_event(*codepoint))?;
             }
         }
 
@@ -102,9 +102,17 @@ impl Guideline {
             Line::Angle { x, y, degrees } => (Some(x), Some(y), Some(degrees)),
         };
 
-        x.map(|x| start.push_attribute(("x", x.to_string().as_str())));
-        y.map(|y| start.push_attribute(("y", y.to_string().as_str())));
-        angle.map(|angle| start.push_attribute(("angle", angle.to_string().as_str())));
+        if let Some(x) = x {
+            start.push_attribute(("x", x.to_string().as_str()))
+        }
+
+        if let Some(y) = y {
+            start.push_attribute(("y", y.to_string().as_str()))
+        }
+
+        if let Some(angle) = angle {
+            start.push_attribute(("angle", angle.to_string().as_str()))
+        }
 
         if let Some(name) = &self.name {
             start.push_attribute(("name", name.as_str()));
@@ -236,9 +244,9 @@ impl Image {
     }
 }
 
-fn char_to_event(c: &char) -> Event<'static> {
+fn char_to_event(c: char) -> Event<'static> {
     let mut start = BytesStart::borrowed_name(b"unicode");
-    let hex = format!("{:04X}", *c as u32);
+    let hex = format!("{:04X}", c as u32);
     start.push_attribute(("hex", hex.as_str()));
     Event::Empty(start)
 }

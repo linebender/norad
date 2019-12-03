@@ -50,11 +50,11 @@ impl GlifParser {
                         "anchor" => self.parse_anchor(reader, start)?,
                         "guideline" => self.parse_guideline(reader, start)?,
                         "image" => self.parse_image(reader, start)?,
-                        _other => return Err(err!(reader, ErrorKind::UnexpectedTag))?,
+                        _other => return Err(err!(reader, ErrorKind::UnexpectedTag)),
                     }
                 }
                 Event::End(ref end) if end.name() == b"glyph" => break,
-                _other => return Err(err!(reader, ErrorKind::MissingCloseTag))?,
+                _other => return Err(err!(reader, ErrorKind::MissingCloseTag)),
             }
         }
         Ok(self.0)
@@ -66,7 +66,7 @@ impl GlifParser {
         buf: &mut Vec<u8>,
     ) -> Result<(), Error> {
         if self.0.outline.is_some() {
-            return Err(err!(reader, ErrorKind::UnexpectedDuplicate))?;
+            return Err(err!(reader, ErrorKind::UnexpectedDuplicate));
         }
 
         self.0.outline = Some(Outline { components: Vec::new(), contours: Vec::new() });
@@ -83,7 +83,7 @@ impl GlifParser {
                     }
                 }
                 Event::End(ref end) if end.name() == b"outline" => break,
-                Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof))?,
+                Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof)),
                 _other => (),
             }
         }
@@ -112,8 +112,8 @@ impl GlifParser {
                     let point = self.parse_point(reader, start)?;
                     points.push(point);
                 }
-                Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof))?,
-                _other => return Err(err!(reader, ErrorKind::UnexpectedElement))?,
+                Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof)),
+                _other => return Err(err!(reader, ErrorKind::UnexpectedElement)),
             }
         }
         self.0.outline.as_mut().unwrap().contours.push(Contour { identifier, points });
@@ -149,7 +149,7 @@ impl GlifParser {
         }
 
         if base.is_none() {
-            return Err(err!(reader, ErrorKind::BadComponent))?;
+            return Err(err!(reader, ErrorKind::BadComponent));
         }
 
         let component = Component { base: base.unwrap(), transform, identifier };
@@ -161,7 +161,7 @@ impl GlifParser {
         loop {
             match reader.read_event(buf)? {
                 Event::End(ref end) if end.name() == b"lib" => break,
-                Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof))?,
+                Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof)),
                 _other => (),
             }
         }
@@ -175,7 +175,7 @@ impl GlifParser {
                 Event::Text(text) => {
                     self.0.note = Some(text.unescape_and_decode(reader)?);
                 }
-                Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof))?,
+                Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof)),
                 _other => (),
             }
         }
@@ -218,7 +218,7 @@ impl GlifParser {
             }
         }
         if x.is_none() || y.is_none() {
-            return Err(err!(reader, ErrorKind::BadPoint))?;
+            return Err(err!(reader, ErrorKind::BadPoint));
         }
         Ok(ContourPoint { x: x.unwrap(), y: y.unwrap(), typ, name, identifier, smooth })
     }
@@ -243,7 +243,7 @@ impl GlifParser {
             }
         }
         if self.0.advance.is_some() {
-            return Err(err!(reader, ErrorKind::UnexpectedDuplicate))?;
+            return Err(err!(reader, ErrorKind::UnexpectedDuplicate));
         }
         self.0.advance = Some(advance);
         Ok(())
@@ -301,7 +301,7 @@ impl GlifParser {
         }
 
         if x.is_none() || y.is_none() {
-            return Err(err!(reader, ErrorKind::BadAnchor))?;
+            return Err(err!(reader, ErrorKind::BadAnchor));
         }
         let anchors = self.0.anchors.get_or_insert(Vec::new());
         anchors.push(Anchor { x: x.unwrap(), y: y.unwrap(), name, color, identifier });
@@ -346,7 +346,7 @@ impl GlifParser {
             (Some(x), None, None) => Line::Vertical(x),
             (None, Some(y), None) => Line::Horizontal(y),
             (Some(x), Some(y), Some(degrees)) => Line::Angle { x, y, degrees },
-            _other => return Err(err!(reader, ErrorKind::BadGuideline))?,
+            _other => return Err(err!(reader, ErrorKind::BadGuideline)),
         };
 
         let guideline = Guideline { line, name, color, identifier };
@@ -361,7 +361,7 @@ impl GlifParser {
         data: BytesStart<'a>,
     ) -> Result<(), Error> {
         if self.0.image.is_some() {
-            return Err(err!(reader, ErrorKind::UnexpectedDuplicate))?;
+            return Err(err!(reader, ErrorKind::UnexpectedDuplicate));
         }
 
         let mut filename: Option<PathBuf> = None;
@@ -388,7 +388,7 @@ impl GlifParser {
         }
 
         if filename.is_none() {
-            return Err(err!(reader, ErrorKind::BadImage))?;
+            return Err(err!(reader, ErrorKind::BadImage));
         }
 
         let image = Image { file_name: filename.unwrap(), color, transform };
@@ -424,7 +424,7 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, Error> 
                     return Ok(Glyph::new(name, format.take().unwrap()));
                 } else {
                     eprintln!("name '{}', format {:?}", name, format);
-                    return Err(err!(reader, ErrorKind::WrongFirstElement))?;
+                    return Err(err!(reader, ErrorKind::WrongFirstElement));
                 }
             }
             other => {
@@ -433,7 +433,7 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, Error> 
             }
         }
     }
-    Err(err!(reader, ErrorKind::WrongFirstElement))?
+    Err(err!(reader, ErrorKind::WrongFirstElement))
 }
 
 impl FromStr for GlifVersion {

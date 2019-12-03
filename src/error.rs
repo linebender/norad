@@ -13,6 +13,7 @@ pub enum Error {
     ParseError(XmlError),
     Glif(GlifError),
     PlistError(PlistError),
+    FontInfoError,
 }
 
 #[derive(Debug)]
@@ -62,6 +63,7 @@ impl std::fmt::Display for Error {
                 write!(f, "Glif error in {:?} index {}: '{}", path, position, kind)
             }
             Error::PlistError(e) => e.fmt(f),
+            Error::FontInfoError => write!(f, "FontInfo contains invalid data"),
         }
     }
 }
