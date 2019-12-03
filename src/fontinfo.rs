@@ -249,7 +249,7 @@ impl FontInfo {
 
                 let mut vs_iter = vs.iter();
                 let mut last = vs_iter.next().unwrap();
-                while let Some(current) = vs_iter.next() {
+                for current in vs_iter {
                     if last > current {
                         return Err(Error::FontInfoError);
                     }
@@ -305,39 +305,39 @@ impl FontInfo {
 
         // Certain WOFF attributes must contain at least one item if they are present.
         if let Some(v) = &self.woff_metadata_extensions {
-            if v.len() == 0 {
+            if v.is_empty() {
                 return Err(Error::FontInfoError);
             }
 
             for record in v.iter() {
-                if record.items.len() == 0 {
+                if record.items.is_empty() {
                     return Err(Error::FontInfoError);
                 }
 
                 for record_item in record.items.iter() {
-                    if record_item.names.len() == 0 || record_item.values.len() == 0 {
+                    if record_item.names.is_empty() || record_item.values.is_empty() {
                         return Err(Error::FontInfoError);
                     }
                 }
             }
         }
         if let Some(v) = &self.woff_metadata_credits {
-            if v.credits.len() == 0 {
+            if v.credits.is_empty() {
                 return Err(Error::FontInfoError);
             }
         }
         if let Some(v) = &self.woff_metadata_copyright {
-            if v.text.len() == 0 {
+            if v.text.is_empty() {
                 return Err(Error::FontInfoError);
             }
         }
         if let Some(v) = &self.woff_metadata_description {
-            if v.text.len() == 0 {
+            if v.text.is_empty() {
                 return Err(Error::FontInfoError);
             }
         }
         if let Some(v) = &self.woff_metadata_trademark {
-            if v.text.len() == 0 {
+            if v.text.is_empty() {
                 return Err(Error::FontInfoError);
             }
         }
@@ -407,11 +407,7 @@ impl OS2FamilyClass {
     /// The first number, representing the class ID, must be in the range 0-14.
     /// The second number, representing the subclass, must be in the range 0-15.
     fn is_valid(&self) -> bool {
-        if (0..=14).contains(&self.class_id) && (0..=15).contains(&self.subclass_id) {
-            true
-        } else {
-            false
-        }
+        (0..=14).contains(&self.class_id) && (0..=15).contains(&self.subclass_id)
     }
 }
 

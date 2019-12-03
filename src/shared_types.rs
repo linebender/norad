@@ -45,7 +45,7 @@ impl<'de> Deserialize<'de> for Identifier {
         if identifier.is_valid() {
             Ok(identifier)
         } else {
-            return Err(de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."));
+            Err(de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."))
         }
     }
 }
@@ -179,7 +179,7 @@ impl<'de> Deserialize<'de> for Color {
         D: Deserializer<'de>,
     {
         let string = String::deserialize(deserializer)?;
-        let colors: Vec<f32> = string.split(",").map(|v| v.parse().unwrap()).collect();
+        let colors: Vec<f32> = string.split(',').map(|v| v.parse().unwrap()).collect();
 
         if colors.len() != 4 {
             return Err(serde::de::Error::custom(
