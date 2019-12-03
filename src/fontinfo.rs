@@ -226,15 +226,15 @@ impl FontInfo {
 
             if !(v[0..4].parse::<u16>().is_ok()
                 && &v[4..5] == "/"
-                && v[5..7].parse::<u8>().unwrap_or(99) <= 12
+                && v[5..7].parse::<u8>().map_err(|_| Error::FontInfoError)? <= 12
                 && &v[7..8] == "/"
-                && v[8..10].parse::<u8>().unwrap_or(99) <= 31
+                && v[8..10].parse::<u8>().map_err(|_| Error::FontInfoError)? <= 31
                 && &v[10..11] == " "
-                && v[11..13].parse::<u8>().unwrap_or(99) < 24
+                && v[11..13].parse::<u8>().map_err(|_| Error::FontInfoError)? < 24
                 && &v[13..14] == ":"
-                && v[14..16].parse::<u8>().unwrap_or(99) < 60
+                && v[14..16].parse::<u8>().map_err(|_| Error::FontInfoError)? < 60
                 && &v[16..17] == ":"
-                && v[17..19].parse::<u8>().unwrap_or(99) < 60)
+                && v[17..19].parse::<u8>().map_err(|_| Error::FontInfoError)? < 60)
             {
                 return Err(Error::FontInfoError);
             }
