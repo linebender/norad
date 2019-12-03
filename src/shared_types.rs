@@ -228,7 +228,7 @@ mod tests {
         );
 
         let i2 = Identifier("0aAä".to_string());
-        let error = "Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7F.";
+        let error = "Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E.";
         assert_ser_tokens_error(&i2, &[], error);
         assert_de_tokens_error::<Identifier>(&[Token::Str("0aAä")], error);
 
