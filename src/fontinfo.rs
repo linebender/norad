@@ -7,7 +7,8 @@ use crate::Error;
 
 // The specification is vague about data type limits, usually implicitly meaning
 // Python types. Since Python is dynamic, the spec does not nail down the exact type
-// in several locations and we have to assume the biggest type that can hold it.
+// in several locations and we have to assume a bigger type that can hold all sane
+// values.
 type Integer = i32;
 type NonNegativeInteger = u32;
 type IntegerOrFloat = f64;
