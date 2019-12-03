@@ -12,7 +12,6 @@ type Integer = i32;
 type NonNegativeInteger = u32;
 type IntegerOrFloat = f64;
 type Float = f64;
-type NonNegativeIntegerOrFloat = f64; // Must be validated to be non-negative.
 type Bitlist = Vec<u8>;
 
 /// The contents of the [`fontinfo.plist`][] file. This structure is hard-wired to the
@@ -37,7 +36,7 @@ pub struct FontInfo {
     pub trademark: Option<String>,
 
     // Generic Dimension Information
-    pub units_per_em: Option<NonNegativeIntegerOrFloat>,
+    pub units_per_em: Option<f64>,
     pub descender: Option<IntegerOrFloat>,
     pub x_height: Option<IntegerOrFloat>,
     pub cap_height: Option<IntegerOrFloat>,
