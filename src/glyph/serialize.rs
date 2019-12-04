@@ -12,8 +12,14 @@ use super::{
     Identifier, Image, Line, PointType,
 };
 
+use crate::error::GlifWriteError;
+
 impl Glyph {
-    pub(crate) fn encode_xml(&self) -> Result<Vec<u8>, XmlError> {
+    pub(crate) fn encode_xml(&self) -> Result<Vec<u8>, GlifWriteError> {
+        self.encode_xml_impl().map_err(|inner| GlifWriteError { name: self.name.clone(), inner })
+    }
+
+    fn encode_xml_impl(&self) -> Result<Vec<u8>, XmlError> {
         let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b' ', 2);
         writer.write_event(Event::Decl(BytesDecl::new(b"1.1", Some(b"UTF-8"), None)))?;
         let mut start = BytesStart::borrowed_name(b"glyph");
