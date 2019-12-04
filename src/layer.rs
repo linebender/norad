@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -13,26 +14,43 @@ static CONTENTS_FILE: &str = "contents.plist";
 /// is just a collection of glyphs.
 ///
 /// [layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Layer {
-    pub glyphs: BTreeMap<GlyphName, Arc<Glyph>>,
+    pub(crate) glyphs: BTreeMap<GlyphName, Arc<Glyph>>,
+    contents: BTreeMap<GlyphName, PathBuf>,
 }
 
 impl Layer {
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Layer, Error> {
+    pub fn load(path: impl AsRef<Path>) -> Result<Layer, Error> {
         let path = path.as_ref();
         let contents_path = path.join(CONTENTS_FILE);
         // these keys are never used; a future optimization would be to skip the
         // names and deserialize to a vec; that would not be a one-liner, though.
-        let contents: BTreeMap<String, PathBuf> = plist::from_file(contents_path)?;
+        let contents: BTreeMap<GlyphName, PathBuf> = plist::from_file(contents_path)?;
         let mut glyphs = BTreeMap::new();
-        for (_, glyph_path) in contents.iter() {
+        for (name, glyph_path) in contents.iter() {
             let glyph_path = path.join(glyph_path);
-            let glyph = Glyph::load(glyph_path)?;
+            let mut glyph = Glyph::load(glyph_path)?;
+            glyph.name = name.clone();
             // reuse the name in the glyph to avoid having two copies of each
-            glyphs.insert(glyph.name.clone(), Arc::new(glyph));
+            glyphs.insert(name.clone(), Arc::new(glyph));
         }
-        Ok(Layer { glyphs })
+        Ok(Layer { contents, glyphs })
+    }
+
+    /// Attempt to write this layer to the given path.
+    ///
+    /// The path should not exist.
+    pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+        let path = path.as_ref();
+        fs::create_dir(&path)?;
+        plist::to_file_xml(path.join(CONTENTS_FILE), &self.contents)?;
+        for (name, glyph_path) in self.contents.iter() {
+            let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
+            glyph.save(path.join(glyph_path))?;
+        }
+
+        Ok(())
     }
 
     /// Returns a reference the glyph with the given name, if it exists.
@@ -58,13 +76,17 @@ impl Layer {
         self.glyphs.contains_key(name)
     }
 
-    /// Set the given glyph. The name is taken from the glyph's `name` field.
-    /// This replaces any existing glyph with this name.
-    pub fn set_glyph<P: Into<PathBuf>>(&mut self, path: P, glyph: Glyph) {
-        //FIXME: figure out what bookkeeping we have to do with this path
-        let _path = path.into();
-        let name = glyph.name.clone();
-        self.glyphs.insert(name, Arc::new(glyph));
+    /// Adds or updates the given glyph.
+    ///
+    /// If the glyph does not previously exist, the filename is calculated from
+    /// the glyph's name.
+    pub fn insert_glyph(&mut self, glyph: impl Into<Arc<Glyph>>) {
+        let glyph = glyph.into();
+        if !self.contents.contains_key(&glyph.name) {
+            let path = crate::glyph::default_file_name_for_glyph_name(&glyph.name);
+            self.contents.insert(glyph.name.clone(), path.into());
+        }
+        self.glyphs.insert(glyph.name.clone(), glyph);
     }
 
     /// Remove the named glyph from this layer.
@@ -111,7 +133,7 @@ mod tests {
         let mut layer = Layer::load(layer_path).unwrap();
         let mut glyph = Glyph::new_named("A");
         glyph.advance = Some(Advance { height: 69., width: 0. });
-        layer.set_glyph("A_.glif", glyph);
+        layer.insert_glyph(glyph);
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
         assert_eq!(glyph.advance, Some(Advance { height: 69., width: 0. }));
     }

@@ -4,6 +4,7 @@
 
 use std::borrow::Borrow;
 use std::ffi::OsStr;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -20,7 +21,7 @@ static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
 
 /// A Unified Font Object.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Ufo {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
@@ -33,6 +34,7 @@ pub struct Ufo {
 /// This corresponds to a 'glyphs' directory on disk.
 ///
 /// [font layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
+#[derive(Debug, Clone)]
 pub struct LayerInfo {
     pub name: String,
     pub path: PathBuf,
@@ -122,6 +124,43 @@ impl Ufo {
             let layers = layers?;
             Ok(Ufo { layers, meta, font_info, __non_exhaustive: () })
         }
+    }
+
+    /// Attempt to save this UFO to the given path, overriding any existing contents.
+    ///
+    /// This may fail; instead of saving directly to the target path, it is a good
+    /// idea to save to a temporary location and then move that to the target path
+    /// if the save is successful.
+    pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+        let path = path.as_ref();
+        self.save_impl(path)
+    }
+
+    fn save_impl(&self, path: &Path) -> Result<(), Error> {
+        if self.meta.creator.as_str() != DEFAULT_METAINFO_CREATOR {
+            return Err(Error::NotCreatedHere);
+        }
+
+        if path.exists() {
+            fs::remove_dir_all(path)?;
+        }
+        fs::create_dir(path)?;
+        plist::to_file_xml(path.join(METAINFO_FILE), &self.meta)?;
+
+        if let Some(font_info) = self.font_info.as_ref() {
+            plist::to_file_xml(path.join(FONTINFO_FILE), &font_info)?;
+        }
+
+        let contents: Vec<(&String, &PathBuf)> =
+            self.layers.iter().map(|l| (&l.name, &l.path)).collect();
+        plist::to_file_xml(path.join(LAYER_CONTENTS_FILE), &contents)?;
+
+        for layer in self.layers.iter() {
+            let layer_path = path.join(&layer.path);
+            layer.layer.save(layer_path)?;
+        }
+
+        Ok(())
     }
 
     /// Returns a reference to the first layer matching a predicate.

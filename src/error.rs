@@ -6,21 +6,35 @@ use std::path::PathBuf;
 use plist::Error as PlistError;
 use quick_xml::Error as XmlError;
 
+use crate::GlyphName;
+
 /// Errors that occur while working with font objects.
 #[derive(Debug)]
 pub enum Error {
+    /// An error representing our refusal to save a UFO file that was
+    /// not originally created by norad.
+    NotCreatedHere,
     IoError(IoError),
     ParseError(XmlError),
     Glif(GlifError),
+    GlifWrite(GlifWriteError),
     PlistError(PlistError),
     FontInfoError,
 }
 
+/// An error that occurs while parsing a .glif file
 #[derive(Debug)]
 pub struct GlifError {
     pub path: Option<PathBuf>,
     pub position: usize,
     pub kind: ErrorKind,
+}
+
+/// An error when attempting to write a .glif file
+#[derive(Debug)]
+pub struct GlifWriteError {
+    pub name: GlyphName,
+    pub inner: XmlError,
 }
 
 /// Errors that happen when parsing `glif` files. This is converted into either
@@ -57,10 +71,16 @@ pub enum ErrorKind {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            Error::NotCreatedHere => {
+                write!(f, "To prevent data loss, norad will not save files created elsewhere.")
+            }
             Error::IoError(e) => e.fmt(f),
             Error::ParseError(e) => e.fmt(f),
             Error::Glif(GlifError { path, position, kind }) => {
                 write!(f, "Glif error in {:?} index {}: '{}", path, position, kind)
+            }
+            Error::GlifWrite(GlifWriteError { name, inner }) => {
+                write!(f, "Failed to save glyph {}, error: '{}'", name, inner)
             }
             Error::PlistError(e) => e.fmt(f),
             Error::FontInfoError => write!(f, "FontInfo contains invalid data"),
@@ -96,6 +116,7 @@ impl std::error::Error for Error {
         match self {
             Error::IoError(inner) => Some(inner),
             Error::PlistError(inner) => Some(inner),
+            Error::GlifWrite(inner) => Some(&inner.inner),
             _ => None,
         }
     }
@@ -104,6 +125,13 @@ impl std::error::Error for Error {
 impl ErrorKind {
     pub(crate) fn to_error(self, position: usize) -> GlifErrorInternal {
         GlifErrorInternal::Spec { kind: self, position }
+    }
+}
+
+#[doc(hidden)]
+impl From<GlifWriteError> for Error {
+    fn from(src: GlifWriteError) -> Error {
+        Error::GlifWrite(src)
     }
 }
 
