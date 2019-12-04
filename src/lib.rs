@@ -23,11 +23,12 @@ pub mod error;
 pub mod fontinfo;
 pub mod glyph;
 mod layer;
-pub mod shared_types;
+mod shared_types;
 mod ufo;
 
 pub use error::Error;
 pub use fontinfo::FontInfo;
 pub use glyph::{Glyph, GlyphName};
 pub use layer::Layer;
+pub use shared_types::{Color, Guideline, Identifier, Line};
 pub use ufo::{FormatVersion, LayerInfo, MetaInfo, Ufo};

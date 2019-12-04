@@ -15,6 +15,53 @@ use druid::Data;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identifier(pub(crate) String);
 
+/// A guideline associated with a glyph.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Guideline {
+    /// The line itself.
+    pub line: Line,
+    /// An arbitrary name for the guideline.
+    pub name: Option<String>,
+    /// The color of the line.
+    pub color: Option<Color>,
+    /// Unique identifier for the guideline. This attribute is not required
+    /// and should only be added to guidelines as needed.
+    pub identifier: Option<Identifier>,
+}
+
+/// An infinite line.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Line {
+    /// A vertical line, passing through a given `x` coordinate.
+    Vertical(f32),
+    /// A horizontal line, passing through a given `y` coordinate.
+    Horizontal(f32),
+    /// An angled line passing through `(x, y)` at `degrees` degrees counteer-clockwise
+    /// to the horizontal.
+    Angle { x: f32, y: f32, degrees: f32 },
+}
+
+/// A color.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "druid", derive(Data))]
+pub struct Color {
+    pub red: f32,
+    pub green: f32,
+    pub blue: f32,
+    pub alpha: f32,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawGuideline {
+    x: Option<f32>,
+    y: Option<f32>,
+    angle: Option<f32>,
+    name: Option<String>,
+    color: Option<Color>,
+    identifier: Option<Identifier>,
+}
+
 impl Identifier {
     fn is_valid(&self) -> bool {
         self.0.len() <= 100 && self.0.bytes().all(|b| (0x20..=0x7E).contains(&b))
@@ -48,42 +95,6 @@ impl<'de> Deserialize<'de> for Identifier {
             Err(de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."))
         }
     }
-}
-
-/// A guideline associated with a glyph.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Guideline {
-    /// The line itself.
-    pub line: Line,
-    /// An arbitrary name for the guideline.
-    pub name: Option<String>,
-    /// The color of the line.
-    pub color: Option<Color>,
-    /// Unique identifier for the guideline. This attribute is not required
-    /// and should only be added to guidelines as needed.
-    pub identifier: Option<Identifier>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Line {
-    /// A vertical line, passing through a given `x` coordinate.
-    Vertical(f32),
-    /// A horizontal line, passing through a given `y` coordinate.
-    Horizontal(f32),
-    /// An angled line passing through `(x, y)` at `degrees` degrees counteer-clockwise
-    /// to the horizontal.
-    Angle { x: f32, y: f32, degrees: f32 },
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RawGuideline {
-    x: Option<f32>,
-    y: Option<f32>,
-    angle: Option<f32>,
-    name: Option<String>,
-    color: Option<Color>,
-    identifier: Option<Identifier>,
 }
 
 impl Serialize for Guideline {
@@ -152,15 +163,6 @@ impl<'de> Deserialize<'de> for Guideline {
             identifier: guideline.identifier,
         })
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "druid", derive(Data))]
-pub struct Color {
-    pub red: f32,
-    pub green: f32,
-    pub blue: f32,
-    pub alpha: f32,
 }
 
 impl Serialize for Color {
