@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -21,19 +21,40 @@ pub struct Layer {
 }
 
 impl Layer {
+    /// Load the layer at this path.
+    ///
+    /// Internal callers should use `load_impl` directly, so that glyph names
+    /// can be reused between layers.
     pub fn load(path: impl AsRef<Path>) -> Result<Layer, Error> {
         let path = path.as_ref();
+        let mut names = HashSet::new();
+        Layer::load_impl(path, &mut names)
+    }
+
+    /// the actual loading logic.
+    ///
+    /// `names` is a map of glyphnames; we pass it throughout parsing
+    /// so that we reuse the same Arc<str> for identical names.
+    pub(crate) fn load_impl(path: &Path, names: &mut HashSet<GlyphName>) -> Result<Layer, Error> {
         let contents_path = path.join(CONTENTS_FILE);
         // these keys are never used; a future optimization would be to skip the
         // names and deserialize to a vec; that would not be a one-liner, though.
         let contents: BTreeMap<GlyphName, PathBuf> = plist::from_file(contents_path)?;
         let mut glyphs = BTreeMap::new();
         for (name, glyph_path) in contents.iter() {
+            let name = match names.get(&*name) {
+                Some(name) => name.clone(),
+                None => {
+                    names.insert(name.clone());
+                    name.clone()
+                }
+            };
+
             let glyph_path = path.join(glyph_path);
-            let mut glyph = Glyph::load(glyph_path)?;
+            let mut glyph = Glyph::load_with_names(&glyph_path, names)?;
             glyph.name = name.clone();
             // reuse the name in the glyph to avoid having two copies of each
-            glyphs.insert(name.clone(), Arc::new(glyph));
+            glyphs.insert(name, Arc::new(glyph));
         }
         Ok(Layer { contents, glyphs })
     }

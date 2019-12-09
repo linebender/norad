@@ -160,7 +160,7 @@ impl Anchor {
 impl Component {
     fn to_event(&self) -> Event {
         let mut start = BytesStart::borrowed_name(b"component");
-        start.push_attribute(("base", self.base.as_str()));
+        start.push_attribute(("base", &*self.base));
         start.push_attribute(("xScale", self.transform.x_scale.to_string().as_str()));
         start.push_attribute(("yScale", self.transform.y_scale.to_string().as_str()));
         start.push_attribute(("xyScale", self.transform.xy_scale.to_string().as_str()));
