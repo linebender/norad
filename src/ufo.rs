@@ -3,6 +3,7 @@
 #![deny(intra_doc_link_resolution_failure)]
 
 use std::borrow::Borrow;
+use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -104,6 +105,8 @@ impl Ufo {
             } else {
                 None
             };
+
+            let mut glyph_names = HashSet::new();
             let mut contents = match meta.format_version {
                 FormatVersion::V3 => {
                     let contents_path = path.join(LAYER_CONTENTS_FILE);
@@ -117,7 +120,7 @@ impl Ufo {
                 .drain(..)
                 .map(|(name, p)| {
                     let layer_path = path.join(&p);
-                    let layer = Layer::load(layer_path)?;
+                    let layer = Layer::load_impl(&layer_path, &mut glyph_names)?;
                     Ok(LayerInfo { name, path: p, layer })
                 })
                 .collect();

@@ -5,6 +5,7 @@ mod serialize;
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -38,10 +39,20 @@ pub struct Glyph {
 }
 
 impl Glyph {
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
+    /// Load the glyph at this path.
+    ///
+    /// When loading glyphs in bulk, `load_with_names` should be preferred,
+    /// since it will allow glyph names (in glyphs and components) to be shared
+    /// between instances.
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
+        let mut names = HashSet::new();
+        Glyph::load_with_names(path, &mut names)
+    }
+
+    pub fn load_with_names(path: &Path, names: &mut HashSet<GlyphName>) -> Result<Self, Error> {
         let data = std::fs::read(path)?;
-        parse::parse_glyph(&data).map_err(|e| match e {
+        parse::GlifParser::from_xml(&data, Some(names)).map_err(|e| match e {
             GlifErrorInternal::Xml(e) => e.into(),
             GlifErrorInternal::Spec { kind, position } => {
                 GlifError { kind, position, path: Some(path.to_owned()) }.into()
@@ -57,13 +68,13 @@ impl Glyph {
     }
 
     /// Create a new glyph with the given name.
-    pub fn new_named<S: Into<String>>(name: S) -> Self {
+    pub fn new_named<S: Into<GlyphName>>(name: S) -> Self {
         Glyph::new(name.into(), GlifVersion::V2)
     }
 
-    pub(crate) fn new(name: String, format: GlifVersion) -> Self {
+    pub(crate) fn new(name: GlyphName, format: GlifVersion) -> Self {
         Glyph {
-            name: GlyphName::from(name),
+            name,
             format,
             advance: None,
             codepoints: None,
@@ -128,7 +139,7 @@ pub struct Outline {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
     /// The name of the base glyph.
-    pub base: String,
+    pub base: GlyphName,
     pub transform: AffineTransform,
     pub identifier: Option<Identifier>,
 }
