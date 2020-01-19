@@ -1,11 +1,11 @@
 //! Writing out .glif files
 
-use std::io::{Cursor, Write};
-
 use quick_xml::{
     events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event},
     Error as XmlError, Writer,
 };
+use std::f32;
+use std::io::{Cursor, Write};
 
 use super::{
     Advance, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph, Guideline,
@@ -162,7 +162,7 @@ impl Component {
         let mut start = BytesStart::borrowed_name(b"component");
         start.push_attribute(("base", &*self.base));
 
-        if self.transform.x_scale != 1.0 {
+        if (self.transform.x_scale - 1.0).abs() > f32::EPSILON {
             start.push_attribute(("xScale", self.transform.x_scale.to_string().as_str()));
         }
 
@@ -174,7 +174,7 @@ impl Component {
             start.push_attribute(("yxScale", self.transform.yx_scale.to_string().as_str()));
         }
 
-        if self.transform.y_scale != 1.0 {
+        if (self.transform.y_scale - 1.0).abs() > f32::EPSILON {
             start.push_attribute(("yScale", self.transform.y_scale.to_string().as_str()));
         }
 
@@ -261,7 +261,7 @@ impl Image {
         let mut start = BytesStart::borrowed_name(b"image");
         start.push_attribute(("fileName", self.file_name.to_str().unwrap_or("missing path")));
 
-        if self.transform.x_scale != 1.0 {
+        if (self.transform.x_scale - 1.0).abs() > f32::EPSILON {
             start.push_attribute(("xScale", self.transform.x_scale.to_string().as_str()));
         }
 
@@ -273,7 +273,7 @@ impl Image {
             start.push_attribute(("yxScale", self.transform.yx_scale.to_string().as_str()));
         }
 
-        if self.transform.y_scale != 1.0 {
+        if (self.transform.y_scale - 1.0).abs() > f32::EPSILON {
             start.push_attribute(("yScale", self.transform.y_scale.to_string().as_str()));
         }
 
