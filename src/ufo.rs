@@ -13,10 +13,12 @@ use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
 use crate::Error;
+use plist;
 
 static LAYER_CONTENTS_FILE: &str = "layercontents.plist";
 static METAINFO_FILE: &str = "metainfo.plist";
 static FONTINFO_FILE: &str = "fontinfo.plist";
+static LIB_FILE: &str = "lib.plist";
 static DEFAULT_LAYER_NAME: &str = "public.default";
 static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
@@ -27,6 +29,7 @@ pub struct Ufo {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
     pub layers: Vec<LayerInfo>,
+    pub lib: Option<plist::Value>,
     __non_exhaustive: (),
 }
 
@@ -81,7 +84,7 @@ impl Ufo {
             layer: Layer::default(),
         };
 
-        Ufo { meta, font_info: None, layers: vec![main_layer], __non_exhaustive: () }
+        Ufo { meta, font_info: None, layers: vec![main_layer], lib: None, __non_exhaustive: () }
     }
 
     /// Attempt to load a font object from a file. `path` must point to
@@ -97,11 +100,19 @@ impl Ufo {
         fn load_impl(path: &Path) -> Result<Ufo, Error> {
             let meta_path = path.join(METAINFO_FILE);
             let meta: MetaInfo = plist::from_file(meta_path)?;
-            let font_path = path.join(FONTINFO_FILE);
-            let font_info = if font_path.exists() {
-                let font_info: FontInfo = plist::from_file(font_path)?;
+            let fontinfo_path = path.join(FONTINFO_FILE);
+            let font_info = if fontinfo_path.exists() {
+                let font_info: FontInfo = plist::from_file(fontinfo_path)?;
                 font_info.validate()?;
                 Some(font_info)
+            } else {
+                None
+            };
+
+            let lib_path = path.join(LIB_FILE);
+            let lib = if lib_path.exists() {
+                let lib = plist::Value::from_file(lib_path)?;
+                Some(lib)
             } else {
                 None
             };
@@ -125,7 +136,7 @@ impl Ufo {
                 })
                 .collect();
             let layers = layers?;
-            Ok(Ufo { layers, meta, font_info, __non_exhaustive: () })
+            Ok(Ufo { layers, meta, font_info, lib, __non_exhaustive: () })
         }
     }
 
@@ -152,6 +163,10 @@ impl Ufo {
 
         if let Some(font_info) = self.font_info.as_ref() {
             plist::to_file_xml(path.join(FONTINFO_FILE), &font_info)?;
+        }
+
+        if let Some(lib) = self.lib.as_ref() {
+            lib.to_file_xml(path.join(LIB_FILE))?;
         }
 
         let contents: Vec<(&String, &PathBuf)> =
@@ -264,6 +279,15 @@ mod tests {
         font_obj
             .find_layer(|l| l.path.to_str() == Some("glyphs.background"))
             .expect("missing layer");
+
+        assert_eq!(
+            font_obj
+                .lib
+                .unwrap()
+                .as_dictionary()
+                .and_then(|dict| dict.get("com.typemytype.robofont.compileSettings.autohint")),
+            Some(&plist::Value::Boolean(true))
+        );
     }
 
     #[test]
