@@ -29,7 +29,7 @@ pub struct Ufo {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
     pub layers: Vec<LayerInfo>,
-    pub lib: Option<plist::Value>,
+    pub lib: Option<plist::Dictionary>,
     __non_exhaustive: (),
 }
 
@@ -111,8 +111,11 @@ impl Ufo {
 
             let lib_path = path.join(LIB_FILE);
             let lib = if lib_path.exists() {
-                let lib = plist::Value::from_file(lib_path)?;
-                Some(lib)
+                // Value::as_dictionary(_mut) will only borrow the data, but we want to own it.
+                match plist::Value::from_file(lib_path)? {
+                    plist::Value::Dictionary(dict) => Some(dict),
+                    _ => None,
+                }
             } else {
                 None
             };
@@ -166,7 +169,8 @@ impl Ufo {
         }
 
         if let Some(lib) = self.lib.as_ref() {
-            lib.to_file_xml(path.join(LIB_FILE))?;
+            // XXX: Can this be done without cloning?
+            plist::Value::Dictionary(lib.clone()).to_file_xml(path.join(LIB_FILE))?;
         }
 
         let contents: Vec<(&String, &PathBuf)> =
@@ -281,11 +285,7 @@ mod tests {
             .expect("missing layer");
 
         assert_eq!(
-            font_obj
-                .lib
-                .unwrap()
-                .as_dictionary()
-                .and_then(|dict| dict.get("com.typemytype.robofont.compileSettings.autohint")),
+            font_obj.lib.unwrap().get("com.typemytype.robofont.compileSettings.autohint"),
             Some(&plist::Value::Boolean(true))
         );
     }
