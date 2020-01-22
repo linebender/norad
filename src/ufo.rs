@@ -3,6 +3,7 @@
 #![deny(intra_doc_link_resolution_failure)]
 
 use std::borrow::Borrow;
+use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::fs;
@@ -19,6 +20,7 @@ static LAYER_CONTENTS_FILE: &str = "layercontents.plist";
 static METAINFO_FILE: &str = "metainfo.plist";
 static FONTINFO_FILE: &str = "fontinfo.plist";
 static LIB_FILE: &str = "lib.plist";
+static GROUPS_FILE: &str = "groups.plist";
 static DEFAULT_LAYER_NAME: &str = "public.default";
 static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
@@ -30,6 +32,8 @@ pub struct Ufo {
     pub font_info: Option<FontInfo>,
     pub layers: Vec<LayerInfo>,
     pub lib: Option<plist::Dictionary>,
+    // groups: BTreeMap because we need sorting for deserialization.
+    pub groups: Option<BTreeMap<String, Vec<String>>>,
     __non_exhaustive: (),
 }
 
@@ -84,7 +88,14 @@ impl Ufo {
             layer: Layer::default(),
         };
 
-        Ufo { meta, font_info: None, layers: vec![main_layer], lib: None, __non_exhaustive: () }
+        Ufo {
+            meta,
+            font_info: None,
+            layers: vec![main_layer],
+            lib: None,
+            groups: None,
+            __non_exhaustive: (),
+        }
     }
 
     /// Attempt to load a font object from a file. `path` must point to
@@ -114,8 +125,18 @@ impl Ufo {
                 // Value::as_dictionary(_mut) will only borrow the data, but we want to own it.
                 match plist::Value::from_file(lib_path)? {
                     plist::Value::Dictionary(dict) => Some(dict),
-                    _ => None,
+                    _ => None, // XXX: Return error
                 }
+            } else {
+                None
+            };
+
+            let groups_path = path.join(GROUPS_FILE);
+            let groups = if groups_path.exists() {
+                let groups: BTreeMap<String, Vec<String>> = plist::from_file(groups_path)?;
+                validate_groups(&groups)?;
+
+                Some(groups)
             } else {
                 None
             };
@@ -139,7 +160,7 @@ impl Ufo {
                 })
                 .collect();
             let layers = layers?;
-            Ok(Ufo { layers, meta, font_info, lib, __non_exhaustive: () })
+            Ok(Ufo { layers, meta, font_info, lib, groups, __non_exhaustive: () })
         }
     }
 
@@ -171,6 +192,11 @@ impl Ufo {
         if let Some(lib) = self.lib.as_ref() {
             // XXX: Can this be done without cloning?
             plist::Value::Dictionary(lib.clone()).to_file_xml(path.join(LIB_FILE))?;
+        }
+
+        if let Some(groups) = self.groups.as_ref() {
+            validate_groups(&groups)?;
+            plist::to_file_xml(path.join(GROUPS_FILE), groups)?;
         }
 
         let contents: Vec<(&String, &PathBuf)> =
@@ -262,6 +288,34 @@ impl Ufo {
     }
 }
 
+/// Validate the contents of the groups.plist file according to the rules in the
+/// [Unified Font Object v3 specification for groups.plist](http://unifiedfontobject.org/versions/ufo3/groups.plist/#specification).
+fn validate_groups(groups_map: &BTreeMap<String, Vec<String>>) -> Result<(), Error> {
+    let mut kern1_set = HashSet::new();
+    let mut kern2_set = HashSet::new();
+    for (group_name, group_glyph_names) in groups_map {
+        if group_name.is_empty() {
+            return Err(Error::GroupsError);
+        }
+
+        if group_name.starts_with("public.kern1.") {
+            for glyph_name in group_glyph_names {
+                if !kern1_set.insert(glyph_name) {
+                    return Err(Error::GroupsError);
+                }
+            }
+        } else if group_name.starts_with("public.kern2.") {
+            for glyph_name in group_glyph_names {
+                if !kern2_set.insert(glyph_name) {
+                    return Err(Error::GroupsError);
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,6 +341,11 @@ mod tests {
         assert_eq!(
             font_obj.lib.unwrap().get("com.typemytype.robofont.compileSettings.autohint"),
             Some(&plist::Value::Boolean(true))
+        );
+
+        assert_eq!(
+            font_obj.groups.unwrap().get("public.kern1.@MMK_L_A"),
+            Some(&vec!["A".to_string()])
         );
     }
 

@@ -20,6 +20,7 @@ pub enum Error {
     GlifWrite(GlifWriteError),
     PlistError(PlistError),
     FontInfoError,
+    GroupsError,
 }
 
 /// An error that occurs while parsing a .glif file
@@ -84,6 +85,9 @@ impl std::fmt::Display for Error {
             }
             Error::PlistError(e) => e.fmt(f),
             Error::FontInfoError => write!(f, "FontInfo contains invalid data"),
+            Error::GroupsError => {
+                write!(f, "Groups contain the same glyph in multiple kern1 or kern2 groups or the same group contains the same glyph multiple times.")
+            }
         }
     }
 }
