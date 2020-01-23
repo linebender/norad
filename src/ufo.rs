@@ -21,6 +21,8 @@ static METAINFO_FILE: &str = "metainfo.plist";
 static FONTINFO_FILE: &str = "fontinfo.plist";
 static LIB_FILE: &str = "lib.plist";
 static GROUPS_FILE: &str = "groups.plist";
+static KERNING_FILE: &str = "kerning.plist";
+static FEATURES_FILE: &str = "features.fea";
 static DEFAULT_LAYER_NAME: &str = "public.default";
 static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
@@ -32,8 +34,10 @@ pub struct Ufo {
     pub font_info: Option<FontInfo>,
     pub layers: Vec<LayerInfo>,
     pub lib: Option<plist::Dictionary>,
-    // groups: BTreeMap because we need sorting for deserialization.
+    // groups and kerning: BTreeMap because we need sorting for deserialization.
     pub groups: Option<BTreeMap<String, Vec<String>>>,
+    pub kerning: Option<BTreeMap<String, BTreeMap<String, f32>>>,
+    pub features: Option<String>,
     __non_exhaustive: (),
 }
 
@@ -94,6 +98,8 @@ impl Ufo {
             layers: vec![main_layer],
             lib: None,
             groups: None,
+            kerning: None,
+            features: None,
             __non_exhaustive: (),
         }
     }
@@ -141,6 +147,25 @@ impl Ufo {
                 None
             };
 
+            let kerning_path = path.join(KERNING_FILE);
+            let kerning = if kerning_path.exists() {
+                let kerning: BTreeMap<String, BTreeMap<String, f32>> =
+                    plist::from_file(kerning_path)?;
+
+                Some(kerning)
+            } else {
+                None
+            };
+
+            let features_path = path.join(FEATURES_FILE);
+            let features = if features_path.exists() {
+                let features = fs::read_to_string(features_path)?;
+
+                Some(features)
+            } else {
+                None
+            };
+
             let mut glyph_names = HashSet::new();
             let mut contents = match meta.format_version {
                 FormatVersion::V3 => {
@@ -160,7 +185,17 @@ impl Ufo {
                 })
                 .collect();
             let layers = layers?;
-            Ok(Ufo { layers, meta, font_info, lib, groups, __non_exhaustive: () })
+
+            Ok(Ufo {
+                layers,
+                meta,
+                font_info,
+                lib,
+                groups,
+                kerning,
+                features,
+                __non_exhaustive: (),
+            })
         }
     }
 
@@ -197,6 +232,14 @@ impl Ufo {
         if let Some(groups) = self.groups.as_ref() {
             validate_groups(&groups)?;
             plist::to_file_xml(path.join(GROUPS_FILE), groups)?;
+        }
+
+        if let Some(kerning) = self.kerning.as_ref() {
+            plist::to_file_xml(path.join(KERNING_FILE), kerning)?;
+        }
+
+        if let Some(features) = self.features.as_ref() {
+            fs::write(path.join(FEATURES_FILE), features)?;
         }
 
         let contents: Vec<(&String, &PathBuf)> =
@@ -299,12 +342,20 @@ fn validate_groups(groups_map: &BTreeMap<String, Vec<String>>) -> Result<(), Err
         }
 
         if group_name.starts_with("public.kern1.") {
+            if group_name.len() == 13 {
+                // Prefix but no actual name.
+                return Err(Error::GroupsError);
+            }
             for glyph_name in group_glyph_names {
                 if !kern1_set.insert(glyph_name) {
                     return Err(Error::GroupsError);
                 }
             }
         } else if group_name.starts_with("public.kern2.") {
+            if group_name.len() == 13 {
+                // Prefix but no actual name.
+                return Err(Error::GroupsError);
+            }
             for glyph_name in group_glyph_names {
                 if !kern2_set.insert(glyph_name) {
                     return Err(Error::GroupsError);
@@ -347,6 +398,10 @@ mod tests {
             font_obj.groups.unwrap().get("public.kern1.@MMK_L_A"),
             Some(&vec!["A".to_string()])
         );
+
+        assert_eq!(font_obj.kerning.unwrap().get("B").unwrap().get("H").unwrap(), &-40.0);
+
+        assert_eq!(font_obj.features.unwrap(), "# this is the feature from lightWide\n");
     }
 
     #[test]
