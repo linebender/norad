@@ -1,18 +1,18 @@
 //! Writing out .glif files
 
+use std::io::{Cursor, Write};
+
+use super::{
+    Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
+    Guideline, Identifier, Image, Line, PointType,
+};
+
+use crate::error::GlifWriteError;
+
 use quick_xml::{
     events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event},
     Error as XmlError, Writer,
 };
-use std::f32;
-use std::io::{Cursor, Write};
-
-use super::{
-    Advance, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph, Guideline,
-    Identifier, Image, Line, PointType,
-};
-
-use crate::error::GlifWriteError;
 
 impl Glyph {
     pub(crate) fn encode_xml(&self) -> Result<Vec<u8>, GlifWriteError> {
@@ -162,29 +162,7 @@ impl Component {
         let mut start = BytesStart::borrowed_name(b"component");
         start.push_attribute(("base", &*self.base));
 
-        if (self.transform.x_scale - 1.0).abs() > f32::EPSILON {
-            start.push_attribute(("xScale", self.transform.x_scale.to_string().as_str()));
-        }
-
-        if self.transform.xy_scale != 0.0 {
-            start.push_attribute(("xyScale", self.transform.xy_scale.to_string().as_str()));
-        }
-
-        if self.transform.yx_scale != 0.0 {
-            start.push_attribute(("yxScale", self.transform.yx_scale.to_string().as_str()));
-        }
-
-        if (self.transform.y_scale - 1.0).abs() > f32::EPSILON {
-            start.push_attribute(("yScale", self.transform.y_scale.to_string().as_str()));
-        }
-
-        if self.transform.x_offset != 0.0 {
-            start.push_attribute(("xOffset", self.transform.x_offset.to_string().as_str()));
-        }
-
-        if self.transform.y_offset != 0.0 {
-            start.push_attribute(("yOffset", self.transform.y_offset.to_string().as_str()));
-        }
+        transformation_to_attributes(&mut start, &self.transform);
 
         if let Some(Identifier(id)) = &self.identifier {
             start.push_attribute(("identifier", id.as_str()));
@@ -261,29 +239,7 @@ impl Image {
         let mut start = BytesStart::borrowed_name(b"image");
         start.push_attribute(("fileName", self.file_name.to_str().unwrap_or("missing path")));
 
-        if (self.transform.x_scale - 1.0).abs() > f32::EPSILON {
-            start.push_attribute(("xScale", self.transform.x_scale.to_string().as_str()));
-        }
-
-        if self.transform.xy_scale != 0.0 {
-            start.push_attribute(("xyScale", self.transform.xy_scale.to_string().as_str()));
-        }
-
-        if self.transform.yx_scale != 0.0 {
-            start.push_attribute(("yxScale", self.transform.yx_scale.to_string().as_str()));
-        }
-
-        if (self.transform.y_scale - 1.0).abs() > f32::EPSILON {
-            start.push_attribute(("yScale", self.transform.y_scale.to_string().as_str()));
-        }
-
-        if self.transform.x_offset != 0.0 {
-            start.push_attribute(("xOffset", self.transform.x_offset.to_string().as_str()));
-        }
-
-        if self.transform.y_offset != 0.0 {
-            start.push_attribute(("yOffset", self.transform.y_offset.to_string().as_str()));
-        }
+        transformation_to_attributes(&mut start, &self.transform);
 
         if let Some(color) = &self.color {
             start.push_attribute(("color", color.to_rgba_string().as_str()));
@@ -297,4 +253,30 @@ fn char_to_event(c: char) -> Event<'static> {
     let hex = format!("{:04X}", c as u32);
     start.push_attribute(("hex", hex.as_str()));
     Event::Empty(start)
+}
+
+fn transformation_to_attributes(element: &mut BytesStart, transform: &AffineTransform) {
+    if (transform.x_scale - 1.0).abs() > std::f32::EPSILON {
+        element.push_attribute(("xScale", transform.x_scale.to_string().as_str()));
+    }
+
+    if transform.xy_scale != 0.0 {
+        element.push_attribute(("xyScale", transform.xy_scale.to_string().as_str()));
+    }
+
+    if transform.yx_scale != 0.0 {
+        element.push_attribute(("yxScale", transform.yx_scale.to_string().as_str()));
+    }
+
+    if (transform.y_scale - 1.0).abs() > std::f32::EPSILON {
+        element.push_attribute(("yScale", transform.y_scale.to_string().as_str()));
+    }
+
+    if transform.x_offset != 0.0 {
+        element.push_attribute(("xOffset", transform.x_offset.to_string().as_str()));
+    }
+
+    if transform.y_offset != 0.0 {
+        element.push_attribute(("yOffset", transform.y_offset.to_string().as_str()));
+    }
 }
