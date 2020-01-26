@@ -10,6 +10,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use crate::error::GroupsError;
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
@@ -129,9 +130,10 @@ impl Ufo {
             let lib_path = path.join(LIB_FILE);
             let lib = if lib_path.exists() {
                 // Value::as_dictionary(_mut) will only borrow the data, but we want to own it.
+                // https://github.com/ebarnard/rust-plist/pull/48
                 match plist::Value::from_file(lib_path)? {
                     plist::Value::Dictionary(dict) => Some(dict),
-                    _ => None, // XXX: Return error
+                    _ => return Err(Error::ExpectedPlistDictionaryError),
                 }
             } else {
                 None
@@ -338,27 +340,33 @@ fn validate_groups(groups_map: &BTreeMap<String, Vec<String>>) -> Result<(), Err
     let mut kern2_set = HashSet::new();
     for (group_name, group_glyph_names) in groups_map {
         if group_name.is_empty() {
-            return Err(Error::GroupsError);
+            return Err(Error::Groups(GroupsError::InvalidName));
         }
 
         if group_name.starts_with("public.kern1.") {
             if group_name.len() == 13 {
                 // Prefix but no actual name.
-                return Err(Error::GroupsError);
+                return Err(Error::Groups(GroupsError::InvalidName));
             }
             for glyph_name in group_glyph_names {
                 if !kern1_set.insert(glyph_name) {
-                    return Err(Error::GroupsError);
+                    return Err(Error::Groups(GroupsError::OverlappingKerningGroups {
+                        glyph_name: glyph_name.to_string(),
+                        group_name: group_name.to_string(),
+                    }));
                 }
             }
         } else if group_name.starts_with("public.kern2.") {
             if group_name.len() == 13 {
                 // Prefix but no actual name.
-                return Err(Error::GroupsError);
+                return Err(Error::Groups(GroupsError::InvalidName));
             }
             for glyph_name in group_glyph_names {
                 if !kern2_set.insert(glyph_name) {
-                    return Err(Error::GroupsError);
+                    return Err(Error::Groups(GroupsError::OverlappingKerningGroups {
+                        glyph_name: glyph_name.to_string(),
+                        group_name: group_name.to_string(),
+                    }));
                 }
             }
         }
