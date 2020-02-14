@@ -2,17 +2,17 @@
 
 use std::io::{Cursor, Write};
 
+use quick_xml::{
+    events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event},
+    Error as XmlError, Writer,
+};
+
 use super::{
     Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
     Guideline, Identifier, Image, Line, PointType,
 };
 
 use crate::error::GlifWriteError;
-
-use quick_xml::{
-    events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event},
-    Error as XmlError, Writer,
-};
 
 impl Glyph {
     pub(crate) fn encode_xml(&self) -> Result<Vec<u8>, GlifWriteError> {
@@ -162,7 +162,7 @@ impl Component {
         let mut start = BytesStart::borrowed_name(b"component");
         start.push_attribute(("base", &*self.base));
 
-        transformation_to_attributes(&mut start, &self.transform);
+        write_transform_attributes(&mut start, &self.transform);
 
         if let Some(Identifier(id)) = &self.identifier {
             start.push_attribute(("identifier", id.as_str()));
@@ -239,7 +239,7 @@ impl Image {
         let mut start = BytesStart::borrowed_name(b"image");
         start.push_attribute(("fileName", self.file_name.to_str().unwrap_or("missing path")));
 
-        transformation_to_attributes(&mut start, &self.transform);
+        write_transform_attributes(&mut start, &self.transform);
 
         if let Some(color) = &self.color {
             start.push_attribute(("color", color.to_rgba_string().as_str()));
@@ -255,7 +255,7 @@ fn char_to_event(c: char) -> Event<'static> {
     Event::Empty(start)
 }
 
-fn transformation_to_attributes(element: &mut BytesStart, transform: &AffineTransform) {
+fn write_transform_attributes(element: &mut BytesStart, transform: &AffineTransform) {
     if (transform.x_scale - 1.0).abs() > std::f32::EPSILON {
         element.push_attribute(("xScale", transform.x_scale.to_string().as_str()));
     }
