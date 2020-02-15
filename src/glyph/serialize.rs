@@ -8,8 +8,8 @@ use quick_xml::{
 };
 
 use super::{
-    Advance, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph, Guideline,
-    Identifier, Image, Line, PointType,
+    Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
+    Guideline, Identifier, Image, Line, PointType,
 };
 
 use crate::error::GlifWriteError;
@@ -43,6 +43,10 @@ impl Glyph {
             writer.write_event(Event::End(BytesEnd::borrowed(b"note")))?;
         }
 
+        if let Some(ref image) = self.image {
+            writer.write_event(image.to_event())?;
+        }
+
         if let Some(guides) = self.guidelines.as_ref() {
             for guide in guides.iter() {
                 writer.write_event(guide.to_event())?;
@@ -65,10 +69,6 @@ impl Glyph {
                 contour.write_xml(&mut writer)?;
             }
             writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
-        }
-
-        if let Some(ref image) = self.image {
-            writer.write_event(image.to_event())?;
         }
         writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;
 
@@ -124,12 +124,12 @@ impl Guideline {
             start.push_attribute(("name", name.as_str()));
         }
 
-        if let Some(Identifier(id)) = &self.identifier {
-            start.push_attribute(("identifier", id.as_str()));
-        }
-
         if let Some(color) = &self.color {
             start.push_attribute(("color", color.to_rgba_string().as_str()));
+        }
+
+        if let Some(Identifier(id)) = &self.identifier {
+            start.push_attribute(("identifier", id.as_str()));
         }
         Event::Empty(start)
     }
@@ -161,12 +161,8 @@ impl Component {
     fn to_event(&self) -> Event {
         let mut start = BytesStart::borrowed_name(b"component");
         start.push_attribute(("base", &*self.base));
-        start.push_attribute(("xScale", self.transform.x_scale.to_string().as_str()));
-        start.push_attribute(("yScale", self.transform.y_scale.to_string().as_str()));
-        start.push_attribute(("xyScale", self.transform.xy_scale.to_string().as_str()));
-        start.push_attribute(("yxScale", self.transform.yx_scale.to_string().as_str()));
-        start.push_attribute(("xOffset", self.transform.x_offset.to_string().as_str()));
-        start.push_attribute(("yOffset", self.transform.y_offset.to_string().as_str()));
+
+        write_transform_attributes(&mut start, &self.transform);
 
         if let Some(Identifier(id)) = &self.identifier {
             start.push_attribute(("identifier", id.as_str()));
@@ -199,9 +195,15 @@ impl ContourPoint {
 
         start.push_attribute(("x", self.x.to_string().as_str()));
         start.push_attribute(("y", self.y.to_string().as_str()));
-        let smooth = if self.smooth { "yes" } else { "no" };
-        start.push_attribute(("smooth", smooth));
-        start.push_attribute(("type", self.typ.as_str()));
+
+        match self.typ {
+            PointType::OffCurve => {}
+            _ => start.push_attribute(("type", self.typ.as_str())),
+        }
+
+        if self.smooth {
+            start.push_attribute(("smooth", "yes"));
+        }
 
         if let Some(name) = &self.name {
             start.push_attribute(("name", name.as_str()));
@@ -236,12 +238,8 @@ impl Image {
     fn to_event(&self) -> Event {
         let mut start = BytesStart::borrowed_name(b"image");
         start.push_attribute(("fileName", self.file_name.to_str().unwrap_or("missing path")));
-        start.push_attribute(("xScale", self.transform.x_scale.to_string().as_str()));
-        start.push_attribute(("yScale", self.transform.y_scale.to_string().as_str()));
-        start.push_attribute(("xyScale", self.transform.xy_scale.to_string().as_str()));
-        start.push_attribute(("yxScale", self.transform.yx_scale.to_string().as_str()));
-        start.push_attribute(("xOffset", self.transform.x_offset.to_string().as_str()));
-        start.push_attribute(("yOffset", self.transform.y_offset.to_string().as_str()));
+
+        write_transform_attributes(&mut start, &self.transform);
 
         if let Some(color) = &self.color {
             start.push_attribute(("color", color.to_rgba_string().as_str()));
@@ -255,4 +253,30 @@ fn char_to_event(c: char) -> Event<'static> {
     let hex = format!("{:04X}", c as u32);
     start.push_attribute(("hex", hex.as_str()));
     Event::Empty(start)
+}
+
+fn write_transform_attributes(element: &mut BytesStart, transform: &AffineTransform) {
+    if (transform.x_scale - 1.0).abs() > std::f32::EPSILON {
+        element.push_attribute(("xScale", transform.x_scale.to_string().as_str()));
+    }
+
+    if transform.xy_scale != 0.0 {
+        element.push_attribute(("xyScale", transform.xy_scale.to_string().as_str()));
+    }
+
+    if transform.yx_scale != 0.0 {
+        element.push_attribute(("yxScale", transform.yx_scale.to_string().as_str()));
+    }
+
+    if (transform.y_scale - 1.0).abs() > std::f32::EPSILON {
+        element.push_attribute(("yScale", transform.y_scale.to_string().as_str()));
+    }
+
+    if transform.x_offset != 0.0 {
+        element.push_attribute(("xOffset", transform.x_offset.to_string().as_str()));
+    }
+
+    if transform.y_offset != 0.0 {
+        element.push_attribute(("yOffset", transform.y_offset.to_string().as_str()));
+    }
 }

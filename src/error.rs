@@ -20,6 +20,14 @@ pub enum Error {
     GlifWrite(GlifWriteError),
     PlistError(PlistError),
     FontInfoError,
+    Groups(GroupsError),
+    ExpectedPlistDictionaryError,
+}
+
+#[derive(Debug)]
+pub enum GroupsError {
+    InvalidName,
+    OverlappingKerningGroups { glyph_name: String, group_name: String },
 }
 
 /// An error that occurs while parsing a .glif file
@@ -84,6 +92,12 @@ impl std::fmt::Display for Error {
             }
             Error::PlistError(e) => e.fmt(f),
             Error::FontInfoError => write!(f, "FontInfo contains invalid data"),
+            Error::Groups(ge) =>
+                match ge {
+                    GroupsError::InvalidName => write!(f, "A kerning group name must have at least one character after the common 'public.kernN.' prefix."),
+                    GroupsError::OverlappingKerningGroups {glyph_name, group_name} => write!(f, "The glyph '{}' appears in more than one kerning group. Last found in '{}'", glyph_name, group_name)
+                }
+            Error::ExpectedPlistDictionaryError => write!(f, "The files groups.plist, kerning.plist and lib.plist must contain plist dictionaries."),
         }
     }
 }
