@@ -1,10 +1,27 @@
 //! Testing saving files.
 
-use norad::{Glyph, Layer, MetaInfo, Ufo};
+use norad::{FormatVersion, Glyph, Layer, Ufo};
+
+#[test]
+fn save_default() {
+    let my_ufo = Ufo::new();
+
+    let dir = tempdir::TempDir::new("Test.ufo").unwrap();
+    my_ufo.save(&dir).unwrap();
+
+    assert!(dir.path().join("metainfo.plist").exists());
+    assert!(dir.path().join("glyphs").exists());
+    assert!(dir.path().join("glyphs/contents.plist").exists());
+
+    let loaded = Ufo::load(dir).unwrap();
+    assert!(loaded.meta.format_version == FormatVersion::V3);
+    assert!(loaded.meta.creator == "org.linebender.norad");
+    assert!(loaded.get_default_layer().is_some());
+}
 
 #[test]
 fn save_new_file() {
-    let mut my_ufo = Ufo::new(MetaInfo::default());
+    let mut my_ufo = Ufo::new();
     let mut my_glyph = Glyph::new_named("A");
     my_glyph.codepoints = Some(vec!['A']);
     my_glyph.note = Some("I did a glyph!".into());
@@ -13,6 +30,7 @@ fn save_new_file() {
     let dir = tempdir::TempDir::new("Test.ufo").unwrap();
     my_ufo.save(&dir).unwrap();
 
+    assert!(dir.path().join("metainfo.plist").exists());
     assert!(dir.path().join("glyphs").exists());
     assert!(dir.path().join("glyphs/contents.plist").exists());
     assert!(dir.path().join("glyphs/A_.glif").exists());
@@ -25,7 +43,7 @@ fn save_new_file() {
 
 #[test]
 fn save_fancy() {
-    let mut my_ufo = Ufo::new(MetaInfo::default());
+    let mut my_ufo = Ufo::new();
     let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
     let layer = Layer::load(layer_path).unwrap();
     *my_ufo.get_default_layer_mut().unwrap() = layer;

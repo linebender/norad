@@ -29,7 +29,7 @@ static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
 
 /// A Unified Font Object.
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct Ufo {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
@@ -40,6 +40,27 @@ pub struct Ufo {
     pub kerning: Option<BTreeMap<String, BTreeMap<String, f32>>>,
     pub features: Option<String>,
     __non_exhaustive: (),
+}
+
+impl Default for Ufo {
+    fn default() -> Self {
+        let main_layer = LayerInfo {
+            name: DEFAULT_LAYER_NAME.into(),
+            path: PathBuf::from(DEFAULT_GLYPHS_DIRNAME),
+            layer: Layer::default(),
+        };
+
+        Ufo {
+            meta: MetaInfo::default(),
+            font_info: None,
+            layers: vec![main_layer],
+            lib: None,
+            groups: None,
+            kerning: None,
+            features: None,
+            __non_exhaustive: (),
+        }
+    }
 }
 
 /// A [font layer], along with its name and path.
@@ -86,23 +107,8 @@ impl Default for MetaInfo {
 
 impl Ufo {
     /// Crate a new `Ufo`.
-    pub fn new(meta: MetaInfo) -> Self {
-        let main_layer = LayerInfo {
-            name: DEFAULT_LAYER_NAME.into(),
-            path: PathBuf::from(DEFAULT_GLYPHS_DIRNAME),
-            layer: Layer::default(),
-        };
-
-        Ufo {
-            meta,
-            font_info: None,
-            layers: vec![main_layer],
-            lib: None,
-            groups: None,
-            kerning: None,
-            features: None,
-            __non_exhaustive: (),
-        }
+    pub fn new() -> Self {
+        Ufo::default()
     }
 
     /// Attempt to load a font object from a file. `path` must point to
@@ -381,11 +387,8 @@ mod tests {
 
     #[test]
     fn new_is_v3() {
-        let font = Ufo::new(MetaInfo::default());
+        let font = Ufo::new();
         assert_eq!(font.meta.format_version, FormatVersion::V3);
-
-        let font2 = Ufo::default();
-        assert_eq!(font2.meta.format_version, FormatVersion::V3);
     }
 
     #[test]
