@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 #[cfg(feature = "druid")]
-use druid::Data;
+use druid::{Data, Lens};
 
 use crate::error::{Error, GlifError, GlifErrorInternal};
 use crate::shared_types::{Color, Guideline, Identifier, Line};
@@ -25,6 +25,7 @@ type Plist = ();
 ///
 /// [glif]: http://unifiedfontobject.org/versions/ufo3/glyphs/glif/
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "druid", derive(Lens))]
 pub struct Glyph {
     pub name: GlyphName,
     pub format: GlifVersion,
