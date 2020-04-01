@@ -22,8 +22,6 @@ serde_repr = "0.1"
 quick-xml = "0.17.0"
 
 [dependencies.druid]
-git = "https://github.com/xi-editor/druid.git"
-rev = "d7a7a6e"
 version = "0.5.0"
 optional = true
 
