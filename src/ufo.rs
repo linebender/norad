@@ -14,6 +14,7 @@ use crate::error::GroupsValidationError;
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
+use crate::upconversion::upconvert_kerning;
 use crate::Error;
 use plist;
 
@@ -28,6 +29,14 @@ static DEFAULT_LAYER_NAME: &str = "public.default";
 static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
 
+/// Groups is a map of group name to a list of glyph names. It's a BTreeMap because we need sorting
+/// for serialization.
+pub type Groups = BTreeMap<String, Vec<GlyphName>>;
+/// Kerning is a map of first half of a kerning pair (glyph name or group name) to the second half
+/// of a pair (glyph name or group name), which maps to the kerning value (high-level view:
+/// (first, second) => value). It's a BTreeMap because we need sorting for serialization.
+pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
+
 /// A Unified Font Object.
 #[derive(Clone)]
 pub struct Ufo {
@@ -35,9 +44,8 @@ pub struct Ufo {
     pub font_info: Option<FontInfo>,
     pub layers: Vec<LayerInfo>,
     pub lib: Option<plist::Dictionary>,
-    // groups and kerning: BTreeMap because we need sorting for deserialization.
-    pub groups: Option<BTreeMap<String, Vec<String>>>,
-    pub kerning: Option<BTreeMap<String, BTreeMap<String, f32>>>,
+    pub groups: Option<Groups>,
+    pub kerning: Option<Kerning>,
     pub features: Option<String>,
     __non_exhaustive: (),
 }
@@ -123,7 +131,7 @@ impl Ufo {
         // minimize monomorphization
         fn load_impl(path: &Path) -> Result<Ufo, Error> {
             let meta_path = path.join(METAINFO_FILE);
-            let meta: MetaInfo = plist::from_file(meta_path)?;
+            let mut meta: MetaInfo = plist::from_file(meta_path)?;
             let fontinfo_path = path.join(FONTINFO_FILE);
             let font_info = if fontinfo_path.exists() {
                 let font_info: FontInfo = plist::from_file(fontinfo_path)?;
@@ -147,9 +155,8 @@ impl Ufo {
 
             let groups_path = path.join(GROUPS_FILE);
             let groups = if groups_path.exists() {
-                let groups: BTreeMap<String, Vec<String>> = plist::from_file(groups_path)?;
+                let groups: Groups = plist::from_file(groups_path)?;
                 validate_groups(&groups).map_err(Error::GroupsError)?;
-
                 Some(groups)
             } else {
                 None
@@ -157,9 +164,7 @@ impl Ufo {
 
             let kerning_path = path.join(KERNING_FILE);
             let kerning = if kerning_path.exists() {
-                let kerning: BTreeMap<String, BTreeMap<String, f32>> =
-                    plist::from_file(kerning_path)?;
-
+                let kerning: Kerning = plist::from_file(kerning_path)?;
                 Some(kerning)
             } else {
                 None
@@ -168,7 +173,6 @@ impl Ufo {
             let features_path = path.join(FEATURES_FILE);
             let features = if features_path.exists() {
                 let features = fs::read_to_string(features_path)?;
-
                 Some(features)
             } else {
                 None
@@ -193,6 +197,21 @@ impl Ufo {
                 })
                 .collect();
             let layers = layers?;
+
+            // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
+            // a groups.plist file, while a kerning.plist is optional.
+            let (groups, kerning) = match (meta.format_version, groups, kerning) {
+                (FormatVersion::V3, g, k) => (g, k), // For v3, we do nothing.
+                (_, None, k) => (None, k), // Without a groups.plist, there's nothing to upgrade.
+                (_, Some(g), k) => {
+                    let (groups, kerning) =
+                        upconvert_kerning(&g, &k.unwrap_or_default(), &glyph_names);
+                    validate_groups(&groups).map_err(Error::GroupsUpconversionError)?;
+                    (Some(groups), Some(kerning))
+                }
+            };
+
+            meta.format_version = FormatVersion::V3;
 
             Ok(Ufo {
                 layers,
@@ -341,9 +360,7 @@ impl Ufo {
 
 /// Validate the contents of the groups.plist file according to the rules in the
 /// [Unified Font Object v3 specification for groups.plist](http://unifiedfontobject.org/versions/ufo3/groups.plist/#specification).
-fn validate_groups(
-    groups_map: &BTreeMap<String, Vec<String>>,
-) -> Result<(), GroupsValidationError> {
+fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidationError> {
     let mut kern1_set = HashSet::new();
     let mut kern2_set = HashSet::new();
     for (group_name, group_glyph_names) in groups_map {
@@ -406,14 +423,8 @@ mod tests {
             font_obj.lib.unwrap().get("com.typemytype.robofont.compileSettings.autohint"),
             Some(&plist::Value::Boolean(true))
         );
-
-        assert_eq!(
-            font_obj.groups.unwrap().get("public.kern1.@MMK_L_A"),
-            Some(&vec!["A".to_string()])
-        );
-
+        assert_eq!(font_obj.groups.unwrap().get("public.kern1.@MMK_L_A"), Some(&vec!["A".into()]));
         assert_eq!(font_obj.kerning.unwrap().get("B").unwrap().get("H").unwrap(), &-40.0);
-
         assert_eq!(font_obj.features.unwrap(), "# this is the feature from lightWide\n");
     }
 

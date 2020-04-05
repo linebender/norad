@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>A</key>
+    <dict>
+      <key>A</key>
+      <integer>1</integer>
+      <key>B</key>
+      <integer>2</integer>
+      <key>CGroup</key>
+      <integer>3</integer>
+      <key>DGroup</key>
+      <integer>4</integer>
+    </dict>
+    <key>BGroup</key>
+    <dict>
+      <key>A</key>
+      <integer>5</integer>
+      <key>B</key>
+      <integer>6</integer>
+      <key>CGroup</key>
+      <integer>7</integer>
+      <key>DGroup</key>
+      <integer>8</integer>
+    </dict>
+    <key>CGroup</key>
+    <dict>
+      <key>A</key>
+      <integer>9</integer>
+      <key>B</key>
+      <integer>10</integer>
+      <key>CGroup</key>
+      <integer>11</integer>
+      <key>DGroup</key>
+      <integer>12</integer>
+    </dict>
+    <key>X</key>
+    <dict>
+      <key>A</key>
+      <integer>13</integer>
+      <key>CGroup</key>
+      <integer>14</integer>
+    </dict>
+  </dict>
+</plist>

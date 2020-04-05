@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>BGroup</key>
+    <array>
+      <string>B</string>
+    </array>
+    <key>CGroup</key>
+    <array>
+      <string>C</string>
+      <string>Ccedilla</string>
+    </array>
+    <key>DGroup</key>
+    <array>
+      <string>D</string>
+    </array>
+    <key>Not A Kerning Group</key>
+    <array>
+      <string>A</string>
+    </array>
+    <key>X</key>
+    <array>
+      <string>X</string>
+      <string>X.sc</string>
+    </array>
+    <key>public.kern1.BGroup</key>
+    <array>
+      <string>B</string>
+    </array>
+    <key>public.kern1.CGroup</key>
+    <array>
+      <string>C</string>
+      <string>Ccedilla</string>
+    </array>
+    <key>public.kern2.CGroup</key>
+    <array>
+      <string>C</string>
+      <string>Ccedilla</string>
+    </array>
+    <key>public.kern2.DGroup</key>
+    <array>
+      <string>D</string>
+    </array>
+  </dict>
+</plist>
