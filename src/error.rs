@@ -20,12 +20,12 @@ pub enum Error {
     GlifWrite(GlifWriteError),
     PlistError(PlistError),
     FontInfoError,
-    Groups(GroupsError),
+    GroupsError(GroupsValidationError),
     ExpectedPlistDictionaryError,
 }
 
 #[derive(Debug)]
-pub enum GroupsError {
+pub enum GroupsValidationError {
     InvalidName,
     OverlappingKerningGroups { glyph_name: String, group_name: String },
 }
@@ -92,12 +92,17 @@ impl std::fmt::Display for Error {
             }
             Error::PlistError(e) => e.fmt(f),
             Error::FontInfoError => write!(f, "FontInfo contains invalid data"),
-            Error::Groups(ge) =>
-                match ge {
-                    GroupsError::InvalidName => write!(f, "A kerning group name must have at least one character after the common 'public.kernN.' prefix."),
-                    GroupsError::OverlappingKerningGroups {glyph_name, group_name} => write!(f, "The glyph '{}' appears in more than one kerning group. Last found in '{}'", glyph_name, group_name)
-                }
+            Error::GroupsError(ge) => ge.fmt(f),
             Error::ExpectedPlistDictionaryError => write!(f, "The files groups.plist, kerning.plist and lib.plist must contain plist dictionaries."),
+        }
+    }
+}
+
+impl std::fmt::Display for GroupsValidationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            GroupsValidationError::InvalidName => write!(f, "A kerning group name must have at least one character after the common 'public.kernN.' prefix."),
+            GroupsValidationError::OverlappingKerningGroups {glyph_name, group_name} => write!(f, "The glyph '{}' appears in more than one kerning group. Last found in '{}'", glyph_name, group_name)
         }
     }
 }
