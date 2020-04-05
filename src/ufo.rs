@@ -14,6 +14,7 @@ use crate::error::GroupsValidationError;
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
+use crate::upconversion::upconvert_kerning;
 use crate::Error;
 use plist;
 
@@ -130,7 +131,7 @@ impl Ufo {
         // minimize monomorphization
         fn load_impl(path: &Path) -> Result<Ufo, Error> {
             let meta_path = path.join(METAINFO_FILE);
-            let meta: MetaInfo = plist::from_file(meta_path)?;
+            let mut meta: MetaInfo = plist::from_file(meta_path)?;
             let fontinfo_path = path.join(FONTINFO_FILE);
             let font_info = if fontinfo_path.exists() {
                 let font_info: FontInfo = plist::from_file(fontinfo_path)?;
@@ -196,6 +197,21 @@ impl Ufo {
                 })
                 .collect();
             let layers = layers?;
+
+            // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
+            // a groups.plist file, while a kerning.plist is optional.
+            let (groups, kerning) = match (meta.format_version, groups, kerning) {
+                (FormatVersion::V3, g, k) => (g, k), // For v3, we do nothing.
+                (_, None, k) => (None, k), // Without a groups.plist, there's nothing to upgrade.
+                (_, Some(g), k) => {
+                    let (groups, kerning) =
+                        upconvert_kerning(&g, &k.unwrap_or_default(), &glyph_names);
+                    validate_groups(&groups).map_err(Error::GroupsUpconversionError)?;
+                    (Some(groups), Some(kerning))
+                }
+            };
+
+            meta.format_version = FormatVersion::V3;
 
             Ok(Ufo {
                 layers,

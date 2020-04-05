@@ -25,6 +25,7 @@ pub mod glyph;
 mod layer;
 mod shared_types;
 mod ufo;
+mod upconversion;
 
 pub use error::Error;
 pub use fontinfo::FontInfo;
