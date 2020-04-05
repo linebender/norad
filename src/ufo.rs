@@ -237,6 +237,10 @@ impl Ufo {
     }
 
     fn save_impl(&self, path: &Path) -> Result<(), Error> {
+        if self.meta.format_version != FormatVersion::V3 {
+            return Err(Error::DowngradeUnsupported);
+        }
+
         if self.meta.creator.as_str() != DEFAULT_METAINFO_CREATOR {
             return Err(Error::NotCreatedHere);
         }
@@ -408,6 +412,19 @@ mod tests {
     fn new_is_v3() {
         let font = Ufo::new();
         assert_eq!(font.meta.format_version, FormatVersion::V3);
+    }
+
+    #[test]
+    fn downgrade_unsupported() {
+        let dir = tempdir::TempDir::new("Test.ufo").unwrap();
+
+        let mut font = Ufo::new();
+        font.meta.format_version = FormatVersion::V1;
+        assert_eq!(font.save(&dir).is_err(), true);
+        font.meta.format_version = FormatVersion::V2;
+        assert_eq!(font.save(&dir).is_err(), true);
+        font.meta.format_version = FormatVersion::V3;
+        assert_eq!(font.save(&dir).is_ok(), true);
     }
 
     #[test]
