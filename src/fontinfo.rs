@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
@@ -11,9 +13,50 @@ use crate::Error;
 // values.
 type Integer = i32;
 type NonNegativeInteger = u32;
-type IntegerOrFloat = f64;
 type Float = f64;
 type Bitlist = Vec<u8>;
+
+/// IntegerOrFloat represents a number that can be an integer or float. It should
+/// serialize to an integer if it effectively represents one.
+#[derive(Debug, Clone, PartialEq)]
+pub struct IntegerOrFloat(f64);
+
+impl IntegerOrFloat {
+    fn is_integer(&self) -> bool {
+        (self.0 - self.round()).abs() < std::f64::EPSILON
+    }
+}
+
+impl Deref for IntegerOrFloat {
+    type Target = f64;
+
+    fn deref(&self) -> &f64 {
+        &self.0
+    }
+}
+
+impl Serialize for IntegerOrFloat {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.is_integer() {
+            serializer.serialize_i32(self.0 as i32)
+        } else {
+            serializer.serialize_f64(self.0)
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for IntegerOrFloat {
+    fn deserialize<D>(deserializer: D) -> Result<IntegerOrFloat, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value: f64 = Deserialize::deserialize(deserializer)?;
+        Ok(IntegerOrFloat(value))
+    }
+}
 
 /// The contents of the [`fontinfo.plist`][] file. This structure is hard-wired to the
 /// available attributes in UFO version 3.
@@ -37,7 +80,7 @@ pub struct FontInfo {
     pub trademark: Option<String>,
 
     // Generic Dimension Information
-    pub units_per_em: Option<f64>,
+    pub units_per_em: Option<IntegerOrFloat>, // must be positive.
     pub descender: Option<IntegerOrFloat>,
     pub x_height: Option<IntegerOrFloat>,
     pub cap_height: Option<IntegerOrFloat>,
@@ -206,7 +249,7 @@ impl FontInfo {
     /// [specification]: http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
     pub fn validate(&self) -> Result<(), Error> {
         // unitsPerEm must be non-negative.
-        if let Some(v) = self.units_per_em {
+        if let Some(v) = &self.units_per_em {
             if v.is_sign_negative() {
                 return Err(Error::FontInfoError);
             }
@@ -852,9 +895,17 @@ mod tests {
     }
 
     #[test]
+    fn test_integer_or_float_type() {
+        let n1 = IntegerOrFloat(1.1);
+        assert_tokens(&n1, &[Token::F64(1.1)]);
+        let n1 = IntegerOrFloat(1.0);
+        assert_tokens(&n1, &[Token::I32(1)]);
+    }
+
+    #[test]
     fn test_validate_units_per_em() {
         let mut fi = FontInfo::default();
-        fi.units_per_em = Some(-1.0);
+        fi.units_per_em = Some(IntegerOrFloat(-1.0));
         assert!(fi.validate().is_err());
     }
 
