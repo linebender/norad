@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::ops::Deref;
 
 use serde::de::Deserializer;
@@ -12,16 +13,24 @@ use crate::Error;
 // in several locations and we have to assume a bigger type that can hold all sane
 // values.
 type Integer = i32;
-type NonNegativeInteger = u32;
+type PositiveInteger = u32;
 type Float = f64;
 type Bitlist = Vec<u8>;
 
 /// IntegerOrFloat represents a number that can be an integer or float. It should
 /// serialize to an integer if it effectively represents one.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IntegerOrFloat(f64);
 
 impl IntegerOrFloat {
+    fn get(&self) -> f64 {
+        self.0
+    }
+
+    fn set(&mut self, value: f64) {
+        self.0 = value
+    }
+
     fn is_integer(&self) -> bool {
         (self.0 - self.round()).abs() < std::f64::EPSILON
     }
@@ -32,6 +41,18 @@ impl Deref for IntegerOrFloat {
 
     fn deref(&self) -> &f64 {
         &self.0
+    }
+}
+
+impl From<i32> for IntegerOrFloat {
+    fn from(value: i32) -> Self {
+        IntegerOrFloat(value as f64)
+    }
+}
+
+impl From<f64> for IntegerOrFloat {
+    fn from(value: f64) -> Self {
+        IntegerOrFloat(value)
     }
 }
 
@@ -58,6 +79,94 @@ impl<'de> Deserialize<'de> for IntegerOrFloat {
     }
 }
 
+/// PositiveIntegerOrFloat represents a number that can be a positive integer or float. It should
+/// serialize to an integer if it effectively represents one.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PositiveIntegerOrFloat(f64);
+
+impl PositiveIntegerOrFloat {
+    fn new(value: f64) -> Option<Self> {
+        if value.is_sign_positive() {
+            Some(PositiveIntegerOrFloat(value))
+        } else {
+            None
+        }
+    }
+
+    fn get(&self) -> f64 {
+        self.0
+    }
+
+    fn try_set(&mut self, value: f64) -> Result<(), Error> {
+        if value.is_sign_positive() {
+            self.0 = value;
+            Ok(())
+        } else {
+            Err(Error::ExpectedPositiveValue)
+        }
+    }
+
+    fn is_integer(&self) -> bool {
+        (self.0 - self.round()).abs() < std::f64::EPSILON
+    }
+}
+
+impl Deref for PositiveIntegerOrFloat {
+    type Target = f64;
+
+    fn deref(&self) -> &f64 {
+        &self.0
+    }
+}
+
+impl TryFrom<i32> for PositiveIntegerOrFloat {
+    type Error = Error;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match PositiveIntegerOrFloat::new(value as f64) {
+            Some(v) => Ok(v),
+            _ => Err(Error::ExpectedPositiveValue),
+        }
+    }
+}
+
+impl TryFrom<f64> for PositiveIntegerOrFloat {
+    type Error = Error;
+
+    fn try_from(value: f64) -> Result<Self, Self::Error> {
+        match PositiveIntegerOrFloat::new(value) {
+            Some(v) => Ok(v),
+            _ => Err(Error::ExpectedPositiveValue),
+        }
+    }
+}
+
+impl Serialize for PositiveIntegerOrFloat {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.is_integer() {
+            serializer.serialize_i32(self.0 as i32)
+        } else {
+            serializer.serialize_f64(self.0)
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for PositiveIntegerOrFloat {
+    fn deserialize<D>(deserializer: D) -> Result<PositiveIntegerOrFloat, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value: f64 = Deserialize::deserialize(deserializer)?;
+        match PositiveIntegerOrFloat::try_from(value) {
+            Ok(v) => Ok(v),
+            Err(_) => Err(serde::de::Error::custom("Value must be positive.")),
+        }
+    }
+}
+
 /// The contents of the [`fontinfo.plist`][] file. This structure is hard-wired to the
 /// available attributes in UFO version 3.
 ///
@@ -72,7 +181,7 @@ pub struct FontInfo {
     pub style_map_family_name: Option<String>,
     pub style_map_style_name: Option<StyleMapStyle>,
     pub version_major: Option<Integer>,
-    pub version_minor: Option<NonNegativeInteger>,
+    pub version_minor: Option<PositiveInteger>,
     pub year: Option<Integer>,
 
     // Generic Legal Information
@@ -80,7 +189,7 @@ pub struct FontInfo {
     pub trademark: Option<String>,
 
     // Generic Dimension Information
-    pub units_per_em: Option<IntegerOrFloat>, // must be positive.
+    pub units_per_em: Option<PositiveIntegerOrFloat>,
     pub descender: Option<IntegerOrFloat>,
     pub x_height: Option<IntegerOrFloat>,
     pub cap_height: Option<IntegerOrFloat>,
@@ -99,7 +208,7 @@ pub struct FontInfo {
     // OpenType head Table Fields
     pub open_type_head_created: Option<String>,
     #[serde(rename = "openTypeHeadLowestRecPPEM")]
-    pub open_type_head_lowest_rec_ppem: Option<NonNegativeInteger>,
+    pub open_type_head_lowest_rec_ppem: Option<PositiveInteger>,
     pub open_type_head_flags: Option<Bitlist>,
 
     // OpenType hhea Table Fields
@@ -138,7 +247,7 @@ pub struct FontInfo {
     #[serde(rename = "openTypeOS2WidthClass")]
     pub open_type_os2_width_class: Option<OS2WidthClass>,
     #[serde(rename = "openTypeOS2WeightClass")]
-    pub open_type_os2_weight_class: Option<NonNegativeInteger>,
+    pub open_type_os2_weight_class: Option<PositiveInteger>,
     #[serde(rename = "openTypeOS2Selection")]
     pub open_type_os2_selection: Option<Bitlist>,
     #[serde(rename = "openTypeOS2VendorID")]
@@ -160,9 +269,9 @@ pub struct FontInfo {
     #[serde(rename = "openTypeOS2TypoLineGap")]
     pub open_type_os2_typo_line_gap: Option<Integer>,
     #[serde(rename = "openTypeOS2WinAscent")]
-    pub open_type_os2_win_ascent: Option<NonNegativeInteger>,
+    pub open_type_os2_win_ascent: Option<PositiveInteger>,
     #[serde(rename = "openTypeOS2WinDescent")]
-    pub open_type_os2_win_descent: Option<NonNegativeInteger>,
+    pub open_type_os2_win_descent: Option<PositiveInteger>,
 
     #[serde(rename = "openTypeOS2Type")]
     pub open_type_os2_type: Option<Bitlist>,
@@ -229,8 +338,8 @@ pub struct FontInfo {
     pub macintosh_fond_name: Option<String>,
 
     // WOFF Data
-    pub woff_major_version: Option<NonNegativeInteger>,
-    pub woff_minor_version: Option<NonNegativeInteger>,
+    pub woff_major_version: Option<PositiveInteger>,
+    pub woff_minor_version: Option<PositiveInteger>,
     #[serde(rename = "woffMetadataUniqueID")]
     pub woff_metadata_unique_id: Option<WoffMetadataUniqueID>,
     pub woff_metadata_vendor: Option<WoffMetadataVendor>,
@@ -248,13 +357,6 @@ impl FontInfo {
     ///
     /// [specification]: http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
     pub fn validate(&self) -> Result<(), Error> {
-        // unitsPerEm must be non-negative.
-        if let Some(v) = &self.units_per_em {
-            if v.is_sign_negative() {
-                return Err(Error::FontInfoError);
-            }
-        }
-
         // The date format is "YYYY/MM/DD HH:MM:SS". This does not validate that the
         // days ceiling is valid for the month, as this would probably need a specialist
         // datetime library.
@@ -395,7 +497,7 @@ impl FontInfo {
 #[serde(rename_all = "camelCase")]
 pub struct GaspRangeRecord {
     #[serde(rename = "rangeMaxPPEM")]
-    range_max_ppem: NonNegativeInteger,
+    range_max_ppem: PositiveInteger,
     range_gasp_behavior: Vec<GaspBehavior>,
 }
 
@@ -414,13 +516,13 @@ pub enum GaspBehavior {
 #[serde(deny_unknown_fields)]
 pub struct NameRecord {
     #[serde(rename = "nameID")]
-    name_id: NonNegativeInteger,
+    name_id: PositiveInteger,
     #[serde(rename = "platformID")]
-    platform_id: NonNegativeInteger,
+    platform_id: PositiveInteger,
     #[serde(rename = "encodingID")]
-    encoding_id: NonNegativeInteger,
+    encoding_id: PositiveInteger,
     #[serde(rename = "languageID")]
-    language_id: NonNegativeInteger,
+    language_id: PositiveInteger,
     string: String,
 }
 
@@ -485,16 +587,16 @@ impl<'de> Deserialize<'de> for OS2FamilyClass {
 /// Corresponds to [openTypeOS2Panose](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct OS2Panose {
-    family_type: NonNegativeInteger,
-    serif_style: NonNegativeInteger,
-    weight: NonNegativeInteger,
-    proportion: NonNegativeInteger,
-    contrast: NonNegativeInteger,
-    stroke_variation: NonNegativeInteger,
-    arm_style: NonNegativeInteger,
-    letterform: NonNegativeInteger,
-    midline: NonNegativeInteger,
-    x_height: NonNegativeInteger,
+    family_type: PositiveInteger,
+    serif_style: PositiveInteger,
+    weight: PositiveInteger,
+    proportion: PositiveInteger,
+    contrast: PositiveInteger,
+    stroke_variation: PositiveInteger,
+    arm_style: PositiveInteger,
+    letterform: PositiveInteger,
+    midline: PositiveInteger,
+    x_height: PositiveInteger,
 }
 
 impl Serialize for OS2Panose {
@@ -522,7 +624,7 @@ impl<'de> Deserialize<'de> for OS2Panose {
     where
         D: Deserializer<'de>,
     {
-        let values: Vec<NonNegativeInteger> = Deserialize::deserialize(deserializer)?;
+        let values: Vec<PositiveInteger> = Deserialize::deserialize(deserializer)?;
         if values.len() != 10 {
             return Err(serde::de::Error::custom(
                 "openTypeOS2Panose must have exactly ten elements.",
@@ -903,10 +1005,12 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_units_per_em() {
-        let mut fi = FontInfo::default();
-        fi.units_per_em = Some(IntegerOrFloat(-1.0));
-        assert!(fi.validate().is_err());
+    fn test_positive_int_or_float() {
+        assert!(PositiveIntegerOrFloat::try_from(-1.0).is_err());
+
+        let mut v = PositiveIntegerOrFloat::try_from(1.0).unwrap();
+        assert!(v.try_set(-1.0).is_err());
+        assert!(v.try_set(1.0).is_ok());
     }
 
     #[test]
