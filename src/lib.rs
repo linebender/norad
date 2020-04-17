@@ -22,6 +22,7 @@ extern crate serde_repr;
 pub mod error;
 pub mod fontinfo;
 pub mod glyph;
+pub mod glyph_names;
 mod layer;
 mod shared_types;
 mod ufo;
