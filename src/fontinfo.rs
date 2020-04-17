@@ -1002,6 +1002,15 @@ mod tests {
         assert_tokens(&n1, &[Token::F64(1.1)]);
         let n1 = IntegerOrFloat(1.0);
         assert_tokens(&n1, &[Token::I32(1)]);
+        let n1 = IntegerOrFloat(-1.1);
+        assert_tokens(&n1, &[Token::F64(-1.1)]);
+        let n1 = IntegerOrFloat(-1.0);
+        assert_tokens(&n1, &[Token::I32(-1)]);
+
+        let n1 = PositiveIntegerOrFloat(1.1);
+        assert_tokens(&n1, &[Token::F64(1.1)]);
+        let n1 = PositiveIntegerOrFloat(1.0);
+        assert_tokens(&n1, &[Token::I32(1)]);
     }
 
     #[test]
