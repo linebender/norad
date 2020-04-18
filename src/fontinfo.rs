@@ -169,10 +169,7 @@ mod types {
             D: Deserializer<'de>,
         {
             let value: f64 = Deserialize::deserialize(deserializer)?;
-            match NonNegativeIntegerOrFloat::try_from(value) {
-                Ok(v) => Ok(v),
-                Err(_) => Err(serde::de::Error::custom("Value must be positive.")),
-            }
+            Ok(NonNegativeIntegerOrFloat::try_from(value).map_err(serde::de::Error::custom)?)
         }
     }
 }
