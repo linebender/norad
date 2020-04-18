@@ -863,9 +863,9 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryFrom;
     use super::*;
     use serde_test::{assert_tokens, Token};
+    use std::convert::TryFrom;
 
     #[test]
     fn fontinfo() {
