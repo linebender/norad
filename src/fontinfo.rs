@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::shared_types::Guideline;
 use crate::Error;
 
+/// Fontinfo value types are put into a module so that code on this level cannot access the
+/// literal constructors.
 mod types {
     use std::convert::TryFrom;
     use std::ops::Deref;
