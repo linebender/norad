@@ -1,6 +1,3 @@
-use std::convert::TryFrom;
-use std::ops::Deref;
-
 use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
@@ -178,7 +175,9 @@ mod types {
     }
 }
 
-use types::{Integer, IntegerOrFloat, Float, NonNegativeInteger, NonNegativeIntegerOrFloat, Bitlist};
+use types::{
+    Bitlist, Float, Integer, IntegerOrFloat, NonNegativeInteger, NonNegativeIntegerOrFloat,
+};
 
 /// The contents of the [`fontinfo.plist`][] file. This structure is hard-wired to the
 /// available attributes in UFO version 3.
@@ -864,6 +863,7 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
     use super::*;
     use serde_test::{assert_tokens, Token};
 
