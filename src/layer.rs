@@ -111,8 +111,15 @@ impl Layer {
     }
 
     /// Remove the named glyph from this layer.
+    #[doc(hidden)]
+    #[deprecated(since = "0.3.0", note = "use remove_glyph instead")]
     pub fn delete_glyph(&mut self, name: &str) {
         self.glyphs.remove(name);
+    }
+
+    /// Remove the named glyph from this layer and return it, if it exists.
+    pub fn remove_glyph(&mut self, name: &str) -> Option<Arc<Glyph>> {
+        self.glyphs.remove(name)
     }
 
     /// Iterate over the glyphs in this layer.
@@ -142,7 +149,7 @@ mod tests {
     fn delete() {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         let mut layer = Layer::load(layer_path).unwrap();
-        layer.delete_glyph("A");
+        layer.remove_glyph("A");
         if let Some(glyph) = layer.get_glyph("A") {
             panic!("{:?}", glyph);
         }
