@@ -9,7 +9,13 @@ fn main() {
     let (input, output) = get_path_or_exit();
 
     let start_load = Instant::now();
-    let mut my_ufo = Ufo::load(input).unwrap();
+    let mut my_ufo = match Ufo::load(input) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("Loading the UFO failed: {}", e);
+            std::process::exit(1);
+        }
+    };
     let duration_load = start_load.elapsed();
     let duration_load_str = format_time(duration_load);
 
