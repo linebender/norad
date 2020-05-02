@@ -31,5 +31,7 @@ pub use error::Error;
 pub use fontinfo::FontInfo;
 pub use glyph::{Glyph, GlyphName};
 pub use layer::Layer;
-pub use shared_types::{Color, Guideline, Identifier, Line};
+pub use shared_types::{
+    Color, Guideline, Identifier, IntegerOrFloat, Line, NonNegativeIntegerOrFloat,
+};
 pub use ufo::{FormatVersion, LayerInfo, MetaInfo, Ufo};

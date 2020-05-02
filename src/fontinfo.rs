@@ -2,18 +2,11 @@ use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 
-use crate::shared_types::Guideline;
+use crate::shared_types::{
+    Bitlist, Float, Guideline, Integer, IntegerOrFloat, NonNegativeInteger,
+    NonNegativeIntegerOrFloat,
+};
 use crate::Error;
-
-// The specification is vague about data type limits, usually implicitly meaning
-// Python types. Since Python is dynamic, the spec does not nail down the exact type
-// in several locations and we have to assume a bigger type that can hold all sane
-// values.
-type Integer = i32;
-type NonNegativeInteger = u32;
-type IntegerOrFloat = f64;
-type Float = f64;
-type Bitlist = Vec<u8>;
 
 /// The contents of the [`fontinfo.plist`][] file. This structure is hard-wired to the
 /// available attributes in UFO version 3.
@@ -37,7 +30,7 @@ pub struct FontInfo {
     pub trademark: Option<String>,
 
     // Generic Dimension Information
-    pub units_per_em: Option<f64>,
+    pub units_per_em: Option<NonNegativeIntegerOrFloat>,
     pub descender: Option<IntegerOrFloat>,
     pub x_height: Option<IntegerOrFloat>,
     pub cap_height: Option<IntegerOrFloat>,
@@ -205,13 +198,6 @@ impl FontInfo {
     ///
     /// [specification]: http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
     pub fn validate(&self) -> Result<(), Error> {
-        // unitsPerEm must be non-negative.
-        if let Some(v) = self.units_per_em {
-            if v.is_sign_negative() {
-                return Err(Error::FontInfoError);
-            }
-        }
-
         // The date format is "YYYY/MM/DD HH:MM:SS". This does not validate that the
         // days ceiling is valid for the month, as this would probably need a specialist
         // datetime library.
@@ -849,13 +835,6 @@ mod tests {
         assert_tokens(&s3, &[Token::Str("bold")]);
         let s4 = StyleMapStyle::BoldItalic;
         assert_tokens(&s4, &[Token::Str("bold italic")]);
-    }
-
-    #[test]
-    fn test_validate_units_per_em() {
-        let mut fi = FontInfo::default();
-        fi.units_per_em = Some(-1.0);
-        assert!(fi.validate().is_err());
     }
 
     #[test]
