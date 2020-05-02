@@ -16,181 +16,151 @@ use crate::Error;
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct FontInfo {
-    // Generic Identification Information
-    pub family_name: Option<String>,
-    pub style_name: Option<String>,
-    pub style_map_family_name: Option<String>,
-    pub style_map_style_name: Option<StyleMapStyle>,
-    pub version_major: Option<Integer>,
-    pub version_minor: Option<NonNegativeInteger>,
-    pub year: Option<Integer>,
-
-    // Generic Legal Information
-    pub copyright: Option<String>,
-    pub trademark: Option<String>,
-
-    // Generic Dimension Information
-    pub units_per_em: Option<NonNegativeIntegerOrFloat>,
-    pub descender: Option<IntegerOrFloat>,
-    pub x_height: Option<IntegerOrFloat>,
-    pub cap_height: Option<IntegerOrFloat>,
+    // INFO: Keep this struct sorted alphabetically, serde serializes it in the order you see
+    // here and Plist files should be sorted.
     pub ascender: Option<IntegerOrFloat>,
-    pub italic_angle: Option<IntegerOrFloat>,
-
-    // Guidelines
+    pub cap_height: Option<IntegerOrFloat>,
+    pub copyright: Option<String>,
+    pub descender: Option<IntegerOrFloat>,
+    pub family_name: Option<String>,
     pub guidelines: Option<Vec<Guideline>>,
-
-    // Generic Miscellaneous Information
+    pub italic_angle: Option<IntegerOrFloat>,
+    #[serde(rename = "macintoshFONDFamilyID")]
+    pub macintosh_fond_family_id: Option<Integer>,
+    #[serde(rename = "macintoshFONDName")]
+    pub macintosh_fond_name: Option<String>,
     pub note: Option<String>,
-
-    // OpenType gasp Table Fields
     pub open_type_gasp_range_records: Option<Vec<GaspRangeRecord>>,
-
-    // OpenType head Table Fields
     pub open_type_head_created: Option<String>,
+    pub open_type_head_flags: Option<Bitlist>,
     #[serde(rename = "openTypeHeadLowestRecPPEM")]
     pub open_type_head_lowest_rec_ppem: Option<NonNegativeInteger>,
-    pub open_type_head_flags: Option<Bitlist>,
-
-    // OpenType hhea Table Fields
     pub open_type_hhea_ascender: Option<Integer>,
-    pub open_type_hhea_descender: Option<Integer>,
-    pub open_type_hhea_line_gap: Option<Integer>,
+    pub open_type_hhea_caret_offset: Option<Integer>,
     pub open_type_hhea_caret_slope_rise: Option<Integer>,
     pub open_type_hhea_caret_slope_run: Option<Integer>,
-    pub open_type_hhea_caret_offset: Option<Integer>,
-
-    // OpenType Name Table Fields
-    pub open_type_name_designer: Option<String>,
+    pub open_type_hhea_descender: Option<Integer>,
+    pub open_type_hhea_line_gap: Option<Integer>,
+    pub open_type_name_compatible_full_name: Option<String>,
+    pub open_type_name_description: Option<String>,
     #[serde(rename = "openTypeNameDesignerURL")]
     pub open_type_name_designer_url: Option<String>,
-    pub open_type_name_manufacturer: Option<String>,
-    #[serde(rename = "openTypeNameManufacturerURL")]
-    pub open_type_name_manufacturer_url: Option<String>,
-    pub open_type_name_license: Option<String>,
+    pub open_type_name_designer: Option<String>,
     #[serde(rename = "openTypeNameLicenseURL")]
     pub open_type_name_license_url: Option<String>,
-    pub open_type_name_version: Option<String>,
-    #[serde(rename = "openTypeNameUniqueID")]
-    pub open_type_name_unique_id: Option<String>,
-    pub open_type_name_description: Option<String>,
+    pub open_type_name_license: Option<String>,
+    #[serde(rename = "openTypeNameManufacturerURL")]
+    pub open_type_name_manufacturer_url: Option<String>,
+    pub open_type_name_manufacturer: Option<String>,
     pub open_type_name_preferred_family_name: Option<String>,
     pub open_type_name_preferred_subfamily_name: Option<String>,
-    pub open_type_name_compatible_full_name: Option<String>,
+    pub open_type_name_records: Option<Vec<NameRecord>>,
     pub open_type_name_sample_text: Option<String>,
+    #[serde(rename = "openTypeNameUniqueID")]
+    pub open_type_name_unique_id: Option<String>,
+    pub open_type_name_version: Option<String>,
     #[serde(rename = "openTypeNameWWSFamilyName")]
     pub open_type_name_wws_family_name: Option<String>,
     #[serde(rename = "openTypeNameWWSSubfamilyName")]
     pub open_type_name_wws_subfamily_name: Option<String>,
-    pub open_type_name_records: Option<Vec<NameRecord>>,
-
-    // OpenType OS/2 Table Fields
-    #[serde(rename = "openTypeOS2WidthClass")]
-    pub open_type_os2_width_class: Option<OS2WidthClass>,
-    #[serde(rename = "openTypeOS2WeightClass")]
-    pub open_type_os2_weight_class: Option<NonNegativeInteger>,
-    #[serde(rename = "openTypeOS2Selection")]
-    pub open_type_os2_selection: Option<Bitlist>,
-    #[serde(rename = "openTypeOS2VendorID")]
-    pub open_type_os2_vendor_id: Option<String>,
-    #[serde(rename = "openTypeOS2Panose")]
-    pub open_type_os2_panose: Option<OS2Panose>,
-    #[serde(rename = "openTypeOS2FamilyClass")]
-    pub open_type_os2_family_class: Option<OS2FamilyClass>,
-
-    #[serde(rename = "openTypeOS2UnicodeRanges")]
-    pub open_type_os2_unicode_ranges: Option<Bitlist>,
     #[serde(rename = "openTypeOS2CodePageRanges")]
     pub open_type_os2_code_page_ranges: Option<Bitlist>,
-
+    #[serde(rename = "openTypeOS2FamilyClass")]
+    pub open_type_os2_family_class: Option<OS2FamilyClass>,
+    #[serde(rename = "openTypeOS2Panose")]
+    pub open_type_os2_panose: Option<OS2Panose>,
+    #[serde(rename = "openTypeOS2Selection")]
+    pub open_type_os2_selection: Option<Bitlist>,
+    #[serde(rename = "openTypeOS2StrikeoutPosition")]
+    pub open_type_os2_strikeout_position: Option<Integer>,
+    #[serde(rename = "openTypeOS2StrikeoutSize")]
+    pub open_type_os2_strikeout_size: Option<Integer>,
+    #[serde(rename = "openTypeOS2SubscriptXOffset")]
+    pub open_type_os2_subscript_x_offset: Option<Integer>,
+    #[serde(rename = "openTypeOS2SubscriptXSize")]
+    pub open_type_os2_subscript_x_size: Option<Integer>,
+    #[serde(rename = "openTypeOS2SubscriptYOffset")]
+    pub open_type_os2_subscript_y_offset: Option<Integer>,
+    #[serde(rename = "openTypeOS2SubscriptYSize")]
+    pub open_type_os2_subscript_y_size: Option<Integer>,
+    #[serde(rename = "openTypeOS2SuperscriptXOffset")]
+    pub open_type_os2_superscript_x_offset: Option<Integer>,
+    #[serde(rename = "openTypeOS2SuperscriptXSize")]
+    pub open_type_os2_superscript_x_size: Option<Integer>,
+    #[serde(rename = "openTypeOS2SuperscriptYOffset")]
+    pub open_type_os2_superscript_y_offset: Option<Integer>,
+    #[serde(rename = "openTypeOS2SuperscriptYSize")]
+    pub open_type_os2_superscript_y_size: Option<Integer>,
+    #[serde(rename = "openTypeOS2Type")]
+    pub open_type_os2_type: Option<Bitlist>,
     #[serde(rename = "openTypeOS2TypoAscender")]
     pub open_type_os2_typo_ascender: Option<Integer>,
     #[serde(rename = "openTypeOS2TypoDescender")]
     pub open_type_os2_typo_descender: Option<Integer>,
     #[serde(rename = "openTypeOS2TypoLineGap")]
     pub open_type_os2_typo_line_gap: Option<Integer>,
+    #[serde(rename = "openTypeOS2UnicodeRanges")]
+    pub open_type_os2_unicode_ranges: Option<Bitlist>,
+    #[serde(rename = "openTypeOS2VendorID")]
+    pub open_type_os2_vendor_id: Option<String>,
+    #[serde(rename = "openTypeOS2WeightClass")]
+    pub open_type_os2_weight_class: Option<NonNegativeInteger>,
+    #[serde(rename = "openTypeOS2WidthClass")]
+    pub open_type_os2_width_class: Option<OS2WidthClass>,
     #[serde(rename = "openTypeOS2WinAscent")]
     pub open_type_os2_win_ascent: Option<NonNegativeInteger>,
     #[serde(rename = "openTypeOS2WinDescent")]
     pub open_type_os2_win_descent: Option<NonNegativeInteger>,
-
-    #[serde(rename = "openTypeOS2Type")]
-    pub open_type_os2_type: Option<Bitlist>,
-
-    #[serde(rename = "openTypeOS2SubscriptXSize")]
-    pub open_type_os2_subscript_x_size: Option<Integer>,
-    #[serde(rename = "openTypeOS2SubscriptYSize")]
-    pub open_type_os2_subscript_y_size: Option<Integer>,
-    #[serde(rename = "openTypeOS2SubscriptXOffset")]
-    pub open_type_os2_subscript_x_offset: Option<Integer>,
-    #[serde(rename = "openTypeOS2SubscriptYOffset")]
-    pub open_type_os2_subscript_y_offset: Option<Integer>,
-    #[serde(rename = "openTypeOS2SuperscriptXSize")]
-    pub open_type_os2_superscript_x_size: Option<Integer>,
-    #[serde(rename = "openTypeOS2SuperscriptYSize")]
-    pub open_type_os2_superscript_y_size: Option<Integer>,
-    #[serde(rename = "openTypeOS2SuperscriptXOffset")]
-    pub open_type_os2_superscript_x_offset: Option<Integer>,
-    #[serde(rename = "openTypeOS2SuperscriptYOffset")]
-    pub open_type_os2_superscript_y_offset: Option<Integer>,
-
-    #[serde(rename = "openTypeOS2StrikeoutSize")]
-    pub open_type_os2_strikeout_size: Option<Integer>,
-    #[serde(rename = "openTypeOS2StrikeoutPosition")]
-    pub open_type_os2_strikeout_position: Option<Integer>,
-
-    // OpenType vhea Table Fields
+    pub open_type_vhea_caret_offset: Option<Integer>,
+    pub open_type_vhea_caret_slope_rise: Option<Integer>,
+    pub open_type_vhea_caret_slope_run: Option<Integer>,
     pub open_type_vhea_vert_typo_ascender: Option<Integer>,
     pub open_type_vhea_vert_typo_descender: Option<Integer>,
     pub open_type_vhea_vert_typo_line_gap: Option<Integer>,
-    pub open_type_vhea_caret_slope_rise: Option<Integer>,
-    pub open_type_vhea_caret_slope_run: Option<Integer>,
-    pub open_type_vhea_caret_offset: Option<Integer>,
-
-    // PostScript Specific Data
-    pub postscript_font_name: Option<String>,
-    pub postscript_full_name: Option<String>,
-    pub postscript_slant_angle: Option<IntegerOrFloat>,
-    #[serde(rename = "postscriptUniqueID")]
-    pub postscript_unique_id: Option<Integer>,
-    pub postscript_underline_thickness: Option<IntegerOrFloat>,
-    pub postscript_underline_position: Option<IntegerOrFloat>,
-    pub postscript_is_fixed_pitch: Option<bool>,
+    pub postscript_blue_fuzz: Option<IntegerOrFloat>,
+    pub postscript_blue_scale: Option<Float>,
+    pub postscript_blue_shift: Option<IntegerOrFloat>,
     pub postscript_blue_values: Option<Vec<IntegerOrFloat>>,
-    pub postscript_other_blues: Option<Vec<IntegerOrFloat>>,
+    pub postscript_default_character: Option<String>,
+    pub postscript_default_width_x: Option<IntegerOrFloat>,
     pub postscript_family_blues: Option<Vec<IntegerOrFloat>>,
     pub postscript_family_other_blues: Option<Vec<IntegerOrFloat>>,
+    pub postscript_font_name: Option<String>,
+    pub postscript_force_bold: Option<bool>,
+    pub postscript_full_name: Option<String>,
+    pub postscript_is_fixed_pitch: Option<bool>,
+    pub postscript_nominal_width_x: Option<IntegerOrFloat>,
+    pub postscript_other_blues: Option<Vec<IntegerOrFloat>>,
+    pub postscript_slant_angle: Option<IntegerOrFloat>,
     pub postscript_stem_snap_h: Option<Vec<IntegerOrFloat>>,
     pub postscript_stem_snap_v: Option<Vec<IntegerOrFloat>>,
-    pub postscript_blue_fuzz: Option<IntegerOrFloat>,
-    pub postscript_blue_shift: Option<IntegerOrFloat>,
-    pub postscript_blue_scale: Option<Float>,
-    pub postscript_force_bold: Option<bool>,
-    pub postscript_default_width_x: Option<IntegerOrFloat>,
-    pub postscript_nominal_width_x: Option<IntegerOrFloat>,
+    pub postscript_underline_position: Option<IntegerOrFloat>,
+    pub postscript_underline_thickness: Option<IntegerOrFloat>,
+    #[serde(rename = "postscriptUniqueID")]
+    pub postscript_unique_id: Option<Integer>,
     pub postscript_weight_name: Option<String>,
-    pub postscript_default_character: Option<String>,
     pub postscript_windows_character_set: Option<PostscriptWindowsCharacterSet>,
-
-    // Macintosh FOND Resource Data
-    #[serde(rename = "macintoshFONDFamilyID")]
-    pub macintosh_fond_family_id: Option<Integer>,
-    #[serde(rename = "macintoshFONDName")]
-    pub macintosh_fond_name: Option<String>,
-
-    // WOFF Data
+    pub style_map_family_name: Option<String>,
+    pub style_map_style_name: Option<StyleMapStyle>,
+    pub style_name: Option<String>,
+    pub trademark: Option<String>,
+    pub units_per_em: Option<NonNegativeIntegerOrFloat>,
+    pub version_major: Option<Integer>,
+    pub version_minor: Option<NonNegativeInteger>,
     pub woff_major_version: Option<NonNegativeInteger>,
-    pub woff_minor_version: Option<NonNegativeInteger>,
+    pub woff_metadata_copyright: Option<WoffMetadataCopyright>,
+    pub woff_metadata_credits: Option<WoffMetadataCredits>,
+    pub woff_metadata_description: Option<WoffMetadataDescription>,
+    pub woff_metadata_extensions: Option<Vec<WoffMetadataExtensionRecord>>,
+    pub woff_metadata_license: Option<WoffMetadataLicense>,
+    pub woff_metadata_licensee: Option<WoffMetadataLicensee>,
+    pub woff_metadata_trademark: Option<WoffMetadataTrademark>,
     #[serde(rename = "woffMetadataUniqueID")]
     pub woff_metadata_unique_id: Option<WoffMetadataUniqueID>,
     pub woff_metadata_vendor: Option<WoffMetadataVendor>,
-    pub woff_metadata_credits: Option<WoffMetadataCredits>,
-    pub woff_metadata_description: Option<WoffMetadataDescription>,
-    pub woff_metadata_license: Option<WoffMetadataLicense>,
-    pub woff_metadata_copyright: Option<WoffMetadataCopyright>,
-    pub woff_metadata_trademark: Option<WoffMetadataTrademark>,
-    pub woff_metadata_licensee: Option<WoffMetadataLicensee>,
-    pub woff_metadata_extensions: Option<Vec<WoffMetadataExtensionRecord>>,
+    pub woff_minor_version: Option<NonNegativeInteger>,
+    pub x_height: Option<IntegerOrFloat>,
+    pub year: Option<Integer>,
 }
 
 impl FontInfo {
