@@ -114,17 +114,23 @@ impl Layer {
     #[doc(hidden)]
     #[deprecated(since = "0.3.0", note = "use remove_glyph instead")]
     pub fn delete_glyph(&mut self, name: &str) {
-        self.glyphs.remove(name);
+        self.remove_glyph(name);
     }
 
     /// Remove the named glyph from this layer and return it, if it exists.
     pub fn remove_glyph(&mut self, name: &str) -> Option<Arc<Glyph>> {
+        self.contents.remove(name);
         self.glyphs.remove(name)
     }
 
     /// Iterate over the glyphs in this layer.
     pub fn iter_contents<'a>(&'a self) -> impl Iterator<Item = Arc<Glyph>> + 'a {
         self.glyphs.values().map(Arc::clone)
+    }
+
+    #[cfg(test)]
+    pub fn get_path(&self, name: &str) -> Option<&Path> {
+        self.contents.get(name).map(PathBuf::as_path)
     }
 }
 
@@ -152,6 +158,10 @@ mod tests {
         layer.remove_glyph("A");
         if let Some(glyph) = layer.get_glyph("A") {
             panic!("{:?}", glyph);
+        }
+
+        if let Some(path) = layer.get_path("A") {
+            panic!("{:?}", path);
         }
     }
 
