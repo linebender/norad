@@ -226,21 +226,22 @@ pub(crate) fn default_file_name_for_glyph_name(name: impl AsRef<str>) -> String 
         static SUFFIX: &str = ".glif";
         const MAX_LEN: usize = 255;
 
-        let mut iter = name.chars();
         let mut result = String::with_capacity(name.len());
 
-        match iter.next() {
-            Some('.') if result.is_empty() => result.push('_'),
-            Some(c) if (c as u32) < 32 || (c as u32) == 0x7f || SPECIAL_ILLEGAL.contains(&c) => {
-                result.push('_')
+        for c in name.chars() {
+            match c {
+                '.' if result.is_empty() => result.push('_'),
+                c if (c as u32) < 32 || (c as u32) == 0x7f || SPECIAL_ILLEGAL.contains(&c) => {
+                    result.push('_')
+                }
+                c if c.is_ascii_uppercase() => {
+                    result.push(c);
+                    result.push('_');
+                }
+                c => result.push(c),
             }
-            Some(c) if c.is_ascii_uppercase() => {
-                result.push(c);
-                result.push('_');
-            }
-            Some(c) => result.push(c),
-            None => (),
         }
+
         //TODO: check for illegal names?
         if result.len() + SUFFIX.len() > MAX_LEN {
             let mut boundary = 255 - SUFFIX.len();
