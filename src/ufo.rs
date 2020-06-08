@@ -14,6 +14,7 @@ use crate::error::GroupsValidationError;
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
+use crate::names::NameList;
 use crate::upconversion::upconvert_kerning;
 use crate::Error;
 
@@ -177,7 +178,7 @@ impl Ufo {
                 None
             };
 
-            let mut glyph_names = HashSet::new();
+            let glyph_names = NameList::default();
             let mut contents = match meta.format_version {
                 FormatVersion::V3 => {
                     let contents_path = path.join(LAYER_CONTENTS_FILE);
@@ -191,7 +192,7 @@ impl Ufo {
                 .drain(..)
                 .map(|(name, p)| {
                     let layer_path = path.join(&p);
-                    let layer = Layer::load_impl(&layer_path, &mut glyph_names)?;
+                    let layer = Layer::load_impl(&layer_path, &glyph_names)?;
                     Ok(LayerInfo { name, path: p, layer })
                 })
                 .collect();

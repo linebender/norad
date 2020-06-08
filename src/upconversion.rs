@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use crate::glyph::GlyphName;
+use crate::names::NameList;
 use crate::ufo::{Groups, Kerning};
 
 /// Convert kerning groups and pairs from v1 and v2 informal conventions to v3 formal conventions.
@@ -9,10 +9,10 @@ use crate::ufo::{Groups, Kerning};
 ///
 /// This is an adaptation from the fontTools.ufoLib reference implementation. It will not check if
 /// the upgraded groups pass validation.
-pub fn upconvert_kerning(
+pub(crate) fn upconvert_kerning(
     groups: &Groups,
     kerning: &Kerning,
-    glyph_set: &HashSet<GlyphName>,
+    glyph_set: &NameList,
 ) -> (Groups, Kerning) {
     // Gather known kerning groups based on the prefixes. This will catch groups that exist in
     // `groups` but are not referenced in `kerning`.
@@ -109,6 +109,7 @@ mod tests {
     extern crate maplit;
 
     use super::*;
+    use crate::glyph::GlyphName;
     use crate::ufo::{FormatVersion, Ufo};
     use maplit::btreemap;
 
@@ -127,20 +128,10 @@ mod tests {
             "foo".into() => vec![],
         };
         let kerning: Kerning = Kerning::new();
-        let glyph_set: HashSet<GlyphName> = vec![
-            "a".into(),
-            "b".into(),
-            "c".into(),
-            "d".into(),
-            "e".into(),
-            "f".into(),
-            "g".into(),
-            "h".into(),
-            "i".into(),
-            "j".into(),
-        ]
-        .into_iter()
-        .collect();
+        let glyph_set: NameList = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+            .iter()
+            .map(|s| GlyphName::from(*s))
+            .collect();
 
         let (groups_new, kerning_new) = upconvert_kerning(&groups, &kerning, &glyph_set);
 
@@ -195,7 +186,7 @@ mod tests {
                 "DGroup".into() => 12.0,
             },
         };
-        let glyph_set: HashSet<GlyphName> = HashSet::new();
+        let glyph_set = NameList::default();
 
         let (groups_new, kerning_new) = upconvert_kerning(&groups, &kerning, &glyph_set);
 
@@ -266,7 +257,7 @@ mod tests {
                 "@MMK_R_DGroup".into() => 12.0,
             },
         };
-        let glyph_set: HashSet<GlyphName> = HashSet::new();
+        let glyph_set = NameList::default();
 
         let (groups_new, kerning_new) = upconvert_kerning(&groups, &kerning, &glyph_set);
 
@@ -340,7 +331,7 @@ mod tests {
                 "DGroup".into() => 12.0,
             },
         };
-        let glyph_set: HashSet<GlyphName> = HashSet::new();
+        let glyph_set = NameList::default();
 
         let (groups_new, kerning_new) = upconvert_kerning(&groups, &kerning, &glyph_set);
 

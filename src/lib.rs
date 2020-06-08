@@ -23,6 +23,7 @@ pub mod error;
 pub mod fontinfo;
 pub mod glyph;
 mod layer;
+mod names;
 mod shared_types;
 mod ufo;
 mod upconversion;
