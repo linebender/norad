@@ -5,7 +5,6 @@ mod serialize;
 #[cfg(test)]
 mod tests;
 
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -13,6 +12,7 @@ use std::sync::Arc;
 use druid::{Data, Lens};
 
 use crate::error::{Error, GlifError, GlifErrorInternal};
+use crate::names::NameList;
 use crate::shared_types::{Color, Guideline, Identifier, Line};
 
 /// The name of a glyph.
@@ -47,11 +47,11 @@ impl Glyph {
     /// between instances.
     pub fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
-        let mut names = HashSet::new();
-        Glyph::load_with_names(path, &mut names)
+        let names = NameList::default();
+        Glyph::load_with_names(path, &names)
     }
 
-    pub fn load_with_names(path: &Path, names: &mut HashSet<GlyphName>) -> Result<Self, Error> {
+    pub fn load_with_names(path: &Path, names: &NameList) -> Result<Self, Error> {
         let data = std::fs::read(path)?;
         parse::GlifParser::from_xml(&data, Some(names)).map_err(|e| match e {
             GlifErrorInternal::Xml(e) => e.into(),

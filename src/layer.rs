@@ -1,10 +1,14 @@
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+#[cfg(feature = "rayon")]
+use rayon::prelude::*;
+
 use crate::glyph::GlyphName;
+use crate::names::NameList;
 use crate::{Error, Glyph};
 
 static CONTENTS_FILE: &str = "contents.plist";
@@ -27,35 +31,37 @@ impl Layer {
     /// can be reused between layers.
     pub fn load(path: impl AsRef<Path>) -> Result<Layer, Error> {
         let path = path.as_ref();
-        let mut names = HashSet::new();
-        Layer::load_impl(path, &mut names)
+        let names = NameList::default();
+        Layer::load_impl(path, &names)
     }
 
     /// the actual loading logic.
     ///
     /// `names` is a map of glyphnames; we pass it throughout parsing
     /// so that we reuse the same Arc<str> for identical names.
-    pub(crate) fn load_impl(path: &Path, names: &mut HashSet<GlyphName>) -> Result<Layer, Error> {
+    pub(crate) fn load_impl(path: &Path, names: &NameList) -> Result<Layer, Error> {
         let contents_path = path.join(CONTENTS_FILE);
         // these keys are never used; a future optimization would be to skip the
         // names and deserialize to a vec; that would not be a one-liner, though.
         let contents: BTreeMap<GlyphName, PathBuf> = plist::from_file(contents_path)?;
-        let mut glyphs = BTreeMap::new();
-        for (name, glyph_path) in contents.iter() {
-            let name = match names.get(&*name) {
-                Some(name) => name.clone(),
-                None => {
-                    names.insert(name.clone());
-                    name.clone()
-                }
-            };
 
-            let glyph_path = path.join(glyph_path);
-            let mut glyph = Glyph::load_with_names(&glyph_path, names)?;
-            glyph.name = name.clone();
-            // reuse the name in the glyph to avoid having two copies of each
-            glyphs.insert(name, Arc::new(glyph));
-        }
+        #[cfg(feature = "rayon")]
+        let iter = contents.par_iter();
+        #[cfg(not(feature = "rayon"))]
+        let iter = contents.iter();
+
+        let glyphs = iter
+            .map(|(name, glyph_path)| {
+                let name = names.get(name);
+                let glyph_path = path.join(glyph_path);
+
+                Glyph::load_with_names(&glyph_path, names).map(|mut glyph| {
+                    glyph.name = name.clone();
+                    (name, Arc::new(glyph))
+                })
+            })
+            //FIXME: come up with a better way of reporting errors than just aborting at first failure
+            .collect::<Result<_, _>>()?;
         Ok(Layer { contents, glyphs })
     }
 

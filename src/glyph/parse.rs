@@ -1,11 +1,11 @@
 use std::borrow::Borrow;
-use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use super::*;
 use crate::error::{ErrorKind, GlifErrorInternal};
+use crate::names::NameList;
 
 use quick_xml::{
     events::{BytesStart, Event},
@@ -28,14 +28,11 @@ type Error = GlifErrorInternal;
 pub(crate) struct GlifParser<'names> {
     glyph: Glyph,
     /// Optional set of glyph names to be reused between glyphs.
-    names: Option<&'names mut HashSet<GlyphName>>,
+    names: Option<&'names NameList>,
 }
 
 impl<'names> GlifParser<'names> {
-    pub(crate) fn from_xml(
-        xml: &[u8],
-        names: Option<&'names mut HashSet<GlyphName>>,
-    ) -> Result<Glyph, Error> {
+    pub(crate) fn from_xml(xml: &[u8], names: Option<&'names NameList>) -> Result<Glyph, Error> {
         let mut reader = Reader::from_reader(xml);
         let mut buf = Vec::new();
         reader.trim_text(true);
@@ -152,15 +149,10 @@ impl<'names> GlifParser<'names> {
                 b"xOffset" => transform.x_offset = value.parse().map_err(|_| (kind, pos))?,
                 b"yOffset" => transform.y_offset = value.parse().map_err(|_| (kind, pos))?,
                 b"base" => {
-                    let name = match self.names.as_ref().and_then(|n| n.get(value)) {
-                        Some(name) => name.clone(),
-                        None => {
-                            let name: Arc<str> = value.into();
-                            if let Some(names) = self.names.as_mut() {
-                                names.insert(name.clone());
-                            }
-                            name
-                        }
+                    let name: Arc<str> = value.into();
+                    let name = match self.names.as_ref() {
+                        Some(names) => names.get(&name),
+                        None => name,
                     };
                     base = Some(name);
                 }
