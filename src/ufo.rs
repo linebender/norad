@@ -16,7 +16,6 @@ use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
 use crate::upconversion::upconvert_kerning;
 use crate::Error;
-use plist;
 
 static LAYER_CONTENTS_FILE: &str = "layercontents.plist";
 static METAINFO_FILE: &str = "metainfo.plist";
