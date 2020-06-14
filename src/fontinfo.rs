@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
@@ -6,7 +8,7 @@ use crate::shared_types::{
     Bitlist, Float, Guideline, Integer, IntegerOrFloat, NonNegativeInteger,
     NonNegativeIntegerOrFloat,
 };
-use crate::Error;
+use crate::{Error, FormatVersion};
 
 /// The contents of the [`fontinfo.plist`][] file. This structure is hard-wired to the
 /// available attributes in UFO version 3.
@@ -163,7 +165,444 @@ pub struct FontInfo {
     pub year: Option<Integer>,
 }
 
+/// The contents of the [`fontinfo.plist`][] file specified for UFO version 2. Its only purpose is
+/// to enable upconversion.
+///
+/// [`fontinfo.plist`]: http://unifiedfontobject.org/versions/ufo2/fontinfo.plist/
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
+struct FontInfoV2 {
+    ascender: Option<IntegerOrFloat>,
+    capHeight: Option<IntegerOrFloat>,
+    copyright: Option<String>,
+    descender: Option<IntegerOrFloat>,
+    familyName: Option<String>,
+    italicAngle: Option<IntegerOrFloat>,
+    macintoshFONDFamilyID: Option<Integer>,
+    macintoshFONDName: Option<String>,
+    note: Option<String>,
+    openTypeHeadCreated: Option<String>,
+    openTypeHeadFlags: Option<Bitlist>,
+    openTypeHeadLowestRecPPEM: Option<IntegerOrFloat>,
+    openTypeHheaAscender: Option<IntegerOrFloat>,
+    openTypeHheaCaretOffset: Option<IntegerOrFloat>,
+    openTypeHheaCaretSlopeRise: Option<Integer>,
+    openTypeHheaCaretSlopeRun: Option<Integer>,
+    openTypeHheaDescender: Option<IntegerOrFloat>,
+    openTypeHheaLineGap: Option<IntegerOrFloat>,
+    openTypeNameCompatibleFullName: Option<String>,
+    openTypeNameDescription: Option<String>,
+    openTypeNameDesigner: Option<String>,
+    openTypeNameDesignerURL: Option<String>,
+    openTypeNameLicense: Option<String>,
+    openTypeNameLicenseURL: Option<String>,
+    openTypeNameManufacturer: Option<String>,
+    openTypeNameManufacturerURL: Option<String>,
+    openTypeNamePreferredFamilyName: Option<String>,
+    openTypeNamePreferredSubfamilyName: Option<String>,
+    openTypeNameSampleText: Option<String>,
+    openTypeNameUniqueID: Option<String>,
+    openTypeNameVersion: Option<String>,
+    openTypeNameWWSFamilyName: Option<String>,
+    openTypeNameWWSSubfamilyName: Option<String>,
+    openTypeOS2CodePageRanges: Option<Bitlist>,
+    openTypeOS2FamilyClass: Option<OS2FamilyClass>,
+    openTypeOS2Panose: Option<OS2PanoseV2>,
+    openTypeOS2Selection: Option<Bitlist>,
+    openTypeOS2StrikeoutPosition: Option<IntegerOrFloat>,
+    openTypeOS2StrikeoutSize: Option<IntegerOrFloat>,
+    openTypeOS2SubscriptXOffset: Option<IntegerOrFloat>,
+    openTypeOS2SubscriptXSize: Option<IntegerOrFloat>,
+    openTypeOS2SubscriptYOffset: Option<IntegerOrFloat>,
+    openTypeOS2SubscriptYSize: Option<IntegerOrFloat>,
+    openTypeOS2SuperscriptXOffset: Option<IntegerOrFloat>,
+    openTypeOS2SuperscriptXSize: Option<IntegerOrFloat>,
+    openTypeOS2SuperscriptYOffset: Option<IntegerOrFloat>,
+    openTypeOS2SuperscriptYSize: Option<IntegerOrFloat>,
+    openTypeOS2Type: Option<Bitlist>,
+    openTypeOS2TypoAscender: Option<IntegerOrFloat>,
+    openTypeOS2TypoDescender: Option<IntegerOrFloat>,
+    openTypeOS2TypoLineGap: Option<IntegerOrFloat>,
+    openTypeOS2UnicodeRanges: Option<Bitlist>,
+    openTypeOS2VendorID: Option<String>,
+    openTypeOS2WeightClass: Option<NonNegativeInteger>,
+    openTypeOS2WidthClass: Option<OS2WidthClass>,
+    openTypeOS2WinAscent: Option<IntegerOrFloat>,
+    openTypeOS2WinDescent: Option<IntegerOrFloat>,
+    openTypeVheaCaretOffset: Option<IntegerOrFloat>,
+    openTypeVheaCaretSlopeRise: Option<Integer>,
+    openTypeVheaCaretSlopeRun: Option<Integer>,
+    openTypeVheaVertTypoAscender: Option<IntegerOrFloat>,
+    openTypeVheaVertTypoDescender: Option<IntegerOrFloat>,
+    openTypeVheaVertTypoLineGap: Option<IntegerOrFloat>,
+    postscriptBlueFuzz: Option<IntegerOrFloat>,
+    postscriptBlueScale: Option<Float>,
+    postscriptBlueShift: Option<IntegerOrFloat>,
+    postscriptBlueValues: Option<Vec<IntegerOrFloat>>,
+    postscriptDefaultCharacter: Option<String>,
+    postscriptDefaultWidthX: Option<IntegerOrFloat>,
+    postscriptFamilyBlues: Option<Vec<IntegerOrFloat>>,
+    postscriptFamilyOtherBlues: Option<Vec<IntegerOrFloat>>,
+    postscriptFontName: Option<String>,
+    postscriptForceBold: Option<bool>,
+    postscriptFullName: Option<String>,
+    postscriptIsFixedPitch: Option<bool>,
+    postscriptNominalWidthX: Option<IntegerOrFloat>,
+    postscriptOtherBlues: Option<Vec<IntegerOrFloat>>,
+    postscriptSlantAngle: Option<IntegerOrFloat>,
+    postscriptStemSnapH: Option<Vec<IntegerOrFloat>>,
+    postscriptStemSnapV: Option<Vec<IntegerOrFloat>>,
+    postscriptUnderlinePosition: Option<IntegerOrFloat>,
+    postscriptUnderlineThickness: Option<IntegerOrFloat>,
+    postscriptUniqueID: Option<Integer>,
+    postscriptWeightName: Option<String>,
+    postscriptWindowsCharacterSet: Option<PostscriptWindowsCharacterSet>,
+    styleMapFamilyName: Option<String>,
+    styleMapStyleName: Option<StyleMapStyle>,
+    styleName: Option<String>,
+    trademark: Option<String>,
+    unitsPerEm: Option<IntegerOrFloat>,
+    versionMajor: Option<Integer>,
+    versionMinor: Option<Integer>,
+    xHeight: Option<IntegerOrFloat>,
+    year: Option<Integer>,
+}
+
+/// The contents of the [`fontinfo.plist`][] file specified for UFO version 1. Its only purpose is
+/// to enable upconversion.
+///
+/// [`fontinfo.plist`]: http://unifiedfontobject.org/versions/ufo1/fontinfo.plist/
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
+struct FontInfoV1 {
+    ascender: Option<IntegerOrFloat>,
+    capHeight: Option<IntegerOrFloat>,
+    copyright: Option<String>,
+    createdBy: Option<String>,
+    defaultWidth: Option<IntegerOrFloat>,
+    descender: Option<IntegerOrFloat>,
+    designer: Option<String>,
+    designerURL: Option<String>,
+    familyName: Option<String>,
+    fondID: Option<Integer>,
+    fondName: Option<String>,
+    fontName: Option<String>,
+    fontStyle: Option<Integer>,
+    fullName: Option<String>,
+    italicAngle: Option<IntegerOrFloat>,
+    license: Option<String>,
+    licenseURL: Option<String>,
+    menuName: Option<String>,
+    msCharSet: Option<Integer>,
+    note: Option<String>,
+    notice: Option<String>,
+    otFamilyName: Option<String>,
+    otMacName: Option<String>,
+    otStyleName: Option<String>,
+    slantAngle: Option<IntegerOrFloat>,
+    styleName: Option<String>,
+    trademark: Option<String>,
+    ttUniqueID: Option<String>,
+    ttVendor: Option<String>,
+    ttVersion: Option<String>,
+    uniqueID: Option<Integer>,
+    unitsPerEm: Option<IntegerOrFloat>,
+    vendorURL: Option<String>,
+    versionMajor: Option<Integer>,
+    versionMinor: Option<Integer>,
+    weightName: Option<String>,
+    weightValue: Option<Integer>,
+    widthName: Option<String>,
+    xHeight: Option<IntegerOrFloat>, // Does not appear in spec but ufoLib.
+    year: Option<Integer>,           // Does not appear in spec but ufoLib.
+}
+
 impl FontInfo {
+    /// Create FontInfo from a file, upgrading from the supplied format_version to the highest
+    /// internally supported version.
+    ///
+    /// The conversion follows what ufoLib and defcon are doing, e.g. various fields that were
+    /// implicitly signed integers before and are unsigned integers in the newest spec, are
+    /// converted by taking their absolute value. Fields that could be floats before and are
+    /// integers now are rounded. Fields that could be floats before and are unsigned integers
+    /// now are rounded before taking their absolute value.
+    pub fn from_file<P: AsRef<Path>>(
+        path: P,
+        format_version: FormatVersion,
+    ) -> Result<Self, Error> {
+        match format_version {
+            FormatVersion::V3 => {
+                let fontinfo: FontInfo = plist::from_file(path)?;
+                fontinfo.validate()?;
+                Ok(fontinfo)
+            }
+            FormatVersion::V2 => {
+                let fontinfo_v2: FontInfoV2 = plist::from_file(path)?;
+                let fontinfo = FontInfo {
+                    ascender: fontinfo_v2.ascender,
+                    cap_height: fontinfo_v2.capHeight,
+                    copyright: fontinfo_v2.copyright,
+                    descender: fontinfo_v2.descender,
+                    family_name: fontinfo_v2.familyName,
+                    italic_angle: fontinfo_v2.italicAngle,
+                    macintosh_fond_family_id: fontinfo_v2.macintoshFONDFamilyID,
+                    macintosh_fond_name: fontinfo_v2.macintoshFONDName,
+                    note: fontinfo_v2.note,
+                    open_type_head_created: fontinfo_v2.openTypeHeadCreated,
+                    open_type_head_flags: fontinfo_v2.openTypeHeadFlags,
+                    open_type_head_lowest_rec_ppem: fontinfo_v2
+                        .openTypeHeadLowestRecPPEM
+                        .map(|v| v.round().abs() as NonNegativeInteger),
+                    open_type_hhea_ascender: fontinfo_v2
+                        .openTypeHheaAscender
+                        .map(|v| v.round() as Integer),
+                    open_type_hhea_caret_offset: fontinfo_v2
+                        .openTypeHheaCaretOffset
+                        .map(|v| v.round() as Integer),
+                    open_type_hhea_caret_slope_rise: fontinfo_v2.openTypeHheaCaretSlopeRise,
+                    open_type_hhea_caret_slope_run: fontinfo_v2.openTypeHheaCaretSlopeRun,
+                    open_type_hhea_descender: fontinfo_v2
+                        .openTypeHheaDescender
+                        .map(|v| v.round() as Integer),
+                    open_type_hhea_line_gap: fontinfo_v2
+                        .openTypeHheaLineGap
+                        .map(|v| v.round() as Integer),
+                    open_type_name_compatible_full_name: fontinfo_v2.openTypeNameCompatibleFullName,
+                    open_type_name_description: fontinfo_v2.openTypeNameDescription,
+                    open_type_name_designer: fontinfo_v2.openTypeNameDesigner,
+                    open_type_name_designer_url: fontinfo_v2.openTypeNameDesignerURL,
+                    open_type_name_license: fontinfo_v2.openTypeNameLicense,
+                    open_type_name_license_url: fontinfo_v2.openTypeNameLicenseURL,
+                    open_type_name_manufacturer: fontinfo_v2.openTypeNameManufacturer,
+                    open_type_name_manufacturer_url: fontinfo_v2.openTypeNameManufacturerURL,
+                    open_type_name_preferred_family_name: fontinfo_v2
+                        .openTypeNamePreferredFamilyName,
+                    open_type_name_preferred_subfamily_name: fontinfo_v2
+                        .openTypeNamePreferredSubfamilyName,
+                    open_type_name_sample_text: fontinfo_v2.openTypeNameSampleText,
+                    open_type_name_unique_id: fontinfo_v2.openTypeNameUniqueID,
+                    open_type_name_version: fontinfo_v2.openTypeNameVersion,
+                    open_type_name_wws_family_name: fontinfo_v2.openTypeNameWWSFamilyName,
+                    open_type_name_wws_subfamily_name: fontinfo_v2.openTypeNameWWSSubfamilyName,
+                    open_type_os2_code_page_ranges: fontinfo_v2.openTypeOS2CodePageRanges,
+                    open_type_os2_family_class: fontinfo_v2.openTypeOS2FamilyClass,
+                    open_type_os2_panose: fontinfo_v2.openTypeOS2Panose.map(OS2Panose::from),
+                    open_type_os2_selection: fontinfo_v2.openTypeOS2Selection,
+                    open_type_os2_strikeout_position: fontinfo_v2
+                        .openTypeOS2StrikeoutPosition
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_strikeout_size: fontinfo_v2
+                        .openTypeOS2StrikeoutSize
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_subscript_x_offset: fontinfo_v2
+                        .openTypeOS2SubscriptXOffset
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_subscript_x_size: fontinfo_v2
+                        .openTypeOS2SubscriptXSize
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_subscript_y_offset: fontinfo_v2
+                        .openTypeOS2SubscriptYOffset
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_subscript_y_size: fontinfo_v2
+                        .openTypeOS2SubscriptYSize
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_superscript_x_offset: fontinfo_v2
+                        .openTypeOS2SuperscriptXOffset
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_superscript_x_size: fontinfo_v2
+                        .openTypeOS2SuperscriptXSize
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_superscript_y_offset: fontinfo_v2
+                        .openTypeOS2SuperscriptYOffset
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_superscript_y_size: fontinfo_v2
+                        .openTypeOS2SuperscriptYSize
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_type: fontinfo_v2.openTypeOS2Type,
+                    open_type_os2_typo_ascender: fontinfo_v2
+                        .openTypeOS2TypoAscender
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_typo_descender: fontinfo_v2
+                        .openTypeOS2TypoDescender
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_typo_line_gap: fontinfo_v2
+                        .openTypeOS2TypoLineGap
+                        .map(|v| v.round() as Integer),
+                    open_type_os2_unicode_ranges: fontinfo_v2.openTypeOS2UnicodeRanges,
+                    open_type_os2_vendor_id: fontinfo_v2.openTypeOS2VendorID,
+                    open_type_os2_weight_class: fontinfo_v2.openTypeOS2WeightClass,
+                    open_type_os2_width_class: fontinfo_v2.openTypeOS2WidthClass,
+                    open_type_os2_win_ascent: fontinfo_v2
+                        .openTypeOS2WinAscent
+                        .map(|v| v.round().abs() as NonNegativeInteger),
+                    open_type_os2_win_descent: fontinfo_v2
+                        .openTypeOS2WinDescent
+                        .map(|v| v.round().abs() as NonNegativeInteger),
+                    open_type_vhea_caret_offset: fontinfo_v2
+                        .openTypeVheaCaretOffset
+                        .map(|v| v.round() as Integer),
+                    open_type_vhea_caret_slope_rise: fontinfo_v2.openTypeVheaCaretSlopeRise,
+                    open_type_vhea_caret_slope_run: fontinfo_v2.openTypeVheaCaretSlopeRun,
+                    open_type_vhea_vert_typo_ascender: fontinfo_v2
+                        .openTypeVheaVertTypoAscender
+                        .map(|v| v.round() as Integer),
+                    open_type_vhea_vert_typo_descender: fontinfo_v2
+                        .openTypeVheaVertTypoDescender
+                        .map(|v| v.round() as Integer),
+                    open_type_vhea_vert_typo_line_gap: fontinfo_v2
+                        .openTypeVheaVertTypoLineGap
+                        .map(|v| v.round() as Integer),
+                    postscript_blue_fuzz: fontinfo_v2.postscriptBlueFuzz,
+                    postscript_blue_scale: fontinfo_v2.postscriptBlueScale,
+                    postscript_blue_shift: fontinfo_v2.postscriptBlueShift,
+                    postscript_blue_values: fontinfo_v2.postscriptBlueValues,
+                    postscript_default_character: fontinfo_v2.postscriptDefaultCharacter,
+                    postscript_default_width_x: fontinfo_v2.postscriptDefaultWidthX,
+                    postscript_family_blues: fontinfo_v2.postscriptFamilyBlues,
+                    postscript_family_other_blues: fontinfo_v2.postscriptFamilyOtherBlues,
+                    postscript_font_name: fontinfo_v2.postscriptFontName,
+                    postscript_force_bold: fontinfo_v2.postscriptForceBold,
+                    postscript_full_name: fontinfo_v2.postscriptFullName,
+                    postscript_is_fixed_pitch: fontinfo_v2.postscriptIsFixedPitch,
+                    postscript_nominal_width_x: fontinfo_v2.postscriptNominalWidthX,
+                    postscript_other_blues: fontinfo_v2.postscriptOtherBlues,
+                    postscript_slant_angle: fontinfo_v2.postscriptSlantAngle,
+                    postscript_stem_snap_h: fontinfo_v2.postscriptStemSnapH,
+                    postscript_stem_snap_v: fontinfo_v2.postscriptStemSnapV,
+                    postscript_underline_position: fontinfo_v2.postscriptUnderlinePosition,
+                    postscript_underline_thickness: fontinfo_v2.postscriptUnderlineThickness,
+                    postscript_unique_id: fontinfo_v2.postscriptUniqueID,
+                    postscript_weight_name: fontinfo_v2.postscriptWeightName,
+                    postscript_windows_character_set: fontinfo_v2.postscriptWindowsCharacterSet,
+                    style_map_family_name: fontinfo_v2.styleMapFamilyName,
+                    style_map_style_name: fontinfo_v2.styleMapStyleName,
+                    style_name: fontinfo_v2.styleName,
+                    trademark: fontinfo_v2.trademark,
+                    units_per_em: fontinfo_v2
+                        .unitsPerEm
+                        .map(|v| NonNegativeIntegerOrFloat::new(v.abs()).unwrap()),
+                    version_major: fontinfo_v2.versionMajor,
+                    version_minor: fontinfo_v2.versionMinor.map(|v| v.abs() as NonNegativeInteger),
+                    x_height: fontinfo_v2.xHeight,
+                    year: fontinfo_v2.year,
+                    ..FontInfo::default()
+                };
+                fontinfo.validate().map_err(|_| Error::FontInfoUpconversionError)?;
+                Ok(fontinfo)
+            }
+            FormatVersion::V1 => {
+                let fontinfo_v1: FontInfoV1 = plist::from_file(path)?;
+                let fontinfo = FontInfo {
+                    ascender: fontinfo_v1.ascender,
+                    cap_height: fontinfo_v1.capHeight,
+                    copyright: fontinfo_v1.copyright,
+                    descender: fontinfo_v1.descender,
+                    family_name: fontinfo_v1.familyName,
+                    italic_angle: fontinfo_v1.italicAngle,
+                    macintosh_fond_family_id: fontinfo_v1.fondID,
+                    macintosh_fond_name: fontinfo_v1.fondName,
+                    note: fontinfo_v1.note,
+                    open_type_name_compatible_full_name: fontinfo_v1.otMacName,
+                    open_type_name_description: fontinfo_v1.notice,
+                    open_type_name_designer_url: fontinfo_v1.designerURL,
+                    open_type_name_designer: fontinfo_v1.designer,
+                    open_type_name_license_url: fontinfo_v1.licenseURL,
+                    open_type_name_license: fontinfo_v1.license,
+                    open_type_name_manufacturer_url: fontinfo_v1.vendorURL,
+                    open_type_name_manufacturer: fontinfo_v1.createdBy,
+                    open_type_name_preferred_family_name: fontinfo_v1.otFamilyName,
+                    open_type_name_preferred_subfamily_name: fontinfo_v1.otStyleName,
+                    open_type_name_unique_id: fontinfo_v1.ttUniqueID,
+                    open_type_name_version: fontinfo_v1.ttVersion,
+                    open_type_os2_vendor_id: fontinfo_v1.ttVendor,
+                    open_type_os2_weight_class: match fontinfo_v1.weightValue {
+                        Some(v) => match v {
+                            -1 => None,
+                            _ => Some(v.abs() as NonNegativeInteger),
+                        },
+                        None => None,
+                    },
+                    open_type_os2_width_class: match fontinfo_v1.widthName {
+                        Some(v) => match v.as_ref() {
+                            "Ultra-condensed" => Some(OS2WidthClass::UltraCondensed),
+                            "Extra-condensed" => Some(OS2WidthClass::ExtraCondensed),
+                            "Condensed" => Some(OS2WidthClass::Condensed),
+                            "Semi-condensed" => Some(OS2WidthClass::SemiCondensed),
+                            "Medium (normal)" => Some(OS2WidthClass::Normal),
+                            "Normal" => Some(OS2WidthClass::Normal),
+                            "All" => Some(OS2WidthClass::Normal),
+                            "medium" => Some(OS2WidthClass::Normal),
+                            "Medium" => Some(OS2WidthClass::Normal),
+                            "Semi-expanded" => Some(OS2WidthClass::SemiExpanded),
+                            "Expanded" => Some(OS2WidthClass::Expanded),
+                            "Extra-expanded" => Some(OS2WidthClass::ExtraExpanded),
+                            "Ultra-expanded" => Some(OS2WidthClass::UltraExpanded),
+                            _ => return Err(Error::FontInfoError),
+                        },
+                        None => None,
+                    },
+                    postscript_default_width_x: fontinfo_v1.defaultWidth,
+                    postscript_font_name: fontinfo_v1.fontName,
+                    postscript_full_name: fontinfo_v1.fullName,
+                    postscript_slant_angle: fontinfo_v1.slantAngle,
+                    postscript_unique_id: fontinfo_v1.uniqueID,
+                    postscript_weight_name: fontinfo_v1.weightName,
+                    postscript_windows_character_set: match fontinfo_v1.msCharSet {
+                        Some(v) => match v {
+                            0 => Some(PostscriptWindowsCharacterSet::ANSI),
+                            1 => Some(PostscriptWindowsCharacterSet::Default),
+                            2 => Some(PostscriptWindowsCharacterSet::Symbol),
+                            77 => Some(PostscriptWindowsCharacterSet::Macintosh),
+                            128 => Some(PostscriptWindowsCharacterSet::ShiftJIS),
+                            129 => Some(PostscriptWindowsCharacterSet::Hangul),
+                            130 => Some(PostscriptWindowsCharacterSet::HangulJohab),
+                            134 => Some(PostscriptWindowsCharacterSet::GB2312),
+                            136 => Some(PostscriptWindowsCharacterSet::ChineseBIG5),
+                            161 => Some(PostscriptWindowsCharacterSet::Greek),
+                            162 => Some(PostscriptWindowsCharacterSet::Turkish),
+                            163 => Some(PostscriptWindowsCharacterSet::Vietnamese),
+                            177 => Some(PostscriptWindowsCharacterSet::Hebrew),
+                            178 => Some(PostscriptWindowsCharacterSet::Arabic),
+                            186 => Some(PostscriptWindowsCharacterSet::Baltic),
+                            200 => Some(PostscriptWindowsCharacterSet::Bitstream),
+                            204 => Some(PostscriptWindowsCharacterSet::Cyrillic),
+                            222 => Some(PostscriptWindowsCharacterSet::Thai),
+                            238 => Some(PostscriptWindowsCharacterSet::EasternEuropean),
+                            255 => Some(PostscriptWindowsCharacterSet::OEM),
+                            _ => return Err(Error::FontInfoError),
+                        },
+                        None => None,
+                    },
+                    style_map_family_name: fontinfo_v1.menuName,
+                    style_map_style_name: match fontinfo_v1.fontStyle {
+                        Some(v) => match v {
+                            0 | 64 => Some(StyleMapStyle::Regular),
+                            1 => Some(StyleMapStyle::Italic),
+                            32 => Some(StyleMapStyle::Bold),
+                            33 => Some(StyleMapStyle::BoldItalic),
+                            _ => return Err(Error::FontInfoError),
+                        },
+                        None => None,
+                    },
+                    style_name: fontinfo_v1.styleName,
+                    trademark: fontinfo_v1.trademark,
+                    units_per_em: fontinfo_v1
+                        .unitsPerEm
+                        .map(|v| NonNegativeIntegerOrFloat::new(v.abs()).unwrap()),
+                    version_major: fontinfo_v1.versionMajor,
+                    version_minor: fontinfo_v1.versionMinor.map(|v| v.abs() as NonNegativeInteger),
+                    x_height: fontinfo_v1.xHeight,
+                    year: fontinfo_v1.year,
+                    ..FontInfo::default()
+                };
+                fontinfo.validate().map_err(|_| Error::FontInfoUpconversionError)?;
+                Ok(fontinfo)
+            }
+        }
+    }
+
     /// Validates various fields according to the [specification][].
     ///
     /// [specification]: http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
@@ -443,6 +882,66 @@ impl<'de> Deserialize<'de> for OS2Panose {
         }
 
         Ok(OS2Panose {
+            family_type: values[0],
+            serif_style: values[1],
+            weight: values[2],
+            proportion: values[3],
+            contrast: values[4],
+            stroke_variation: values[5],
+            arm_style: values[6],
+            letterform: values[7],
+            midline: values[8],
+            x_height: values[9],
+        })
+    }
+}
+
+impl From<OS2PanoseV2> for OS2Panose {
+    fn from(value: OS2PanoseV2) -> Self {
+        OS2Panose {
+            family_type: value.family_type.abs() as NonNegativeInteger,
+            serif_style: value.serif_style.abs() as NonNegativeInteger,
+            weight: value.weight.abs() as NonNegativeInteger,
+            proportion: value.proportion.abs() as NonNegativeInteger,
+            contrast: value.contrast.abs() as NonNegativeInteger,
+            stroke_variation: value.stroke_variation.abs() as NonNegativeInteger,
+            arm_style: value.arm_style.abs() as NonNegativeInteger,
+            letterform: value.letterform.abs() as NonNegativeInteger,
+            midline: value.midline.abs() as NonNegativeInteger,
+            x_height: value.x_height.abs() as NonNegativeInteger,
+        }
+    }
+}
+
+/// OS2PanoseV2 is from UFO v2 and allows negative integers, while the OpenType specification
+/// specifies unsigned integers.
+#[derive(Debug, Clone, Default, PartialEq)]
+struct OS2PanoseV2 {
+    family_type: Integer,
+    serif_style: Integer,
+    weight: Integer,
+    proportion: Integer,
+    contrast: Integer,
+    stroke_variation: Integer,
+    arm_style: Integer,
+    letterform: Integer,
+    midline: Integer,
+    x_height: Integer,
+}
+
+impl<'de> Deserialize<'de> for OS2PanoseV2 {
+    fn deserialize<D>(deserializer: D) -> Result<OS2PanoseV2, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let values: Vec<Integer> = Deserialize::deserialize(deserializer)?;
+        if values.len() != 10 {
+            return Err(serde::de::Error::custom(
+                "openTypeOS2Panose must have exactly ten elements.",
+            ));
+        }
+
+        Ok(OS2PanoseV2 {
             family_type: values[0],
             serif_style: values[1],
             weight: values[2],

@@ -132,10 +132,10 @@ impl Ufo {
         fn load_impl(path: &Path) -> Result<Ufo, Error> {
             let meta_path = path.join(METAINFO_FILE);
             let mut meta: MetaInfo = plist::from_file(meta_path)?;
+
             let fontinfo_path = path.join(FONTINFO_FILE);
-            let font_info = if fontinfo_path.exists() {
-                let font_info: FontInfo = plist::from_file(fontinfo_path)?;
-                font_info.validate()?;
+            let mut font_info = if fontinfo_path.exists() {
+                let font_info: FontInfo = FontInfo::from_file(fontinfo_path, meta.format_version)?;
                 Some(font_info)
             } else {
                 None
