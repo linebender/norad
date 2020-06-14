@@ -38,7 +38,7 @@ pub type Groups = BTreeMap<String, Vec<GlyphName>>;
 pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
 
 /// A Unified Font Object.
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Ufo {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
@@ -76,7 +76,7 @@ impl Default for Ufo {
 /// This corresponds to a 'glyphs' directory on disk.
 ///
 /// [font layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LayerInfo {
     pub name: String,
     pub path: PathBuf,
@@ -97,7 +97,7 @@ pub enum FormatVersion {
 /// The contents of the [`metainfo.plist`] file.
 ///
 /// [`metainfo.plist`]: http://unifiedfontobject.org/versions/ufo3/metainfo.plist/
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MetaInfo {
     pub creator: String,
