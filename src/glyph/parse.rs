@@ -249,6 +249,10 @@ impl<'names> GlifParser<'names> {
         reader: &Reader<&[u8]>,
         data: BytesStart<'a>,
     ) -> Result<(), Error> {
+        if self.glyph.advance.is_some() {
+            return Err(err!(reader, ErrorKind::UnexpectedDuplicate));
+        }
+
         let mut advance = Advance::default();
         for attr in data.attributes() {
             let attr = attr?;
@@ -262,9 +266,6 @@ impl<'names> GlifParser<'names> {
                     _ => unreachable!(),
                 };
             }
-        }
-        if self.glyph.advance.is_some() {
-            return Err(err!(reader, ErrorKind::UnexpectedDuplicate));
         }
         self.glyph.advance = Some(advance);
         Ok(())
