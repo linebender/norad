@@ -53,9 +53,18 @@ impl<'names> GlifParser<'names> {
                         "note" => self.parse_note(reader, buf)?,
                         "advance" => self.parse_advance(reader, start)?,
                         "unicode" => self.parse_unicode(reader, start)?,
-                        "anchor" => self.parse_anchor(reader, start)?,
-                        "guideline" => self.parse_guideline(reader, start)?,
-                        "image" => self.parse_image(reader, start)?,
+                        "anchor" => match &self.glyph.format {
+                            GlifVersion::V1 => return Err(err!(reader, ErrorKind::UnexpectedTag)),
+                            GlifVersion::V2 => self.parse_anchor(reader, start)?,
+                        },
+                        "guideline" => match &self.glyph.format {
+                            GlifVersion::V1 => return Err(err!(reader, ErrorKind::UnexpectedTag)),
+                            GlifVersion::V2 => self.parse_guideline(reader, start)?,
+                        },
+                        "image" => match &self.glyph.format {
+                            GlifVersion::V1 => return Err(err!(reader, ErrorKind::UnexpectedTag)),
+                            GlifVersion::V2 => self.parse_image(reader, start)?,
+                        },
                         _other => return Err(err!(reader, ErrorKind::UnexpectedTag)),
                     }
                 }
@@ -63,6 +72,7 @@ impl<'names> GlifParser<'names> {
                 _other => return Err(err!(reader, ErrorKind::MissingCloseTag)),
             }
         }
+        self.glyph.format = GlifVersion::V2;
         Ok(self.glyph)
     }
 
@@ -104,6 +114,9 @@ impl<'names> GlifParser<'names> {
     ) -> Result<(), Error> {
         let mut identifier = None;
         for attr in data.attributes() {
+            if self.glyph.format == GlifVersion::V1 {
+                return Err(err!(reader, ErrorKind::UnexpectedAttribute));
+            }
             let attr = attr?;
             if attr.key == b"identifier" {
                 identifier = Some(Identifier(attr.unescape_and_decode_value(reader)?));
@@ -122,7 +135,32 @@ impl<'names> GlifParser<'names> {
                 _other => return Err(err!(reader, ErrorKind::UnexpectedElement)),
             }
         }
-        self.glyph.outline.as_mut().unwrap().contours.push(Contour { identifier, points });
+
+        // In the Glif v1 spec, single-point contours that have a "move" type and a name should
+        // be treated as anchors and upgraded.
+        if self.glyph.format == GlifVersion::V1
+            && points.len() == 1
+            && points[0].typ == PointType::Move
+            && points[0].name.is_some()
+        {
+            let anchor_point = points.remove(0);
+            let anchor = Anchor {
+                name: anchor_point.name,
+                x: anchor_point.x,
+                y: anchor_point.y,
+                identifier: None,
+                color: None,
+            };
+            // Create anchors vector unless already present.
+            if let Some(anchors) = self.glyph.anchors.as_mut() {
+                anchors.push(anchor);
+            } else {
+                self.glyph.anchors = Some(vec![anchor]);
+            }
+        } else {
+            self.glyph.outline.as_mut().unwrap().contours.push(Contour { identifier, points });
+        }
+
         Ok(())
     }
 

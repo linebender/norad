@@ -78,6 +78,7 @@ pub enum ErrorKind {
     BadImage,
     UnexpectedDuplicate,
     UnexpectedElement,
+    UnexpectedAttribute,
     UnexpectedEof,
 }
 
@@ -135,6 +136,7 @@ impl std::fmt::Display for ErrorKind {
             ErrorKind::BadImage => write!(f, "Bad image"),
             ErrorKind::UnexpectedDuplicate => write!(f, "Unexpected duplicate"),
             ErrorKind::UnexpectedElement => write!(f, "Unexpected element"),
+            ErrorKind::UnexpectedAttribute => write!(f, "Unexpected attribute"),
             ErrorKind::UnexpectedEof => write!(f, "Unexpected EOF"),
         }
     }

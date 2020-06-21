@@ -63,6 +63,9 @@ impl Glyph {
 
     #[doc(hidden)]
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
+        if self.format != GlifVersion::V2 {
+            return Err(Error::DowngradeUnsupported);
+        }
         let data = self.encode_xml()?;
         std::fs::write(path, &data)?;
         Ok(())
