@@ -90,7 +90,7 @@ impl<'names> GlifParser<'names> {
                 }
                 Event::End(ref end) if end.name() == b"outline" => break,
                 Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof)),
-                _other => (),
+                _other => return Err(err!(reader, ErrorKind::UnexpectedElement)),
             }
         }
         Ok(())
