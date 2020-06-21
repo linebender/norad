@@ -171,6 +171,10 @@ impl<'names> GlifParser<'names> {
     }
 
     fn parse_lib(&mut self, reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<(), Error> {
+        if self.glyph.lib.is_some() {
+            return Err(err!(reader, ErrorKind::UnexpectedDuplicate));
+        }
+
         loop {
             match reader.read_event(buf)? {
                 Event::End(ref end) if end.name() == b"lib" => break,
@@ -182,6 +186,10 @@ impl<'names> GlifParser<'names> {
     }
 
     fn parse_note(&mut self, reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<(), Error> {
+        if self.glyph.note.is_some() {
+            return Err(err!(reader, ErrorKind::UnexpectedDuplicate));
+        }
+
         loop {
             match reader.read_event(buf)? {
                 Event::End(ref end) if end.name() == b"note" => break,
