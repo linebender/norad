@@ -61,12 +61,12 @@ impl Glyph {
 
         if let Some(ref outline) = self.outline {
             writer.write_event(Event::Start(BytesStart::borrowed_name(b"outline")))?;
-            for component in &outline.components {
-                writer.write_event(component.to_event())?;
-            }
-
             for contour in &outline.contours {
                 contour.write_xml(&mut writer)?;
+            }
+
+            for component in &outline.components {
+                writer.write_event(component.to_event())?;
             }
             writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
         }
