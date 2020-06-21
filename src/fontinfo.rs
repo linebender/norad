@@ -46,12 +46,12 @@ pub struct FontInfo {
     #[serde(rename = "openTypeNameDesignerURL")]
     pub open_type_name_designer_url: Option<String>,
     pub open_type_name_designer: Option<String>,
+    pub open_type_name_license: Option<String>,
     #[serde(rename = "openTypeNameLicenseURL")]
     pub open_type_name_license_url: Option<String>,
-    pub open_type_name_license: Option<String>,
+    pub open_type_name_manufacturer: Option<String>,
     #[serde(rename = "openTypeNameManufacturerURL")]
     pub open_type_name_manufacturer_url: Option<String>,
-    pub open_type_name_manufacturer: Option<String>,
     pub open_type_name_preferred_family_name: Option<String>,
     pub open_type_name_preferred_subfamily_name: Option<String>,
     pub open_type_name_records: Option<Vec<NameRecord>>,
