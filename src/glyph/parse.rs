@@ -53,9 +53,18 @@ impl<'names> GlifParser<'names> {
                         "note" => self.parse_note(reader, buf)?,
                         "advance" => self.parse_advance(reader, start)?,
                         "unicode" => self.parse_unicode(reader, start)?,
-                        "anchor" => self.parse_anchor(reader, start)?,
-                        "guideline" => self.parse_guideline(reader, start)?,
-                        "image" => self.parse_image(reader, start)?,
+                        "anchor" => match &self.glyph.format {
+                            GlifVersion::V1 => return Err(err!(reader, ErrorKind::UnexpectedTag)),
+                            GlifVersion::V2 => self.parse_anchor(reader, start)?,
+                        },
+                        "guideline" => match &self.glyph.format {
+                            GlifVersion::V1 => return Err(err!(reader, ErrorKind::UnexpectedTag)),
+                            GlifVersion::V2 => self.parse_guideline(reader, start)?,
+                        },
+                        "image" => match &self.glyph.format {
+                            GlifVersion::V1 => return Err(err!(reader, ErrorKind::UnexpectedTag)),
+                            GlifVersion::V2 => self.parse_image(reader, start)?,
+                        },
                         _other => return Err(err!(reader, ErrorKind::UnexpectedTag)),
                     }
                 }
@@ -63,6 +72,7 @@ impl<'names> GlifParser<'names> {
                 _other => return Err(err!(reader, ErrorKind::MissingCloseTag)),
             }
         }
+        self.glyph.format = GlifVersion::V2;
         Ok(self.glyph)
     }
 
@@ -90,7 +100,7 @@ impl<'names> GlifParser<'names> {
                 }
                 Event::End(ref end) if end.name() == b"outline" => break,
                 Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof)),
-                _other => (),
+                _other => return Err(err!(reader, ErrorKind::UnexpectedElement)),
             }
         }
         Ok(())
@@ -104,6 +114,9 @@ impl<'names> GlifParser<'names> {
     ) -> Result<(), Error> {
         let mut identifier = None;
         for attr in data.attributes() {
+            if self.glyph.format == GlifVersion::V1 {
+                return Err(err!(reader, ErrorKind::UnexpectedAttribute));
+            }
             let attr = attr?;
             if attr.key == b"identifier" {
                 identifier = Some(Identifier(attr.unescape_and_decode_value(reader)?));
@@ -122,7 +135,24 @@ impl<'names> GlifParser<'names> {
                 _other => return Err(err!(reader, ErrorKind::UnexpectedElement)),
             }
         }
-        self.glyph.outline.as_mut().unwrap().contours.push(Contour { identifier, points });
+
+        // In the Glif v1 spec, single-point contours that have a "move" type and a name should
+        // be treated as anchors and upgraded.
+        if contour_is_v1_anchor(&self.glyph.format, &points) {
+            let anchor_point = points.remove(0);
+            let anchor = Anchor {
+                name: anchor_point.name,
+                x: anchor_point.x,
+                y: anchor_point.y,
+                identifier: None,
+                color: None,
+            };
+
+            self.glyph.anchors.get_or_insert(Vec::new()).push(anchor);
+        } else {
+            self.glyph.outline.as_mut().unwrap().contours.push(Contour { identifier, points });
+        }
+
         Ok(())
     }
 
@@ -171,6 +201,10 @@ impl<'names> GlifParser<'names> {
     }
 
     fn parse_lib(&mut self, reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<(), Error> {
+        if self.glyph.lib.is_some() {
+            return Err(err!(reader, ErrorKind::UnexpectedDuplicate));
+        }
+
         loop {
             match reader.read_event(buf)? {
                 Event::End(ref end) if end.name() == b"lib" => break,
@@ -182,6 +216,10 @@ impl<'names> GlifParser<'names> {
     }
 
     fn parse_note(&mut self, reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<(), Error> {
+        if self.glyph.note.is_some() {
+            return Err(err!(reader, ErrorKind::UnexpectedDuplicate));
+        }
+
         loop {
             match reader.read_event(buf)? {
                 Event::End(ref end) if end.name() == b"note" => break,
@@ -241,6 +279,10 @@ impl<'names> GlifParser<'names> {
         reader: &Reader<&[u8]>,
         data: BytesStart<'a>,
     ) -> Result<(), Error> {
+        if self.glyph.advance.is_some() {
+            return Err(err!(reader, ErrorKind::UnexpectedDuplicate));
+        }
+
         let mut advance = Advance::default();
         for attr in data.attributes() {
             let attr = attr?;
@@ -254,9 +296,6 @@ impl<'names> GlifParser<'names> {
                     _ => unreachable!(),
                 };
             }
-        }
-        if self.glyph.advance.is_some() {
-            return Err(err!(reader, ErrorKind::UnexpectedDuplicate));
         }
         self.glyph.advance = Some(advance);
         Ok(())
@@ -447,6 +486,14 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, Error> 
         }
     }
     Err(err!(reader, ErrorKind::WrongFirstElement))
+}
+
+/// Check if a contour is really an informal anchor according to the Glif v2 specification.
+fn contour_is_v1_anchor(format: &GlifVersion, points: &[ContourPoint]) -> bool {
+    *format == GlifVersion::V1
+        && points.len() == 1
+        && points[0].typ == PointType::Move
+        && points[0].name.is_some()
 }
 
 impl FromStr for GlifVersion {

@@ -20,6 +20,26 @@ fn parse() {
 }
 
 #[test]
+fn parse_v1_upgrade_anchors() {
+    let bytes = include_bytes!("../../testdata/glifv1.glif");
+    let glyph = parse_glyph(bytes).unwrap();
+    assert_eq!(
+        glyph.anchors,
+        Some(vec![
+            Anchor { name: Some("top".into()), x: 10.0, y: 10.0, color: None, identifier: None },
+            Anchor { name: Some("bottom".into()), x: 10.0, y: 20.0, color: None, identifier: None },
+            Anchor { name: Some("left".into()), x: 30.0, y: 20.0, color: None, identifier: None },
+            Anchor { name: Some("right".into()), x: 40.0, y: 20.0, color: None, identifier: None }
+        ])
+    );
+    assert_eq!(glyph.format, GlifVersion::V2);
+    assert_eq!(glyph.guidelines, None);
+    assert_eq!(glyph.image, None);
+    assert_eq!(glyph.lib, None);
+    assert_eq!(glyph.note, None);
+}
+
+#[test]
 fn curve_types() {
     let bytes = include_bytes!("../../testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs/D_.glif");
     let glyph = parse_glyph(bytes).unwrap();
