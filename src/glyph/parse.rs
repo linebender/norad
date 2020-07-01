@@ -138,11 +138,7 @@ impl<'names> GlifParser<'names> {
 
         // In the Glif v1 spec, single-point contours that have a "move" type and a name should
         // be treated as anchors and upgraded.
-        if self.glyph.format == GlifVersion::V1
-            && points.len() == 1
-            && points[0].typ == PointType::Move
-            && points[0].name.is_some()
-        {
+        if contour_is_v1_anchor(&self.glyph.format, &points) {
             let anchor_point = points.remove(0);
             let anchor = Anchor {
                 name: anchor_point.name,
@@ -490,6 +486,14 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, Error> 
         }
     }
     Err(err!(reader, ErrorKind::WrongFirstElement))
+}
+
+/// Check if a contour is really an informal anchor according to the Glif v2 specification.
+fn contour_is_v1_anchor(format: &GlifVersion, points: &[ContourPoint]) -> bool {
+    *format == GlifVersion::V1
+        && points.len() == 1
+        && points[0].typ == PointType::Move
+        && points[0].name.is_some()
 }
 
 impl FromStr for GlifVersion {
