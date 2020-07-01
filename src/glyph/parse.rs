@@ -151,12 +151,8 @@ impl<'names> GlifParser<'names> {
                 identifier: None,
                 color: None,
             };
-            // Create anchors vector unless already present.
-            if let Some(anchors) = self.glyph.anchors.as_mut() {
-                anchors.push(anchor);
-            } else {
-                self.glyph.anchors = Some(vec![anchor]);
-            }
+
+            self.glyph.anchors.get_or_insert(Vec::new()).push(anchor);
         } else {
             self.glyph.outline.as_mut().unwrap().contours.push(Contour { identifier, points });
         }
