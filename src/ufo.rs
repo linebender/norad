@@ -214,21 +214,20 @@ impl Ufo {
             // The v1 format stores some Postscript hinting related data in the lib,
             // which we only import into fontinfo if we're reading a v1 UFO.
             if meta.format_version == FormatVersion::V1 {
-                let mut feature_text = String::new();
                 let mut fontinfo =
                     if let Some(fontinfo) = font_info { fontinfo } else { FontInfo::default() };
 
+                let mut features_upgraded: Option<String> = None;
                 if let Some(lib_data) = &mut lib {
-                    upconversion::upconvert_ufov1_robofab_data(
+                    features_upgraded = upconversion::upconvert_ufov1_robofab_data(
                         &lib_path,
                         lib_data,
-                        &mut feature_text,
                         &mut fontinfo,
                     )?;
                 }
 
-                if !feature_text.is_empty() {
-                    features = Some(feature_text);
+                if features_upgraded.is_some() && !features_upgraded.as_ref().unwrap().is_empty() {
+                    features = features_upgraded;
                 }
                 font_info = Some(fontinfo);
             }

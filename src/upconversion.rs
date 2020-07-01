@@ -115,9 +115,8 @@ fn find_known_kerning_groups(groups: &Groups) -> (HashSet<String>, HashSet<Strin
 pub(crate) fn upconvert_ufov1_robofab_data(
     lib_path: &std::path::PathBuf,
     lib: &mut plist::Dictionary,
-    features: &mut String,
     fontinfo: &mut FontInfo,
-) -> Result<(), Error> {
+) -> Result<Option<String>, Error> {
     #[derive(Debug, Deserialize)]
     struct LibData {
         #[serde(rename = "org.robofab.postScriptHintData")]
@@ -150,7 +149,7 @@ pub(crate) fn upconvert_ufov1_robofab_data(
     let lib_data: LibData = plist::from_file(lib_path)?;
 
     // Convert features.
-    features.clear();
+    let mut features = String::new();
 
     if let Some(feature_classes) = lib_data.feature_classes {
         features.push_str(&feature_classes);
@@ -203,7 +202,11 @@ pub(crate) fn upconvert_ufov1_robofab_data(
     lib.remove("org.robofab.opentype.featureorder");
     lib.remove("org.robofab.opentype.features");
 
-    Ok(())
+    if features.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(features))
+    }
 }
 
 #[cfg(test)]
