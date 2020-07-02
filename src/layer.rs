@@ -18,7 +18,7 @@ static CONTENTS_FILE: &str = "contents.plist";
 /// is just a collection of glyphs.
 ///
 /// [layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Layer {
     pub(crate) glyphs: BTreeMap<GlyphName, Arc<Glyph>>,
     contents: BTreeMap<GlyphName, PathBuf>,

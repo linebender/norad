@@ -22,6 +22,7 @@ pub enum Error {
     GlifWrite(GlifWriteError),
     PlistError(PlistError),
     FontInfoError,
+    FontInfoUpconversionError,
     GroupsError(GroupsValidationError),
     GroupsUpconversionError(GroupsValidationError),
     ExpectedPlistDictionaryError,
@@ -101,6 +102,7 @@ impl std::fmt::Display for Error {
             }
             Error::PlistError(e) => e.fmt(f),
             Error::FontInfoError => write!(f, "FontInfo contains invalid data"),
+            Error::FontInfoUpconversionError => write!(f, "FontInfo contains invalid data after upconversion"),
             Error::GroupsError(ge) => ge.fmt(f),
             Error::GroupsUpconversionError(ge) => write!(f, "Upconverting UFO v1 or v2 kerning data to v3 failed: {}", ge),
             Error::ExpectedPlistDictionaryError => write!(f, "The files groups.plist, kerning.plist and lib.plist must contain plist dictionaries."),

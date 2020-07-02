@@ -1,7 +1,10 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+use crate::fontinfo::FontInfo;
 use crate::names::NameList;
+use crate::shared_types::IntegerOrFloat;
 use crate::ufo::{Groups, Kerning};
+use crate::Error;
 
 /// Convert kerning groups and pairs from v1 and v2 informal conventions to v3 formal conventions.
 /// Converted groups are added (duplicated) rather than replacing the old ones to preserve all data
@@ -102,6 +105,108 @@ fn find_known_kerning_groups(groups: &Groups) -> (HashSet<String>, HashSet<Strin
     }
 
     (groups_first, groups_second)
+}
+
+/// Migrate UFO v1 era feature and PostScript hinting data to the current data model. It re-reads
+/// the lib.plist file to filter out the relevant data and then update the passed in lib, features
+/// and fontinfo in-place. It tries to follow what [defcon is doing][1].
+///
+/// [1]: https://github.com/robotools/defcon/blob/76a7ac408e62f68c09eaf24ca6d9ad04523dd19c/Lib/defcon/objects/font.py#L1571-L1629
+pub(crate) fn upconvert_ufov1_robofab_data(
+    lib_path: &std::path::PathBuf,
+    lib: &mut plist::Dictionary,
+    fontinfo: &mut FontInfo,
+) -> Result<Option<String>, Error> {
+    #[derive(Debug, Deserialize)]
+    struct LibData {
+        #[serde(rename = "org.robofab.postScriptHintData")]
+        ps_hinting_data: Option<PsHintingData>,
+
+        #[serde(rename = "org.robofab.opentype.classes")]
+        feature_classes: Option<String>,
+        #[serde(rename = "org.robofab.opentype.featureorder")]
+        feature_order: Option<Vec<String>>,
+        #[serde(rename = "org.robofab.opentype.features")]
+        features: Option<HashMap<String, String>>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct PsHintingData {
+        blue_fuzz: Option<IntegerOrFloat>,
+        blue_scale: Option<f64>,
+        blue_shift: Option<IntegerOrFloat>,
+        blue_values: Option<Vec<Vec<IntegerOrFloat>>>,
+        family_blues: Option<Vec<Vec<IntegerOrFloat>>>,
+        family_other_blues: Option<Vec<Vec<IntegerOrFloat>>>,
+        force_bold: Option<bool>,
+        other_blues: Option<Vec<Vec<IntegerOrFloat>>>,
+        h_stems: Option<Vec<IntegerOrFloat>>,
+        v_stems: Option<Vec<IntegerOrFloat>>,
+    }
+
+    // Reead lib.plist again because it is easier than pulling out the data manually.
+    let lib_data: LibData = plist::from_file(lib_path)?;
+
+    // Convert features.
+    let mut features = String::new();
+
+    if let Some(feature_classes) = lib_data.feature_classes {
+        features.push_str(&feature_classes);
+    }
+
+    if let Some(features_split) = lib_data.features {
+        let order: Vec<String> = if let Some(feature_order) = lib_data.feature_order {
+            feature_order
+        } else {
+            features_split.keys().cloned().collect::<Vec<String>>()
+        };
+
+        features.push_str(&"\n");
+
+        for key in order {
+            // Ignore non-existant keys because defcon does it, too.
+            if let Some(txt) = features_split.get(&key) {
+                features.push_str(&txt);
+            }
+        }
+    }
+
+    // Convert PostScript hinting data.
+    if let Some(ps_hinting_data) = lib_data.ps_hinting_data {
+        fontinfo.postscript_blue_fuzz = ps_hinting_data.blue_fuzz;
+        fontinfo.postscript_blue_scale = ps_hinting_data.blue_scale;
+        fontinfo.postscript_blue_shift = ps_hinting_data.blue_shift;
+        if let Some(blue_values) = ps_hinting_data.blue_values {
+            fontinfo.postscript_blue_values = Some(blue_values.into_iter().flatten().collect());
+        };
+        if let Some(other_blues) = ps_hinting_data.other_blues {
+            fontinfo.postscript_other_blues = Some(other_blues.into_iter().flatten().collect());
+        };
+        if let Some(family_blues) = ps_hinting_data.family_blues {
+            fontinfo.postscript_family_blues = Some(family_blues.into_iter().flatten().collect());
+        };
+        if let Some(family_other_blues) = ps_hinting_data.family_other_blues {
+            fontinfo.postscript_family_other_blues =
+                Some(family_other_blues.into_iter().flatten().collect());
+        };
+        fontinfo.postscript_force_bold = ps_hinting_data.force_bold;
+        fontinfo.postscript_stem_snap_h = ps_hinting_data.h_stems;
+        fontinfo.postscript_stem_snap_v = ps_hinting_data.v_stems;
+
+        fontinfo.validate().map_err(|_| Error::FontInfoUpconversionError)?;
+    }
+
+    lib.remove("org.robofab.postScriptHintData");
+    lib.remove("org.robofab.opentype.classes");
+    lib.remove("org.robofab.opentype.featureorder");
+    lib.remove("org.robofab.opentype.features");
+
+    if features.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(features))
+    }
 }
 
 #[cfg(test)]
