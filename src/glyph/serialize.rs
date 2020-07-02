@@ -20,21 +20,21 @@ impl Glyph {
     }
 
     fn encode_xml_impl(&self) -> Result<Vec<u8>, XmlError> {
-        let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b' ', 2);
-        writer.write_event(Event::Decl(BytesDecl::new(b"1.1", Some(b"UTF-8"), None)))?;
+        let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b'\t', 1);
+        writer.write_event(Event::Decl(BytesDecl::new(b"1.0", Some(b"UTF-8"), None)))?;
         let mut start = BytesStart::borrowed_name(b"glyph");
         start.push_attribute(("name", &*self.name));
         start.push_attribute(("format", self.format.as_str()));
         writer.write_event(Event::Start(start))?;
 
-        if let Some(event) = self.advance.as_ref().map(Advance::to_event) {
-            writer.write_event(event)?;
-        }
-
         if let Some(codepoints) = self.codepoints.as_ref() {
             for codepoint in codepoints.iter() {
                 writer.write_event(char_to_event(*codepoint))?;
             }
+        }
+
+        if let Some(event) = self.advance.as_ref().map(Advance::to_event) {
+            writer.write_event(event)?;
         }
 
         if let Some(ref note) = self.note {
@@ -53,23 +53,23 @@ impl Glyph {
             }
         }
 
+        if let Some(ref outline) = self.outline {
+            writer.write_event(Event::Start(BytesStart::borrowed_name(b"outline")))?;
+            for contour in &outline.contours {
+                contour.write_xml(&mut writer)?;
+            }
+            for component in &outline.components {
+                writer.write_event(component.to_event())?;
+            }
+            writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
+        }
+
         if let Some(anchors) = self.anchors.as_ref() {
             for anchor in anchors.iter() {
                 writer.write_event(anchor.to_event())?;
             }
         }
 
-        if let Some(ref outline) = self.outline {
-            writer.write_event(Event::Start(BytesStart::borrowed_name(b"outline")))?;
-            for contour in &outline.contours {
-                contour.write_xml(&mut writer)?;
-            }
-
-            for component in &outline.components {
-                writer.write_event(component.to_event())?;
-            }
-            writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
-        }
         writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;
 
         Ok(writer.into_inner().into_inner())
@@ -139,12 +139,12 @@ impl Anchor {
     fn to_event(&self) -> Event {
         let mut start = BytesStart::borrowed_name(b"anchor");
 
-        start.push_attribute(("x", self.x.to_string().as_str()));
-        start.push_attribute(("y", self.y.to_string().as_str()));
-
         if let Some(name) = &self.name {
             start.push_attribute(("name", name.as_str()));
         }
+
+        start.push_attribute(("x", self.x.to_string().as_str()));
+        start.push_attribute(("y", self.y.to_string().as_str()));
 
         if let Some(Identifier(id)) = &self.identifier {
             start.push_attribute(("identifier", id.as_str()));
