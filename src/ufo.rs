@@ -47,6 +47,7 @@ pub struct Ufo {
     pub groups: Option<Groups>,
     pub kerning: Option<Kerning>,
     pub features: Option<String>,
+    data_request: UfoDataRequest,
     __non_exhaustive: (),
 }
 
@@ -66,8 +67,40 @@ impl Default for Ufo {
             groups: None,
             kerning: None,
             features: None,
+            data_request: Default::default(),
             __non_exhaustive: (),
         }
+    }
+}
+
+/// Which UFO data do you want?
+#[derive(Clone, Debug, PartialEq)]
+pub struct UfoDataRequest {
+    pub layers: bool,
+    pub lib: bool,
+    pub groups: bool,
+    pub kerning: bool,
+    pub features: bool,
+    __non_exhaustive: (),
+}
+
+impl UfoDataRequest {
+    /// Convenience function to create a UfoDataRequest with all fields either true or false.
+    pub fn from_bool(b: bool) -> Self {
+        UfoDataRequest {
+            layers: b,
+            lib: b,
+            groups: b,
+            kerning: b,
+            features: b,
+            __non_exhaustive: (),
+        }
+    }
+}
+
+impl Default for UfoDataRequest {
+    fn default() -> Self {
+        UfoDataRequest::from_bool(true)
     }
 }
 
@@ -114,9 +147,16 @@ impl Default for MetaInfo {
 }
 
 impl Ufo {
-    /// Crate a new `Ufo`.
+    /// Create a new `Ufo`.
     pub fn new() -> Self {
         Ufo::default()
+    }
+
+    /// Create a new `Ufo` only with certain fields
+    pub fn with_fields(data_request: UfoDataRequest) -> Self {
+        let mut ufo = Self::new();
+        ufo.data_request = data_request;
+        ufo
     }
 
     /// Attempt to load a font object from a file. `path` must point to
@@ -125,11 +165,14 @@ impl Ufo {
     ///
     /// [v3]: http://unifiedfontobject.org/versions/ufo3/
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Ufo, Error> {
+        Self::new().load_ufo(path)
+    }
+
+    pub fn load_ufo<P: AsRef<Path>>(&self, path: P) -> Result<Ufo, Error> {
         let path = path.as_ref();
-        return load_impl(path);
 
         // minimize monomorphization
-        fn load_impl(path: &Path) -> Result<Ufo, Error> {
+        let load_impl = |ufo: &Ufo, path: &Path| -> Result<Ufo, Error> {
             let meta_path = path.join(METAINFO_FILE);
             let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
@@ -142,7 +185,7 @@ impl Ufo {
             };
 
             let lib_path = path.join(LIB_FILE);
-            let mut lib = if lib_path.exists() {
+            let mut lib = if lib_path.exists() && self.data_request.lib {
                 // Value::as_dictionary(_mut) will only borrow the data, but we want to own it.
                 // https://github.com/ebarnard/rust-plist/pull/48
                 match plist::Value::from_file(&lib_path)? {
@@ -154,7 +197,7 @@ impl Ufo {
             };
 
             let groups_path = path.join(GROUPS_FILE);
-            let groups = if groups_path.exists() {
+            let groups = if groups_path.exists() && self.data_request.groups {
                 let groups: Groups = plist::from_file(groups_path)?;
                 validate_groups(&groups).map_err(Error::GroupsError)?;
                 Some(groups)
@@ -163,7 +206,7 @@ impl Ufo {
             };
 
             let kerning_path = path.join(KERNING_FILE);
-            let kerning = if kerning_path.exists() {
+            let kerning = if kerning_path.exists() && self.data_request.kerning {
                 let kerning: Kerning = plist::from_file(kerning_path)?;
                 Some(kerning)
             } else {
@@ -171,32 +214,37 @@ impl Ufo {
             };
 
             let features_path = path.join(FEATURES_FILE);
-            let mut features = if features_path.exists() {
+            let mut features = if features_path.exists() && self.data_request.features {
                 let features = fs::read_to_string(features_path)?;
                 Some(features)
             } else {
                 None
             };
 
+            let layers: Vec<LayerInfo>;
             let glyph_names = NameList::default();
-            let mut contents = match meta.format_version {
-                FormatVersion::V3 => {
-                    let contents_path = path.join(LAYER_CONTENTS_FILE);
-                    let contents: Vec<(String, PathBuf)> = plist::from_file(contents_path)?;
-                    contents
-                }
-                _older => vec![(DEFAULT_LAYER_NAME.into(), DEFAULT_GLYPHS_DIRNAME.into())],
-            };
+            if self.data_request.layers {
+                let mut contents = match meta.format_version {
+                    FormatVersion::V3 => {
+                        let contents_path = path.join(LAYER_CONTENTS_FILE);
+                        let contents: Vec<(String, PathBuf)> = plist::from_file(contents_path)?;
+                        contents
+                    }
+                    _older => vec![(DEFAULT_LAYER_NAME.into(), DEFAULT_GLYPHS_DIRNAME.into())],
+                };
 
-            let layers: Result<Vec<LayerInfo>, Error> = contents
-                .drain(..)
-                .map(|(name, p)| {
-                    let layer_path = path.join(&p);
-                    let layer = Layer::load_impl(&layer_path, &glyph_names)?;
-                    Ok(LayerInfo { name, path: p, layer })
-                })
-                .collect();
-            let layers = layers?;
+                let layers_r: Result<Vec<LayerInfo>, Error> = contents
+                    .drain(..)
+                    .map(|(name, p)| {
+                        let layer_path = path.join(&p);
+                        let layer = Layer::load_impl(&layer_path, &glyph_names)?;
+                        Ok(LayerInfo { name, path: p, layer })
+                    })
+                    .collect();
+                layers = layers_r?;
+            } else {
+                layers = Vec::new();
+            }
 
             // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
             // a groups.plist file, while a kerning.plist is optional.
@@ -242,9 +290,12 @@ impl Ufo {
                 groups,
                 kerning,
                 features,
+                data_request: ufo.data_request.clone(),
                 __non_exhaustive: (),
             })
-        }
+        };
+
+        return load_impl(&self, path);
     }
 
     /// Attempt to save this UFO to the given path, overriding any existing contents.
