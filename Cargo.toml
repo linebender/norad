@@ -5,8 +5,8 @@ authors = ["Colin Rofls <colin@cmyr.net>", "Nikolaus Waxweiler <madigens@gmail.c
 license = "MIT/Apache-2.0"
 edition = "2018"
 keywords = ["font", "ufo", "fonts"]
-repository = "https://github.com/linebender/norad"
-description = "Read and write Unifed Font Object files."
+repository = "https://github.com/mfeq/norad"
+description = "Read and write Unifed Font Object files. (MFEQ fork)"
 readme = "README.md"
 categories = ["graphics", "text-processing"]
 

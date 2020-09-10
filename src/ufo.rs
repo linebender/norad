@@ -39,6 +39,7 @@ pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
 
 /// A Unified Font Object.
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub struct Ufo {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
@@ -47,8 +48,7 @@ pub struct Ufo {
     pub groups: Option<Groups>,
     pub kerning: Option<Kerning>,
     pub features: Option<String>,
-    data_request: UfoDataRequest,
-    __non_exhaustive: (),
+    data_request: DataRequest,
 }
 
 impl Default for Ufo {
@@ -68,39 +68,69 @@ impl Default for Ufo {
             kerning: None,
             features: None,
             data_request: Default::default(),
-            __non_exhaustive: (),
         }
     }
 }
 
-/// Which UFO data do you want?
-#[derive(Clone, Debug, PartialEq)]
-pub struct UfoDataRequest {
+/// A type that describes which components of a UFO should be loaded.
+///
+/// By default, we load all components of the UFO file; however if you only
+/// need some subset of these, you can pass this struct to [`Ufo::with_fields`]
+/// in order to only load the fields specified in this object.
+///
+/// [`Ufo::with_fields`]: struct.Ufo.html#method.with_fields
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub struct DataRequest {
     pub layers: bool,
     pub lib: bool,
     pub groups: bool,
     pub kerning: bool,
     pub features: bool,
-    __non_exhaustive: (),
 }
 
-impl UfoDataRequest {
-    /// Convenience function to create a UfoDataRequest with all fields either true or false.
-    pub fn from_bool(b: bool) -> Self {
-        UfoDataRequest {
-            layers: b,
-            lib: b,
-            groups: b,
-            kerning: b,
-            features: b,
-            __non_exhaustive: (),
-        }
+impl DataRequest {
+    fn from_bool(b: bool) -> Self {
+        DataRequest { layers: b, lib: b, groups: b, kerning: b, features: b }
+    }
+
+    pub fn all() -> Self {
+        DataRequest::from_bool(true)
+    }
+
+    pub fn none() -> Self {
+        DataRequest::from_bool(false)
+    }
+
+    pub fn layers(&mut self, b: bool) -> &mut Self {
+        self.layers = b;
+        self
+    }
+
+    pub fn lib(&mut self, b: bool) -> &mut Self {
+        self.lib = b;
+        self
+    }
+
+    pub fn groups(&mut self, b: bool) -> &mut Self {
+        self.groups = b;
+        self
+    }
+
+    pub fn kerning(&mut self, b: bool) -> &mut Self {
+        self.kerning = b;
+        self
+    }
+
+    pub fn features(&mut self, b: bool) -> &mut Self {
+        self.features = b;
+        self
     }
 }
 
-impl Default for UfoDataRequest {
+impl Default for DataRequest {
     fn default() -> Self {
-        UfoDataRequest::from_bool(true)
+        DataRequest::from_bool(true)
     }
 }
 
@@ -153,7 +183,7 @@ impl Ufo {
     }
 
     /// Create a new `Ufo` only with certain fields
-    pub fn with_fields(data_request: UfoDataRequest) -> Self {
+    pub fn with_fields(data_request: DataRequest) -> Self {
         let mut ufo = Self::new();
         ufo.data_request = data_request;
         ufo
@@ -291,7 +321,6 @@ impl Ufo {
                 kerning,
                 features,
                 data_request: ufo.data_request.clone(),
-                __non_exhaustive: (),
             })
         };
 
@@ -516,6 +545,17 @@ mod tests {
         assert_eq!(font_obj.groups.unwrap().get("public.kern1.@MMK_L_A"), Some(&vec!["A".into()]));
         assert_eq!(font_obj.kerning.unwrap().get("B").unwrap().get("H").unwrap(), &-40.0);
         assert_eq!(font_obj.features.unwrap(), "# this is the feature from lightWide\n");
+    }
+
+    #[test]
+    fn data_request() {
+        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
+        let font_obj = Ufo::with_fields(DataRequest::none()).load_ufo(path).unwrap();
+        assert_eq!(font_obj.iter_layers().count(), 0);
+        assert_eq!(font_obj.lib, None);
+        assert_eq!(font_obj.groups, None);
+        assert_eq!(font_obj.kerning, None);
+        assert_eq!(font_obj.features, None);
     }
 
     #[test]
