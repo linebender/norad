@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 use std::ops::Deref;
+use std::str::FromStr;
 
 use serde::de;
 use serde::de::Deserializer;
@@ -10,6 +11,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "druid")]
 use druid::Data;
 
+use crate::error::ErrorKind;
 use crate::Error;
 
 /// Identifiers are optional attributes of several objects in the UFO.
@@ -54,6 +56,51 @@ pub struct Color {
     pub green: f32,
     pub blue: f32,
     pub alpha: f32,
+}
+
+impl FromStr for Color {
+    type Err = ErrorKind;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let colors: Vec<f32> = s.split(',').map(|v| v.parse().unwrap()).collect();
+        if colors.len() != 4 {
+            return Err(ErrorKind::BadColor);
+        }
+
+        let red = colors[0];
+        let green = colors[1];
+        let blue = colors[2];
+        let alpha = colors[3];
+        if (0.0..=1.0).contains(&red)
+            && (0.0..=1.0).contains(&green)
+            && (0.0..=1.0).contains(&blue)
+            && (0.0..=1.0).contains(&alpha)
+        {
+            Ok(Color { red, green, blue, alpha })
+        } else {
+            Err(ErrorKind::BadColor)
+        }
+    }
+}
+
+impl Serialize for Color {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let color_string = format!("{},{},{},{}", self.red, self.green, self.blue, self.alpha);
+        serializer.serialize_str(&color_string)
+    }
+}
+
+impl<'de> Deserialize<'de> for Color {
+    fn deserialize<D>(deserializer: D) -> Result<Color, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let string = String::deserialize(deserializer)?;
+        Color::from_str(&string).map_err(|_| serde::de::Error::custom("Malformed color string."))
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -167,46 +214,6 @@ impl<'de> Deserialize<'de> for Guideline {
             color: guideline.color,
             identifier: guideline.identifier,
         })
-    }
-}
-
-impl Serialize for Color {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let color_string = format!("{},{},{},{}", self.red, self.green, self.blue, self.alpha);
-        serializer.serialize_str(&color_string)
-    }
-}
-
-impl<'de> Deserialize<'de> for Color {
-    fn deserialize<D>(deserializer: D) -> Result<Color, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let string = String::deserialize(deserializer)?;
-        let colors: Vec<f32> = string.split(',').map(|v| v.parse().unwrap()).collect();
-
-        if colors.len() != 4 {
-            return Err(serde::de::Error::custom(
-                "Color definition must contain exactly 4 values seperated by commas.",
-            ));
-        }
-
-        let red = colors[0];
-        let green = colors[1];
-        let blue = colors[2];
-        let alpha = colors[3];
-        if (0.0..=1.0).contains(&red)
-            && (0.0..=1.0).contains(&green)
-            && (0.0..=1.0).contains(&blue)
-            && (0.0..=1.0).contains(&alpha)
-        {
-            Ok(Color { red, green, blue, alpha })
-        } else {
-            Err(serde::de::Error::custom("Colors must be numbers between 0 and 1 inclusive."))
-        }
     }
 }
 
