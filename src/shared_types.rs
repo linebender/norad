@@ -62,23 +62,18 @@ impl FromStr for Color {
     type Err = ErrorKind;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let colors: Vec<f32> = s.split(',').map(|v| v.parse().unwrap()).collect();
-        if colors.len() != 4 {
-            return Err(ErrorKind::BadColor);
-        }
-
-        let red = colors[0];
-        let green = colors[1];
-        let blue = colors[2];
-        let alpha = colors[3];
-        if (0.0..=1.0).contains(&red)
-            && (0.0..=1.0).contains(&green)
-            && (0.0..=1.0).contains(&blue)
-            && (0.0..=1.0).contains(&alpha)
-        {
-            Ok(Color { red, green, blue, alpha })
-        } else {
+        let mut iter = s.split(',').map(|v| match v.parse::<f32>() {
+            Ok(val) if (0.0..=1.0).contains(&val) => Ok(val),
+            _ => Err(ErrorKind::BadColor),
+        });
+        let red = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
+        let green = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
+        let blue = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
+        let alpha = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
+        if iter.next().is_some() {
             Err(ErrorKind::BadColor)
+        } else {
+            Ok(Color { red, green, blue, alpha })
         }
     }
 }
