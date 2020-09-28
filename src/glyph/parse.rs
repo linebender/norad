@@ -507,19 +507,6 @@ impl FromStr for GlifVersion {
     }
 }
 
-impl FromStr for Color {
-    type Err = ErrorKind;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut iter = s.split(',').map(|s| s.parse::<f32>().map_err(|_| ErrorKind::BadColor));
-        Ok(Color {
-            red: iter.next().ok_or(ErrorKind::BadColor).and_then(|r| r)?,
-            green: iter.next().ok_or(ErrorKind::BadColor).and_then(|r| r)?,
-            blue: iter.next().ok_or(ErrorKind::BadColor).and_then(|r| r)?,
-            alpha: iter.next().ok_or(ErrorKind::BadColor).and_then(|r| r)?,
-        })
-    }
-}
-
 impl FromStr for PointType {
     type Err = ErrorKind;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
