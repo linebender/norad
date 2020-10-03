@@ -39,6 +39,7 @@ pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
 
 /// A Unified Font Object.
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub struct Ufo {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
@@ -47,7 +48,6 @@ pub struct Ufo {
     pub groups: Option<Groups>,
     pub kerning: Option<Kerning>,
     pub features: Option<String>,
-    __non_exhaustive: (),
 }
 
 impl Default for Ufo {
@@ -66,7 +66,6 @@ impl Default for Ufo {
             groups: None,
             kerning: None,
             features: None,
-            __non_exhaustive: (),
         }
     }
 }
@@ -234,16 +233,7 @@ impl Ufo {
 
             meta.format_version = FormatVersion::V3;
 
-            Ok(Ufo {
-                layers,
-                meta,
-                font_info,
-                lib,
-                groups,
-                kerning,
-                features,
-                __non_exhaustive: (),
-            })
+            Ok(Ufo { layers, meta, font_info, lib, groups, kerning, features })
         }
     }
 
