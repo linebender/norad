@@ -76,6 +76,13 @@ impl Glyph {
         Glyph::new(name.into(), GlifVersion::V2)
     }
 
+    /// If this glyph has an advance, return the width value.
+    ///
+    /// This is purely a convenience method.
+    pub fn advance_width(&self) -> Option<f32> {
+        self.advance.as_ref().map(|adv| adv.width)
+    }
+
     pub(crate) fn new(name: GlyphName, format: GlifVersion) -> Self {
         Glyph {
             name,
