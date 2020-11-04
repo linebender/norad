@@ -1237,7 +1237,7 @@ mod tests {
                     line: Line::Angle { x: 1.0, y: 2.0, degrees: 0.0 },
                     name: Some(" [locked]".to_string()),
                     color: Some(Color { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }),
-                    identifier: Some(Identifier("abc".to_string()))
+                    identifier: Identifier::new("abc".to_string()).ok(),
                 },
             ])
         );

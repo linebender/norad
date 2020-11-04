@@ -9,7 +9,7 @@ use quick_xml::{
 
 use super::{
     Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    Guideline, Identifier, Image, Line, PointType,
+    Guideline, Image, Line, PointType,
 };
 
 use crate::error::GlifWriteError;
@@ -128,7 +128,7 @@ impl Guideline {
             start.push_attribute(("color", color.to_rgba_string().as_str()));
         }
 
-        if let Some(Identifier(id)) = &self.identifier {
+        if let Some(id) = &self.identifier {
             start.push_attribute(("identifier", id.as_str()));
         }
         Event::Empty(start)
@@ -146,7 +146,7 @@ impl Anchor {
         start.push_attribute(("x", self.x.to_string().as_str()));
         start.push_attribute(("y", self.y.to_string().as_str()));
 
-        if let Some(Identifier(id)) = &self.identifier {
+        if let Some(id) = &self.identifier {
             start.push_attribute(("identifier", id.as_str()));
         }
 
@@ -164,7 +164,7 @@ impl Component {
 
         write_transform_attributes(&mut start, &self.transform);
 
-        if let Some(Identifier(id)) = &self.identifier {
+        if let Some(id) = &self.identifier {
             start.push_attribute(("identifier", id.as_str()));
         }
         Event::Empty(start)
@@ -175,7 +175,7 @@ impl Contour {
     fn write_xml<T: Write>(&self, writer: &mut Writer<T>) -> Result<(), XmlError> {
         let mut start = BytesStart::borrowed_name(b"contour");
 
-        if let Some(Identifier(id)) = &self.identifier {
+        if let Some(id) = &self.identifier {
             start.push_attribute(("identifier", id.as_str()));
         }
 
@@ -209,7 +209,7 @@ impl ContourPoint {
             start.push_attribute(("name", name.as_str()));
         }
 
-        if let Some(Identifier(id)) = &self.identifier {
+        if let Some(id) = &self.identifier {
             start.push_attribute(("identifier", id.as_str()));
         }
         Event::Empty(start)

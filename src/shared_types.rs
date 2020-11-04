@@ -4,7 +4,6 @@ use std::str::FromStr;
 
 use serde::de;
 use serde::de::Deserializer;
-use serde::ser;
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
 
@@ -19,8 +18,8 @@ use crate::Error;
 /// as defined on a per object basis throughout this specification.
 /// Identifiers are specified as a string between one and 100 characters long.
 /// All characters must be in the printable ASCII range, 0x20 to 0x7E.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Identifier(pub(crate) String);
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+pub struct Identifier(String);
 
 /// A guideline associated with a glyph.
 #[derive(Debug, Clone, PartialEq)]
@@ -56,6 +55,36 @@ pub struct Color {
     pub green: f32,
     pub blue: f32,
     pub alpha: f32,
+}
+
+impl Identifier {
+    /// Create a new `Identifier` from a `String`, if it is valid.
+    ///
+    /// A valid identifier must have between 0 and 100 characters, and each
+    /// character must be in the printable ASCII range, 0x20 to 0x7E.
+    pub fn new(s: String) -> Result<Self, ErrorKind> {
+        if is_valid_identifier(&s) {
+            Ok(Identifier(s))
+        } else {
+            Err(ErrorKind::BadIdentifier)
+        }
+    }
+
+    /// Return the raw identifier, as a `&str`.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl FromStr for Identifier {
+    type Err = ErrorKind;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if is_valid_identifier(s) {
+            Ok(Identifier(s.to_owned()))
+        } else {
+            Err(ErrorKind::BadIdentifier)
+        }
+    }
 }
 
 impl FromStr for Color {
@@ -109,10 +138,8 @@ struct RawGuideline {
     identifier: Option<Identifier>,
 }
 
-impl Identifier {
-    fn is_valid(&self) -> bool {
-        self.0.len() <= 100 && self.0.bytes().all(|b| (0x20..=0x7E).contains(&b))
-    }
+fn is_valid_identifier(s: &str) -> bool {
+    s.len() <= 100 && s.bytes().all(|b| (0x20..=0x7E).contains(&b))
 }
 
 impl Serialize for Identifier {
@@ -120,11 +147,11 @@ impl Serialize for Identifier {
     where
         S: Serializer,
     {
-        if self.is_valid() {
-            serializer.serialize_str(&self.0)
-        } else {
-            Err(ser::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."))
-        }
+        debug_assert!(
+            is_valid_identifier(&self.0),
+            "all identifiers are validated on construction"
+        );
+        serializer.serialize_str(&self.0)
     }
 }
 
@@ -134,10 +161,8 @@ impl<'de> Deserialize<'de> for Identifier {
         D: Deserializer<'de>,
     {
         let string = String::deserialize(deserializer)?;
-        let identifier = Identifier(string);
-
-        if identifier.is_valid() {
-            Ok(identifier)
+        if is_valid_identifier(&string) {
+            Ok(Identifier(string))
         } else {
             Err(de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."))
         }
@@ -387,7 +412,7 @@ impl<'de> Deserialize<'de> for NonNegativeIntegerOrFloat {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_test::{assert_de_tokens_error, assert_ser_tokens_error, assert_tokens, Token};
+    use serde_test::{assert_tokens, Token};
 
     #[test]
     fn color_parsing() {
@@ -400,25 +425,13 @@ mod tests {
 
     #[test]
     fn identifier_parsing() {
-        let i1 = Identifier(
-            " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~".to_string(),
-        );
-        assert_tokens(
-            &i1,
-            &[Token::Str(" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~")],
-        );
+        let valid_chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+        assert!(Identifier::new(valid_chars.into()).is_ok());
 
-        let i2 = Identifier("0aAä".to_string());
-        let error = "Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E.";
-        assert_ser_tokens_error(&i2, &[], error);
-        assert_de_tokens_error::<Identifier>(&[Token::Str("0aAä")], error);
-
-        let i3 = Identifier("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string());
-        assert_ser_tokens_error(&i3, &[], error);
-        assert_de_tokens_error::<Identifier>(
-            &[Token::Str("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")],
-            error,
-        );
+        let i2 = Identifier::new("0aAä".to_string());
+        assert!(i2.is_err());
+        let i3 = Identifier::new("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string());
+        assert!(i3.is_err());
     }
 
     #[test]

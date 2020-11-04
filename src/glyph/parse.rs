@@ -119,7 +119,8 @@ impl<'names> GlifParser<'names> {
             }
             let attr = attr?;
             if attr.key == b"identifier" {
-                identifier = Some(Identifier(attr.unescape_and_decode_value(reader)?));
+                let ident = attr.unescape_and_decode_value(reader)?;
+                identifier = Some(Identifier::new(ident).map_err(|kind| err!(reader, kind))?);
             }
         }
 
@@ -186,7 +187,9 @@ impl<'names> GlifParser<'names> {
                     };
                     base = Some(name);
                 }
-                b"identifier" => identifier = Some(Identifier(value.to_string())),
+                b"identifier" => {
+                    identifier = Some(value.parse().map_err(|kind| err!(reader, kind))?);
+                }
                 _other => eprintln!("unexpected component field {}", value),
             }
         }
@@ -264,7 +267,9 @@ impl<'names> GlifParser<'names> {
                         .map_err(|e: ErrorKind| e.to_error(reader.buffer_position()))?
                 }
                 b"smooth" => smooth = value == "yes",
-                b"identifier" => identifier = Some(Identifier(value.to_string())),
+                b"identifier" => {
+                    identifier = Some(value.parse().map_err(|kind| err!(reader, kind))?);
+                }
                 _other => eprintln!("unexpected point field {}", String::from_utf8_lossy(_other)),
             }
         }
@@ -347,7 +352,9 @@ impl<'names> GlifParser<'names> {
                 b"color" => {
                     color = Some(value.parse().map_err(|_| err!(reader, ErrorKind::BadColor))?)
                 }
-                b"identifier" => identifier = Some(Identifier(value.to_string())),
+                b"identifier" => {
+                    identifier = Some(value.parse().map_err(|kind| err!(reader, kind))?);
+                }
                 _other => eprintln!("unexpected anchor field {}", value),
             }
         }
@@ -389,7 +396,9 @@ impl<'names> GlifParser<'names> {
                 }
                 b"name" => name = Some(value.to_string()),
                 b"color" => color = Some(value.parse().map_err(|e: ErrorKind| e.to_error(pos))?),
-                b"identifier" => identifier = Some(Identifier(value.to_string())),
+                b"identifier" => {
+                    identifier = Some(value.parse().map_err(|kind| err!(reader, kind))?);
+                }
                 _other => eprintln!("unexpected guideline field {}", value),
             }
         }
