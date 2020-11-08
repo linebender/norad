@@ -93,7 +93,7 @@ impl Pen {
     }
 
     /// Return the format version currently set.
-    pub fn format(&self) -> &GlifVersion {
+    pub fn get_format(&self) -> &GlifVersion {
         &self.glyph.format
     }
 
@@ -334,7 +334,7 @@ impl Pen {
             Some(mut c) => {
                 // If using format version 1, check if we are actually looking at an implicit
                 // anchor and convert if so (leaving an empty outline if there is nothing else).
-                if Self::contour_is_v1_anchor(self.format(), &c.points) {
+                if Self::contour_is_v1_anchor(self.get_format(), &c.points) {
                     let anchor_point = c.points.remove(0);
                     let anchor = Anchor {
                         name: anchor_point.name,

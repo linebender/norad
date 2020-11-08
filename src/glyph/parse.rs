@@ -101,7 +101,7 @@ impl<'names> GlifParser<'names> {
     ) -> Result<(), Error> {
         let mut identifier = None;
         for attr in data.attributes() {
-            if self.pen.format() == &GlifVersion::V1 {
+            if self.pen.get_format() == &GlifVersion::V1 {
                 return Err(err!(reader, ErrorKind::UnexpectedAttribute));
             }
             let attr = attr?;
