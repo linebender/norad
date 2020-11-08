@@ -30,7 +30,10 @@ mod upconversion;
 
 pub use error::Error;
 pub use fontinfo::FontInfo;
-pub use glyph::{Glyph, GlyphName};
+pub use glyph::{
+    pen::Pen, Advance, AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion,
+    Glyph, GlyphName, Image, Outline, Plist, PointType,
+};
 pub use layer::Layer;
 pub use shared_types::{
     Color, Guideline, Identifier, IntegerOrFloat, Line, NonNegativeIntegerOrFloat,

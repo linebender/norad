@@ -1,6 +1,7 @@
 //! Data related to individual glyphs.
 
 mod parse;
+pub mod pen;
 mod serialize;
 #[cfg(test)]
 mod tests;
@@ -19,7 +20,7 @@ use crate::shared_types::{Color, Guideline, Identifier, Line};
 pub type GlyphName = Arc<str>;
 
 //FIXME: actually load the 'lib' data
-type Plist = ();
+pub type Plist = ();
 
 /// A glyph, loaded from a [.glif file][glif].
 ///
@@ -155,10 +156,16 @@ pub struct Component {
     pub identifier: Option<Identifier>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Contour {
     pub identifier: Option<Identifier>,
     pub points: Vec<ContourPoint>,
+}
+
+impl Contour {
+    fn is_closed(&self) -> bool {
+        self.points.first().map_or(true, |v| v.typ != PointType::Move)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
