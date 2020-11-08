@@ -36,7 +36,7 @@ use crate::shared_types::Identifier;
 /// use norad::{AffineTransform, Anchor, GlifVersion, Guideline, Identifier, Line, Pen, PointType};
 ///
 /// fn main() -> Result<(), ErrorKind> {
-///     let mut pen = Pen::new("test".into(), GlifVersion::V2);
+///     let mut pen = Pen::new("test", GlifVersion::V2);
 ///     pen.width(10.0)?
 ///         .unicode('ä')
 ///         .guideline(Guideline {
@@ -81,9 +81,9 @@ pub struct Pen {
 impl Pen {
     /// Create a new Pen for a `Glyph` named `name`, using the format version `format` to interpret
     /// commands.
-    pub fn new(name: GlyphName, format: GlifVersion) -> Self {
+    pub fn new(name: impl Into<GlyphName>, format: GlifVersion) -> Self {
         Self {
-            glyph: Glyph::new(name, format),
+            glyph: Glyph::new(name.into(), format),
             height: None,
             width: None,
             identifiers: HashSet::new(),
@@ -431,7 +431,7 @@ mod tests {
 
     #[test]
     fn pen_one_line() -> Result<(), ErrorKind> {
-        let mut pen = Pen::new("test".into(), GlifVersion::V2);
+        let mut pen = Pen::new("test", GlifVersion::V2);
         pen.width(10.0)?
             .height(20.0)?
             .unicode('\u{2020}')
@@ -468,7 +468,13 @@ mod tests {
             .add_point((173.0, 536.0), PointType::Line, false, None, None)?
             .add_point((85.0, 536.0), PointType::Line, false, None, None)?
             .add_point((85.0, 0.0), PointType::Line, false, None, None)?
-            .add_point((173.0, 0.0), PointType::Line, false, None, Some(Identifier::new("def".into()).unwrap()))?
+            .add_point(
+                (173.0, 0.0),
+                PointType::Line,
+                false,
+                None,
+                Some(Identifier::new("def".into()).unwrap()),
+            )?
             .end_path()?
             .add_component(
                 "hallo".into(),
@@ -576,7 +582,7 @@ mod tests {
 
     #[test]
     fn pen_upgrade_v1_anchor() -> Result<(), ErrorKind> {
-        let mut pen = Pen::new("test".into(), GlifVersion::V1);
+        let mut pen = Pen::new("test", GlifVersion::V1);
         pen.outline()?
             .begin_path(None)?
             .add_point((173.0, 536.0), PointType::Move, false, Some("top".into()), None)?
@@ -611,7 +617,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "DuplicateIdentifier")]
     fn pen_add_guidelines_duplicate_id() {
-        Pen::new("test".into(), GlifVersion::V2)
+        Pen::new("test", GlifVersion::V2)
             .guideline(Guideline {
                 line: Line::Horizontal(10.0),
                 name: None,
@@ -631,7 +637,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "DuplicateIdentifier")]
     fn pen_add_duplicate_id() {
-        Pen::new("test".into(), GlifVersion::V2)
+        Pen::new("test", GlifVersion::V2)
             .guideline(Guideline {
                 line: Line::Horizontal(10.0),
                 name: None,
@@ -652,7 +658,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "UnfinishedDrawing")]
     fn pen_unfinished_drawing() {
-        let mut pen = Pen::new("test".into(), GlifVersion::V2);
+        let mut pen = Pen::new("test", GlifVersion::V2);
         pen.outline().unwrap().begin_path(Some(Identifier::new("abc".into()).unwrap())).unwrap();
         let _glyph = pen.finish().unwrap();
     }
@@ -660,7 +666,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "UnfinishedDrawing")]
     fn pen_unfinished_drawing2() {
-        let mut pen = Pen::new("test".into(), GlifVersion::V2);
+        let mut pen = Pen::new("test", GlifVersion::V2);
         pen.outline()
             .unwrap()
             .begin_path(Some(Identifier::new("abc".into()).unwrap()))

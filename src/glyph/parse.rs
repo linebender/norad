@@ -464,7 +464,7 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Pen, Error> {
                     }
                 }
                 if !name.is_empty() && format.is_some() {
-                    return Ok(Pen::new(name.into(), format.take().unwrap()));
+                    return Ok(Pen::new(name, format.take().unwrap()));
                 } else {
                     return Err(err!(reader, ErrorKind::WrongFirstElement));
                 }
