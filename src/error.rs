@@ -79,9 +79,23 @@ pub enum ErrorKind {
     BadImage,
     BadIdentifier,
     UnexpectedDuplicate,
+    UnexpectedMove,
+    UnexpectedSmooth,
     UnexpectedElement,
     UnexpectedAttribute,
     UnexpectedEof,
+    UnexpectedPointAfterOffCurve,
+    TooManyOffCurves,
+    PenPathNotStarted,
+    TrailingOffCurves,
+    DuplicateIdentifier,
+    UnexpectedDrawing,
+    UnfinishedDrawing,
+    UnexpectedPointField,
+    UnexpectedComponentField,
+    UnexpectedAnchorField,
+    UnexpectedGuidelineField,
+    UnexpectedImageField,
 }
 
 impl std::fmt::Display for Error {
@@ -139,9 +153,35 @@ impl std::fmt::Display for ErrorKind {
             ErrorKind::BadImage => write!(f, "Bad image"),
             ErrorKind::BadIdentifier => write!(f, "Bad identifier"),
             ErrorKind::UnexpectedDuplicate => write!(f, "Unexpected duplicate"),
+            ErrorKind::UnexpectedMove => {
+                write!(f, "Unexpected move point, can only occur at start of contour")
+            }
+            ErrorKind::UnexpectedSmooth => {
+                write!(f, "Unexpected smooth attribute on an off-curve point")
+            }
             ErrorKind::UnexpectedElement => write!(f, "Unexpected element"),
             ErrorKind::UnexpectedAttribute => write!(f, "Unexpected attribute"),
             ErrorKind::UnexpectedEof => write!(f, "Unexpected EOF"),
+            ErrorKind::UnexpectedPointAfterOffCurve => {
+                write!(f, "An off-curve point must be followed by a curve or qcurve")
+            }
+            ErrorKind::TooManyOffCurves => {
+                write!(f, "At most two off-curve points can precede a curve")
+            }
+            ErrorKind::PenPathNotStarted => {
+                write!(f, "Must call begin_path() before calling add_point() or end_path()")
+            }
+            ErrorKind::TrailingOffCurves => {
+                write!(f, "Open contours must not have trailing off-curves")
+            }
+            ErrorKind::DuplicateIdentifier => write!(f, "Duplicate identifier"),
+            ErrorKind::UnexpectedDrawing => write!(f, "Unexpected drawing without an outline"),
+            ErrorKind::UnfinishedDrawing => write!(f, "Unfinished drawing, you must call end_path"),
+            ErrorKind::UnexpectedPointField => write!(f, "Unexpected point field"),
+            ErrorKind::UnexpectedComponentField => write!(f, "Unexpected component field "),
+            ErrorKind::UnexpectedAnchorField => write!(f, "Unexpected anchor field "),
+            ErrorKind::UnexpectedGuidelineField => write!(f, "Unexpected guideline field "),
+            ErrorKind::UnexpectedImageField => write!(f, "Unexpected image field "),
         }
     }
 }

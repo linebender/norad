@@ -95,7 +95,7 @@ impl<'names> GlifParser<'names> {
                     match tag_name.borrow() {
                         "contour" => self.parse_contour(start, reader, &mut new_buf)?,
                         "component" => self.parse_component(reader, start)?,
-                        _other => eprintln!("unexpected tag in outline {}", tag_name),
+                        _other => return Err(err!(reader, ErrorKind::UnexpectedTag)),
                     }
                 }
                 Event::End(ref end) if end.name() == b"outline" => break,
@@ -118,9 +118,12 @@ impl<'names> GlifParser<'names> {
                 return Err(err!(reader, ErrorKind::UnexpectedAttribute));
             }
             let attr = attr?;
-            if attr.key == b"identifier" {
-                let ident = attr.unescape_and_decode_value(reader)?;
-                identifier = Some(Identifier::new(ident).map_err(|kind| err!(reader, kind))?);
+            match attr.key {
+                b"identifier" => {
+                    let ident = attr.unescape_and_decode_value(reader)?;
+                    identifier = Some(Identifier::new(ident).map_err(|kind| err!(reader, kind))?);
+                }
+                _other => return Err(err!(reader, ErrorKind::UnexpectedAttribute)),
             }
         }
 
@@ -190,7 +193,7 @@ impl<'names> GlifParser<'names> {
                 b"identifier" => {
                     identifier = Some(value.parse().map_err(|kind| err!(reader, kind))?);
                 }
-                _other => eprintln!("unexpected component field {}", value),
+                _other => return Err(err!(reader, ErrorKind::UnexpectedComponentField)),
             }
         }
 
@@ -270,7 +273,7 @@ impl<'names> GlifParser<'names> {
                 b"identifier" => {
                     identifier = Some(value.parse().map_err(|kind| err!(reader, kind))?);
                 }
-                _other => eprintln!("unexpected point field {}", String::from_utf8_lossy(_other)),
+                _other => return Err(err!(reader, ErrorKind::UnexpectedPointField)),
             }
         }
         if x.is_none() || y.is_none() {
@@ -355,7 +358,7 @@ impl<'names> GlifParser<'names> {
                 b"identifier" => {
                     identifier = Some(value.parse().map_err(|kind| err!(reader, kind))?);
                 }
-                _other => eprintln!("unexpected anchor field {}", value),
+                _other => return Err(err!(reader, ErrorKind::UnexpectedAnchorField)),
             }
         }
 
@@ -399,7 +402,7 @@ impl<'names> GlifParser<'names> {
                 b"identifier" => {
                     identifier = Some(value.parse().map_err(|kind| err!(reader, kind))?);
                 }
-                _other => eprintln!("unexpected guideline field {}", value),
+                _other => return Err(err!(reader, ErrorKind::UnexpectedGuidelineField)),
             }
         }
 
@@ -444,7 +447,7 @@ impl<'names> GlifParser<'names> {
                 b"yOffset" => transform.y_offset = value.parse().map_err(|_| (kind, pos))?,
                 b"color" => color = Some(value.parse().map_err(|e: ErrorKind| e.to_error(pos))?),
                 b"fileName" => filename = Some(PathBuf::from(value.to_string())),
-                _other => eprintln!("unexpected image field {}", value),
+                _other => return Err(err!(reader, ErrorKind::UnexpectedImageField)),
             }
         }
 
