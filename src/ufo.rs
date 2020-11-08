@@ -1,6 +1,6 @@
 //! Reading and (maybe) writing Unified Font Object files.
 
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(broken_intra_doc_links)]
 
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
