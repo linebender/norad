@@ -46,12 +46,24 @@ impl<'names> GlifParser<'names> {
     fn parse_body(mut self, reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, Error> {
         loop {
             match reader.read_event(buf)? {
-                Event::Start(start) | Event::Empty(start) => {
+                // outline, lib and note are expected to be start element tags.
+                Event::Start(start) => {
                     let tag_name = reader.decode(&start.name())?;
                     match tag_name.borrow() {
                         "outline" => self.parse_outline(reader, buf)?,
                         "lib" => self.parse_lib(reader, buf)?, // do this at some point?
                         "note" => self.parse_note(reader, buf)?,
+                        _other => return Err(err!(reader, ErrorKind::UnexpectedTag)),
+                    }
+                }
+                // The rest are expected to be empty element tags (exception: outline) with attributes.
+                Event::Empty(start) => {
+                    let tag_name = reader.decode(&start.name())?;
+                    match tag_name.borrow() {
+                        "outline" => {
+                            // ufoLib parses `<outline/>` as an empty outline.
+                            self.pen.outline().map_err(|e| err!(reader, e))?;
+                        }
                         "advance" => self.parse_advance(reader, start)?,
                         "unicode" => self.parse_unicode(reader, start)?,
                         "anchor" => self.parse_anchor(reader, start)?,

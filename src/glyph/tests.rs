@@ -401,3 +401,24 @@ fn unexpected_line_after_offcurve3() {
     "#;
     let _ = parse_glyph(data.as_bytes()).unwrap();
 }
+
+#[test]
+fn empty_outlines() {
+    let data1 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+            </outline>
+        </glyph>
+        "#;
+    let data2 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline/>
+        </glyph>
+        "#;
+    let test1 = parse_glyph(data1.as_bytes()).unwrap();
+    assert_eq!(test1.outline.unwrap(), Outline::default());
+    let test2 = parse_glyph(data2.as_bytes()).unwrap();
+    assert_eq!(test2.outline.unwrap(), Outline::default());
+}
