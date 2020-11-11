@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use super::*;
 use crate::error::{ErrorKind, GlifErrorInternal};
-use crate::glyph::pen::Pen;
+use crate::glyph::builder::GlyphBuilder;
 use crate::names::NameList;
 
 use quick_xml::{
@@ -27,7 +27,7 @@ macro_rules! err {
 type Error = GlifErrorInternal;
 
 pub(crate) struct GlifParser<'names> {
-    pen: Pen,
+    builder: GlyphBuilder,
     /// Optional set of glyph names to be reused between glyphs.
     names: Option<&'names NameList>,
 }
@@ -38,8 +38,8 @@ impl<'names> GlifParser<'names> {
         let mut buf = Vec::new();
         reader.trim_text(true);
 
-        let pen = start(&mut reader, &mut buf)?;
-        let this = GlifParser { pen, names };
+        let builder = start(&mut reader, &mut buf)?;
+        let this = GlifParser { builder, names };
         this.parse_body(&mut reader, &mut buf)
     }
 
@@ -62,7 +62,7 @@ impl<'names> GlifParser<'names> {
                     match tag_name.borrow() {
                         "outline" => {
                             // ufoLib parses `<outline/>` as an empty outline.
-                            self.pen.outline().map_err(|e| err!(reader, e))?;
+                            self.builder.outline().map_err(|e| err!(reader, e))?;
                         }
                         "advance" => self.parse_advance(reader, start)?,
                         "unicode" => self.parse_unicode(reader, start)?,
@@ -76,7 +76,7 @@ impl<'names> GlifParser<'names> {
                 _other => return Err(err!(reader, ErrorKind::MissingCloseTag)),
             }
         }
-        Ok(self.pen.finish().map_err(|e| err!(reader, e))?)
+        Ok(self.builder.finish().map_err(|e| err!(reader, e))?)
     }
 
     fn parse_outline(
@@ -84,7 +84,7 @@ impl<'names> GlifParser<'names> {
         reader: &mut Reader<&[u8]>,
         buf: &mut Vec<u8>,
     ) -> Result<(), Error> {
-        self.pen.outline().map_err(|e| err!(reader, e))?;
+        self.builder.outline().map_err(|e| err!(reader, e))?;
 
         loop {
             match reader.read_event(buf)? {
@@ -122,7 +122,7 @@ impl<'names> GlifParser<'names> {
     ) -> Result<(), Error> {
         let mut identifier = None;
         for attr in data.attributes() {
-            if self.pen.get_format() == &GlifVersion::V1 {
+            if self.builder.get_format() == &GlifVersion::V1 {
                 return Err(err!(reader, ErrorKind::UnexpectedAttribute));
             }
             let attr = attr?;
@@ -135,7 +135,7 @@ impl<'names> GlifParser<'names> {
             }
         }
 
-        self.pen.begin_path(identifier).map_err(|e| err!(reader, e))?;
+        self.builder.begin_path(identifier).map_err(|e| err!(reader, e))?;
         loop {
             match reader.read_event(buf)? {
                 Event::End(ref end) if end.name() == b"contour" => break,
@@ -146,7 +146,7 @@ impl<'names> GlifParser<'names> {
                 _other => return Err(err!(reader, ErrorKind::UnexpectedElement)),
             }
         }
-        self.pen.end_path().map_err(|e| err!(reader, e))?;
+        self.builder.end_path().map_err(|e| err!(reader, e))?;
 
         Ok(())
     }
@@ -192,7 +192,7 @@ impl<'names> GlifParser<'names> {
             return Err(err!(reader, ErrorKind::BadComponent));
         }
 
-        self.pen
+        self.builder
             .add_component(base.unwrap(), transform, identifier)
             .map_err(|e| err!(reader, e))?;
         Ok(())
@@ -214,7 +214,7 @@ impl<'names> GlifParser<'names> {
             match reader.read_event(buf)? {
                 Event::End(ref end) if end.name() == b"note" => break,
                 Event::Text(text) => {
-                    self.pen
+                    self.builder
                         .note(text.unescape_and_decode(reader)?)
                         .map_err(|e| err!(reader, e))?;
                 }
@@ -265,7 +265,7 @@ impl<'names> GlifParser<'names> {
         if x.is_none() || y.is_none() {
             return Err(err!(reader, ErrorKind::BadPoint));
         }
-        self.pen
+        self.builder
             .add_point((x.unwrap(), y.unwrap()), typ, smooth, name, identifier)
             .map_err(|e| err!(reader, e))?;
 
@@ -296,7 +296,7 @@ impl<'names> GlifParser<'names> {
                 _other => return Err(err!(reader, ErrorKind::UnexpectedAttribute)),
             }
         }
-        self.pen
+        self.builder
             .width(width)
             .map_err(|e| err!(reader, e))?
             .height(height)
@@ -319,7 +319,7 @@ impl<'names> GlifParser<'names> {
                         .map_err(|_| value.to_string())
                         .and_then(|n| char::try_from(n).map_err(|_| value.to_string()))
                         .map_err(|_| err!(reader, ErrorKind::BadHexValue))?;
-                    self.pen.unicode(chr);
+                    self.builder.unicode(chr);
                 }
                 _other => return Err(err!(reader, ErrorKind::UnexpectedAttribute)),
             }
@@ -363,7 +363,7 @@ impl<'names> GlifParser<'names> {
         if x.is_none() || y.is_none() {
             return Err(err!(reader, ErrorKind::BadAnchor));
         }
-        self.pen
+        self.builder
             .anchor(Anchor { x: x.unwrap(), y: y.unwrap(), name, color, identifier })
             .map_err(|e| err!(reader, e))?;
         Ok(())
@@ -416,7 +416,7 @@ impl<'names> GlifParser<'names> {
             }
             _other => return Err(err!(reader, ErrorKind::BadGuideline)),
         };
-        self.pen
+        self.builder
             .guideline(Guideline { line, name, color, identifier })
             .map_err(|e| err!(reader, e))?;
 
@@ -455,7 +455,7 @@ impl<'names> GlifParser<'names> {
             return Err(err!(reader, ErrorKind::BadImage));
         }
 
-        self.pen
+        self.builder
             .image(Image { file_name: filename.unwrap(), color, transform })
             .map_err(|e| err!(reader, e))?;
 
@@ -463,7 +463,7 @@ impl<'names> GlifParser<'names> {
     }
 }
 
-fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Pen, Error> {
+fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<GlyphBuilder, Error> {
     loop {
         match reader.read_event(buf)? {
             Event::Comment(_) => (),
@@ -490,7 +490,7 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Pen, Error> {
                     }
                 }
                 if !name.is_empty() && format.is_some() {
-                    return Ok(Pen::new(name, format.take().unwrap()));
+                    return Ok(GlyphBuilder::new(name, format.take().unwrap()));
                 } else {
                     return Err(err!(reader, ErrorKind::WrongFirstElement));
                 }

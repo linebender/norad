@@ -1,7 +1,7 @@
 //! Data related to individual glyphs.
 
+pub mod builder;
 mod parse;
-pub mod pen;
 mod serialize;
 #[cfg(test)]
 mod tests;

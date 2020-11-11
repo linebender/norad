@@ -45,6 +45,7 @@ pub enum Line {
     Horizontal(f32),
     /// An angled line passing through `(x, y)` at `degrees` degrees counteer-clockwise
     /// to the horizontal.
+    // TODO: make a Degrees newtype that checks `0 <= degrees <= 360`.
     Angle { x: f32, y: f32, degrees: f32 },
 }
 

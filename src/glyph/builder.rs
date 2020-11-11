@@ -9,7 +9,7 @@ use crate::glyph::{
 };
 use crate::shared_types::Identifier;
 
-/// A Pen is a consuming builder for [`Glyph`](../struct.Glyph.html)s.
+/// A GlyphBuilder is a consuming builder for [`Glyph`](../struct.Glyph.html)s.
 ///
 /// It is different from fontTools' Pen concept, in that it is used to build the entire `Glyph`,
 /// not just the outlines and components, with built-in checking for conformity to the glif
@@ -23,7 +23,7 @@ use crate::shared_types::Identifier;
 /// 4. A maximum of two offcurves can precede a curve.
 /// 5. All identifiers used in a `Glyph` must be unique within it.
 ///
-/// Since Pen is also used by the Glif parser, additional constraints are baked into Pen to enforce
+/// Since GlyphBuilder is also used by the Glif parser, additional constraints are baked into GlyphBuilder to enforce
 /// constraints about how often a Glyph field or "element" can appear in a `.glif` file. For
 /// example, calling `outline()` twice results in an error.
 ///
@@ -33,11 +33,11 @@ use crate::shared_types::Identifier;
 /// use std::str::FromStr;
 ///
 /// use norad::error::ErrorKind;
-/// use norad::{AffineTransform, Anchor, GlifVersion, Guideline, Identifier, Line, Pen, PointType};
+/// use norad::{AffineTransform, Anchor, GlifVersion, Guideline, Identifier, Line, GlyphBuilder, PointType};
 ///
 /// fn main() -> Result<(), ErrorKind> {
-///     let mut pen = Pen::new("test", GlifVersion::V2);
-///     pen.width(10.0)?
+///     let mut builder = GlyphBuilder::new("test", GlifVersion::V2);
+///     builder.width(10.0)?
 ///         .unicode('ä')
 ///         .guideline(Guideline {
 ///             line: Line::Horizontal(10.0),
@@ -64,12 +64,12 @@ use crate::shared_types::Identifier;
 ///             AffineTransform::default(),
 ///             Some(Identifier::from_str("xyz")?),
 ///         )?;
-///     let glyph = pen.finish()?;
+///     let glyph = builder.finish()?;
 ///     Ok(())
 /// }
 /// ```
 #[derive(Debug)]
-pub struct Pen {
+pub struct GlyphBuilder {
     glyph: Glyph,
     height: Option<f32>,
     width: Option<f32>,
@@ -78,8 +78,8 @@ pub struct Pen {
     number_of_offcurves: u32,
 }
 
-impl Pen {
-    /// Create a new Pen for a `Glyph` named `name`, using the format version `format` to interpret
+impl GlyphBuilder {
+    /// Create a new GlyphBuilder for a `Glyph` named `name`, using the format version `format` to interpret
     /// commands.
     pub fn new(name: impl Into<GlyphName>, format: GlifVersion) -> Self {
         Self {
@@ -206,7 +206,7 @@ impl Pen {
         Ok(self)
     }
 
-    /// Consume the pen and return the final `Glyph`.
+    /// Consume the builder and return the final `Glyph`.
     ///
     /// Errors when a path has been begun but not ended.
     pub fn finish(mut self) -> Result<Glyph, ErrorKind> {
@@ -433,8 +433,9 @@ mod tests {
 
     #[test]
     fn pen_one_line() -> Result<(), ErrorKind> {
-        let mut pen = Pen::new("test", GlifVersion::V2);
-        pen.width(10.0)?
+        let mut builder = GlyphBuilder::new("test", GlifVersion::V2);
+        builder
+            .width(10.0)?
             .height(20.0)?
             .unicode('\u{2020}')
             .unicode('\u{2021}')
@@ -483,7 +484,7 @@ mod tests {
                 AffineTransform::default(),
                 Some(Identifier::new("xyz".into()).unwrap()),
             )?;
-        let glyph = pen.finish()?;
+        let glyph = builder.finish()?;
 
         assert_eq!(
             glyph,
@@ -584,12 +585,13 @@ mod tests {
 
     #[test]
     fn pen_upgrade_v1_anchor() -> Result<(), ErrorKind> {
-        let mut pen = Pen::new("test", GlifVersion::V1);
-        pen.outline()?
+        let mut builder = GlyphBuilder::new("test", GlifVersion::V1);
+        builder
+            .outline()?
             .begin_path(None)?
             .add_point((173.0, 536.0), PointType::Move, false, Some("top".into()), None)?
             .end_path()?;
-        let glyph = pen.finish()?;
+        let glyph = builder.finish()?;
 
         assert_eq!(
             glyph,
@@ -619,7 +621,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "DuplicateIdentifier")]
     fn pen_add_guidelines_duplicate_id() {
-        Pen::new("test", GlifVersion::V2)
+        GlyphBuilder::new("test", GlifVersion::V2)
             .guideline(Guideline {
                 line: Line::Horizontal(10.0),
                 name: None,
@@ -639,7 +641,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "DuplicateIdentifier")]
     fn pen_add_duplicate_id() {
-        Pen::new("test", GlifVersion::V2)
+        GlyphBuilder::new("test", GlifVersion::V2)
             .guideline(Guideline {
                 line: Line::Horizontal(10.0),
                 name: None,
@@ -660,16 +662,21 @@ mod tests {
     #[test]
     #[should_panic(expected = "UnfinishedDrawing")]
     fn pen_unfinished_drawing() {
-        let mut pen = Pen::new("test", GlifVersion::V2);
-        pen.outline().unwrap().begin_path(Some(Identifier::new("abc".into()).unwrap())).unwrap();
-        let _glyph = pen.finish().unwrap();
+        let mut builder = GlyphBuilder::new("test", GlifVersion::V2);
+        builder
+            .outline()
+            .unwrap()
+            .begin_path(Some(Identifier::new("abc".into()).unwrap()))
+            .unwrap();
+        let _glyph = builder.finish().unwrap();
     }
 
     #[test]
     #[should_panic(expected = "UnfinishedDrawing")]
     fn pen_unfinished_drawing2() {
-        let mut pen = Pen::new("test", GlifVersion::V2);
-        pen.outline()
+        let mut builder = GlyphBuilder::new("test", GlifVersion::V2);
+        builder
+            .outline()
             .unwrap()
             .begin_path(Some(Identifier::new("abc".into()).unwrap()))
             .unwrap()
