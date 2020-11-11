@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use serde::de;
 use serde::de::Deserializer;
+use serde::ser;
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
 
@@ -44,6 +45,7 @@ pub enum Line {
     Horizontal(f32),
     /// An angled line passing through `(x, y)` at `degrees` degrees counteer-clockwise
     /// to the horizontal.
+    // TODO: make a Degrees newtype that checks `0 <= degrees <= 360`.
     Angle { x: f32, y: f32, degrees: f32 },
 }
 
@@ -177,7 +179,12 @@ impl Serialize for Guideline {
         let (x, y, angle) = match self.line {
             Line::Vertical(x) => (Some(x), None, None),
             Line::Horizontal(y) => (None, Some(y), None),
-            Line::Angle { x, y, degrees } => (Some(x), Some(y), Some(degrees)),
+            Line::Angle { x, y, degrees } => {
+                if !(0.0..=360.0).contains(&degrees) {
+                    return Err(ser::Error::custom("angle must be between 0 and 360 degrees."));
+                }
+                (Some(x), Some(y), Some(degrees))
+            }
         };
 
         let mut guideline = serializer.serialize_struct("RawGuideline", 6)?;

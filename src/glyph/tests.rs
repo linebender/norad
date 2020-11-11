@@ -160,3 +160,293 @@ fn druid_from_color() {
 //let glyph = parse_glyph(bytes).unwrap();
 //assert_eq!(glyph.width, Some(268.));
 //}
+
+#[test]
+#[should_panic(expected = "UnexpectedMove")]
+fn unexpected_move() {
+    let data = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="period" format="2">
+            <advance width="268"/>
+            <unicode hex="002E"/>
+            <outline>
+                <contour>
+                    <point x="237" y="152"/>
+                    <point x="193" y="187" type="move"/>
+                </contour>
+            </outline>
+        </glyph>
+"#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "UnexpectedSmooth")]
+fn unexpected_smooth() {
+    let data = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="period" format="2">
+            <advance width="268"/>
+            <unicode hex="002E"/>
+            <outline>
+                    <contour>
+                        <point x="193" y="187" smooth="yes"/>
+                    </contour>
+            </outline>
+        </glyph>
+  "#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+fn zero_to_two_offcurves_before_curve() {
+    let data1 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="0" y="0" type="line"/>
+                    <point x="100" y="100" type="curve"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let data2 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="0" y="0" type="line"/>
+                    <point x="50" y="50"/>
+                    <point x="100" y="100" type="curve"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let data3 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="0" y="0" type="line"/>
+                    <point x="33" y="33"/>
+                    <point x="66" y="66"/>
+                    <point x="100" y="100" type="curve"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let data4 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="100" y="100" type="curve"/>
+                    <point x="0" y="0" type="line"/>
+                    <point x="33" y="33"/>
+                    <point x="66" y="66"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let _ = parse_glyph(data1.as_bytes()).unwrap();
+    let _ = parse_glyph(data2.as_bytes()).unwrap();
+    let _ = parse_glyph(data3.as_bytes()).unwrap();
+    let _ = parse_glyph(data4.as_bytes()).unwrap();
+}
+
+#[test]
+fn valid_offcurves() {
+    let data1 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="0" y="0"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let data2 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="0" y="0"/>
+                    <point x="100" y="100"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let data3 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="0" y="0"/>
+                    <point x="50" y="25"/>
+                    <point x="100" y="100"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let data4 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="0" y="0"/>
+                    <point x="50" y="25" type="curve"/>
+                    <point x="100" y="100"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let _ = parse_glyph(data1.as_bytes()).unwrap();
+    let _ = parse_glyph(data2.as_bytes()).unwrap();
+    let _ = parse_glyph(data3.as_bytes()).unwrap();
+    let _ = parse_glyph(data4.as_bytes()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "TrailingOffCurves")]
+fn trailing_off_curves() {
+    let data = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="0" y="0" type="move"/>
+                    <point x="50" y="25"/>
+                    <point x="100" y="100"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "TooManyOffCurves")]
+fn too_many_off_curves() {
+    let data = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="0" y="0" type="line"/>
+                    <point x="33" y="33"/>
+                    <point x="66" y="66"/>
+                    <point x="77" y="77"/>
+                    <point x="100" y="100" type="curve"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "UnexpectedPointAfterOffCurve")]
+fn unexpected_line_after_offcurve1() {
+    let data = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="1" y="1" type="line"/>
+                    <point x="33" y="33"/>
+                    <point x="0" y="0" type="line"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "UnexpectedPointAfterOffCurve")]
+fn unexpected_line_after_offcurve2() {
+    let data = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="301" y="714" type="line" smooth="yes"/>
+                    <point x="572" y="537" type="curve" smooth="yes"/>
+                    <point x="572" y="667"/>
+                    <point x="479" y="714"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "UnexpectedPointAfterOffCurve")]
+fn unexpected_line_after_offcurve3() {
+    let data = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                    <point x="479" y="714"/>
+                    <point x="301" y="714" type="line" smooth="yes"/>
+                    <point x="572" y="537" type="curve" smooth="yes"/>
+                    <point x="572" y="667"/>
+                </contour>
+            </outline>
+        </glyph>
+    "#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+fn empty_outlines() {
+    let data1 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+            </outline>
+        </glyph>
+        "#;
+    let data2 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline/>
+        </glyph>
+        "#;
+    let test1 = parse_glyph(data1.as_bytes()).unwrap();
+    assert_eq!(test1.outline.unwrap(), Outline::default());
+    let test2 = parse_glyph(data2.as_bytes()).unwrap();
+    assert_eq!(test2.outline.unwrap(), Outline::default());
+}
+
+#[test]
+fn empty_contours() {
+    let data1 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                </contour>
+                <contour identifier="aaa">
+                </contour>
+            </outline>
+        </glyph>
+        "#;
+    let data2 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour/>
+                <contour identifier="bbb"/>
+            </outline>
+        </glyph>
+        "#;
+    let test1 = parse_glyph(data1.as_bytes()).unwrap();
+    assert_eq!(test1.outline.unwrap(), Outline::default());
+    let test2 = parse_glyph(data2.as_bytes()).unwrap();
+    assert_eq!(test2.outline.unwrap(), Outline::default());
+}
