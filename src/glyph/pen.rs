@@ -316,7 +316,7 @@ impl Pen {
         }
     }
 
-    /// Add a point to the path begun by `begin_path()`.
+    /// Ends the path begun by `begin_path()` and adds the contour it to the glyph's outline.
     ///
     /// Errors when:
     /// 1. `outline()` wasn't called first.
@@ -371,7 +371,9 @@ impl Pen {
                         }
                     }
                     self.number_of_offcurves = 0;
-                    self.glyph.outline.get_or_insert(Outline::default()).contours.push(c);
+                    if c.points.len() > 0 {
+                        self.glyph.outline.get_or_insert(Outline::default()).contours.push(c);
+                    }
                     Ok(self)
                 }
             }
