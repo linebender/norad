@@ -422,3 +422,31 @@ fn empty_outlines() {
     let test2 = parse_glyph(data2.as_bytes()).unwrap();
     assert_eq!(test2.outline.unwrap(), Outline::default());
 }
+
+#[test]
+fn empty_contours() {
+    let data1 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour>
+                </contour>
+                <contour identifier="aaa">
+                </contour>
+            </outline>
+        </glyph>
+        "#;
+    let data2 = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <contour/>
+                <contour identifier="bbb"/>
+            </outline>
+        </glyph>
+        "#;
+    let test1 = parse_glyph(data1.as_bytes()).unwrap();
+    assert_eq!(test1.outline.unwrap(), Outline::default());
+    let test2 = parse_glyph(data2.as_bytes()).unwrap();
+    assert_eq!(test2.outline.unwrap(), Outline::default());
+}

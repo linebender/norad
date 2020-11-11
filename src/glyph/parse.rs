@@ -88,11 +88,20 @@ impl<'names> GlifParser<'names> {
 
         loop {
             match reader.read_event(buf)? {
-                Event::Start(start) | Event::Empty(start) => {
+                Event::Start(start) => {
                     let tag_name = reader.decode(&start.name())?;
                     let mut new_buf = Vec::new(); // borrowck :/
                     match tag_name.borrow() {
                         "contour" => self.parse_contour(start, reader, &mut new_buf)?,
+                        _other => return Err(err!(reader, ErrorKind::UnexpectedTag)),
+                    }
+                }
+                Event::Empty(start) => {
+                    let tag_name = reader.decode(&start.name())?;
+                    match tag_name.borrow() {
+                        // Skip empty contours as meaningless.
+                        // https://github.com/unified-font-object/ufo-spec/issues/150
+                        "contour" => (),
                         "component" => self.parse_component(reader, start)?,
                         _other => return Err(err!(reader, ErrorKind::UnexpectedTag)),
                     }
@@ -399,7 +408,12 @@ impl<'names> GlifParser<'names> {
         let line = match (x, y, angle) {
             (Some(x), None, None) => Line::Vertical(x),
             (None, Some(y), None) => Line::Horizontal(y),
-            (Some(x), Some(y), Some(degrees)) => Line::Angle { x, y, degrees },
+            (Some(x), Some(y), Some(degrees)) => {
+                if !(0.0..=360.0).contains(&degrees) {
+                    return Err(err!(reader, ErrorKind::BadGuideline));
+                }
+                Line::Angle { x, y, degrees }
+            }
             _other => return Err(err!(reader, ErrorKind::BadGuideline)),
         };
         self.pen
