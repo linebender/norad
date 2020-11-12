@@ -1,6 +1,4 @@
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
-use std::hash::{Hash, Hasher};
 
 use crate::error::ErrorKind;
 use crate::glyph::{
@@ -144,7 +142,7 @@ impl GlyphBuilder {
             return Err(ErrorKind::UnexpectedTag);
         }
         if let Some(identifier) = &guideline.identifier {
-            let identifier_hash = Self::hash_identifier(&identifier);
+            let identifier_hash = identifier.hash_self();
             if !self.identifiers.insert(identifier_hash) {
                 return Err(ErrorKind::DuplicateIdentifier);
             }
@@ -161,7 +159,7 @@ impl GlyphBuilder {
             return Err(ErrorKind::UnexpectedTag);
         }
         if let Some(identifier) = &anchor.identifier {
-            let identifier_hash = Self::hash_identifier(&identifier);
+            let identifier_hash = identifier.hash_self();
             if !self.identifiers.insert(identifier_hash) {
                 return Err(ErrorKind::DuplicateIdentifier);
             }
@@ -242,7 +240,7 @@ impl GlyphBuilder {
             return Err(ErrorKind::UnexpectedAttribute);
         }
         if let Some(identifier) = &identifier {
-            let identifier_hash = Self::hash_identifier(&identifier);
+            let identifier_hash = identifier.hash_self();
             if !self.identifiers.insert(identifier_hash) {
                 return Err(ErrorKind::DuplicateIdentifier);
             }
@@ -304,7 +302,7 @@ impl GlyphBuilder {
                 }
                 if let Some(identifier) = &point.identifier {
                     // TODO: test membership at fn start and insert() before push()?
-                    let identifier_hash = Self::hash_identifier(&identifier);
+                    let identifier_hash = identifier.hash_self();
                     if !self.identifiers.insert(identifier_hash) {
                         return Err(ErrorKind::DuplicateIdentifier);
                     }
@@ -400,7 +398,7 @@ impl GlyphBuilder {
             return Err(ErrorKind::UnexpectedAttribute);
         }
         if let Some(identifier) = &identifier {
-            let identifier_hash = Self::hash_identifier(&identifier);
+            let identifier_hash = identifier.hash_self();
             if !self.identifiers.insert(identifier_hash) {
                 return Err(ErrorKind::DuplicateIdentifier);
             }
@@ -408,13 +406,6 @@ impl GlyphBuilder {
         let component = Component { base, transform, identifier };
         self.glyph.outline.get_or_insert(Outline::default()).components.push(component);
         Ok(self)
-    }
-
-    /// Return the u64 hash value of an Identifier.
-    fn hash_identifier(identifier: &Identifier) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        identifier.hash(&mut hasher);
-        hasher.finish()
     }
 
     /// Check if a contour is really an informal anchor according to the Glif v2 specification.
