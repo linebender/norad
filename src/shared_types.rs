@@ -80,9 +80,9 @@ impl Identifier {
     }
 
     /// Return the u64 hash value of self.
-    pub fn hash_self(&self) -> u64 {
+    pub fn hash(&self) -> u64 {
         let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
+        Hash::hash(&self, &mut hasher);
         hasher.finish()
     }
 }

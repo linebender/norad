@@ -142,7 +142,7 @@ impl GlyphBuilder {
             return Err(ErrorKind::UnexpectedTag);
         }
         if let Some(identifier) = &guideline.identifier {
-            let identifier_hash = identifier.hash_self();
+            let identifier_hash = identifier.hash();
             if !self.identifiers.insert(identifier_hash) {
                 return Err(ErrorKind::DuplicateIdentifier);
             }
@@ -159,7 +159,7 @@ impl GlyphBuilder {
             return Err(ErrorKind::UnexpectedTag);
         }
         if let Some(identifier) = &anchor.identifier {
-            let identifier_hash = identifier.hash_self();
+            let identifier_hash = identifier.hash();
             if !self.identifiers.insert(identifier_hash) {
                 return Err(ErrorKind::DuplicateIdentifier);
             }
@@ -240,7 +240,7 @@ impl GlyphBuilder {
             return Err(ErrorKind::UnexpectedAttribute);
         }
         if let Some(identifier) = &identifier {
-            let identifier_hash = identifier.hash_self();
+            let identifier_hash = identifier.hash();
             if !self.identifiers.insert(identifier_hash) {
                 return Err(ErrorKind::DuplicateIdentifier);
             }
@@ -302,7 +302,7 @@ impl GlyphBuilder {
                 }
                 if let Some(identifier) = &point.identifier {
                     // TODO: test membership at fn start and insert() before push()?
-                    let identifier_hash = identifier.hash_self();
+                    let identifier_hash = identifier.hash();
                     if !self.identifiers.insert(identifier_hash) {
                         return Err(ErrorKind::DuplicateIdentifier);
                     }
@@ -398,7 +398,7 @@ impl GlyphBuilder {
             return Err(ErrorKind::UnexpectedAttribute);
         }
         if let Some(identifier) = &identifier {
-            let identifier_hash = identifier.hash_self();
+            let identifier_hash = identifier.hash();
             if !self.identifiers.insert(identifier_hash) {
                 return Err(ErrorKind::DuplicateIdentifier);
             }
@@ -416,6 +416,17 @@ impl GlyphBuilder {
             && points[0].name.is_some()
     }
 }
+
+// #[derive(Debug)]
+// pub struct OutlineBuilder {
+//     identifiers: HashSet<u64>, // All identifiers within a glyph must be unique.
+//     scratch_contour: Option<Contour>,
+//     number_of_offcurves: u32,
+// }
+
+// impl OutlineBuilder {
+
+// }
 
 #[cfg(test)]
 mod tests {
