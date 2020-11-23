@@ -1,11 +1,12 @@
 use std::borrow::Borrow;
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use super::*;
 use crate::error::{ErrorKind, GlifErrorInternal};
-use crate::glyph::builder::GlyphBuilder;
+use crate::glyph::builder::{GlyphBuilder, OutlineBuilder};
 use crate::names::NameList;
 
 use quick_xml::{
@@ -62,7 +63,9 @@ impl<'names> GlifParser<'names> {
                     match tag_name.borrow() {
                         "outline" => {
                             // ufoLib parses `<outline/>` as an empty outline.
-                            self.builder.outline().map_err(|e| err!(reader, e))?;
+                            self.builder
+                                .outline(Outline::default(), HashSet::new())
+                                .map_err(|e| err!(reader, e))?;
                         }
                         "advance" => self.parse_advance(reader, start)?,
                         "unicode" => self.parse_unicode(reader, start)?,
@@ -84,7 +87,7 @@ impl<'names> GlifParser<'names> {
         reader: &mut Reader<&[u8]>,
         buf: &mut Vec<u8>,
     ) -> Result<(), Error> {
-        self.builder.outline().map_err(|e| err!(reader, e))?;
+        let mut outline_builder = OutlineBuilder::new();
 
         loop {
             match reader.read_event(buf)? {
@@ -92,7 +95,9 @@ impl<'names> GlifParser<'names> {
                     let tag_name = reader.decode(&start.name())?;
                     let mut new_buf = Vec::new(); // borrowck :/
                     match tag_name.borrow() {
-                        "contour" => self.parse_contour(start, reader, &mut new_buf)?,
+                        "contour" => {
+                            self.parse_contour(start, reader, &mut new_buf, &mut outline_builder)?
+                        }
                         _other => return Err(err!(reader, ErrorKind::UnexpectedTag)),
                     }
                 }
@@ -102,7 +107,7 @@ impl<'names> GlifParser<'names> {
                         // Skip empty contours as meaningless.
                         // https://github.com/unified-font-object/ufo-spec/issues/150
                         "contour" => (),
-                        "component" => self.parse_component(reader, start)?,
+                        "component" => self.parse_component(reader, start, &mut outline_builder)?,
                         _other => return Err(err!(reader, ErrorKind::UnexpectedTag)),
                     }
                 }
@@ -111,6 +116,10 @@ impl<'names> GlifParser<'names> {
                 _other => return Err(err!(reader, ErrorKind::UnexpectedElement)),
             }
         }
+
+        let (outline, identifiers) = outline_builder.finish().map_err(|e| err!(reader, e))?;
+        self.builder.outline(outline, identifiers).map_err(|e| err!(reader, e))?;
+
         Ok(())
     }
 
@@ -119,6 +128,7 @@ impl<'names> GlifParser<'names> {
         data: BytesStart,
         reader: &mut Reader<&[u8]>,
         buf: &mut Vec<u8>,
+        outline_builder: &mut OutlineBuilder,
     ) -> Result<(), Error> {
         let mut identifier = None;
         for attr in data.attributes() {
@@ -135,18 +145,18 @@ impl<'names> GlifParser<'names> {
             }
         }
 
-        self.builder.begin_path(identifier).map_err(|e| err!(reader, e))?;
+        outline_builder.begin_path(identifier).map_err(|e| err!(reader, e))?;
         loop {
             match reader.read_event(buf)? {
                 Event::End(ref end) if end.name() == b"contour" => break,
                 Event::Empty(ref start) if start.name() == b"point" => {
-                    self.parse_point(reader, start)?;
+                    self.parse_point(reader, start, outline_builder)?;
                 }
                 Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof)),
                 _other => return Err(err!(reader, ErrorKind::UnexpectedElement)),
             }
         }
-        self.builder.end_path().map_err(|e| err!(reader, e))?;
+        outline_builder.end_path().map_err(|e| err!(reader, e))?;
 
         Ok(())
     }
@@ -155,6 +165,7 @@ impl<'names> GlifParser<'names> {
         &mut self,
         reader: &mut Reader<&[u8]>,
         start: BytesStart,
+        outline_builder: &mut OutlineBuilder,
     ) -> Result<(), Error> {
         let mut base: Option<GlyphName> = None;
         let mut identifier: Option<Identifier> = None;
@@ -192,7 +203,7 @@ impl<'names> GlifParser<'names> {
             return Err(err!(reader, ErrorKind::BadComponent));
         }
 
-        self.builder
+        outline_builder
             .add_component(base.unwrap(), transform, identifier)
             .map_err(|e| err!(reader, e))?;
         Ok(())
@@ -229,6 +240,7 @@ impl<'names> GlifParser<'names> {
         &mut self,
         reader: &Reader<&[u8]>,
         data: &BytesStart<'a>,
+        outline_builder: &mut OutlineBuilder,
     ) -> Result<(), Error> {
         let mut name: Option<String> = None;
         let mut x: Option<f32> = None;
@@ -265,7 +277,7 @@ impl<'names> GlifParser<'names> {
         if x.is_none() || y.is_none() {
             return Err(err!(reader, ErrorKind::BadPoint));
         }
-        self.builder
+        outline_builder
             .add_point((x.unwrap(), y.unwrap()), typ, smooth, name, identifier)
             .map_err(|e| err!(reader, e))?;
 

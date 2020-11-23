@@ -31,11 +31,15 @@ use crate::shared_types::Identifier;
 /// use std::str::FromStr;
 ///
 /// use norad::error::ErrorKind;
-/// use norad::{AffineTransform, Anchor, GlifVersion, Guideline, Identifier, Line, GlyphBuilder, PointType};
+/// use norad::{
+///     AffineTransform, Anchor, GlifVersion, GlyphBuilder, Guideline, Identifier, Line,
+///     OutlineBuilder, PointType,
+/// };
 ///
 /// fn main() -> Result<(), ErrorKind> {
 ///     let mut builder = GlyphBuilder::new("test", GlifVersion::V2);
-///     builder.width(10.0)?
+///     builder
+///         .width(10.0)?
 ///         .unicode('ä')
 ///         .guideline(Guideline {
 ///             line: Line::Horizontal(10.0),
@@ -49,8 +53,9 @@ use crate::shared_types::Identifier;
 ///             name: Some("anchor1".into()),
 ///             color: None,
 ///             identifier: Some(Identifier::from_str("test3")?),
-///         })?
-///         .outline()?
+///         })?;
+///     let mut outline_builder = OutlineBuilder::new();
+///     outline_builder
 ///         .begin_path(Some(Identifier::from_str("abc")?))?
 ///         .add_point((173.0, 536.0), PointType::Line, false, None, None)?
 ///         .add_point((85.0, 536.0), PointType::Line, false, None, None)?
@@ -62,6 +67,8 @@ use crate::shared_types::Identifier;
 ///             AffineTransform::default(),
 ///             Some(Identifier::from_str("xyz")?),
 ///         )?;
+///     let (outline, identifiers) = outline_builder.finish()?;
+///     builder.outline(outline, identifiers)?;
 ///     let glyph = builder.finish()?;
 ///     Ok(())
 /// }
@@ -162,7 +169,7 @@ impl GlyphBuilder {
     /// 3. Duplicate identifiers are found.
     pub fn outline(
         &mut self,
-        outline: Outline,
+        mut outline: Outline,
         identifiers: HashSet<u64>,
     ) -> Result<&mut Self, ErrorKind> {
         if self.glyph.outline.is_some() {
@@ -177,7 +184,7 @@ impl GlyphBuilder {
         self.identifiers.extend(&identifiers);
 
         if &self.glyph.format == &GlifVersion::V1 {
-            for c in outline.contours {
+            for c in &mut outline.contours {
                 if c.points.len() == 1
                     && c.points[0].typ == PointType::Move
                     && c.points[0].name.is_some()
@@ -433,7 +440,7 @@ mod tests {
     use crate::glyph::Line;
 
     #[test]
-    fn pen_one_line() -> Result<(), ErrorKind> {
+    fn glyph_builder_basic() -> Result<(), ErrorKind> {
         let mut builder = GlyphBuilder::new("test", GlifVersion::V2);
         builder
             .width(10.0)?
@@ -468,7 +475,8 @@ mod tests {
                 identifier: Some(Identifier::new("test4".into()).unwrap()),
             })?;
 
-        let (outline, identifiers) = OutlineBuilder::new()
+        let mut outline_builder = OutlineBuilder::new();
+        outline_builder
             .begin_path(Some(Identifier::new("abc".into()).unwrap()))?
             .add_point((173.0, 536.0), PointType::Line, false, None, None)?
             .add_point((85.0, 536.0), PointType::Line, false, None, None)?
@@ -485,9 +493,8 @@ mod tests {
                 "hallo".into(),
                 AffineTransform::default(),
                 Some(Identifier::new("xyz".into()).unwrap()),
-            )?
-            .finish()?;
-
+            )?;
+        let (outline, identifiers) = outline_builder.finish()?;
         builder.outline(outline, identifiers)?;
         let glyph = builder.finish()?;
 
@@ -589,15 +596,15 @@ mod tests {
     }
 
     #[test]
-    fn pen_upgrade_v1_anchor() -> Result<(), ErrorKind> {
+    fn glyph_builder_upgrade_v1_anchor() -> Result<(), ErrorKind> {
         let mut builder = GlyphBuilder::new("test", GlifVersion::V1);
 
-        let (outline, identifiers) = OutlineBuilder::new()
+        let mut outline_builder = OutlineBuilder::new();
+        outline_builder
             .begin_path(None)?
             .add_point((173.0, 536.0), PointType::Move, false, Some("top".into()), None)?
-            .end_path()?
-            .finish()?;
-
+            .end_path()?;
+        let (outline, identifiers) = outline_builder.finish()?;
         builder.outline(outline, identifiers)?;
         let glyph = builder.finish()?;
 
@@ -628,7 +635,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "DuplicateIdentifier")]
-    fn pen_add_guidelines_duplicate_id() {
+    fn glyph_builder_add_guidelines_duplicate_id() {
         GlyphBuilder::new("test", GlifVersion::V2)
             .guideline(Guideline {
                 line: Line::Horizontal(10.0),
@@ -648,7 +655,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "DuplicateIdentifier")]
-    fn pen_add_duplicate_id() {
+    fn glyph_builder_add_duplicate_id() {
         GlyphBuilder::new("test", GlifVersion::V2)
             .guideline(Guideline {
                 line: Line::Horizontal(10.0),
@@ -669,18 +676,16 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "UnfinishedDrawing")]
-    fn pen_unfinished_drawing() {
-        let _ = OutlineBuilder::new()
-            .begin_path(Some(Identifier::new("abc".into()).unwrap()))
-            .unwrap()
-            .finish()
-            .unwrap();
+    fn outline_builder_unfinished_drawing() {
+        let mut outline_builder = OutlineBuilder::new();
+        outline_builder.begin_path(Some(Identifier::new("abc".into()).unwrap())).unwrap();
+        outline_builder.finish().unwrap();
     }
 
     #[test]
     #[should_panic(expected = "UnfinishedDrawing")]
-    fn pen_unfinished_drawing2() {
-        let _ = OutlineBuilder::new()
+    fn outline_builder_unfinished_drawing2() {
+        OutlineBuilder::new()
             .begin_path(Some(Identifier::new("abc".into()).unwrap()))
             .unwrap()
             .begin_path(None)
