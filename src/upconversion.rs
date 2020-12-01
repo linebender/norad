@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use crate::fontinfo::FontInfo;
+//use crate::fontinfo::FontInfo;
 use crate::names::NameList;
 use crate::shared_types::IntegerOrFloat;
 use crate::ufo::{Groups, Kerning};
@@ -115,7 +115,7 @@ fn find_known_kerning_groups(groups: &Groups) -> (HashSet<String>, HashSet<Strin
 pub(crate) fn upconvert_ufov1_robofab_data(
     lib_path: &std::path::PathBuf,
     lib: &mut plist::Dictionary,
-    fontinfo: &mut FontInfo,
+    fontinfo: &mut plist::Dictionary,
 ) -> Result<Option<String>, Error> {
     #[derive(Debug, Deserialize)]
     struct LibData {
@@ -173,29 +173,29 @@ pub(crate) fn upconvert_ufov1_robofab_data(
     }
 
     // Convert PostScript hinting data.
-    if let Some(ps_hinting_data) = lib_data.ps_hinting_data {
-        fontinfo.postscript_blue_fuzz = ps_hinting_data.blue_fuzz;
-        fontinfo.postscript_blue_scale = ps_hinting_data.blue_scale;
-        fontinfo.postscript_blue_shift = ps_hinting_data.blue_shift;
-        if let Some(blue_values) = ps_hinting_data.blue_values {
-            fontinfo.postscript_blue_values = Some(blue_values.into_iter().flatten().collect());
-        };
-        if let Some(other_blues) = ps_hinting_data.other_blues {
-            fontinfo.postscript_other_blues = Some(other_blues.into_iter().flatten().collect());
-        };
-        if let Some(family_blues) = ps_hinting_data.family_blues {
-            fontinfo.postscript_family_blues = Some(family_blues.into_iter().flatten().collect());
-        };
-        if let Some(family_other_blues) = ps_hinting_data.family_other_blues {
-            fontinfo.postscript_family_other_blues =
-                Some(family_other_blues.into_iter().flatten().collect());
-        };
-        fontinfo.postscript_force_bold = ps_hinting_data.force_bold;
-        fontinfo.postscript_stem_snap_h = ps_hinting_data.h_stems;
-        fontinfo.postscript_stem_snap_v = ps_hinting_data.v_stems;
+    //if let Some(ps_hinting_data) = lib_data.ps_hinting_data {
+    //fontinfo.postscript_blue_fuzz = ps_hinting_data.blue_fuzz;
+    //fontinfo.postscript_blue_scale = ps_hinting_data.blue_scale;
+    //fontinfo.postscript_blue_shift = ps_hinting_data.blue_shift;
+    //if let Some(blue_values) = ps_hinting_data.blue_values {
+    //fontinfo.postscript_blue_values = Some(blue_values.into_iter().flatten().collect());
+    //};
+    //if let Some(other_blues) = ps_hinting_data.other_blues {
+    //fontinfo.postscript_other_blues = Some(other_blues.into_iter().flatten().collect());
+    //};
+    //if let Some(family_blues) = ps_hinting_data.family_blues {
+    //fontinfo.postscript_family_blues = Some(family_blues.into_iter().flatten().collect());
+    //};
+    //if let Some(family_other_blues) = ps_hinting_data.family_other_blues {
+    //fontinfo.postscript_family_other_blues =
+    //Some(family_other_blues.into_iter().flatten().collect());
+    //};
+    //fontinfo.postscript_force_bold = ps_hinting_data.force_bold;
+    //fontinfo.postscript_stem_snap_h = ps_hinting_data.h_stems;
+    //fontinfo.postscript_stem_snap_v = ps_hinting_data.v_stems;
 
-        fontinfo.validate().map_err(|_| Error::FontInfoUpconversionError)?;
-    }
+    //fontinfo.validate().map_err(|_| Error::FontInfoUpconversionError)?;
+    //}
 
     lib.remove("org.robofab.postScriptHintData");
     lib.remove("org.robofab.opentype.classes");

@@ -18,7 +18,7 @@ fn main() {
     let font_name = ufo
         .font_info
         .as_ref()
-        .and_then(|f| f.family_name.clone())
+        .and_then(|f| f.get("familyName").and_then(|v| v.as_string()))
         .unwrap_or_else(|| "an unnamed font".into());
 
     println!("loaded {} glyphs from {} in {}.", ufo.glyph_count(), font_name, time_str);

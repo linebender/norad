@@ -20,7 +20,7 @@ extern crate serde_derive;
 extern crate serde_repr;
 
 pub mod error;
-pub mod fontinfo;
+//pub mod fontinfo;
 pub mod glyph;
 mod layer;
 mod names;
@@ -29,7 +29,7 @@ mod ufo;
 mod upconversion;
 
 pub use error::Error;
-pub use fontinfo::FontInfo;
+//pub use fontinfo::FontInfo;
 pub use glyph::{
     builder::GlyphBuilder, Advance, AffineTransform, Anchor, Component, Contour, ContourPoint,
     GlifVersion, Glyph, GlyphName, Image, Outline, Plist, PointType,

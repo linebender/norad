@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::error::GroupsValidationError;
-use crate::fontinfo::FontInfo;
+//use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
 use crate::names::NameList;
@@ -42,7 +42,7 @@ pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
 #[non_exhaustive]
 pub struct Ufo {
     pub meta: MetaInfo,
-    pub font_info: Option<FontInfo>,
+    pub font_info: Option<plist::Dictionary>,
     pub layers: Vec<LayerInfo>,
     pub lib: Option<plist::Dictionary>,
     pub groups: Option<Groups>,
@@ -134,8 +134,8 @@ impl Ufo {
 
             let fontinfo_path = path.join(FONTINFO_FILE);
             let mut font_info = if fontinfo_path.exists() {
-                let font_info: FontInfo = FontInfo::from_file(fontinfo_path, meta.format_version)?;
-                Some(font_info)
+                plist::Value::from_file(fontinfo_path)?.into_dictionary() // FontInfo = FontInfo::from_file(fontinfo_path, meta.format_version)?;
+                                                                          //Some(font_info)
             } else {
                 None
             };
@@ -214,7 +214,7 @@ impl Ufo {
             // which we only import into fontinfo if we're reading a v1 UFO.
             if meta.format_version == FormatVersion::V1 {
                 let mut fontinfo =
-                    if let Some(fontinfo) = font_info { fontinfo } else { FontInfo::default() };
+                    if let Some(fontinfo) = font_info { fontinfo } else { Default::default() };
 
                 let mut features_upgraded: Option<String> = None;
                 if let Some(lib_data) = &mut lib {
@@ -263,7 +263,9 @@ impl Ufo {
         plist::to_file_xml(path.join(METAINFO_FILE), &self.meta)?;
 
         if let Some(font_info) = self.font_info.as_ref() {
-            plist::to_file_xml(path.join(FONTINFO_FILE), &font_info)?;
+            let val: plist::Value = font_info.to_owned().into();
+            val.to_file_xml(path.join(FONTINFO_FILE))?;
+            //plist::to_file_xml(path.join(FONTINFO_FILE), &val)?;
         }
 
         if let Some(lib) = self.lib.as_ref() {
