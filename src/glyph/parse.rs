@@ -40,10 +40,15 @@ impl<'names> GlifParser<'names> {
 
         let builder = start(&mut reader, &mut buf)?;
         let this = GlifParser { builder, names };
-        this.parse_body(&mut reader, &mut buf)
+        this.parse_body(&mut reader, xml, &mut buf)
     }
 
-    fn parse_body(mut self, reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, Error> {
+    fn parse_body(
+        mut self,
+        reader: &mut Reader<&[u8]>,
+        raw_xml: &[u8],
+        buf: &mut Vec<u8>,
+    ) -> Result<Glyph, Error> {
         loop {
             match reader.read_event(buf)? {
                 // outline, lib and note are expected to be start element tags.
@@ -51,7 +56,7 @@ impl<'names> GlifParser<'names> {
                     let tag_name = reader.decode(&start.name())?;
                     match tag_name.borrow() {
                         "outline" => self.parse_outline(reader, buf)?,
-                        "lib" => self.parse_lib(reader, buf)?, // do this at some point?
+                        "lib" => self.parse_lib(reader, raw_xml, buf)?, // do this at some point?
                         "note" => self.parse_note(reader, buf)?,
                         _other => return Err(err!(reader, ErrorKind::UnexpectedTag)),
                     }
@@ -198,14 +203,28 @@ impl<'names> GlifParser<'names> {
         Ok(())
     }
 
-    fn parse_lib(&mut self, reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<(), Error> {
+    fn parse_lib(
+        &mut self,
+        reader: &mut Reader<&[u8]>,
+        raw_xml: &[u8],
+        buf: &mut Vec<u8>,
+    ) -> Result<(), Error> {
+        let start = reader.buffer_position();
+        let mut end = start;
         loop {
             match reader.read_event(buf)? {
                 Event::End(ref end) if end.name() == b"lib" => break,
                 Event::Eof => return Err(err!(reader, ErrorKind::UnexpectedEof)),
-                _other => (),
+                _other => end = reader.buffer_position(),
             }
         }
+
+        let plist_slice = &raw_xml[start..end];
+        let dict = plist::Value::from_reader_xml(plist_slice)
+            .ok()
+            .and_then(plist::Value::into_dictionary)
+            .ok_or_else(|| err!(reader, ErrorKind::BadLib))?;
+        self.builder.lib(dict).map_err(|e| err!(reader, e))?;
         Ok(())
     }
 

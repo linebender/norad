@@ -19,8 +19,8 @@ use crate::shared_types::{Color, Guideline, Identifier, Line};
 /// The name of a glyph.
 pub type GlyphName = Arc<str>;
 
-//FIXME: actually load the 'lib' data
-pub type Plist = ();
+/// A Plist dictionary.
+pub type Plist = plist::Dictionary;
 
 /// A glyph, loaded from a [.glif file][glif].
 ///

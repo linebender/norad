@@ -78,6 +78,7 @@ pub enum ErrorKind {
     BadComponent,
     BadImage,
     BadIdentifier,
+    BadLib,
     UnexpectedDuplicate,
     UnexpectedMove,
     UnexpectedSmooth,
@@ -152,6 +153,7 @@ impl std::fmt::Display for ErrorKind {
             ErrorKind::BadComponent => write!(f, "Bad component"),
             ErrorKind::BadImage => write!(f, "Bad image"),
             ErrorKind::BadIdentifier => write!(f, "Bad identifier"),
+            ErrorKind::BadLib => write!(f, "Bad lib"),
             ErrorKind::UnexpectedDuplicate => write!(f, "Unexpected duplicate"),
             ErrorKind::UnexpectedMove => {
                 write!(f, "Unexpected move point, can only occur at start of contour")
