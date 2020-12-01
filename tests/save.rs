@@ -1,6 +1,6 @@
 //! Testing saving files.
 
-use norad::{FormatVersion, Glyph, Layer, Ufo};
+use norad::{FormatVersion, Glyph, Layer, Plist, Ufo};
 
 #[test]
 fn save_default() {
@@ -25,6 +25,9 @@ fn save_new_file() {
     let mut my_glyph = Glyph::new_named("A");
     my_glyph.codepoints = Some(vec!['A']);
     my_glyph.note = Some("I did a glyph!".into());
+    let mut plist = Plist::new();
+    plist.insert("my-cool-key".into(), plist::Value::Integer(420_u32.into()));
+    my_glyph.lib = Some(plist);
     my_ufo.get_default_layer_mut().unwrap().insert_glyph(my_glyph);
 
     let dir = tempdir::TempDir::new("Test.ufo").unwrap();
@@ -39,6 +42,11 @@ fn save_new_file() {
     assert!(loaded.get_default_layer().unwrap().get_glyph("A").is_some());
     let glyph = loaded.get_default_layer().unwrap().get_glyph("A").unwrap();
     assert_eq!(glyph.codepoints.as_ref(), Some(&vec!['A']));
+    let lib_val = glyph
+        .lib
+        .as_ref()
+        .and_then(|lib| lib.get("my-cool-key").and_then(|val| val.as_unsigned_integer()));
+    assert_eq!(lib_val, Some(420));
 }
 
 #[test]

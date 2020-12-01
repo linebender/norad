@@ -9,17 +9,17 @@ use quick_xml::{
 
 use super::{
     Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    Guideline, Image, Line, PointType,
+    Guideline, Image, Line, Plist, PointType,
 };
 
-use crate::error::GlifWriteError;
+use crate::error::{GlifWriteError, WriteError};
 
 impl Glyph {
-    pub(crate) fn encode_xml(&self) -> Result<Vec<u8>, GlifWriteError> {
+    pub fn encode_xml(&self) -> Result<Vec<u8>, GlifWriteError> {
         self.encode_xml_impl().map_err(|inner| GlifWriteError { name: self.name.clone(), inner })
     }
 
-    fn encode_xml_impl(&self) -> Result<Vec<u8>, XmlError> {
+    fn encode_xml_impl(&self) -> Result<Vec<u8>, WriteError> {
         let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b'\t', 1);
         writer.write_event(Event::Decl(BytesDecl::new(b"1.0", Some(b"UTF-8"), None)))?;
         let mut start = BytesStart::borrowed_name(b"glyph");
@@ -70,10 +70,44 @@ impl Glyph {
             }
         }
 
+        if let Some(lib) = self.lib.as_ref() {
+            write_lib_section(lib, &mut writer)?;
+        }
+
         writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;
 
         Ok(writer.into_inner().into_inner())
     }
+}
+
+/// Writing out the embedded lib plist that a glif may have.
+///
+/// To write the lib section we write the lib as a plist to an empty buffer,
+/// and then we strip out the leading and trailing bits that we don't need,
+/// such as the xml declaration and the <plist> tag.
+///
+/// We then take this and write it into the middle of our active write session.
+///
+/// By a lovely coincidence the whitespace is the same in both places; if this
+/// changes we will need to do custom whitespace handling.
+fn write_lib_section<T: Write>(lib: &Plist, writer: &mut Writer<T>) -> Result<(), WriteError> {
+    let as_value: plist::Value = lib.to_owned().into();
+    let mut out_buffer = Vec::with_capacity(256); // a reasonable min size?
+    as_value.to_writer_xml(&mut out_buffer)?;
+    let lib_xml = String::from_utf8(out_buffer).expect("xml writer writs valid utf8");
+    let header = "<plist version=\"1.0\">\n";
+    let footer = "\n</plist>";
+    let start_idx = lib_xml
+        .find(header)
+        .map(|pos| pos + header.len())
+        .ok_or(WriteError::InternalLibWriteError)?;
+    let end_idx = lib_xml.find(footer).ok_or(WriteError::InternalLibWriteError)?;
+    let to_write = &lib_xml[start_idx..end_idx];
+
+    writer.write_event(Event::Start(BytesStart::borrowed_name(b"lib")))?;
+    writer.inner().write_all(to_write.as_bytes())?;
+    writer.write_event(Event::End(BytesEnd::borrowed(b"lib")))?;
+    Ok(())
 }
 
 impl GlifVersion {

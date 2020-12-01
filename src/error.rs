@@ -47,8 +47,25 @@ pub struct GlifError {
 /// An error when attempting to write a .glif file
 #[derive(Debug)]
 pub struct GlifWriteError {
+    /// The name of the glif where the error occured.
     pub name: GlyphName,
-    pub inner: XmlError,
+    /// The actual error.
+    pub inner: WriteError,
+}
+
+/// The possible inner error types that can occur when attempting to write
+/// out a .glif type.
+#[derive(Debug)]
+pub enum WriteError {
+    Xml(XmlError),
+    /// When writing out the 'lib' section, we use the plist crate to generate
+    /// the plist xml, and then strip the preface and closing </plist> tag.
+    ///
+    /// If for some reason the implementation of that crate changes, we could
+    /// be affected, although this is very unlikely.
+    InternalLibWriteError,
+    IoError(IoError),
+    Plist(PlistError),
 }
 
 /// Errors that happen when parsing `glif` files. This is converted into either
@@ -188,6 +205,42 @@ impl std::fmt::Display for ErrorKind {
     }
 }
 
+impl std::fmt::Display for WriteError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            WriteError::IoError(err) => err.fmt(f),
+            WriteError::Xml(err) => err.fmt(f),
+            WriteError::Plist(err) => err.fmt(f),
+            WriteError::InternalLibWriteError => {
+                write!(f, "Internal error while writing lib data. Please open an issue.")
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for GlifWriteError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Failed to write glyph '{}': {}", self.name, self.inner)
+    }
+}
+
+impl std::error::Error for WriteError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            WriteError::IoError(inner) => Some(inner),
+            WriteError::Xml(inner) => Some(inner),
+            WriteError::Plist(inner) => Some(inner),
+            WriteError::InternalLibWriteError => None,
+        }
+    }
+}
+
+impl std::error::Error for GlifWriteError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.inner.source()
+    }
+}
+
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
@@ -251,5 +304,26 @@ impl From<GlifError> for Error {
 impl From<XmlError> for GlifErrorInternal {
     fn from(src: XmlError) -> GlifErrorInternal {
         GlifErrorInternal::Xml(src)
+    }
+}
+
+#[doc(hidden)]
+impl From<XmlError> for WriteError {
+    fn from(src: XmlError) -> WriteError {
+        WriteError::Xml(src)
+    }
+}
+
+#[doc(hidden)]
+impl From<IoError> for WriteError {
+    fn from(src: IoError) -> WriteError {
+        WriteError::IoError(src)
+    }
+}
+
+#[doc(hidden)]
+impl From<PlistError> for WriteError {
+    fn from(src: PlistError) -> WriteError {
+        WriteError::Plist(src)
     }
 }
