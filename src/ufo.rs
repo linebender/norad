@@ -42,7 +42,7 @@ pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
 #[non_exhaustive]
 pub struct Ufo {
     pub meta: MetaInfo,
-    pub font_info: Option<FontInfo>,
+    pub font_info: Option<Box<FontInfo>>,
     pub layers: Vec<LayerInfo>,
     pub lib: Option<plist::Dictionary>,
     pub groups: Option<Groups>,
@@ -134,7 +134,7 @@ impl Ufo {
 
             let fontinfo_path = path.join(FONTINFO_FILE);
             let mut font_info = if fontinfo_path.exists() {
-                let font_info: FontInfo = FontInfo::from_file(fontinfo_path, meta.format_version)?;
+                let font_info = FontInfo::from_file(fontinfo_path, meta.format_version)?;
                 Some(font_info)
             } else {
                 None
@@ -214,7 +214,7 @@ impl Ufo {
             // which we only import into fontinfo if we're reading a v1 UFO.
             if meta.format_version == FormatVersion::V1 {
                 let mut fontinfo =
-                    if let Some(fontinfo) = font_info { fontinfo } else { FontInfo::default() };
+                    if let Some(fontinfo) = font_info { fontinfo } else { Default::default() };
 
                 let mut features_upgraded: Option<String> = None;
                 if let Some(lib_data) = &mut lib {
