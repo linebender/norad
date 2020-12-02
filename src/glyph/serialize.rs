@@ -75,6 +75,8 @@ impl Glyph {
         }
 
         writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;
+        writer.inner().write("\n".as_bytes())?;
+        writer.inner().flush()?;
 
         Ok(writer.into_inner().into_inner())
     }
@@ -105,7 +107,10 @@ fn write_lib_section<T: Write>(lib: &Plist, writer: &mut Writer<T>) -> Result<()
     let to_write = &lib_xml[start_idx..end_idx];
 
     writer.write_event(Event::Start(BytesStart::borrowed_name(b"lib")))?;
-    writer.inner().write_all(to_write.as_bytes())?;
+    for line in to_write.lines() {
+        writer.inner().write("\n\t\t".as_bytes())?;
+        writer.inner().write_all(line.as_bytes())?;
+    }
     writer.write_event(Event::End(BytesEnd::borrowed(b"lib")))?;
     Ok(())
 }
