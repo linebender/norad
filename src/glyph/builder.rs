@@ -7,7 +7,7 @@ use crate::glyph::{
 };
 use crate::shared_types::Identifier;
 
-/// A GlyphBuilder is a consuming builder for [`Glyph`](../struct.Glyph.html)s.
+/// A GlyphBuilder is a consuming builder for [`crate::glyph::Glyph`].
 ///
 /// It is different from fontTools' Pen concept, in that it is used to build the entire `Glyph`,
 /// not just the outlines and components, with built-in checking for conformity to the glif
@@ -60,7 +60,13 @@ use crate::shared_types::Identifier;
 ///         .add_point((173.0, 536.0), PointType::Line, false, None, None)?
 ///         .add_point((85.0, 536.0), PointType::Line, false, None, None)?
 ///         .add_point((85.0, 0.0), PointType::Line, false, None, None)?
-///         .add_point((173.0, 0.0), PointType::Line, false, None, Some(Identifier::from_str("def")?))?
+///         .add_point(
+///             (173.0, 0.0),
+///             PointType::Line,
+///             false,
+///             None,
+///             Some(Identifier::from_str("def")?),
+///         )?
 ///         .end_path()?
 ///         .add_component(
 ///             "hallo".into(),
@@ -78,7 +84,7 @@ pub struct GlyphBuilder {
     glyph: Glyph,
     height: Option<f32>,
     width: Option<f32>,
-    identifiers: HashSet<u64>, // All identifiers within a glyph must be unique.
+    identifiers: HashSet<Identifier>, // All identifiers within a glyph must be unique.
 }
 
 impl GlyphBuilder {
@@ -144,7 +150,7 @@ impl GlyphBuilder {
         if &self.glyph.format == &GlifVersion::V1 {
             return Err(ErrorKind::UnexpectedTag);
         }
-        insert_identifier(&mut self.identifiers, &guideline.identifier)?;
+        insert_identifier(&mut self.identifiers, guideline.identifier.clone())?;
         self.glyph.guidelines.get_or_insert(Vec::new()).push(guideline);
         Ok(self)
     }
@@ -156,7 +162,7 @@ impl GlyphBuilder {
         if &self.glyph.format == &GlifVersion::V1 {
             return Err(ErrorKind::UnexpectedTag);
         }
-        insert_identifier(&mut self.identifiers, &anchor.identifier)?;
+        insert_identifier(&mut self.identifiers, anchor.identifier.clone())?;
         self.glyph.anchors.get_or_insert(Vec::new()).push(anchor);
         Ok(self)
     }
@@ -170,7 +176,7 @@ impl GlyphBuilder {
     pub fn outline(
         &mut self,
         mut outline: Outline,
-        identifiers: HashSet<u64>,
+        identifiers: HashSet<Identifier>,
     ) -> Result<&mut Self, ErrorKind> {
         if self.glyph.outline.is_some() {
             return Err(ErrorKind::UnexpectedDuplicate);
@@ -181,7 +187,7 @@ impl GlyphBuilder {
         if !self.identifiers.is_disjoint(&identifiers) {
             return Err(ErrorKind::DuplicateIdentifier);
         }
-        self.identifiers.extend(&identifiers);
+        self.identifiers.extend(identifiers);
 
         if &self.glyph.format == &GlifVersion::V1 {
             for c in &mut outline.contours {
@@ -257,9 +263,14 @@ impl GlyphBuilder {
     }
 }
 
+/// An OutlineBuilder is a consuming builder for [`crate::glyph::Outline`], not unlike a [fontTools point pen].
+///
+/// Primarily to be used in conjunction with [`GlyphBuilder`].
+///
+/// [fontTools point pen]: https://fonttools.readthedocs.io/en/latest/pens/basePen.html
 #[derive(Debug)]
 pub struct OutlineBuilder {
-    identifiers: HashSet<u64>,
+    identifiers: HashSet<Identifier>,
     outline: Outline,
     scratch_contour: Option<Contour>,
     number_of_offcurves: u32,
@@ -278,15 +289,13 @@ impl OutlineBuilder {
     /// Start a new path to be added to the glyph with `end_path()`.
     ///
     /// Errors when:
-    /// 1. `outline()` wasn't called first.
-    /// 2. a path has been begun already but not ended yet.
-    /// 3. format version 1 is set but an identifier has been given.
-    /// 4. the identifier is not unique within the glyph.
+    /// 1. a path has been begun already but not ended yet.
+    /// 2. the identifier is not unique within the glyph.
     pub fn begin_path(&mut self, identifier: Option<Identifier>) -> Result<&mut Self, ErrorKind> {
         if self.scratch_contour.is_some() {
             return Err(ErrorKind::UnfinishedDrawing);
         }
-        insert_identifier(&mut self.identifiers, &identifier)?;
+        insert_identifier(&mut self.identifiers, identifier.clone())?;
         self.scratch_contour.replace(Contour { identifier, points: Vec::new() });
         Ok(self)
     }
@@ -337,7 +346,7 @@ impl OutlineBuilder {
                         self.number_of_offcurves = 0;
                     }
                 }
-                insert_identifier(&mut self.identifiers, &point.identifier)?;
+                insert_identifier(&mut self.identifiers, point.identifier.clone())?;
                 c.points.push(point);
                 Ok(self)
             }
@@ -347,11 +356,11 @@ impl OutlineBuilder {
 
     /// Ends the path begun by `begin_path()` and adds the contour it to the glyph's outline.
     ///
+    /// Discards path in case of error.
+    ///
     /// Errors when:
     /// 1. `begin_path()` wasn't called first.
     /// 2. the point sequence is forbidden by the specification.
-    ///
-    /// Discards path in case of error.
     pub fn end_path(&mut self) -> Result<&mut Self, ErrorKind> {
         let contour = self.scratch_contour.take();
         match contour {
@@ -403,7 +412,7 @@ impl OutlineBuilder {
         transform: AffineTransform,
         identifier: Option<Identifier>,
     ) -> Result<&mut Self, ErrorKind> {
-        insert_identifier(&mut self.identifiers, &identifier)?;
+        insert_identifier(&mut self.identifiers, identifier.clone())?;
         self.outline.components.push(Component { base, transform, identifier });
         Ok(self)
     }
@@ -411,7 +420,7 @@ impl OutlineBuilder {
     /// Consume the builder and return the final `Outline` with the set of hashed indetifiers.
     ///
     /// Errors when a path has been begun but not ended.
-    pub fn finish(self) -> Result<(Outline, HashSet<u64>), ErrorKind> {
+    pub fn finish(self) -> Result<(Outline, HashSet<Identifier>), ErrorKind> {
         if self.scratch_contour.is_some() {
             return Err(ErrorKind::UnfinishedDrawing);
         }
@@ -420,14 +429,13 @@ impl OutlineBuilder {
     }
 }
 
-/// Helper, inserts the hash of an identifier into a builder's set.
+/// Helper, inserts an identifier into a builder's set.
 fn insert_identifier(
-    set: &mut HashSet<u64>,
-    identifier: &Option<Identifier>,
+    set: &mut HashSet<Identifier>,
+    identifier: Option<Identifier>,
 ) -> Result<(), ErrorKind> {
-    if let Some(identifier) = &identifier {
-        let identifier_hash = identifier.hash();
-        if !set.insert(identifier_hash) {
+    if let Some(identifier) = identifier {
+        if !set.insert(identifier) {
             return Err(ErrorKind::DuplicateIdentifier);
         }
     }
@@ -438,6 +446,7 @@ fn insert_identifier(
 mod tests {
     use super::*;
     use crate::glyph::Line;
+    use std::str::FromStr;
 
     #[test]
     fn glyph_builder_basic() -> Result<(), ErrorKind> {
@@ -452,32 +461,32 @@ mod tests {
                 line: Line::Horizontal(10.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::new("test1".into()).unwrap()),
+                identifier: Some(Identifier::from_str("test1").unwrap()),
             })?
             .guideline(Guideline {
                 line: Line::Vertical(20.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::new("test2".into()).unwrap()),
+                identifier: Some(Identifier::from_str("test2").unwrap()),
             })?
             .anchor(Anchor {
                 x: 1.0,
                 y: 2.0,
                 name: Some("anchor1".into()),
                 color: None,
-                identifier: Some(Identifier::new("test3".into()).unwrap()),
+                identifier: Some(Identifier::from_str("test3").unwrap()),
             })?
             .anchor(Anchor {
                 x: 3.0,
                 y: 4.0,
                 name: Some("anchor2".into()),
                 color: None,
-                identifier: Some(Identifier::new("test4".into()).unwrap()),
+                identifier: Some(Identifier::from_str("test4").unwrap()),
             })?;
 
         let mut outline_builder = OutlineBuilder::new();
         outline_builder
-            .begin_path(Some(Identifier::new("abc".into()).unwrap()))?
+            .begin_path(Some(Identifier::from_str("abc").unwrap()))?
             .add_point((173.0, 536.0), PointType::Line, false, None, None)?
             .add_point((85.0, 536.0), PointType::Line, false, None, None)?
             .add_point((85.0, 0.0), PointType::Line, false, None, None)?
@@ -486,13 +495,13 @@ mod tests {
                 PointType::Line,
                 false,
                 None,
-                Some(Identifier::new("def".into()).unwrap()),
+                Some(Identifier::from_str("def").unwrap()),
             )?
             .end_path()?
             .add_component(
                 "hallo".into(),
                 AffineTransform::default(),
-                Some(Identifier::new("xyz".into()).unwrap()),
+                Some(Identifier::from_str("xyz").unwrap()),
             )?;
         let (outline, identifiers) = outline_builder.finish()?;
         builder.outline(outline, identifiers)?;
@@ -511,13 +520,13 @@ mod tests {
                         line: Line::Horizontal(10.0),
                         name: None,
                         color: None,
-                        identifier: Some(Identifier::new("test1".into()).unwrap()),
+                        identifier: Some(Identifier::from_str("test1").unwrap()),
                     },
                     Guideline {
                         line: Line::Vertical(20.0),
                         name: None,
                         color: None,
-                        identifier: Some(Identifier::new("test2".into()).unwrap()),
+                        identifier: Some(Identifier::from_str("test2").unwrap()),
                     },
                 ]),
                 anchors: Some(vec![
@@ -526,19 +535,19 @@ mod tests {
                         y: 2.0,
                         name: Some("anchor1".into()),
                         color: None,
-                        identifier: Some(Identifier::new("test3".into()).unwrap()),
+                        identifier: Some(Identifier::from_str("test3").unwrap()),
                     },
                     Anchor {
                         x: 3.0,
                         y: 4.0,
                         name: Some("anchor2".into()),
                         color: None,
-                        identifier: Some(Identifier::new("test4".into()).unwrap()),
+                        identifier: Some(Identifier::from_str("test4").unwrap()),
                     },
                 ]),
                 outline: Some(Outline {
                     contours: vec![Contour {
-                        identifier: Some(Identifier::new("abc".into()).unwrap()),
+                        identifier: Some(Identifier::from_str("abc").unwrap()),
                         points: vec![
                             ContourPoint {
                                 name: None,
@@ -570,7 +579,7 @@ mod tests {
                                 y: 0.0,
                                 typ: PointType::Line,
                                 smooth: false,
-                                identifier: Some(Identifier::new("def".into()).unwrap()),
+                                identifier: Some(Identifier::from_str("def").unwrap()),
                             },
                         ],
                     },],
@@ -584,7 +593,7 @@ mod tests {
                             x_offset: 0.0,
                             y_offset: 0.0,
                         },
-                        identifier: Some(Identifier::new("xyz".into()).unwrap()),
+                        identifier: Some(Identifier::from_str("xyz").unwrap()),
                     }]
                 }),
                 image: None,
@@ -641,14 +650,14 @@ mod tests {
                 line: Line::Horizontal(10.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::new("test1".into()).unwrap()),
+                identifier: Some(Identifier::from_str("test1").unwrap()),
             })
             .unwrap()
             .guideline(Guideline {
                 line: Line::Vertical(20.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::new("test1".into()).unwrap()),
+                identifier: Some(Identifier::from_str("test1").unwrap()),
             })
             .unwrap();
     }
@@ -661,7 +670,7 @@ mod tests {
                 line: Line::Horizontal(10.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::new("test1".into()).unwrap()),
+                identifier: Some(Identifier::from_str("test1").unwrap()),
             })
             .unwrap()
             .anchor(Anchor {
@@ -669,7 +678,7 @@ mod tests {
                 y: 2.0,
                 name: None,
                 color: None,
-                identifier: Some(Identifier::new("test1".into()).unwrap()),
+                identifier: Some(Identifier::from_str("test1").unwrap()),
             })
             .unwrap();
     }
@@ -678,7 +687,7 @@ mod tests {
     #[should_panic(expected = "UnfinishedDrawing")]
     fn outline_builder_unfinished_drawing() {
         let mut outline_builder = OutlineBuilder::new();
-        outline_builder.begin_path(Some(Identifier::new("abc".into()).unwrap())).unwrap();
+        outline_builder.begin_path(Some(Identifier::from_str("abc").unwrap())).unwrap();
         outline_builder.finish().unwrap();
     }
 
@@ -686,7 +695,7 @@ mod tests {
     #[should_panic(expected = "UnfinishedDrawing")]
     fn outline_builder_unfinished_drawing2() {
         OutlineBuilder::new()
-            .begin_path(Some(Identifier::new("abc".into()).unwrap()))
+            .begin_path(Some(Identifier::from_str("abc").unwrap()))
             .unwrap()
             .begin_path(None)
             .unwrap();

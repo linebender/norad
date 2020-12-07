@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use super::*;
 use crate::error::{ErrorKind, GlifErrorInternal};

@@ -1163,6 +1163,7 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
 mod tests {
     use super::*;
     use serde_test::{assert_tokens, Token};
+    use std::str::FromStr;
 
     #[test]
     fn fontinfo() {
@@ -1237,7 +1238,7 @@ mod tests {
                     line: Line::Angle { x: 1.0, y: 2.0, degrees: 0.0 },
                     name: Some(" [locked]".to_string()),
                     color: Some(Color { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }),
-                    identifier: Identifier::new("abc".to_string()).ok(),
+                    identifier: Some(Identifier::from_str("abc").unwrap()),
                 },
             ])
         );
