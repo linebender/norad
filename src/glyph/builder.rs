@@ -45,18 +45,18 @@ use crate::shared_types::Identifier;
 ///             line: Line::Horizontal(10.0),
 ///             name: None,
 ///             color: None,
-///             identifier: Some(Identifier::from_str("test1")?),
+///             identifier: Some(Identifier::new("test1")?),
 ///         })?
 ///         .anchor(Anchor {
 ///             x: 1.0,
 ///             y: 2.0,
 ///             name: Some("anchor1".into()),
 ///             color: None,
-///             identifier: Some(Identifier::from_str("test3")?),
+///             identifier: Some(Identifier::new("test3")?),
 ///         })?;
 ///     let mut outline_builder = OutlineBuilder::new();
 ///     outline_builder
-///         .begin_path(Some(Identifier::from_str("abc")?))?
+///         .begin_path(Some(Identifier::new("abc")?))?
 ///         .add_point((173.0, 536.0), PointType::Line, false, None, None)?
 ///         .add_point((85.0, 536.0), PointType::Line, false, None, None)?
 ///         .add_point((85.0, 0.0), PointType::Line, false, None, None)?
@@ -65,13 +65,13 @@ use crate::shared_types::Identifier;
 ///             PointType::Line,
 ///             false,
 ///             None,
-///             Some(Identifier::from_str("def")?),
+///             Some(Identifier::new("def")?),
 ///         )?
 ///         .end_path()?
 ///         .add_component(
 ///             "hallo".into(),
 ///             AffineTransform::default(),
-///             Some(Identifier::from_str("xyz")?),
+///             Some(Identifier::new("xyz")?),
 ///         )?;
 ///     let (outline, identifiers) = outline_builder.finish()?;
 ///     builder.outline(outline, identifiers)?;
@@ -446,7 +446,6 @@ fn insert_identifier(
 mod tests {
     use super::*;
     use crate::glyph::Line;
-    use std::str::FromStr;
 
     #[test]
     fn glyph_builder_basic() -> Result<(), ErrorKind> {
@@ -461,32 +460,32 @@ mod tests {
                 line: Line::Horizontal(10.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::from_str("test1").unwrap()),
+                identifier: Some(Identifier::new("test1").unwrap()),
             })?
             .guideline(Guideline {
                 line: Line::Vertical(20.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::from_str("test2").unwrap()),
+                identifier: Some(Identifier::new("test2").unwrap()),
             })?
             .anchor(Anchor {
                 x: 1.0,
                 y: 2.0,
                 name: Some("anchor1".into()),
                 color: None,
-                identifier: Some(Identifier::from_str("test3").unwrap()),
+                identifier: Some(Identifier::new("test3").unwrap()),
             })?
             .anchor(Anchor {
                 x: 3.0,
                 y: 4.0,
                 name: Some("anchor2".into()),
                 color: None,
-                identifier: Some(Identifier::from_str("test4").unwrap()),
+                identifier: Some(Identifier::new("test4").unwrap()),
             })?;
 
         let mut outline_builder = OutlineBuilder::new();
         outline_builder
-            .begin_path(Some(Identifier::from_str("abc").unwrap()))?
+            .begin_path(Some(Identifier::new("abc").unwrap()))?
             .add_point((173.0, 536.0), PointType::Line, false, None, None)?
             .add_point((85.0, 536.0), PointType::Line, false, None, None)?
             .add_point((85.0, 0.0), PointType::Line, false, None, None)?
@@ -495,13 +494,13 @@ mod tests {
                 PointType::Line,
                 false,
                 None,
-                Some(Identifier::from_str("def").unwrap()),
+                Some(Identifier::new("def").unwrap()),
             )?
             .end_path()?
             .add_component(
                 "hallo".into(),
                 AffineTransform::default(),
-                Some(Identifier::from_str("xyz").unwrap()),
+                Some(Identifier::new("xyz").unwrap()),
             )?;
         let (outline, identifiers) = outline_builder.finish()?;
         builder.outline(outline, identifiers)?;
@@ -520,13 +519,13 @@ mod tests {
                         line: Line::Horizontal(10.0),
                         name: None,
                         color: None,
-                        identifier: Some(Identifier::from_str("test1").unwrap()),
+                        identifier: Some(Identifier::new("test1").unwrap()),
                     },
                     Guideline {
                         line: Line::Vertical(20.0),
                         name: None,
                         color: None,
-                        identifier: Some(Identifier::from_str("test2").unwrap()),
+                        identifier: Some(Identifier::new("test2").unwrap()),
                     },
                 ]),
                 anchors: Some(vec![
@@ -535,19 +534,19 @@ mod tests {
                         y: 2.0,
                         name: Some("anchor1".into()),
                         color: None,
-                        identifier: Some(Identifier::from_str("test3").unwrap()),
+                        identifier: Some(Identifier::new("test3").unwrap()),
                     },
                     Anchor {
                         x: 3.0,
                         y: 4.0,
                         name: Some("anchor2".into()),
                         color: None,
-                        identifier: Some(Identifier::from_str("test4").unwrap()),
+                        identifier: Some(Identifier::new("test4").unwrap()),
                     },
                 ]),
                 outline: Some(Outline {
                     contours: vec![Contour {
-                        identifier: Some(Identifier::from_str("abc").unwrap()),
+                        identifier: Some(Identifier::new("abc").unwrap()),
                         points: vec![
                             ContourPoint {
                                 name: None,
@@ -579,7 +578,7 @@ mod tests {
                                 y: 0.0,
                                 typ: PointType::Line,
                                 smooth: false,
-                                identifier: Some(Identifier::from_str("def").unwrap()),
+                                identifier: Some(Identifier::new("def").unwrap()),
                             },
                         ],
                     },],
@@ -593,7 +592,7 @@ mod tests {
                             x_offset: 0.0,
                             y_offset: 0.0,
                         },
-                        identifier: Some(Identifier::from_str("xyz").unwrap()),
+                        identifier: Some(Identifier::new("xyz").unwrap()),
                     }]
                 }),
                 image: None,
@@ -650,14 +649,14 @@ mod tests {
                 line: Line::Horizontal(10.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::from_str("test1").unwrap()),
+                identifier: Some(Identifier::new("test1").unwrap()),
             })
             .unwrap()
             .guideline(Guideline {
                 line: Line::Vertical(20.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::from_str("test1").unwrap()),
+                identifier: Some(Identifier::new("test1").unwrap()),
             })
             .unwrap();
     }
@@ -670,7 +669,7 @@ mod tests {
                 line: Line::Horizontal(10.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::from_str("test1").unwrap()),
+                identifier: Some(Identifier::new("test1").unwrap()),
             })
             .unwrap()
             .anchor(Anchor {
@@ -678,7 +677,7 @@ mod tests {
                 y: 2.0,
                 name: None,
                 color: None,
-                identifier: Some(Identifier::from_str("test1").unwrap()),
+                identifier: Some(Identifier::new("test1").unwrap()),
             })
             .unwrap();
     }
@@ -687,7 +686,7 @@ mod tests {
     #[should_panic(expected = "UnfinishedDrawing")]
     fn outline_builder_unfinished_drawing() {
         let mut outline_builder = OutlineBuilder::new();
-        outline_builder.begin_path(Some(Identifier::from_str("abc").unwrap())).unwrap();
+        outline_builder.begin_path(Some(Identifier::new("abc").unwrap())).unwrap();
         outline_builder.finish().unwrap();
     }
 
@@ -695,7 +694,7 @@ mod tests {
     #[should_panic(expected = "UnfinishedDrawing")]
     fn outline_builder_unfinished_drawing2() {
         OutlineBuilder::new()
-            .begin_path(Some(Identifier::from_str("abc").unwrap()))
+            .begin_path(Some(Identifier::new("abc").unwrap()))
             .unwrap()
             .begin_path(None)
             .unwrap();
