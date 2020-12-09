@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::Path;
 
 use serde::de::Deserializer;
@@ -5,7 +6,7 @@ use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 
 use crate::shared_types::{
-    Bitlist, Float, Guideline, Integer, IntegerOrFloat, NonNegativeInteger,
+    Bitlist, Float, Guideline, Identifier, Integer, IntegerOrFloat, NonNegativeInteger,
     NonNegativeIntegerOrFloat,
 };
 use crate::{Error, FormatVersion};
@@ -653,6 +654,18 @@ impl FontInfo {
             }
         }
 
+        // Guideline identifiers must be unique within fontinfo.
+        if let Some(guidelines) = &self.guidelines {
+            let mut identifiers: HashSet<Identifier> = HashSet::new();
+            for guideline in guidelines {
+                if let Some(id) = &guideline.identifier {
+                    if !identifiers.insert(id.clone()) {
+                        return Err(Error::FontInfoError);
+                    }
+                }
+            }
+        }
+
         // openTypeOS2Selection must not contain bits 0, 5 or 6.
         if let Some(v) = &self.open_type_os2_selection {
             if v.contains(&0) || v.contains(&5) || v.contains(&6) {
@@ -1162,6 +1175,7 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::shared_types::Line;
     use serde_test::{assert_tokens, Token};
 
     #[test]
@@ -1380,5 +1394,43 @@ mod tests {
             });
         }
         assert!(fi.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_guideline_identifiers() {
+        let mut fi = FontInfo::default();
+        assert!(fi.validate().is_ok());
+
+        fi.guidelines.replace(vec![
+            Guideline {
+                line: Line::Horizontal(10.0),
+                name: None,
+                color: None,
+                identifier: Some(Identifier::new("test1").unwrap()),
+            },
+            Guideline {
+                line: Line::Vertical(20.0),
+                name: None,
+                color: None,
+                identifier: Some(Identifier::new("test2").unwrap()),
+            },
+        ]);
+        assert!(fi.validate().is_ok());
+
+        fi.guidelines.replace(vec![
+            Guideline {
+                line: Line::Horizontal(10.0),
+                name: None,
+                color: None,
+                identifier: Some(Identifier::new("test1").unwrap()),
+            },
+            Guideline {
+                line: Line::Vertical(20.0),
+                name: None,
+                color: None,
+                identifier: Some(Identifier::new("test1").unwrap()),
+            },
+        ]);
+        assert!(fi.validate().is_err());
     }
 }
