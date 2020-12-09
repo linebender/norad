@@ -7,7 +7,7 @@ use crate::glyph::{
 };
 use crate::shared_types::Identifier;
 
-/// A GlyphBuilder is a consuming builder for [`Glyph`](../struct.Glyph.html)s.
+/// A GlyphBuilder is a consuming builder for [`crate::glyph::Glyph`].
 ///
 /// It is different from fontTools' Pen concept, in that it is used to build the entire `Glyph`,
 /// not just the outlines and components, with built-in checking for conformity to the glif
@@ -31,37 +31,50 @@ use crate::shared_types::Identifier;
 /// use std::str::FromStr;
 ///
 /// use norad::error::ErrorKind;
-/// use norad::{AffineTransform, Anchor, GlifVersion, Guideline, Identifier, Line, GlyphBuilder, PointType};
+/// use norad::{
+///     AffineTransform, Anchor, GlifVersion, GlyphBuilder, Guideline, Identifier, Line,
+///     OutlineBuilder, PointType,
+/// };
 ///
 /// fn main() -> Result<(), ErrorKind> {
 ///     let mut builder = GlyphBuilder::new("test", GlifVersion::V2);
-///     builder.width(10.0)?
+///     builder
+///         .width(10.0)?
 ///         .unicode('ä')
 ///         .guideline(Guideline {
 ///             line: Line::Horizontal(10.0),
 ///             name: None,
 ///             color: None,
-///             identifier: Some(Identifier::from_str("test1")?),
+///             identifier: Some(Identifier::new("test1")?),
 ///         })?
 ///         .anchor(Anchor {
 ///             x: 1.0,
 ///             y: 2.0,
 ///             name: Some("anchor1".into()),
 ///             color: None,
-///             identifier: Some(Identifier::from_str("test3")?),
-///         })?
-///         .outline()?
-///         .begin_path(Some(Identifier::from_str("abc")?))?
+///             identifier: Some(Identifier::new("test3")?),
+///         })?;
+///     let mut outline_builder = OutlineBuilder::new();
+///     outline_builder
+///         .begin_path(Some(Identifier::new("abc")?))?
 ///         .add_point((173.0, 536.0), PointType::Line, false, None, None)?
 ///         .add_point((85.0, 536.0), PointType::Line, false, None, None)?
 ///         .add_point((85.0, 0.0), PointType::Line, false, None, None)?
-///         .add_point((173.0, 0.0), PointType::Line, false, None, Some(Identifier::from_str("def")?))?
+///         .add_point(
+///             (173.0, 0.0),
+///             PointType::Line,
+///             false,
+///             None,
+///             Some(Identifier::new("def")?),
+///         )?
 ///         .end_path()?
 ///         .add_component(
 ///             "hallo".into(),
 ///             AffineTransform::default(),
-///             Some(Identifier::from_str("xyz")?),
+///             Some(Identifier::new("xyz")?),
 ///         )?;
+///     let (outline, identifiers) = outline_builder.finish()?;
+///     builder.outline(outline, identifiers)?;
 ///     let glyph = builder.finish()?;
 ///     Ok(())
 /// }
@@ -71,9 +84,7 @@ pub struct GlyphBuilder {
     glyph: Glyph,
     height: Option<f32>,
     width: Option<f32>,
-    identifiers: HashSet<u64>, // All identifiers within a glyph must be unique.
-    scratch_contour: Option<Contour>,
-    number_of_offcurves: u32,
+    identifiers: HashSet<Identifier>, // All identifiers within a glyph must be unique.
 }
 
 impl GlyphBuilder {
@@ -85,8 +96,6 @@ impl GlyphBuilder {
             height: None,
             width: None,
             identifiers: HashSet::new(),
-            scratch_contour: None,
-            number_of_offcurves: 0,
         }
     }
 
@@ -141,12 +150,7 @@ impl GlyphBuilder {
         if &self.glyph.format == &GlifVersion::V1 {
             return Err(ErrorKind::UnexpectedTag);
         }
-        if let Some(identifier) = &guideline.identifier {
-            let identifier_hash = identifier.hash();
-            if !self.identifiers.insert(identifier_hash) {
-                return Err(ErrorKind::DuplicateIdentifier);
-            }
-        }
+        insert_identifier(&mut self.identifiers, guideline.identifier.clone())?;
         self.glyph.guidelines.get_or_insert(Vec::new()).push(guideline);
         Ok(self)
     }
@@ -158,24 +162,63 @@ impl GlyphBuilder {
         if &self.glyph.format == &GlifVersion::V1 {
             return Err(ErrorKind::UnexpectedTag);
         }
-        if let Some(identifier) = &anchor.identifier {
-            let identifier_hash = identifier.hash();
-            if !self.identifiers.insert(identifier_hash) {
-                return Err(ErrorKind::DuplicateIdentifier);
-            }
-        }
+        insert_identifier(&mut self.identifiers, anchor.identifier.clone())?;
         self.glyph.anchors.get_or_insert(Vec::new()).push(anchor);
         Ok(self)
     }
 
-    /// Add an outline to the `Glyph`.
+    /// Add an outline to the `Glyph`, along with its identifiers.
     ///
-    /// Errors when the function is called more than once.
-    pub fn outline(&mut self) -> Result<&mut Self, ErrorKind> {
+    /// Errors when:
+    /// 1. It has been called more than once.
+    /// 2. Format version 1 is set but identifiers are passed.
+    /// 3. Duplicate identifiers are found.
+    pub fn outline(
+        &mut self,
+        mut outline: Outline,
+        identifiers: HashSet<Identifier>,
+    ) -> Result<&mut Self, ErrorKind> {
         if self.glyph.outline.is_some() {
             return Err(ErrorKind::UnexpectedDuplicate);
         }
-        self.glyph.outline.replace(Outline::default());
+        if &self.glyph.format == &GlifVersion::V1 && !identifiers.is_empty() {
+            return Err(ErrorKind::UnexpectedAttribute);
+        }
+        if !self.identifiers.is_disjoint(&identifiers) {
+            return Err(ErrorKind::DuplicateIdentifier);
+        }
+        self.identifiers.extend(identifiers);
+
+        if &self.glyph.format == &GlifVersion::V1 {
+            for c in &mut outline.contours {
+                if c.points.len() == 1
+                    && c.points[0].typ == PointType::Move
+                    && c.points[0].name.is_some()
+                {
+                    let anchor_point = c.points.remove(0);
+                    let anchor = Anchor {
+                        name: anchor_point.name,
+                        x: anchor_point.x,
+                        y: anchor_point.y,
+                        identifier: None,
+                        color: None,
+                    };
+                    self.glyph.anchors.get_or_insert(Vec::new()).push(anchor);
+                }
+            }
+
+            // Clean up now empty contours.
+            let mut i = 0;
+            while i != outline.contours.len() {
+                if outline.contours[i].points.len() == 0 {
+                    outline.contours.remove(i);
+                } else {
+                    i += 1;
+                }
+            }
+        }
+
+        self.glyph.outline.replace(outline);
         Ok(self)
     }
 
@@ -208,9 +251,6 @@ impl GlyphBuilder {
     ///
     /// Errors when a path has been begun but not ended.
     pub fn finish(mut self) -> Result<Glyph, ErrorKind> {
-        if self.scratch_contour.is_some() {
-            return Err(ErrorKind::UnfinishedDrawing);
-        }
         if self.height.is_some() || self.width.is_some() {
             self.glyph.advance = Some(Advance {
                 width: self.width.unwrap_or(0.0),
@@ -221,30 +261,41 @@ impl GlyphBuilder {
         self.glyph.format = GlifVersion::V2;
         Ok(self.glyph)
     }
+}
+
+/// An OutlineBuilder is a consuming builder for [`crate::glyph::Outline`], not unlike a [fontTools point pen].
+///
+/// Primarily to be used in conjunction with [`GlyphBuilder`].
+///
+/// [fontTools point pen]: https://fonttools.readthedocs.io/en/latest/pens/basePen.html
+#[derive(Debug)]
+pub struct OutlineBuilder {
+    identifiers: HashSet<Identifier>,
+    outline: Outline,
+    scratch_contour: Option<Contour>,
+    number_of_offcurves: u32,
+}
+
+impl OutlineBuilder {
+    pub fn new() -> Self {
+        Self {
+            identifiers: HashSet::new(),
+            outline: Outline::default(),
+            scratch_contour: None,
+            number_of_offcurves: 0,
+        }
+    }
 
     /// Start a new path to be added to the glyph with `end_path()`.
     ///
     /// Errors when:
-    /// 1. `outline()` wasn't called first.
-    /// 2. a path has been begun already but not ended yet.
-    /// 3. format version 1 is set but an identifier has been given.
-    /// 4. the identifier is not unique within the glyph.
+    /// 1. a path has been begun already but not ended yet.
+    /// 2. the identifier is not unique within the glyph.
     pub fn begin_path(&mut self, identifier: Option<Identifier>) -> Result<&mut Self, ErrorKind> {
-        if self.glyph.outline.is_none() {
-            return Err(ErrorKind::UnexpectedDrawing);
-        }
         if self.scratch_contour.is_some() {
             return Err(ErrorKind::UnfinishedDrawing);
         }
-        if &self.glyph.format == &GlifVersion::V1 && identifier.is_some() {
-            return Err(ErrorKind::UnexpectedAttribute);
-        }
-        if let Some(identifier) = &identifier {
-            let identifier_hash = identifier.hash();
-            if !self.identifiers.insert(identifier_hash) {
-                return Err(ErrorKind::DuplicateIdentifier);
-            }
-        }
+        insert_identifier(&mut self.identifiers, identifier.clone())?;
         self.scratch_contour.replace(Contour { identifier, points: Vec::new() });
         Ok(self)
     }
@@ -252,12 +303,10 @@ impl GlyphBuilder {
     /// Add a point to the path begun by `begin_path()`.
     ///
     /// Errors when:
-    /// 1. `outline()` wasn't called first.
-    /// 2. `begin_path()` wasn't called first.
-    /// 3. format version 1 is set but an identifier has been given.
-    /// 4. the identifier is not unique within the glyph.
-    /// 5. the point is an off-curve with the smooth attribute set.
-    /// 6. the point sequence is forbidden by the specification.
+    /// 1. `begin_path()` wasn't called first.
+    /// 2. the identifier is not unique within the outline.
+    /// 3. the point is an off-curve with the smooth attribute set.
+    /// 4. the point sequence is forbidden by the specification.
     pub fn add_point(
         &mut self,
         point: (f32, f32),
@@ -266,18 +315,13 @@ impl GlyphBuilder {
         name: Option<String>,
         identifier: Option<Identifier>,
     ) -> Result<&mut Self, ErrorKind> {
-        if self.glyph.outline.is_none() {
-            return Err(ErrorKind::UnexpectedDrawing);
-        }
-        if &self.glyph.format == &GlifVersion::V1 && identifier.is_some() {
-            return Err(ErrorKind::UnexpectedAttribute);
-        }
         if smooth && segment_type == PointType::OffCurve {
             return Err(ErrorKind::UnexpectedSmooth);
         }
 
         let point =
             ContourPoint { name, x: point.0, y: point.1, typ: segment_type, smooth, identifier };
+
         match &mut self.scratch_contour {
             Some(c) => {
                 match point.typ {
@@ -291,7 +335,9 @@ impl GlyphBuilder {
                             return Err(ErrorKind::UnexpectedPointAfterOffCurve);
                         }
                     }
-                    PointType::OffCurve => self.number_of_offcurves += 1,
+                    PointType::OffCurve => {
+                        self.number_of_offcurves = self.number_of_offcurves.saturating_add(1)
+                    }
                     PointType::QCurve => self.number_of_offcurves = 0,
                     PointType::Curve => {
                         if self.number_of_offcurves > 2 {
@@ -300,13 +346,7 @@ impl GlyphBuilder {
                         self.number_of_offcurves = 0;
                     }
                 }
-                if let Some(identifier) = &point.identifier {
-                    // TODO: test membership at fn start and insert() before push()?
-                    let identifier_hash = identifier.hash();
-                    if !self.identifiers.insert(identifier_hash) {
-                        return Err(ErrorKind::DuplicateIdentifier);
-                    }
-                }
+                insert_identifier(&mut self.identifiers, point.identifier.clone())?;
                 c.points.push(point);
                 Ok(self)
             }
@@ -316,64 +356,48 @@ impl GlyphBuilder {
 
     /// Ends the path begun by `begin_path()` and adds the contour it to the glyph's outline.
     ///
-    /// Errors when:
-    /// 1. `outline()` wasn't called first.
-    /// 2. `begin_path()` wasn't called first.
-    /// 3. the point sequence is forbidden by the specification.
-    ///
     /// Discards path in case of error.
+    ///
+    /// Errors when:
+    /// 1. `begin_path()` wasn't called first.
+    /// 2. the point sequence is forbidden by the specification.
     pub fn end_path(&mut self) -> Result<&mut Self, ErrorKind> {
-        if self.glyph.outline.is_none() {
-            return Err(ErrorKind::UnexpectedDrawing);
-        }
-
         let contour = self.scratch_contour.take();
         match contour {
-            Some(mut c) => {
-                // If using format version 1, check if we are actually looking at an implicit
-                // anchor and convert if so (leaving an empty outline if there is nothing else).
-                if Self::contour_is_v1_anchor(self.get_format(), &c.points) {
-                    let anchor_point = c.points.remove(0);
-                    let anchor = Anchor {
-                        name: anchor_point.name,
-                        x: anchor_point.x,
-                        y: anchor_point.y,
-                        identifier: None,
-                        color: None,
-                    };
-                    self.glyph.anchors.get_or_insert(Vec::new()).push(anchor);
-                    Ok(self)
+            Some(c) => {
                 // If ending a closed contour with off-curve points, wrap around and check
                 // from the beginning that we have a curve or qcurve following eventually.
-                } else {
-                    if self.number_of_offcurves > 0 {
-                        if c.is_closed() {
-                            for point in &c.points {
-                                match point.typ {
-                                    PointType::OffCurve => self.number_of_offcurves += 1,
-                                    PointType::QCurve => break,
-                                    PointType::Curve => {
-                                        if self.number_of_offcurves > 2 {
-                                            return Err(ErrorKind::TooManyOffCurves);
-                                        }
-                                        break;
-                                    }
-                                    PointType::Line => {
-                                        return Err(ErrorKind::UnexpectedPointAfterOffCurve);
-                                    }
-                                    PointType::Move => unreachable!(),
+                if self.number_of_offcurves > 0 {
+                    if c.is_closed() {
+                        for point in &c.points {
+                            match point.typ {
+                                PointType::OffCurve => {
+                                    self.number_of_offcurves =
+                                        self.number_of_offcurves.saturating_add(1)
                                 }
+                                PointType::QCurve => break,
+                                PointType::Curve => {
+                                    if self.number_of_offcurves > 2 {
+                                        return Err(ErrorKind::TooManyOffCurves);
+                                    }
+                                    break;
+                                }
+                                PointType::Line => {
+                                    return Err(ErrorKind::UnexpectedPointAfterOffCurve);
+                                }
+                                PointType::Move => unreachable!(),
                             }
-                        } else {
-                            return Err(ErrorKind::TrailingOffCurves);
                         }
+                    } else {
+                        return Err(ErrorKind::TrailingOffCurves);
                     }
-                    self.number_of_offcurves = 0;
-                    if c.points.len() > 0 {
-                        self.glyph.outline.get_or_insert(Outline::default()).contours.push(c);
-                    }
-                    Ok(self)
                 }
+                self.number_of_offcurves = 0;
+                // Empty contours are allowed by the specification but make no sense, skip them.
+                if c.points.len() > 0 {
+                    self.outline.contours.push(c);
+                }
+                Ok(self)
             }
             None => Err(ErrorKind::PenPathNotStarted),
         }
@@ -381,52 +405,42 @@ impl GlyphBuilder {
 
     /// Add a component to the glyph.
     ///
-    /// Errors when:
-    /// 1. `outline()` wasn't called first.
-    /// 2. format version 1 is set but an identifier has been given.
-    /// 3. the identifier is not unique within the glyph.
+    /// Errors when the identifier is not unique within the glyph.
     pub fn add_component(
         &mut self,
         base: GlyphName,
         transform: AffineTransform,
         identifier: Option<Identifier>,
     ) -> Result<&mut Self, ErrorKind> {
-        if self.glyph.outline.is_none() {
-            return Err(ErrorKind::UnexpectedDrawing);
-        }
-        if &self.glyph.format == &GlifVersion::V1 && identifier.is_some() {
-            return Err(ErrorKind::UnexpectedAttribute);
-        }
-        if let Some(identifier) = &identifier {
-            let identifier_hash = identifier.hash();
-            if !self.identifiers.insert(identifier_hash) {
-                return Err(ErrorKind::DuplicateIdentifier);
-            }
-        }
-        let component = Component { base, transform, identifier };
-        self.glyph.outline.get_or_insert(Outline::default()).components.push(component);
+        insert_identifier(&mut self.identifiers, identifier.clone())?;
+        self.outline.components.push(Component { base, transform, identifier });
         Ok(self)
     }
 
-    /// Check if a contour is really an informal anchor according to the Glif v2 specification.
-    fn contour_is_v1_anchor(format: &GlifVersion, points: &[ContourPoint]) -> bool {
-        *format == GlifVersion::V1
-            && points.len() == 1
-            && points[0].typ == PointType::Move
-            && points[0].name.is_some()
+    /// Consume the builder and return the final `Outline` with the set of hashed indetifiers.
+    ///
+    /// Errors when a path has been begun but not ended.
+    pub fn finish(self) -> Result<(Outline, HashSet<Identifier>), ErrorKind> {
+        if self.scratch_contour.is_some() {
+            return Err(ErrorKind::UnfinishedDrawing);
+        }
+
+        Ok((self.outline, self.identifiers))
     }
 }
 
-// #[derive(Debug)]
-// pub struct OutlineBuilder {
-//     identifiers: HashSet<u64>, // All identifiers within a glyph must be unique.
-//     scratch_contour: Option<Contour>,
-//     number_of_offcurves: u32,
-// }
-
-// impl OutlineBuilder {
-
-// }
+/// Helper, inserts an identifier into a builder's set.
+fn insert_identifier(
+    set: &mut HashSet<Identifier>,
+    identifier: Option<Identifier>,
+) -> Result<(), ErrorKind> {
+    if let Some(identifier) = identifier {
+        if !set.insert(identifier) {
+            return Err(ErrorKind::DuplicateIdentifier);
+        }
+    }
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests {
@@ -434,7 +448,7 @@ mod tests {
     use crate::glyph::Line;
 
     #[test]
-    fn pen_one_line() -> Result<(), ErrorKind> {
+    fn glyph_builder_basic() -> Result<(), ErrorKind> {
         let mut builder = GlyphBuilder::new("test", GlifVersion::V2);
         builder
             .width(10.0)?
@@ -446,30 +460,32 @@ mod tests {
                 line: Line::Horizontal(10.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::new("test1".into()).unwrap()),
+                identifier: Some(Identifier::new("test1").unwrap()),
             })?
             .guideline(Guideline {
                 line: Line::Vertical(20.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::new("test2".into()).unwrap()),
+                identifier: Some(Identifier::new("test2").unwrap()),
             })?
             .anchor(Anchor {
                 x: 1.0,
                 y: 2.0,
                 name: Some("anchor1".into()),
                 color: None,
-                identifier: Some(Identifier::new("test3".into()).unwrap()),
+                identifier: Some(Identifier::new("test3").unwrap()),
             })?
             .anchor(Anchor {
                 x: 3.0,
                 y: 4.0,
                 name: Some("anchor2".into()),
                 color: None,
-                identifier: Some(Identifier::new("test4".into()).unwrap()),
-            })?
-            .outline()?
-            .begin_path(Some(Identifier::new("abc".into()).unwrap()))?
+                identifier: Some(Identifier::new("test4").unwrap()),
+            })?;
+
+        let mut outline_builder = OutlineBuilder::new();
+        outline_builder
+            .begin_path(Some(Identifier::new("abc").unwrap()))?
             .add_point((173.0, 536.0), PointType::Line, false, None, None)?
             .add_point((85.0, 536.0), PointType::Line, false, None, None)?
             .add_point((85.0, 0.0), PointType::Line, false, None, None)?
@@ -478,14 +494,16 @@ mod tests {
                 PointType::Line,
                 false,
                 None,
-                Some(Identifier::new("def".into()).unwrap()),
+                Some(Identifier::new("def").unwrap()),
             )?
             .end_path()?
             .add_component(
                 "hallo".into(),
                 AffineTransform::default(),
-                Some(Identifier::new("xyz".into()).unwrap()),
+                Some(Identifier::new("xyz").unwrap()),
             )?;
+        let (outline, identifiers) = outline_builder.finish()?;
+        builder.outline(outline, identifiers)?;
         let glyph = builder.finish()?;
 
         assert_eq!(
@@ -501,13 +519,13 @@ mod tests {
                         line: Line::Horizontal(10.0),
                         name: None,
                         color: None,
-                        identifier: Some(Identifier::new("test1".into()).unwrap()),
+                        identifier: Some(Identifier::new("test1").unwrap()),
                     },
                     Guideline {
                         line: Line::Vertical(20.0),
                         name: None,
                         color: None,
-                        identifier: Some(Identifier::new("test2".into()).unwrap()),
+                        identifier: Some(Identifier::new("test2").unwrap()),
                     },
                 ]),
                 anchors: Some(vec![
@@ -516,19 +534,19 @@ mod tests {
                         y: 2.0,
                         name: Some("anchor1".into()),
                         color: None,
-                        identifier: Some(Identifier::new("test3".into()).unwrap()),
+                        identifier: Some(Identifier::new("test3").unwrap()),
                     },
                     Anchor {
                         x: 3.0,
                         y: 4.0,
                         name: Some("anchor2".into()),
                         color: None,
-                        identifier: Some(Identifier::new("test4".into()).unwrap()),
+                        identifier: Some(Identifier::new("test4").unwrap()),
                     },
                 ]),
                 outline: Some(Outline {
                     contours: vec![Contour {
-                        identifier: Some(Identifier::new("abc".into()).unwrap()),
+                        identifier: Some(Identifier::new("abc").unwrap()),
                         points: vec![
                             ContourPoint {
                                 name: None,
@@ -560,7 +578,7 @@ mod tests {
                                 y: 0.0,
                                 typ: PointType::Line,
                                 smooth: false,
-                                identifier: Some(Identifier::new("def".into()).unwrap()),
+                                identifier: Some(Identifier::new("def").unwrap()),
                             },
                         ],
                     },],
@@ -574,7 +592,7 @@ mod tests {
                             x_offset: 0.0,
                             y_offset: 0.0,
                         },
-                        identifier: Some(Identifier::new("xyz".into()).unwrap()),
+                        identifier: Some(Identifier::new("xyz").unwrap()),
                     }]
                 }),
                 image: None,
@@ -586,13 +604,16 @@ mod tests {
     }
 
     #[test]
-    fn pen_upgrade_v1_anchor() -> Result<(), ErrorKind> {
+    fn glyph_builder_upgrade_v1_anchor() -> Result<(), ErrorKind> {
         let mut builder = GlyphBuilder::new("test", GlifVersion::V1);
-        builder
-            .outline()?
+
+        let mut outline_builder = OutlineBuilder::new();
+        outline_builder
             .begin_path(None)?
             .add_point((173.0, 536.0), PointType::Move, false, Some("top".into()), None)?
             .end_path()?;
+        let (outline, identifiers) = outline_builder.finish()?;
+        builder.outline(outline, identifiers)?;
         let glyph = builder.finish()?;
 
         assert_eq!(
@@ -622,33 +643,33 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "DuplicateIdentifier")]
-    fn pen_add_guidelines_duplicate_id() {
+    fn glyph_builder_add_guidelines_duplicate_id() {
         GlyphBuilder::new("test", GlifVersion::V2)
             .guideline(Guideline {
                 line: Line::Horizontal(10.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::new("test1".into()).unwrap()),
+                identifier: Some(Identifier::new("test1").unwrap()),
             })
             .unwrap()
             .guideline(Guideline {
                 line: Line::Vertical(20.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::new("test1".into()).unwrap()),
+                identifier: Some(Identifier::new("test1").unwrap()),
             })
             .unwrap();
     }
 
     #[test]
     #[should_panic(expected = "DuplicateIdentifier")]
-    fn pen_add_duplicate_id() {
+    fn glyph_builder_add_duplicate_id() {
         GlyphBuilder::new("test", GlifVersion::V2)
             .guideline(Guideline {
                 line: Line::Horizontal(10.0),
                 name: None,
                 color: None,
-                identifier: Some(Identifier::new("test1".into()).unwrap()),
+                identifier: Some(Identifier::new("test1").unwrap()),
             })
             .unwrap()
             .anchor(Anchor {
@@ -656,31 +677,24 @@ mod tests {
                 y: 2.0,
                 name: None,
                 color: None,
-                identifier: Some(Identifier::new("test1".into()).unwrap()),
+                identifier: Some(Identifier::new("test1").unwrap()),
             })
             .unwrap();
     }
 
     #[test]
     #[should_panic(expected = "UnfinishedDrawing")]
-    fn pen_unfinished_drawing() {
-        let mut builder = GlyphBuilder::new("test", GlifVersion::V2);
-        builder
-            .outline()
-            .unwrap()
-            .begin_path(Some(Identifier::new("abc".into()).unwrap()))
-            .unwrap();
-        let _glyph = builder.finish().unwrap();
+    fn outline_builder_unfinished_drawing() {
+        let mut outline_builder = OutlineBuilder::new();
+        outline_builder.begin_path(Some(Identifier::new("abc").unwrap())).unwrap();
+        outline_builder.finish().unwrap();
     }
 
     #[test]
     #[should_panic(expected = "UnfinishedDrawing")]
-    fn pen_unfinished_drawing2() {
-        let mut builder = GlyphBuilder::new("test", GlifVersion::V2);
-        builder
-            .outline()
-            .unwrap()
-            .begin_path(Some(Identifier::new("abc".into()).unwrap()))
+    fn outline_builder_unfinished_drawing2() {
+        OutlineBuilder::new()
+            .begin_path(Some(Identifier::new("abc").unwrap()))
             .unwrap()
             .begin_path(None)
             .unwrap();

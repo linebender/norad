@@ -3,6 +3,7 @@ use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use serde::de;
 use serde::de::Deserializer;
@@ -22,7 +23,7 @@ use crate::Error;
 /// Identifiers are specified as a string between one and 100 characters long.
 /// All characters must be in the printable ASCII range, 0x20 to 0x7E.
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
-pub struct Identifier(String);
+pub struct Identifier(Arc<str>);
 
 /// A guideline associated with a glyph.
 #[derive(Debug, Clone, PartialEq)]
@@ -66,9 +67,10 @@ impl Identifier {
     ///
     /// A valid identifier must have between 0 and 100 characters, and each
     /// character must be in the printable ASCII range, 0x20 to 0x7E.
-    pub fn new(s: String) -> Result<Self, ErrorKind> {
-        if is_valid_identifier(&s) {
-            Ok(Identifier(s))
+    pub fn new(s: impl Into<Arc<str>>) -> Result<Self, ErrorKind> {
+        let string = s.into();
+        if is_valid_identifier(&string) {
+            Ok(Identifier(string))
         } else {
             Err(ErrorKind::BadIdentifier)
         }
@@ -90,11 +92,7 @@ impl Identifier {
 impl FromStr for Identifier {
     type Err = ErrorKind;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if is_valid_identifier(s) {
-            Ok(Identifier(s.to_owned()))
-        } else {
-            Err(ErrorKind::BadIdentifier)
-        }
+        Identifier::new(s)
     }
 }
 
@@ -149,7 +147,7 @@ struct RawGuideline {
     identifier: Option<Identifier>,
 }
 
-fn is_valid_identifier(s: &str) -> bool {
+fn is_valid_identifier(s: &Arc<str>) -> bool {
     s.len() <= 100 && s.bytes().all(|b| (0x20..=0x7E).contains(&b))
 }
 
@@ -172,11 +170,7 @@ impl<'de> Deserialize<'de> for Identifier {
         D: Deserializer<'de>,
     {
         let string = String::deserialize(deserializer)?;
-        if is_valid_identifier(&string) {
-            Ok(Identifier(string))
-        } else {
-            Err(de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."))
-        }
+        Identifier::new(string).map_err(|_| de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."))
     }
 }
 
@@ -442,11 +436,11 @@ mod tests {
     #[test]
     fn identifier_parsing() {
         let valid_chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
-        assert!(Identifier::new(valid_chars.into()).is_ok());
+        assert!(Identifier::new(valid_chars).is_ok());
 
-        let i2 = Identifier::new("0aAä".to_string());
+        let i2 = Identifier::new("0aAä");
         assert!(i2.is_err());
-        let i3 = Identifier::new("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string());
+        let i3 = Identifier::new("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         assert!(i3.is_err());
     }
 
@@ -456,7 +450,7 @@ mod tests {
             line: Line::Angle { x: 10.0, y: 20.0, degrees: 360.0 },
             name: Some("hello".to_string()),
             color: Some(Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 }),
-            identifier: Some(Identifier("abcABC123".to_string())),
+            identifier: Some(Identifier::new("abcABC123").unwrap()),
         };
         assert_tokens(
             &g1,

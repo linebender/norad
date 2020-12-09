@@ -31,8 +31,8 @@ mod upconversion;
 pub use error::Error;
 pub use fontinfo::FontInfo;
 pub use glyph::{
-    builder::GlyphBuilder, Advance, AffineTransform, Anchor, Component, Contour, ContourPoint,
-    GlifVersion, Glyph, GlyphName, Image, Outline, Plist, PointType,
+    builder::GlyphBuilder, builder::OutlineBuilder, Advance, AffineTransform, Anchor, Component,
+    Contour, ContourPoint, GlifVersion, Glyph, GlyphName, Image, Outline, Plist, PointType,
 };
 pub use layer::Layer;
 pub use shared_types::{
