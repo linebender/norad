@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 
 #[cfg(feature = "rayon")]
@@ -9,10 +10,11 @@ use rayon::prelude::*;
 
 use crate::glyph::GlyphName;
 use crate::names::NameList;
+use crate::shared_types::Color;
 use crate::{Error, Glyph};
 
 static CONTENTS_FILE: &str = "contents.plist";
-//static LAYER_INFO_FILE: &str = "layerinfo.plist";
+static LAYER_INFO_FILE: &str = "layerinfo.plist";
 
 /// A [layer], corresponding to a 'glyphs' directory. Conceptually, a layer
 /// is just a collection of glyphs.
@@ -22,6 +24,7 @@ static CONTENTS_FILE: &str = "contents.plist";
 pub struct Layer {
     pub(crate) glyphs: BTreeMap<GlyphName, Arc<Glyph>>,
     contents: BTreeMap<GlyphName, PathBuf>,
+    info: LayerInfoData,
 }
 
 impl Layer {
@@ -62,7 +65,15 @@ impl Layer {
             })
             //FIXME: come up with a better way of reporting errors than just aborting at first failure
             .collect::<Result<_, _>>()?;
-        Ok(Layer { contents, glyphs })
+
+        let layerinfo_path = path.join(LAYER_INFO_FILE);
+        let info = if layerinfo_path.exists() {
+            LayerInfoData::from_file(&layerinfo_path)?
+        } else {
+            LayerInfoData::default()
+        };
+
+        Ok(Layer { contents, glyphs, info })
     }
 
     /// Attempt to write this layer to the given path.
@@ -72,6 +83,9 @@ impl Layer {
         let path = path.as_ref();
         fs::create_dir(&path)?;
         plist::to_file_xml(path.join(CONTENTS_FILE), &self.contents)?;
+        if self.info.color.is_some() || self.info.lib.is_some() {
+            self.info.to_file(&path)?;
+        }
         for (name, glyph_path) in self.contents.iter() {
             let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
             glyph.save(path.join(glyph_path))?;
@@ -140,6 +154,62 @@ impl Layer {
     }
 }
 
+/// The contents of the [`layerinfo.plist`] file.
+///
+/// [`layerinfo.plist`]: https://unifiedfontobject.org/versions/ufo3/glyphs/layerinfo.plist/
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct LayerInfoData {
+    pub color: Option<Color>,
+    pub lib: Option<plist::Dictionary>,
+}
+
+// Problem: layerinfo.plist contains a nested plist dictionary and the plist crate
+// cannot adequately handle that, as ser/de is not implemented for plist::Value.
+// Ser/de must be done manually...
+impl LayerInfoData {
+    fn from_file(path: &PathBuf) -> Result<Self, Error> {
+        let mut info_content = plist::Value::from_file(path)
+            .map_err(|e| Error::PlistError(e))?
+            .into_dictionary()
+            .ok_or(Error::ExpectedPlistDictionaryError)?;
+
+        let mut color = None;
+        let color_str = info_content.remove("color");
+        if let Some(v) = color_str {
+            match v.into_string() {
+                Some(s) => color.replace(Color::from_str(&s).map_err(|e| Error::TypeError(e))?),
+                None => Err(Error::ExpectedPlistStringError)?,
+            };
+        };
+
+        let mut lib = None;
+        let lib_content = info_content.remove("lib");
+        if let Some(v) = lib_content {
+            match v.into_dictionary() {
+                Some(d) => lib.replace(d),
+                None => Err(Error::ExpectedPlistDictionaryError)?,
+            };
+        };
+
+        Ok(Self { color, lib })
+    }
+
+    fn to_file(&self, path: &Path) -> Result<(), Error> {
+        let mut dict = plist::dictionary::Dictionary::new();
+
+        if let Some(c) = &self.color {
+            dict.insert("color".into(), plist::Value::String(c.to_rgba_string()));
+        }
+        if let Some(l) = &self.lib {
+            dict.insert("lib".into(), plist::Value::Dictionary(l.clone()));
+        }
+
+        plist::Value::Dictionary(dict).to_file_xml(path.join(LAYER_INFO_FILE))?;
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,10 +221,61 @@ mod tests {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
         let layer = Layer::load(layer_path).unwrap();
+        let info = &layer.info;
+        assert_eq!(
+            info.color.as_ref().unwrap(),
+            &Color { red: 1.0, green: 0.75, blue: 0.0, alpha: 0.7 }
+        );
+        assert_eq!(
+            info.lib
+                .as_ref()
+                .unwrap()
+                .get("com.typemytype.robofont.segmentType")
+                .unwrap()
+                .as_string()
+                .unwrap(),
+            "curve"
+        );
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
         assert_eq!(glyph.advance, Some(Advance { width: 1290., height: 0. }));
         assert_eq!(glyph.codepoints.as_ref().map(Vec::len), Some(1));
         assert_eq!(glyph.codepoints.as_ref().unwrap()[0], 'A');
+    }
+
+    #[test]
+    fn load_write_layerinfo() {
+        let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
+        assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
+        let mut layer = Layer::load(layer_path).unwrap();
+
+        // FIXME Make layer.info no option
+        layer.info.color.replace(Color { red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5 });
+        layer.info.lib.as_mut().unwrap().insert(
+            "com.typemytype.robofont.segmentType".into(),
+            plist::Value::String("test".into()),
+        );
+
+        let temp_dir = tempdir::TempDir::new("test.ufo").unwrap();
+        let dir = temp_dir.path().join("glyphs");
+        layer.save(&dir).unwrap();
+        let layer2 = Layer::load(&dir).unwrap();
+
+        assert_eq!(
+            layer2.info.color.as_ref().unwrap(),
+            &Color { red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5 }
+        );
+        assert_eq!(
+            layer2
+                .info
+                .lib
+                .as_ref()
+                .unwrap()
+                .get("com.typemytype.robofont.segmentType")
+                .unwrap()
+                .as_string()
+                .unwrap(),
+            "test"
+        );
     }
 
     #[test]
