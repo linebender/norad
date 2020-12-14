@@ -24,7 +24,7 @@ static LAYER_INFO_FILE: &str = "layerinfo.plist";
 pub struct Layer {
     pub(crate) glyphs: BTreeMap<GlyphName, Arc<Glyph>>,
     contents: BTreeMap<GlyphName, PathBuf>,
-    info: LayerInfoData,
+    info: LayerInfo,
 }
 
 impl Layer {
@@ -68,9 +68,9 @@ impl Layer {
 
         let layerinfo_path = path.join(LAYER_INFO_FILE);
         let info = if layerinfo_path.exists() {
-            LayerInfoData::from_file(&layerinfo_path)?
+            LayerInfo::from_file(&layerinfo_path)?
         } else {
-            LayerInfoData::default()
+            LayerInfo::default()
         };
 
         Ok(Layer { contents, glyphs, info })
@@ -158,7 +158,7 @@ impl Layer {
 ///
 /// [`layerinfo.plist`]: https://unifiedfontobject.org/versions/ufo3/glyphs/layerinfo.plist/
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct LayerInfoData {
+pub struct LayerInfo {
     pub color: Option<Color>,
     pub lib: Option<plist::Dictionary>,
 }
@@ -166,7 +166,7 @@ pub struct LayerInfoData {
 // Problem: layerinfo.plist contains a nested plist dictionary and the plist crate
 // cannot adequately handle that, as ser/de is not implemented for plist::Value.
 // Ser/de must be done manually...
-impl LayerInfoData {
+impl LayerInfo {
     fn from_file(path: &PathBuf) -> Result<Self, Error> {
         let mut info_content = plist::Value::from_file(path)
             .map_err(|e| Error::PlistError(e))?
