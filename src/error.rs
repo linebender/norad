@@ -28,7 +28,7 @@ pub enum Error {
     ExpectedPlistDictionaryError,
     ExpectedPlistStringError,
     ExpectedPositiveValue,
-    TypeError(ErrorKind),
+    InvalidDataError(ErrorKind),
 }
 
 /// An error representing a failure to validate UFO groups.
@@ -149,7 +149,7 @@ impl std::fmt::Display for Error {
             Error::ExpectedPositiveValue => {
                 write!(f, "PositiveIntegerOrFloat expects a positive value.")
             }
-            Error::TypeError(e) => {
+            Error::InvalidDataError(e) => {
                 write!(f, "Type parsing error: '{}", e)
             }
         }
