@@ -83,7 +83,8 @@ impl Layer {
         let path = path.as_ref();
         fs::create_dir(&path)?;
         plist::to_file_xml(path.join(CONTENTS_FILE), &self.contents)?;
-        if self.info.color.is_some() || self.info.lib.is_some() {
+        // Avoid writing empty layerinfo.plist file.
+        if self.info.color.is_some() || self.info.lib.as_ref().map_or(false, |v| !v.is_empty()) {
             self.info.to_file(&path)?;
         }
         for (name, glyph_path) in self.contents.iter() {
@@ -250,7 +251,6 @@ mod tests {
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
         let mut layer = Layer::load(layer_path).unwrap();
 
-        // FIXME Make layer.info no option
         layer.info.color.replace(Color { red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5 });
         layer.info.lib.as_mut().unwrap().insert(
             "com.typemytype.robofont.segmentType".into(),
@@ -278,6 +278,21 @@ mod tests {
                 .unwrap(),
             "test"
         );
+    }
+
+    #[test]
+    fn skip_writing_empty_layerinfo() {
+        let mut layer = Layer::default();
+        let temp_dir = tempdir::TempDir::new("test.ufo").unwrap();
+        let dir = temp_dir.path().join("glyphs");
+
+        layer.save(&dir).unwrap();
+        assert!(!dir.join("layerinfo.plist").exists());
+
+        fs::remove_dir_all(&dir).unwrap();
+        layer.info.lib.replace(plist::dictionary::Dictionary::new());
+        layer.save(&dir).unwrap();
+        assert!(!dir.join("layerinfo.plist").exists());
     }
 
     #[test]
