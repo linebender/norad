@@ -84,7 +84,7 @@ impl Layer {
         fs::create_dir(&path)?;
         plist::to_file_xml(path.join(CONTENTS_FILE), &self.contents)?;
         // Avoid writing empty layerinfo.plist file.
-        if self.info.color.is_some() || self.info.lib.as_ref().map_or(false, |v| !v.is_empty()) {
+        if !self.info.is_empty() {
             self.info.to_file(&path)?;
         }
         for (name, glyph_path) in self.contents.iter() {
@@ -210,6 +210,10 @@ impl LayerInfo {
         plist::Value::Dictionary(dict).to_file_xml(path.join(LAYER_INFO_FILE))?;
 
         Ok(())
+    }
+
+    fn is_empty(&self) -> bool {
+        self.color.is_none() && self.lib.as_ref().map_or(true, |v| v.is_empty())
     }
 }
 
