@@ -268,7 +268,8 @@ impl PointType {
 }
 
 impl Color {
-    fn to_rgba_string(&self) -> String {
+    pub fn to_rgba_string(&self) -> String {
+        // TODO: Check that all channels are 0.0..=1.0
         format!("{},{},{},{}", self.red, self.green, self.blue, self.alpha)
     }
 }

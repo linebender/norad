@@ -26,7 +26,9 @@ pub enum Error {
     GroupsError(GroupsValidationError),
     GroupsUpconversionError(GroupsValidationError),
     ExpectedPlistDictionaryError,
+    ExpectedPlistStringError,
     ExpectedPositiveValue,
+    InvalidDataError(ErrorKind),
 }
 
 /// An error representing a failure to validate UFO groups.
@@ -135,11 +137,21 @@ impl std::fmt::Display for Error {
             }
             Error::PlistError(e) => e.fmt(f),
             Error::FontInfoError => write!(f, "FontInfo contains invalid data"),
-            Error::FontInfoUpconversionError => write!(f, "FontInfo contains invalid data after upconversion"),
+            Error::FontInfoUpconversionError => {
+                write!(f, "FontInfo contains invalid data after upconversion")
+            }
             Error::GroupsError(ge) => ge.fmt(f),
-            Error::GroupsUpconversionError(ge) => write!(f, "Upconverting UFO v1 or v2 kerning data to v3 failed: {}", ge),
-            Error::ExpectedPlistDictionaryError => write!(f, "The files groups.plist, kerning.plist and lib.plist must contain plist dictionaries."),
-            Error::ExpectedPositiveValue => write!(f, "PositiveIntegerOrFloat expects a positive value."),
+            Error::GroupsUpconversionError(ge) => {
+                write!(f, "Upconverting UFO v1 or v2 kerning data to v3 failed: {}", ge)
+            }
+            Error::ExpectedPlistDictionaryError => write!(f, "Expected a Plist dictionary."),
+            Error::ExpectedPlistStringError => write!(f, "Expected a Plist string."),
+            Error::ExpectedPositiveValue => {
+                write!(f, "PositiveIntegerOrFloat expects a positive value.")
+            }
+            Error::InvalidDataError(e) => {
+                write!(f, "Type parsing error: '{}", e)
+            }
         }
     }
 }
