@@ -10,6 +10,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use serde::ser::{SerializeMap, Serializer};
+use serde::Serialize;
+
 use crate::error::GroupsValidationError;
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
@@ -277,7 +280,8 @@ impl Ufo {
         }
 
         if let Some(kerning) = self.kerning.as_ref() {
-            plist::to_file_xml(path.join(KERNING_FILE), kerning)?;
+            let kerning_serializer = KerningSerializer { kerning: &kerning };
+            plist::to_file_xml(path.join(KERNING_FILE), &kerning_serializer)?;
         }
 
         if let Some(features) = self.features.as_ref() {
@@ -415,10 +419,54 @@ fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidationError> {
     Ok(())
 }
 
+/// KerningSerializer is a crutch to serialize kerning values as integers if they are
+/// integers rather than floats. This spares us having to use a wrapper type like
+/// IntegerOrFloat for kerning values.
+struct KerningSerializer<'a> {
+    kerning: &'a Kerning,
+}
+
+struct KerningInnerSerializer<'a> {
+    inner_kerning: &'a BTreeMap<String, f32>,
+}
+
+impl<'a> Serialize for KerningSerializer<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.kerning.len()))?;
+        for (k, v) in self.kerning {
+            let inner_v = KerningInnerSerializer { inner_kerning: v };
+            map.serialize_entry(k, &inner_v)?;
+        }
+        map.end()
+    }
+}
+
+impl<'a> Serialize for KerningInnerSerializer<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.inner_kerning.len()))?;
+        for (k, v) in self.inner_kerning {
+            if (v - v.round()).abs() < std::f32::EPSILON {
+                map.serialize_entry(k, &(*v as i32))?;
+            } else {
+                map.serialize_entry(k, v)?;
+            }
+        }
+        map.end()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::shared_types::IntegerOrFloat;
+    use maplit::btreemap;
+    use serde_test::{assert_ser_tokens, Token};
 
     #[test]
     fn new_is_v3() {
@@ -529,5 +577,37 @@ mod tests {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo/metainfo.plist";
         let meta: MetaInfo = plist::from_file(path).expect("failed to load metainfo");
         assert_eq!(meta.creator, "org.robofab.ufoLib");
+    }
+
+    #[test]
+    fn serialize_kerning() {
+        let kerning: Kerning = btreemap! {
+            "A".into() => btreemap!{
+                "A".into() => 1.0,
+            },
+            "B".into() => btreemap!{
+                "A".into() => 5.4,
+            },
+        };
+
+        let kerning_serializer = KerningSerializer { kerning: &kerning };
+
+        assert_ser_tokens(
+            &kerning_serializer,
+            &[
+                Token::Map { len: Some(2) },
+                Token::Str("A"),
+                Token::Map { len: Some(1) },
+                Token::Str("A"),
+                Token::I32(1),
+                Token::MapEnd,
+                Token::Str("B"),
+                Token::Map { len: Some(1) },
+                Token::Str("A"),
+                Token::F32(5.4),
+                Token::MapEnd,
+                Token::MapEnd,
+            ],
+        );
     }
 }
