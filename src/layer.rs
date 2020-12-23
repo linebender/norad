@@ -149,6 +149,10 @@ impl Layer {
         self.glyphs.values().map(Arc::clone)
     }
 
+    pub fn iter_contents_mut(&mut self) -> impl Iterator<Item = &mut Glyph> {
+        self.glyphs.values_mut().map(Arc::make_mut)
+    }
+
     #[cfg(test)]
     pub fn get_path(&self, name: &str) -> Option<&Path> {
         self.contents.get(name).map(PathBuf::as_path)
