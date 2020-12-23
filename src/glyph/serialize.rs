@@ -71,7 +71,9 @@ impl Glyph {
         }
 
         if let Some(lib) = self.lib.as_ref() {
-            write_lib_section(lib, &mut writer)?;
+            if !lib.is_empty() {
+                write_lib_section(lib, &mut writer)?;
+            }
         }
 
         writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;
