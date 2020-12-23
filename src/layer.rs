@@ -24,7 +24,7 @@ static LAYER_INFO_FILE: &str = "layerinfo.plist";
 pub struct Layer {
     pub(crate) glyphs: BTreeMap<GlyphName, Arc<Glyph>>,
     contents: BTreeMap<GlyphName, PathBuf>,
-    info: LayerInfo,
+    pub info: LayerInfo,
 }
 
 impl Layer {
