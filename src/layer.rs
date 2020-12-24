@@ -149,6 +149,7 @@ impl Layer {
         self.glyphs.values().map(Arc::clone)
     }
 
+    /// Iterate over the glyphs in this layer, mutably.
     pub fn iter_contents_mut(&mut self) -> impl Iterator<Item = &mut Glyph> {
         self.glyphs.values_mut().map(Arc::make_mut)
     }
