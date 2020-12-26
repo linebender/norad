@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use crate::error::ErrorKind;
 use crate::glyph::{
     Advance, AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    GlyphName, Guideline, Image, Outline, Plist, PointType,
+    GlyphName, Guideline, Image, Outline, PointType,
 };
-use crate::shared_types::Identifier;
+use crate::shared_types::{Identifier, Plist};
 
 /// A GlyphBuilder is a consuming builder for [`crate::glyph::Glyph`].
 ///
@@ -46,6 +46,7 @@ use crate::shared_types::Identifier;
 ///             name: None,
 ///             color: None,
 ///             identifier: Some(Identifier::new("test1")?),
+///             lib: None,
 ///         })?
 ///         .anchor(Anchor {
 ///             x: 1.0,
@@ -53,6 +54,7 @@ use crate::shared_types::Identifier;
 ///             name: Some("anchor1".into()),
 ///             color: None,
 ///             identifier: Some(Identifier::new("test3")?),
+///             lib: None,
 ///         })?;
 ///     let mut outline_builder = OutlineBuilder::new();
 ///     outline_builder
@@ -202,6 +204,7 @@ impl GlyphBuilder {
                         y: anchor_point.y,
                         identifier: None,
                         color: None,
+                        lib: None,
                     };
                     self.glyph.anchors.get_or_insert(Vec::new()).push(anchor);
                 }
@@ -296,7 +299,7 @@ impl OutlineBuilder {
             return Err(ErrorKind::UnfinishedDrawing);
         }
         insert_identifier(&mut self.identifiers, identifier.clone())?;
-        self.scratch_contour.replace(Contour { identifier, points: Vec::new() });
+        self.scratch_contour.replace(Contour { identifier, points: Vec::new(), lib: None });
         Ok(self)
     }
 
@@ -319,8 +322,15 @@ impl OutlineBuilder {
             return Err(ErrorKind::UnexpectedSmooth);
         }
 
-        let point =
-            ContourPoint { name, x: point.0, y: point.1, typ: segment_type, smooth, identifier };
+        let point = ContourPoint {
+            name,
+            x: point.0,
+            y: point.1,
+            typ: segment_type,
+            smooth,
+            identifier,
+            lib: None,
+        };
 
         match &mut self.scratch_contour {
             Some(c) => {
@@ -413,7 +423,7 @@ impl OutlineBuilder {
         identifier: Option<Identifier>,
     ) -> Result<&mut Self, ErrorKind> {
         insert_identifier(&mut self.identifiers, identifier.clone())?;
-        self.outline.components.push(Component { base, transform, identifier });
+        self.outline.components.push(Component { base, transform, identifier, lib: None });
         Ok(self)
     }
 
@@ -461,12 +471,14 @@ mod tests {
                 name: None,
                 color: None,
                 identifier: Some(Identifier::new("test1").unwrap()),
+                lib: None,
             })?
             .guideline(Guideline {
                 line: Line::Vertical(20.0),
                 name: None,
                 color: None,
                 identifier: Some(Identifier::new("test2").unwrap()),
+                lib: None,
             })?
             .anchor(Anchor {
                 x: 1.0,
@@ -474,6 +486,7 @@ mod tests {
                 name: Some("anchor1".into()),
                 color: None,
                 identifier: Some(Identifier::new("test3").unwrap()),
+                lib: None,
             })?
             .anchor(Anchor {
                 x: 3.0,
@@ -481,6 +494,7 @@ mod tests {
                 name: Some("anchor2".into()),
                 color: None,
                 identifier: Some(Identifier::new("test4").unwrap()),
+                lib: None,
             })?;
 
         let mut outline_builder = OutlineBuilder::new();
@@ -520,12 +534,14 @@ mod tests {
                         name: None,
                         color: None,
                         identifier: Some(Identifier::new("test1").unwrap()),
+                        lib: None
                     },
                     Guideline {
                         line: Line::Vertical(20.0),
                         name: None,
                         color: None,
                         identifier: Some(Identifier::new("test2").unwrap()),
+                        lib: None
                     },
                 ]),
                 anchors: Some(vec![
@@ -535,6 +551,7 @@ mod tests {
                         name: Some("anchor1".into()),
                         color: None,
                         identifier: Some(Identifier::new("test3").unwrap()),
+                        lib: None
                     },
                     Anchor {
                         x: 3.0,
@@ -542,6 +559,7 @@ mod tests {
                         name: Some("anchor2".into()),
                         color: None,
                         identifier: Some(Identifier::new("test4").unwrap()),
+                        lib: None
                     },
                 ]),
                 outline: Some(Outline {
@@ -555,6 +573,7 @@ mod tests {
                                 typ: PointType::Line,
                                 smooth: false,
                                 identifier: None,
+                                lib: None,
                             },
                             ContourPoint {
                                 name: None,
@@ -563,6 +582,7 @@ mod tests {
                                 typ: PointType::Line,
                                 smooth: false,
                                 identifier: None,
+                                lib: None,
                             },
                             ContourPoint {
                                 name: None,
@@ -571,6 +591,7 @@ mod tests {
                                 typ: PointType::Line,
                                 smooth: false,
                                 identifier: None,
+                                lib: None,
                             },
                             ContourPoint {
                                 name: None,
@@ -579,8 +600,10 @@ mod tests {
                                 typ: PointType::Line,
                                 smooth: false,
                                 identifier: Some(Identifier::new("def").unwrap()),
+                                lib: None,
                             },
                         ],
+                        lib: None,
                     },],
                     components: vec![Component {
                         base: "hallo".into(),
@@ -593,6 +616,7 @@ mod tests {
                             y_offset: 0.0,
                         },
                         identifier: Some(Identifier::new("xyz").unwrap()),
+                        lib: None,
                     }]
                 }),
                 image: None,
@@ -631,6 +655,7 @@ mod tests {
                     name: Some("top".into()),
                     color: None,
                     identifier: None,
+                    lib: None
                 }]),
                 outline: Some(Outline::default()),
                 image: None,
@@ -650,6 +675,7 @@ mod tests {
                 name: None,
                 color: None,
                 identifier: Some(Identifier::new("test1").unwrap()),
+                lib: None,
             })
             .unwrap()
             .guideline(Guideline {
@@ -657,6 +683,7 @@ mod tests {
                 name: None,
                 color: None,
                 identifier: Some(Identifier::new("test1").unwrap()),
+                lib: None,
             })
             .unwrap();
     }
@@ -670,6 +697,7 @@ mod tests {
                 name: None,
                 color: None,
                 identifier: Some(Identifier::new("test1").unwrap()),
+                lib: None,
             })
             .unwrap()
             .anchor(Anchor {
@@ -678,6 +706,7 @@ mod tests {
                 name: None,
                 color: None,
                 identifier: Some(Identifier::new("test1").unwrap()),
+                lib: None,
             })
             .unwrap();
     }

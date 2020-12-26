@@ -16,6 +16,9 @@ use druid::Data;
 use crate::error::ErrorKind;
 use crate::Error;
 
+/// A Plist dictionary.
+pub type Plist = plist::Dictionary;
+
 /// Identifiers are optional attributes of several objects in the UFO.
 /// These identifiers are required to be unique within certain contexts
 /// as defined on a per object basis throughout this specification.
@@ -36,6 +39,8 @@ pub struct Guideline {
     /// Unique identifier for the guideline. This attribute is not required
     /// and should only be added to guidelines as needed.
     pub identifier: Option<Identifier>,
+    /// The guideline's lib for arbitary data.
+    pub lib: Option<Plist>,
 }
 
 /// An infinite line.
@@ -78,6 +83,12 @@ impl Identifier {
     /// Return the raw identifier, as a `&str`.
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+impl PartialEq<String> for Identifier {
+    fn eq(&self, other: &String) -> bool {
+        *self.0 == *other
     }
 }
 
@@ -235,6 +246,7 @@ impl<'de> Deserialize<'de> for Guideline {
             name: guideline.name,
             color: guideline.color,
             identifier: guideline.identifier,
+            lib: None,
         })
     }
 }
@@ -443,6 +455,7 @@ mod tests {
             name: Some("hello".to_string()),
             color: Some(Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 }),
             identifier: Some(Identifier::new("abcABC123").unwrap()),
+            lib: None,
         };
         assert_tokens(
             &g1,

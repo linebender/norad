@@ -1233,25 +1233,29 @@ mod tests {
                     line: Line::Angle { x: 82.0, y: 720.0, degrees: 90.0 },
                     name: None,
                     color: None,
-                    identifier: None
+                    identifier: None,
+                    lib: None
                 },
                 Guideline {
                     line: Line::Vertical(372.0),
                     name: None,
                     color: None,
-                    identifier: None
+                    identifier: None,
+                    lib: None
                 },
                 Guideline {
                     line: Line::Horizontal(123.0),
                     name: None,
                     color: None,
-                    identifier: None
+                    identifier: None,
+                    lib: None
                 },
                 Guideline {
                     line: Line::Angle { x: 1.0, y: 2.0, degrees: 0.0 },
                     name: Some(" [locked]".to_string()),
                     color: Some(Color { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }),
                     identifier: Some(Identifier::new("abc").unwrap()),
+                    lib: None
                 },
             ])
         );
@@ -1407,12 +1411,14 @@ mod tests {
                 name: None,
                 color: None,
                 identifier: Some(Identifier::new("test1").unwrap()),
+                lib: None,
             },
             Guideline {
                 line: Line::Vertical(20.0),
                 name: None,
                 color: None,
                 identifier: Some(Identifier::new("test2").unwrap()),
+                lib: None,
             },
         ]);
         assert!(fi.validate().is_ok());
@@ -1423,12 +1429,14 @@ mod tests {
                 name: None,
                 color: None,
                 identifier: Some(Identifier::new("test1").unwrap()),
+                lib: None,
             },
             Guideline {
                 line: Line::Vertical(20.0),
                 name: None,
                 color: None,
                 identifier: Some(Identifier::new("test1").unwrap()),
+                lib: None,
             },
         ]);
         assert!(fi.validate().is_err());

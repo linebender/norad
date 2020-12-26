@@ -14,13 +14,10 @@ use druid::{Data, Lens};
 
 use crate::error::{Error, GlifError, GlifErrorInternal};
 use crate::names::NameList;
-use crate::shared_types::{Color, Guideline, Identifier, Line};
+use crate::shared_types::{Color, Guideline, Identifier, Line, Plist};
 
 /// The name of a glyph.
 pub type GlyphName = Arc<str>;
-
-/// A Plist dictionary.
-pub type Plist = plist::Dictionary;
 
 /// A glyph, loaded from a [.glif file][glif].
 ///
@@ -139,6 +136,7 @@ pub struct Anchor {
     pub name: Option<String>,
     pub color: Option<Color>,
     pub identifier: Option<Identifier>,
+    pub lib: Option<Plist>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -154,12 +152,14 @@ pub struct Component {
     pub base: GlyphName,
     pub transform: AffineTransform,
     pub identifier: Option<Identifier>,
+    pub lib: Option<Plist>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Contour {
     pub identifier: Option<Identifier>,
     pub points: Vec<ContourPoint>,
+    pub lib: Option<Plist>,
 }
 
 impl Contour {
@@ -176,6 +176,7 @@ pub struct ContourPoint {
     pub typ: PointType,
     pub smooth: bool,
     pub identifier: Option<Identifier>,
+    pub lib: Option<Plist>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
