@@ -1,6 +1,5 @@
-use std::collections::hash_map::DefaultHasher;
 use std::convert::TryFrom;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -79,13 +78,6 @@ impl Identifier {
     /// Return the raw identifier, as a `&str`.
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-
-    /// Return the u64 hash value of self.
-    pub fn hash(&self) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        Hash::hash(&self, &mut hasher);
-        hasher.finish()
     }
 }
 
