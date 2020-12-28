@@ -400,7 +400,7 @@ impl<'names> GlifParser<'names> {
             return Err(err!(reader, ErrorKind::BadAnchor));
         }
         self.builder
-            .anchor(Anchor { x: x.unwrap(), y: y.unwrap(), name, color, identifier, lib: None })
+            .anchor(Anchor::new(x.unwrap(), y.unwrap(), name, color, identifier, None))
             .map_err(|e| err!(reader, e))?;
         Ok(())
     }
@@ -453,7 +453,7 @@ impl<'names> GlifParser<'names> {
             _other => return Err(err!(reader, ErrorKind::BadGuideline)),
         };
         self.builder
-            .guideline(Guideline { line, name, color, identifier, lib: None })
+            .guideline(Guideline::new(line, name, color, identifier, None))
             .map_err(|e| err!(reader, e))?;
 
         Ok(())
@@ -552,9 +552,9 @@ fn fill_in_libs(glyph: &mut Glyph) -> Result<(), Error> {
 
                 if let Some(anchors) = &mut glyph.anchors {
                     for anchor in anchors {
-                        if let Some(id) = &anchor.identifier {
+                        if let Some(id) = &anchor.get_identifier() {
                             if id == &key {
-                                anchor.lib.replace(value);
+                                anchor.set_lib(value);
                                 continue 'next_key;
                             }
                         }
@@ -562,9 +562,9 @@ fn fill_in_libs(glyph: &mut Glyph) -> Result<(), Error> {
                 }
                 if let Some(guidelines) = &mut glyph.guidelines {
                     for guideline in guidelines {
-                        if let Some(id) = &guideline.identifier {
+                        if let Some(id) = &guideline.get_identifier() {
                             if id == &key {
-                                guideline.lib.replace(value);
+                                guideline.set_lib(value);
                                 continue 'next_key;
                             }
                         }
@@ -572,25 +572,25 @@ fn fill_in_libs(glyph: &mut Glyph) -> Result<(), Error> {
                 }
                 if let Some(outline) = &mut glyph.outline {
                     for contour in &mut outline.contours {
-                        if let Some(id) = &contour.identifier {
+                        if let Some(id) = &contour.get_identifier() {
                             if id == &key {
-                                contour.lib.replace(value);
+                                contour.set_lib(value);
                                 continue 'next_key;
                             }
                         }
                         for point in &mut contour.points {
-                            if let Some(id) = &point.identifier {
+                            if let Some(id) = &point.get_identifier() {
                                 if id == &key {
-                                    point.lib.replace(value);
+                                    point.set_lib(value);
                                     continue 'next_key;
                                 }
                             }
                         }
                     }
                     for component in &mut outline.components {
-                        if let Some(id) = &component.identifier {
+                        if let Some(id) = &component.get_identifier() {
                             if id == &key {
-                                component.lib.replace(value);
+                                component.set_lib(value);
                                 continue 'next_key;
                             }
                         }

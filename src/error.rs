@@ -116,6 +116,7 @@ pub enum ErrorKind {
     UnexpectedAnchorField,
     UnexpectedGuidelineField,
     UnexpectedImageField,
+    IdentifierRequiredForLib,
 }
 
 impl std::fmt::Display for Error {
@@ -213,6 +214,9 @@ impl std::fmt::Display for ErrorKind {
             ErrorKind::UnexpectedAnchorField => write!(f, "Unexpected anchor field "),
             ErrorKind::UnexpectedGuidelineField => write!(f, "Unexpected guideline field "),
             ErrorKind::UnexpectedImageField => write!(f, "Unexpected image field "),
+            ErrorKind::IdentifierRequiredForLib => {
+                write!(f, "Cannot remove identifier while lib is in place.")
+            }
         }
     }
 }

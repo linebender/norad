@@ -12,9 +12,9 @@ use std::sync::Arc;
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
 
-use crate::error::{Error, GlifError, GlifErrorInternal};
+use crate::error::{Error, ErrorKind, GlifError, GlifErrorInternal};
 use crate::names::NameList;
-use crate::shared_types::{Color, Guideline, Identifier, Line, Plist};
+use crate::shared_types::{Color, Guideline, Identifier, IdentifierAccess, LibAccess, Line, Plist};
 
 /// The name of a glyph.
 pub type GlyphName = Arc<str>;
@@ -135,8 +135,8 @@ pub struct Anchor {
     /// An arbitrary name for the anchor.
     pub name: Option<String>,
     pub color: Option<Color>,
-    pub identifier: Option<Identifier>,
-    pub lib: Option<Plist>,
+    identifier: Option<Identifier>,
+    lib: Option<Plist>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -151,15 +151,15 @@ pub struct Component {
     /// The name of the base glyph.
     pub base: GlyphName,
     pub transform: AffineTransform,
-    pub identifier: Option<Identifier>,
-    pub lib: Option<Plist>,
+    identifier: Option<Identifier>,
+    lib: Option<Plist>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Contour {
-    pub identifier: Option<Identifier>,
     pub points: Vec<ContourPoint>,
-    pub lib: Option<Plist>,
+    identifier: Option<Identifier>,
+    lib: Option<Plist>,
 }
 
 impl Contour {
@@ -170,13 +170,13 @@ impl Contour {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ContourPoint {
-    pub name: Option<String>,
     pub x: f32,
     pub y: f32,
     pub typ: PointType,
     pub smooth: bool,
-    pub identifier: Option<Identifier>,
-    pub lib: Option<Plist>,
+    pub name: Option<String>,
+    identifier: Option<Identifier>,
+    lib: Option<Plist>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -219,6 +219,210 @@ pub struct AffineTransform {
     pub y_scale: f32,
     pub x_offset: f32,
     pub y_offset: f32,
+}
+
+impl LibAccess for Anchor {
+    fn get_lib(&self) -> &Option<Plist> {
+        &self.lib
+    }
+
+    fn get_lib_mut(&mut self) -> &mut Option<Plist> {
+        &mut self.lib
+    }
+
+    fn set_lib(&mut self, lib: Plist) -> Option<Plist> {
+        if self.identifier.is_none() {
+            self.identifier.replace(Identifier::from_uuidv4());
+        }
+        self.lib.replace(lib)
+    }
+
+    fn remove_lib(&mut self) {
+        self.lib.take();
+    }
+}
+
+impl IdentifierAccess for Anchor {
+    fn get_identifier(&self) -> &Option<Identifier> {
+        &self.identifier
+    }
+
+    fn set_identifier(&mut self, id: Identifier) -> Option<Identifier> {
+        self.identifier.replace(id)
+    }
+
+    fn remove_identifier(&mut self) -> Result<(), ErrorKind> {
+        if self.lib.is_some() {
+            return Err(ErrorKind::IdentifierRequiredForLib);
+        }
+        self.identifier.take();
+        Ok(())
+    }
+}
+
+impl Anchor {
+    pub fn new(
+        x: f32,
+        y: f32,
+        name: Option<String>,
+        color: Option<Color>,
+        identifier: Option<Identifier>,
+        lib: Option<Plist>,
+    ) -> Self {
+        Self { x, y, name, color, identifier, lib }
+    }
+}
+
+impl LibAccess for Contour {
+    fn get_lib(&self) -> &Option<Plist> {
+        &self.lib
+    }
+
+    fn get_lib_mut(&mut self) -> &mut Option<Plist> {
+        &mut self.lib
+    }
+
+    fn set_lib(&mut self, lib: Plist) -> Option<Plist> {
+        if self.identifier.is_none() {
+            self.identifier.replace(Identifier::from_uuidv4());
+        }
+        self.lib.replace(lib)
+    }
+
+    fn remove_lib(&mut self) {
+        self.lib.take();
+    }
+}
+
+impl IdentifierAccess for Contour {
+    fn get_identifier(&self) -> &Option<Identifier> {
+        &self.identifier
+    }
+
+    fn set_identifier(&mut self, id: Identifier) -> Option<Identifier> {
+        self.identifier.replace(id)
+    }
+
+    fn remove_identifier(&mut self) -> Result<(), ErrorKind> {
+        if self.lib.is_some() {
+            return Err(ErrorKind::IdentifierRequiredForLib);
+        }
+        self.identifier.take();
+        Ok(())
+    }
+}
+
+impl Contour {
+    pub fn new(
+        points: Vec<ContourPoint>,
+        identifier: Option<Identifier>,
+        lib: Option<Plist>,
+    ) -> Self {
+        Self { points, identifier, lib }
+    }
+}
+
+impl LibAccess for ContourPoint {
+    fn get_lib(&self) -> &Option<Plist> {
+        &self.lib
+    }
+
+    fn get_lib_mut(&mut self) -> &mut Option<Plist> {
+        &mut self.lib
+    }
+
+    fn set_lib(&mut self, lib: Plist) -> Option<Plist> {
+        if self.identifier.is_none() {
+            self.identifier.replace(Identifier::from_uuidv4());
+        }
+        self.lib.replace(lib)
+    }
+
+    fn remove_lib(&mut self) {
+        self.lib.take();
+    }
+}
+
+impl IdentifierAccess for ContourPoint {
+    fn get_identifier(&self) -> &Option<Identifier> {
+        &self.identifier
+    }
+
+    fn set_identifier(&mut self, id: Identifier) -> Option<Identifier> {
+        self.identifier.replace(id)
+    }
+
+    fn remove_identifier(&mut self) -> Result<(), ErrorKind> {
+        if self.lib.is_some() {
+            return Err(ErrorKind::IdentifierRequiredForLib);
+        }
+        self.identifier.take();
+        Ok(())
+    }
+}
+
+impl ContourPoint {
+    pub fn new(
+        x: f32,
+        y: f32,
+        typ: PointType,
+        smooth: bool,
+        name: Option<String>,
+        identifier: Option<Identifier>,
+        lib: Option<Plist>,
+    ) -> Self {
+        Self { x, y, typ, smooth, name, identifier, lib }
+    }
+}
+
+impl LibAccess for Component {
+    fn get_lib(&self) -> &Option<Plist> {
+        &self.lib
+    }
+
+    fn get_lib_mut(&mut self) -> &mut Option<Plist> {
+        &mut self.lib
+    }
+
+    fn set_lib(&mut self, lib: Plist) -> Option<Plist> {
+        if self.identifier.is_none() {
+            self.identifier.replace(Identifier::from_uuidv4());
+        }
+        self.lib.replace(lib)
+    }
+
+    fn remove_lib(&mut self) {
+        self.lib.take();
+    }
+}
+
+impl IdentifierAccess for Component {
+    fn get_identifier(&self) -> &Option<Identifier> {
+        &self.identifier
+    }
+
+    fn set_identifier(&mut self, id: Identifier) -> Option<Identifier> {
+        self.identifier.replace(id)
+    }
+
+    fn remove_identifier(&mut self) -> Result<(), ErrorKind> {
+        if self.lib.is_some() {
+            return Err(ErrorKind::IdentifierRequiredForLib);
+        }
+        self.identifier.take();
+        Ok(())
+    }
+}
+
+impl Component {
+    pub fn new(
+        base: GlyphName,
+        transform: AffineTransform,
+        identifier: Option<Identifier>,
+        lib: Option<Plist>,
+    ) -> Self {
+        Self { base, transform, identifier, lib }
+    }
 }
 
 impl AffineTransform {

@@ -36,11 +36,11 @@ pub struct Guideline {
     pub name: Option<String>,
     /// The color of the line.
     pub color: Option<Color>,
-    /// Unique identifier for the guideline. This attribute is not required
-    /// and should only be added to guidelines as needed.
-    pub identifier: Option<Identifier>,
+    /// Unique identifier for the guideline. This attribute is only required
+    /// when a lib is present and should otherwise only be added to guidelines as needed.
+    identifier: Option<Identifier>,
     /// The guideline's lib for arbitary data.
-    pub lib: Option<Plist>,
+    lib: Option<Plist>,
 }
 
 /// An infinite line.
@@ -66,10 +66,68 @@ pub struct Color {
     pub alpha: f32,
 }
 
-trait LibAccess {
-    fn get_lib(&self) -> &Plist;
-    fn get_lib_mut(&mut self) -> &mut Plist;
-    fn set_lib(&mut self);
+pub trait LibAccess {
+    fn get_lib(&self) -> &Option<Plist>;
+    fn get_lib_mut(&mut self) -> &mut Option<Plist>;
+    fn set_lib(&mut self, lib: Plist) -> Option<Plist>;
+    fn remove_lib(&mut self);
+}
+
+pub trait IdentifierAccess {
+    fn get_identifier(&self) -> &Option<Identifier>;
+    fn set_identifier(&mut self, id: Identifier) -> Option<Identifier>;
+    fn remove_identifier(&mut self) -> Result<(), ErrorKind>;
+}
+
+impl Guideline {
+    pub fn new(
+        line: Line,
+        name: Option<String>,
+        color: Option<Color>,
+        identifier: Option<Identifier>,
+        lib: Option<Plist>,
+    ) -> Self {
+        Self { line, name, color, identifier, lib }
+    }
+}
+
+impl LibAccess for Guideline {
+    fn get_lib(&self) -> &Option<Plist> {
+        &self.lib
+    }
+
+    fn get_lib_mut(&mut self) -> &mut Option<Plist> {
+        &mut self.lib
+    }
+
+    fn set_lib(&mut self, lib: Plist) -> Option<Plist> {
+        if self.identifier.is_none() {
+            self.identifier.replace(Identifier::from_uuidv4());
+        }
+        self.lib.replace(lib)
+    }
+
+    fn remove_lib(&mut self) {
+        self.lib.take();
+    }
+}
+
+impl IdentifierAccess for Guideline {
+    fn get_identifier(&self) -> &Option<Identifier> {
+        &self.identifier
+    }
+
+    fn set_identifier(&mut self, id: Identifier) -> Option<Identifier> {
+        self.identifier.replace(id)
+    }
+
+    fn remove_identifier(&mut self) -> Result<(), ErrorKind> {
+        if self.lib.is_some() {
+            return Err(ErrorKind::IdentifierRequiredForLib);
+        }
+        self.identifier.take();
+        Ok(())
+    }
 }
 
 impl Identifier {
@@ -251,13 +309,7 @@ impl<'de> Deserialize<'de> for Guideline {
             }
         };
 
-        Ok(Guideline {
-            line,
-            name: guideline.name,
-            color: guideline.color,
-            identifier: guideline.identifier,
-            lib: None,
-        })
+        Ok(Guideline::new(line, guideline.name, guideline.color, guideline.identifier, None))
     }
 }
 
@@ -460,13 +512,13 @@ mod tests {
 
     #[test]
     fn guideline_parsing() {
-        let g1 = Guideline {
-            line: Line::Angle { x: 10.0, y: 20.0, degrees: 360.0 },
-            name: Some("hello".to_string()),
-            color: Some(Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 }),
-            identifier: Some(Identifier::new("abcABC123").unwrap()),
-            lib: None,
-        };
+        let g1 = Guideline::new(
+            Line::Angle { x: 10.0, y: 20.0, degrees: 360.0 },
+            Some("hello".to_string()),
+            Some(Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 }),
+            Some(Identifier::new("abcABC123").unwrap()),
+            None,
+        );
         assert_tokens(
             &g1,
             &[

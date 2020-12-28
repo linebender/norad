@@ -9,10 +9,10 @@ use quick_xml::{
 
 use super::{
     Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    Guideline, Identifier, Image, Line, Plist, PointType,
+    Guideline, Image, Line, Plist, PointType,
 };
-
 use crate::error::{GlifWriteError, WriteError};
+use crate::shared_types::IdentifierAccess;
 
 impl Glyph {
     pub fn encode_xml(&self) -> Result<Vec<u8>, GlifWriteError> {
@@ -91,80 +91,80 @@ impl Glyph {
     }
 }
 
-fn libs_to_object_libs(glyph: &mut Glyph) -> Plist {
-    let mut object_libs = Plist::default();
+// fn libs_to_object_libs(glyph: &mut Glyph) -> Plist {
+//     let mut object_libs = Plist::default();
 
-    if let Some(anchors) = &mut glyph.anchors {
-        for anchor in anchors {
-            if let Some(lib) = &anchor.lib {
-                let id = if let Some(id) = &anchor.identifier {
-                    String::from(id.as_str())
-                } else {
-                    let uuid = uuid::Uuid::new_v4().to_string();
-                    anchor.identifier.replace(Identifier::new(uuid.clone()).unwrap());
-                    uuid
-                };
-                object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
-            }
-        }
-    }
+//     if let Some(anchors) = &mut glyph.anchors {
+//         for anchor in anchors {
+//             if let Some(lib) = &anchor.lib {
+//                 let id = if let Some(id) = &anchor.identifier {
+//                     String::from(id.as_str())
+//                 } else {
+//                     let uuid = uuid::Uuid::new_v4().to_string();
+//                     anchor.identifier.replace(Identifier::new(uuid.clone()).unwrap());
+//                     uuid
+//                 };
+//                 object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
+//             }
+//         }
+//     }
 
-    if let Some(guidelines) = &mut glyph.guidelines {
-        for guideline in guidelines {
-            if let Some(lib) = &guideline.lib {
-                let id = if let Some(id) = &guideline.identifier {
-                    String::from(id.as_str())
-                } else {
-                    let uuid = uuid::Uuid::new_v4().to_string();
-                    guideline.identifier.replace(Identifier::new(uuid.clone()).unwrap());
-                    uuid
-                };
-                object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
-            }
-        }
-    }
+//     if let Some(guidelines) = &mut glyph.guidelines {
+//         for guideline in guidelines {
+//             if let Some(lib) = &guideline.lib {
+//                 let id = if let Some(id) = &guideline.identifier {
+//                     String::from(id.as_str())
+//                 } else {
+//                     let uuid = uuid::Uuid::new_v4().to_string();
+//                     guideline.identifier.replace(Identifier::new(uuid.clone()).unwrap());
+//                     uuid
+//                 };
+//                 object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
+//             }
+//         }
+//     }
 
-    if let Some(outline) = &mut glyph.outline {
-        for contour in &mut outline.contours {
-            if let Some(lib) = &contour.lib {
-                let id = if let Some(id) = &contour.identifier {
-                    String::from(id.as_str())
-                } else {
-                    let uuid = uuid::Uuid::new_v4().to_string();
-                    contour.identifier.replace(Identifier::new(uuid.clone()).unwrap());
-                    uuid
-                };
-                object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
-            }
-            for point in &mut contour.points {
-                if let Some(lib) = &point.lib {
-                    let id = if let Some(id) = &point.identifier {
-                        String::from(id.as_str())
-                    } else {
-                        let uuid = uuid::Uuid::new_v4().to_string();
-                        point.identifier.replace(Identifier::new(uuid.clone()).unwrap());
-                        uuid
-                    };
-                    object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
-                }
-            }
-        }
-        for component in &mut outline.components {
-            if let Some(lib) = &component.lib {
-                let id = if let Some(id) = &component.identifier {
-                    String::from(id.as_str())
-                } else {
-                    let uuid = uuid::Uuid::new_v4().to_string();
-                    component.identifier.replace(Identifier::new(uuid.clone()).unwrap());
-                    uuid
-                };
-                object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
-            }
-        }
-    }
+//     if let Some(outline) = &mut glyph.outline {
+//         for contour in &mut outline.contours {
+//             if let Some(lib) = &contour.lib {
+//                 let id = if let Some(id) = &contour.identifier {
+//                     String::from(id.as_str())
+//                 } else {
+//                     let uuid = uuid::Uuid::new_v4().to_string();
+//                     contour.identifier.replace(Identifier::new(uuid.clone()).unwrap());
+//                     uuid
+//                 };
+//                 object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
+//             }
+//             for point in &mut contour.points {
+//                 if let Some(lib) = &point.lib {
+//                     let id = if let Some(id) = &point.identifier {
+//                         String::from(id.as_str())
+//                     } else {
+//                         let uuid = uuid::Uuid::new_v4().to_string();
+//                         point.identifier.replace(Identifier::new(uuid.clone()).unwrap());
+//                         uuid
+//                     };
+//                     object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
+//                 }
+//             }
+//         }
+//         for component in &mut outline.components {
+//             if let Some(lib) = &component.lib {
+//                 let id = if let Some(id) = &component.identifier {
+//                     String::from(id.as_str())
+//                 } else {
+//                     let uuid = uuid::Uuid::new_v4().to_string();
+//                     component.identifier.replace(Identifier::new(uuid.clone()).unwrap());
+//                     uuid
+//                 };
+//                 object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
+//             }
+//         }
+//     }
 
-    object_libs
-}
+//     object_libs
+// }
 
 /// Writing out the embedded lib plist that a glif may have.
 ///
@@ -251,7 +251,7 @@ impl Guideline {
             start.push_attribute(("color", color.to_rgba_string().as_str()));
         }
 
-        if let Some(id) = &self.identifier {
+        if let Some(id) = &self.get_identifier() {
             start.push_attribute(("identifier", id.as_str()));
         }
         Event::Empty(start)
