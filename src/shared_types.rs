@@ -66,6 +66,12 @@ pub struct Color {
     pub alpha: f32,
 }
 
+trait LibAccess {
+    fn get_lib(&self) -> &Plist;
+    fn get_lib_mut(&mut self) -> &mut Plist;
+    fn set_lib(&mut self);
+}
+
 impl Identifier {
     /// Create a new `Identifier` from a `String`, if it is valid.
     ///
@@ -78,6 +84,10 @@ impl Identifier {
         } else {
             Err(ErrorKind::BadIdentifier)
         }
+    }
+
+    pub fn from_uuidv4() -> Self {
+        Self::new(uuid::Uuid::new_v4().to_string()).unwrap()
     }
 
     /// Return the raw identifier, as a `&str`.

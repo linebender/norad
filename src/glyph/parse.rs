@@ -537,6 +537,7 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<GlyphBuilder, 
 }
 
 /// Move libs from the lib's `public.objectLibs` into the actual objects.
+/// They key will be removed from the glyph lib.
 fn fill_in_libs(glyph: &mut Glyph) -> Result<(), Error> {
     if let Some(glyph_lib) = &mut glyph.lib {
         if let Some(object_libs) = glyph_lib.remove("public.objectLibs") {
