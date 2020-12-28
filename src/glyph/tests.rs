@@ -455,7 +455,7 @@ fn empty_contours() {
 fn parse_identifiers() {
     let bytes = include_bytes!("../../testdata/identifiers.glif");
     let glyph = parse_glyph(bytes).unwrap();
-    let outline = glyph.outline.unwrap();
+    let outline = glyph.outline.as_ref().unwrap();
 
     assert_eq!(
         glyph.anchors.as_ref().unwrap()[1]
@@ -497,6 +497,67 @@ fn parse_identifiers() {
     );
     assert_eq!(
         outline.components[0]
+            .lib
+            .as_ref()
+            .unwrap()
+            .get("com.test.foo")
+            .unwrap()
+            .as_string()
+            .unwrap(),
+        "abc"
+    );
+
+    let bytes2 = glyph.encode_xml().unwrap();
+    let glyph2 = parse_glyph(&bytes2).unwrap();
+    let outline2 = glyph2.outline.unwrap();
+
+    assert_eq!(
+        glyph2.anchors.as_ref().unwrap()[1]
+            .lib
+            .as_ref()
+            .unwrap()
+            .get("com.test.anchorTool")
+            .unwrap()
+            .as_boolean()
+            .unwrap(),
+        true
+    );
+    assert_eq!(
+        glyph2.guidelines.as_ref().unwrap()[1]
+            .get_lib()
+            .as_ref()
+            .unwrap()
+            .get("com.test.foo")
+            .unwrap()
+            .as_unsigned_integer()
+            .unwrap(),
+        4321
+    );
+
+    assert_eq!(
+        outline2.contours[0]
+            .lib
+            .as_ref()
+            .unwrap()
+            .get("com.test.foo")
+            .unwrap()
+            .as_string()
+            .unwrap(),
+        "abc"
+    );
+    assert_eq!(
+        outline2.contours[1].points[0]
+            .lib
+            .as_ref()
+            .unwrap()
+            .get("com.test.foo")
+            .unwrap()
+            .as_string()
+            .unwrap(),
+        "abc"
+    );
+    assert_eq!(
+        outline2.components[0]
             .lib
             .as_ref()
             .unwrap()
