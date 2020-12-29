@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<glyph name="test" format="2">
+  <guideline x="300"/>
+  <guideline y="400" identifier="14803a66-881f-430f-8271-c505413ea2a1"/>
+  <anchor x="1" y="2" name="top"/>
+  <anchor x="3" y="4" name="bottom" identifier="b0283386-1b91-456f-9575-6b734f9467a7"/>
+  <outline>
+    <contour identifier="4eb34b59-bd9c-4d19-b653-4fc778347f54">
+      <point x="0" y="0" type="line"/>
+      <point x="100" y="200" type="line"/>
+      <point x="200" y="400" type="line"/>
+    </contour>
+    <contour>
+      <point x="1000" y="1000" type="line" identifier="d21f2208-1692-49ff-a9ee-42ad8fd31e6b"/>
+      <point x="1000" y="2000" type="line"/>
+      <point x="2000" y="4000" type="line"/>
+    </contour>
+    <component base="component" identifier="8a46590b-ef18-4d46-98f5-3869f4d3bf15"/>
+    <component base="component"/>
+  </outline>
+  <lib>
+    <dict>
+      <key>public.objectLibs</key>
+      <dict>
+        <key>14803a66-881f-430f-8271-c505413ea2a1</key>
+        <dict>
+          <key>com.test.foo</key>
+          <integer>4321</integer>
+        </dict>
+        <key>4eb34b59-bd9c-4d19-b653-4fc778347f54</key>
+        <dict>
+          <key>com.test.foo</key>
+          <string>abc</string>
+        </dict>
+        <key>8a46590b-ef18-4d46-98f5-3869f4d3bf15</key>
+        <dict>
+          <key>com.test.foo</key>
+          <string>abc</string>
+        </dict>
+        <key>b0283386-1b91-456f-9575-6b734f9467a7</key>
+        <dict>
+          <key>com.test.anchorTool</key>
+          <true/>
+        </dict>
+        <key>d21f2208-1692-49ff-a9ee-42ad8fd31e6b</key>
+        <dict>
+          <key>com.test.foo</key>
+          <string>abc</string>
+        </dict>
+      </dict>
+    </dict>
+  </lib>
+</glyph>
