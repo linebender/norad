@@ -169,7 +169,7 @@ impl Guideline {
             start.push_attribute(("color", color.to_rgba_string().as_str()));
         }
 
-        if let Some(id) = &self.identifier {
+        if let Some(id) = &self.get_identifier() {
             start.push_attribute(("identifier", id.as_str()));
         }
         Event::Empty(start)

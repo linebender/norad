@@ -658,7 +658,7 @@ impl FontInfo {
         if let Some(guidelines) = &self.guidelines {
             let mut identifiers: HashSet<Identifier> = HashSet::new();
             for guideline in guidelines {
-                if let Some(id) = &guideline.identifier {
+                if let Some(id) = &guideline.get_identifier() {
                     if !identifiers.insert(id.clone()) {
                         return Err(Error::FontInfoError);
                     }
@@ -1229,30 +1229,22 @@ mod tests {
         assert_eq!(
             font_info.guidelines,
             Some(vec![
-                Guideline {
-                    line: Line::Angle { x: 82.0, y: 720.0, degrees: 90.0 },
-                    name: None,
-                    color: None,
-                    identifier: None
-                },
-                Guideline {
-                    line: Line::Vertical(372.0),
-                    name: None,
-                    color: None,
-                    identifier: None
-                },
-                Guideline {
-                    line: Line::Horizontal(123.0),
-                    name: None,
-                    color: None,
-                    identifier: None
-                },
-                Guideline {
-                    line: Line::Angle { x: 1.0, y: 2.0, degrees: 0.0 },
-                    name: Some(" [locked]".to_string()),
-                    color: Some(Color { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }),
-                    identifier: Some(Identifier::new("abc").unwrap()),
-                },
+                Guideline::new(
+                    Line::Angle { x: 82.0, y: 720.0, degrees: 90.0 },
+                    None,
+                    None,
+                    None,
+                    None
+                ),
+                Guideline::new(Line::Vertical(372.0), None, None, None, None),
+                Guideline::new(Line::Horizontal(123.0), None, None, None, None),
+                Guideline::new(
+                    Line::Angle { x: 1.0, y: 2.0, degrees: 0.0 },
+                    Some(" [locked]".to_string()),
+                    Some(Color { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }),
+                    Some(Identifier::new("abc").unwrap()),
+                    None
+                ),
             ])
         );
         assert_eq!(
@@ -1402,34 +1394,38 @@ mod tests {
         assert!(fi.validate().is_ok());
 
         fi.guidelines.replace(vec![
-            Guideline {
-                line: Line::Horizontal(10.0),
-                name: None,
-                color: None,
-                identifier: Some(Identifier::new("test1").unwrap()),
-            },
-            Guideline {
-                line: Line::Vertical(20.0),
-                name: None,
-                color: None,
-                identifier: Some(Identifier::new("test2").unwrap()),
-            },
+            Guideline::new(
+                Line::Horizontal(10.0),
+                None,
+                None,
+                Some(Identifier::new("test1").unwrap()),
+                None,
+            ),
+            Guideline::new(
+                Line::Vertical(20.0),
+                None,
+                None,
+                Some(Identifier::new("test2").unwrap()),
+                None,
+            ),
         ]);
         assert!(fi.validate().is_ok());
 
         fi.guidelines.replace(vec![
-            Guideline {
-                line: Line::Horizontal(10.0),
-                name: None,
-                color: None,
-                identifier: Some(Identifier::new("test1").unwrap()),
-            },
-            Guideline {
-                line: Line::Vertical(20.0),
-                name: None,
-                color: None,
-                identifier: Some(Identifier::new("test1").unwrap()),
-            },
+            Guideline::new(
+                Line::Horizontal(10.0),
+                None,
+                None,
+                Some(Identifier::new("test1").unwrap()),
+                None,
+            ),
+            Guideline::new(
+                Line::Vertical(20.0),
+                None,
+                None,
+                Some(Identifier::new("test1").unwrap()),
+                None,
+            ),
         ]);
         assert!(fi.validate().is_err());
     }
