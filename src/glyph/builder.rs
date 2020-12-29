@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use crate::error::ErrorKind;
 use crate::glyph::{
     Advance, AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    GlyphName, Guideline, Image, Outline, Plist, PointType,
+    GlyphName, Guideline, Image, Outline, PointType,
 };
-use crate::shared_types::Identifier;
+use crate::shared_types::{Identifier, Plist};
 
 /// A GlyphBuilder is a consuming builder for [`crate::glyph::Glyph`].
 ///

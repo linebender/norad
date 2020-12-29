@@ -14,13 +14,10 @@ use druid::{Data, Lens};
 
 use crate::error::{Error, GlifError, GlifErrorInternal};
 use crate::names::NameList;
-use crate::shared_types::{Color, Guideline, Identifier, Line};
+use crate::shared_types::{Color, Guideline, Identifier, Line, Plist};
 
 /// The name of a glyph.
 pub type GlyphName = Arc<str>;
-
-/// A Plist dictionary.
-pub type Plist = plist::Dictionary;
 
 /// A glyph, loaded from a [.glif file][glif].
 ///

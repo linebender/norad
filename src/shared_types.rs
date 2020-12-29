@@ -16,6 +16,9 @@ use druid::Data;
 use crate::error::ErrorKind;
 use crate::Error;
 
+/// A Plist dictionary.
+pub type Plist = plist::Dictionary;
+
 /// Identifiers are optional attributes of several objects in the UFO.
 /// These identifiers are required to be unique within certain contexts
 /// as defined on a per object basis throughout this specification.
