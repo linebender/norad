@@ -70,6 +70,13 @@ impl Glyph {
             }
         }
 
+        // Object libs are treated specially. The UFO v3 format won't allow us
+        // to store them inline, so they have to be placed into the glyph's lib
+        // under the public.objectLibs parent key. To avoid mutation behind the
+        // client's back, object libs are written out but not stored in
+        // glyph.lib in-memory. If there are object libs to serialize, clone the
+        // existing lib and insert them there for serialization, otherwise avoid
+        // cloning and write out the original.
         let object_libs = libs_to_object_libs(&self);
         if !object_libs.is_empty() {
             let mut new_lib =

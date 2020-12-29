@@ -455,64 +455,24 @@ fn empty_contours() {
 fn parse_identifiers() {
     let bytes = include_bytes!("../../testdata/identifiers.glif");
     let glyph = parse_glyph(bytes).unwrap();
-    let outline = glyph.outline.as_ref().unwrap();
 
-    assert_eq!(
-        glyph.anchors.as_ref().unwrap()[1]
-            .lib
-            .as_ref()
-            .unwrap()
-            .get("com.test.anchorTool")
-            .unwrap()
-            .as_boolean()
-            .unwrap(),
-        true
-    );
-    assert_eq!(
-        glyph.guidelines.as_ref().unwrap()[1]
-            .get_lib()
-            .as_ref()
-            .unwrap()
-            .get("com.test.foo")
-            .unwrap()
-            .as_unsigned_integer()
-            .unwrap(),
-        4321
-    );
-
-    assert_eq!(
-        outline.contours[0].lib.as_ref().unwrap().get("com.test.foo").unwrap().as_string().unwrap(),
-        "abc"
-    );
-    assert_eq!(
-        outline.contours[1].points[0]
-            .lib
-            .as_ref()
-            .unwrap()
-            .get("com.test.foo")
-            .unwrap()
-            .as_string()
-            .unwrap(),
-        "abc"
-    );
-    assert_eq!(
-        outline.components[0]
-            .lib
-            .as_ref()
-            .unwrap()
-            .get("com.test.foo")
-            .unwrap()
-            .as_string()
-            .unwrap(),
-        "abc"
-    );
+    assert_eq!(glyph.lib.as_ref().unwrap().contains_key("public.objectLibs"), false);
 
     let bytes2 = glyph.encode_xml().unwrap();
-    let glyph2 = parse_glyph(&bytes2).unwrap();
-    let outline2 = glyph2.outline.unwrap();
 
+    assert_eq!(glyph.lib.as_ref().unwrap().contains_key("public.objectLibs"), false);
+
+    let glyph2 = parse_glyph(&bytes2).unwrap();
+
+    assert_eq!(glyph2.lib.as_ref().unwrap().contains_key("public.objectLibs"), false);
+
+    let anchor_second = &glyph2.anchors.as_ref().unwrap()[1];
     assert_eq!(
-        glyph2.anchors.as_ref().unwrap()[1]
+        anchor_second.get_identifier(),
+        &Some(Identifier::new("90b7eb80-e21a-4a79-a8c0-7634c25ddc18").unwrap())
+    );
+    assert_eq!(
+        anchor_second
             .lib
             .as_ref()
             .unwrap()
@@ -522,8 +482,14 @@ fn parse_identifiers() {
             .unwrap(),
         true
     );
+
+    let guideline_second = &glyph2.guidelines.as_ref().unwrap()[1];
     assert_eq!(
-        glyph2.guidelines.as_ref().unwrap()[1]
+        guideline_second.get_identifier(),
+        &Some(Identifier::new("c76955c2-e9f2-4adf-8b51-1ae03da11dca").unwrap())
+    );
+    assert_eq!(
+        guideline_second
             .get_lib()
             .as_ref()
             .unwrap()
@@ -534,6 +500,11 @@ fn parse_identifiers() {
         4321
     );
 
+    let outline2 = glyph2.outline.unwrap();
+    assert_eq!(
+        outline2.contours[0].get_identifier(),
+        &Some(Identifier::new("9bf0591d-6281-4c76-8c13-9ff3d93eec4f").unwrap())
+    );
     assert_eq!(
         outline2.contours[0]
             .lib
@@ -545,6 +516,11 @@ fn parse_identifiers() {
             .unwrap(),
         "abc"
     );
+
+    assert_eq!(
+        outline2.contours[1].points[0].get_identifier(),
+        &Some(Identifier::new("f32ac0e8-4ec8-45f6-88b1-0e49390b8f5b").unwrap())
+    );
     assert_eq!(
         outline2.contours[1].points[0]
             .lib
@@ -555,6 +531,11 @@ fn parse_identifiers() {
             .as_string()
             .unwrap(),
         "abc"
+    );
+
+    assert_eq!(
+        outline2.components[0].get_identifier(),
+        &Some(Identifier::new("a50e8ccd-2ba4-4279-a011-4c82a8075dd9").unwrap())
     );
     assert_eq!(
         outline2.components[0]
