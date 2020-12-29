@@ -18,6 +18,7 @@ use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
 use crate::names::NameList;
+use crate::shared_types::{IdentifierAccess, LibAccess, Plist};
 use crate::upconversion;
 use crate::Error;
 
@@ -135,14 +136,6 @@ impl Ufo {
             let meta_path = path.join(METAINFO_FILE);
             let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
-            let fontinfo_path = path.join(FONTINFO_FILE);
-            let mut font_info = if fontinfo_path.exists() {
-                let font_info: FontInfo = FontInfo::from_file(fontinfo_path, meta.format_version)?;
-                Some(font_info)
-            } else {
-                None
-            };
-
             let lib_path = path.join(LIB_FILE);
             let mut lib = if lib_path.exists() {
                 // Value::as_dictionary(_mut) will only borrow the data, but we want to own it.
@@ -151,6 +144,15 @@ impl Ufo {
                     plist::Value::Dictionary(dict) => Some(dict),
                     _ => return Err(Error::ExpectedPlistDictionaryError),
                 }
+            } else {
+                None
+            };
+
+            let fontinfo_path = path.join(FONTINFO_FILE);
+            let mut font_info = if fontinfo_path.exists() {
+                let font_info: FontInfo =
+                    FontInfo::from_file(fontinfo_path, meta.format_version, &mut lib)?;
+                Some(font_info)
             } else {
                 None
             };
@@ -259,6 +261,12 @@ impl Ufo {
             return Err(Error::NotCreatedHere);
         }
 
+        if let Some(lib) = &self.lib {
+            if lib.contains_key("public.objectLibs") {
+                return Err(Error::PreexistingPublicObjectLibsKey);
+            }
+        }
+
         if path.exists() {
             fs::remove_dir_all(path)?;
         }
@@ -269,9 +277,22 @@ impl Ufo {
             plist::to_file_xml(path.join(FONTINFO_FILE), &font_info)?;
         }
 
-        if let Some(lib) = self.lib.as_ref() {
-            // XXX: Can this be done without cloning?
-            plist::Value::Dictionary(lib.clone()).to_file_xml(path.join(LIB_FILE))?;
+        // Object libs are treated specially. The UFO v3 format won't allow us
+        // to store them inline, so they have to be placed into the font's lib
+        // under the public.objectLibs parent key. To avoid mutation behind the
+        // client's back, object libs are written out but not stored in
+        // font.lib in-memory.
+        let object_libs = libs_to_object_libs(&self.font_info);
+        if !object_libs.is_empty() {
+            let mut new_lib =
+                if let Some(lib) = self.lib.as_ref() { lib.clone() } else { Plist::new() };
+            new_lib.insert("public.objectLibs".into(), plist::Value::Dictionary(object_libs));
+            plist::Value::Dictionary(new_lib).to_file_xml(path.join(LIB_FILE))?;
+        } else if let Some(lib) = self.lib.as_ref() {
+            if !lib.is_empty() {
+                // XXX: Can this be done without cloning?
+                plist::Value::Dictionary(lib.clone()).to_file_xml(path.join(LIB_FILE))?;
+            }
         }
 
         if let Some(groups) = self.groups.as_ref() {
@@ -417,6 +438,27 @@ fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidationError> {
     }
 
     Ok(())
+}
+
+fn libs_to_object_libs(fontinfo: &Option<FontInfo>) -> Plist {
+    let mut object_libs = Plist::default();
+
+    if let Some(fontinfo) = fontinfo {
+        if let Some(guidelines) = &fontinfo.guidelines {
+            for guideline in guidelines {
+                if let Some(lib) = guideline.get_lib() {
+                    let id = guideline.get_identifier();
+                    debug_assert!(id.is_some());
+                    object_libs.insert(
+                        String::from(id.as_ref().unwrap().as_str()),
+                        plist::Value::Dictionary(lib.clone()),
+                    );
+                }
+            }
+        }
+    }
+
+    object_libs
 }
 
 /// KerningSerializer is a crutch to serialize kerning values as integers if they are

@@ -36,6 +36,7 @@ pub use glyph::{
 };
 pub use layer::Layer;
 pub use shared_types::{
-    Color, Guideline, Identifier, IntegerOrFloat, Line, NonNegativeIntegerOrFloat, Plist,
+    Color, Guideline, Identifier, IdentifierAccess, IntegerOrFloat, LibAccess, Line,
+    NonNegativeIntegerOrFloat, Plist,
 };
 pub use ufo::{FormatVersion, LayerInfo, MetaInfo, Ufo};

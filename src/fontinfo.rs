@@ -5,9 +5,10 @@ use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 
+use crate::error::ErrorKind;
 use crate::shared_types::{
-    Bitlist, Float, Guideline, Identifier, IdentifierAccess, Integer, IntegerOrFloat,
-    NonNegativeInteger, NonNegativeIntegerOrFloat,
+    Bitlist, Float, Guideline, Identifier, IdentifierAccess, Integer, IntegerOrFloat, LibAccess,
+    NonNegativeInteger, NonNegativeIntegerOrFloat, Plist,
 };
 use crate::{Error, FormatVersion};
 
@@ -332,11 +333,15 @@ impl FontInfo {
     pub fn from_file<P: AsRef<Path>>(
         path: P,
         format_version: FormatVersion,
+        lib: &mut Option<Plist>,
     ) -> Result<Self, Error> {
         match format_version {
             FormatVersion::V3 => {
-                let fontinfo: FontInfo = plist::from_file(path)?;
+                let mut fontinfo: FontInfo = plist::from_file(path)?;
                 fontinfo.validate()?;
+                if let Some(lib) = lib {
+                    fill_in_libs(&mut fontinfo, lib)?;
+                }
                 Ok(fontinfo)
             }
             FormatVersion::V2 => {
@@ -1170,6 +1175,33 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
             _ => Err(serde::de::Error::custom("unknown value for styleMapStyleName.")),
         }
     }
+}
+
+/// Move libs from the font lib's `public.objectLibs` key into the actual objects.
+/// They key will be removed from the font lib.
+fn fill_in_libs(fontinfo: &mut FontInfo, lib: &mut Plist) -> Result<(), Error> {
+    if let Some(object_libs) = lib.remove("public.objectLibs") {
+        let object_libs =
+            object_libs.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
+
+        'next_key: for (key, value) in object_libs.into_iter() {
+            let value =
+                value.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
+
+            if let Some(guidelines) = &mut fontinfo.guidelines {
+                for guideline in guidelines {
+                    if let Some(id) = &guideline.get_identifier() {
+                        if id == &key {
+                            guideline.set_lib(value);
+                            continue 'next_key;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

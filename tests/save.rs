@@ -1,6 +1,6 @@
 //! Testing saving files.
 
-use norad::{FormatVersion, Glyph, Layer, Plist, Ufo};
+use norad::{FormatVersion, Glyph, Identifier, IdentifierAccess, Layer, LibAccess, Plist, Ufo};
 
 #[test]
 fn save_default() {
@@ -69,4 +69,123 @@ fn save_fancy() {
         assert!(other.is_some(), "missing {}", &glyph.name);
         assert_eq!(&glyph, other.unwrap());
     }
+}
+
+#[test]
+fn roundtrip_object_libs() {
+    let ufo = Ufo::load("testdata/identifiers.ufo").unwrap();
+    assert_eq!(ufo.lib.as_ref().unwrap().contains_key("public.objectLibs"), false);
+
+    let glyph = ufo.get_glyph("test").unwrap();
+    assert_eq!(glyph.lib.as_ref().unwrap().contains_key("public.objectLibs"), false);
+
+    let dir = tempdir::TempDir::new("identifiers.ufo").unwrap();
+    ufo.save(&dir).unwrap();
+    assert_eq!(glyph.lib.as_ref().unwrap().contains_key("public.objectLibs"), false);
+
+    let ufo2 = Ufo::load(&dir).unwrap();
+    assert_eq!(ufo2.lib.as_ref().unwrap().contains_key("public.objectLibs"), false);
+
+    let font_guideline_second = &ufo2.font_info.as_ref().unwrap().guidelines.as_ref().unwrap()[1];
+    assert_eq!(
+        font_guideline_second.get_identifier(),
+        &Some(Identifier::new("3f0f37d1-52d6-429c-aff4-3f81aed4abf0").unwrap())
+    );
+    assert_eq!(
+        font_guideline_second
+            .get_lib()
+            .as_ref()
+            .unwrap()
+            .get("com.test.foo")
+            .unwrap()
+            .as_unsigned_integer()
+            .unwrap(),
+        1234
+    );
+
+    let glyph2 = ufo2.get_glyph("test").unwrap();
+    assert_eq!(glyph2.lib.as_ref().unwrap().contains_key("public.objectLibs"), false);
+
+    let anchor_second = &glyph2.anchors.as_ref().unwrap()[1];
+    assert_eq!(
+        anchor_second.get_identifier(),
+        &Some(Identifier::new("90b7eb80-e21a-4a79-a8c0-7634c25ddc18").unwrap())
+    );
+    assert_eq!(
+        anchor_second
+            .get_lib()
+            .as_ref()
+            .unwrap()
+            .get("com.test.anchorTool")
+            .unwrap()
+            .as_boolean()
+            .unwrap(),
+        true
+    );
+
+    let guideline_second = &glyph2.guidelines.as_ref().unwrap()[1];
+    assert_eq!(
+        guideline_second.get_identifier(),
+        &Some(Identifier::new("c76955c2-e9f2-4adf-8b51-1ae03da11dca").unwrap())
+    );
+    assert_eq!(
+        guideline_second
+            .get_lib()
+            .as_ref()
+            .unwrap()
+            .get("com.test.foo")
+            .unwrap()
+            .as_unsigned_integer()
+            .unwrap(),
+        4321
+    );
+
+    let outline2 = glyph2.outline.as_ref().unwrap();
+    assert_eq!(
+        outline2.contours[0].get_identifier(),
+        &Some(Identifier::new("9bf0591d-6281-4c76-8c13-9ff3d93eec4f").unwrap())
+    );
+    assert_eq!(
+        outline2.contours[0]
+            .get_lib()
+            .as_ref()
+            .unwrap()
+            .get("com.test.foo")
+            .unwrap()
+            .as_string()
+            .unwrap(),
+        "abc"
+    );
+
+    assert_eq!(
+        outline2.contours[1].points[0].get_identifier(),
+        &Some(Identifier::new("f32ac0e8-4ec8-45f6-88b1-0e49390b8f5b").unwrap())
+    );
+    assert_eq!(
+        outline2.contours[1].points[0]
+            .get_lib()
+            .as_ref()
+            .unwrap()
+            .get("com.test.foo")
+            .unwrap()
+            .as_string()
+            .unwrap(),
+        "abc"
+    );
+
+    assert_eq!(
+        outline2.components[0].get_identifier(),
+        &Some(Identifier::new("a50e8ccd-2ba4-4279-a011-4c82a8075dd9").unwrap())
+    );
+    assert_eq!(
+        outline2.components[0]
+            .get_lib()
+            .as_ref()
+            .unwrap()
+            .get("com.test.foo")
+            .unwrap()
+            .as_string()
+            .unwrap(),
+        "abc"
+    );
 }
