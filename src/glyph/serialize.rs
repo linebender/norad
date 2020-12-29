@@ -12,7 +12,7 @@ use super::{
     Guideline, Image, Line, Plist, PointType,
 };
 use crate::error::{GlifWriteError, WriteError};
-use crate::shared_types::IdentifierAccess;
+use crate::shared_types::{IdentifierAccess, LibAccess};
 
 impl Glyph {
     pub fn encode_xml(&self) -> Result<Vec<u8>, GlifWriteError> {
@@ -70,14 +70,13 @@ impl Glyph {
             }
         }
 
-        // let object_libs = libs_to_object_libs(self);
-        // if !object_libs.is_empty() {
-        //     self.lib.as_mut().and_then(|lib| {
-        //         Some(lib.insert("public.objectLibs".into(), plist::Value::Dictionary(object_libs)))
-        //     });
-        // }
-
-        if let Some(lib) = self.lib.as_ref() {
+        let object_libs = libs_to_object_libs(&self);
+        if !object_libs.is_empty() {
+            let mut new_lib =
+                if let Some(lib) = self.lib.as_ref() { lib.clone() } else { Plist::new() };
+            new_lib.insert("public.objectLibs".into(), plist::Value::Dictionary(object_libs));
+            write_lib_section(&new_lib, &mut writer)?;
+        } else if let Some(lib) = self.lib.as_ref() {
             if !lib.is_empty() {
                 write_lib_section(lib, &mut writer)?;
             }
@@ -91,80 +90,70 @@ impl Glyph {
     }
 }
 
-// fn libs_to_object_libs(glyph: &mut Glyph) -> Plist {
-//     let mut object_libs = Plist::default();
+fn libs_to_object_libs(glyph: &Glyph) -> Plist {
+    let mut object_libs = Plist::default();
 
-//     if let Some(anchors) = &mut glyph.anchors {
-//         for anchor in anchors {
-//             if let Some(lib) = &anchor.lib {
-//                 let id = if let Some(id) = &anchor.identifier {
-//                     String::from(id.as_str())
-//                 } else {
-//                     let uuid = uuid::Uuid::new_v4().to_string();
-//                     anchor.identifier.replace(Identifier::new(uuid.clone()).unwrap());
-//                     uuid
-//                 };
-//                 object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
-//             }
-//         }
-//     }
+    if let Some(anchors) = &glyph.anchors {
+        for anchor in anchors {
+            if let Some(lib) = anchor.get_lib() {
+                let id = anchor.get_identifier();
+                debug_assert!(id.is_some());
+                object_libs.insert(
+                    String::from(id.as_ref().unwrap().as_str()),
+                    plist::Value::Dictionary(lib.clone()),
+                );
+            }
+        }
+    }
 
-//     if let Some(guidelines) = &mut glyph.guidelines {
-//         for guideline in guidelines {
-//             if let Some(lib) = &guideline.lib {
-//                 let id = if let Some(id) = &guideline.identifier {
-//                     String::from(id.as_str())
-//                 } else {
-//                     let uuid = uuid::Uuid::new_v4().to_string();
-//                     guideline.identifier.replace(Identifier::new(uuid.clone()).unwrap());
-//                     uuid
-//                 };
-//                 object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
-//             }
-//         }
-//     }
+    if let Some(guidelines) = &glyph.guidelines {
+        for guideline in guidelines {
+            if let Some(lib) = guideline.get_lib() {
+                let id = guideline.get_identifier();
+                debug_assert!(id.is_some());
+                object_libs.insert(
+                    String::from(id.as_ref().unwrap().as_str()),
+                    plist::Value::Dictionary(lib.clone()),
+                );
+            }
+        }
+    }
 
-//     if let Some(outline) = &mut glyph.outline {
-//         for contour in &mut outline.contours {
-//             if let Some(lib) = &contour.lib {
-//                 let id = if let Some(id) = &contour.identifier {
-//                     String::from(id.as_str())
-//                 } else {
-//                     let uuid = uuid::Uuid::new_v4().to_string();
-//                     contour.identifier.replace(Identifier::new(uuid.clone()).unwrap());
-//                     uuid
-//                 };
-//                 object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
-//             }
-//             for point in &mut contour.points {
-//                 if let Some(lib) = &point.lib {
-//                     let id = if let Some(id) = &point.identifier {
-//                         String::from(id.as_str())
-//                     } else {
-//                         let uuid = uuid::Uuid::new_v4().to_string();
-//                         point.identifier.replace(Identifier::new(uuid.clone()).unwrap());
-//                         uuid
-//                     };
-//                     object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
-//                 }
-//             }
-//         }
-//         for component in &mut outline.components {
-//             if let Some(lib) = &component.lib {
-//                 let id = if let Some(id) = &component.identifier {
-//                     String::from(id.as_str())
-//                 } else {
-//                     let uuid = uuid::Uuid::new_v4().to_string();
-//                     component.identifier.replace(Identifier::new(uuid.clone()).unwrap());
-//                     uuid
-//                 };
-//                 object_libs.insert(id, plist::Value::Dictionary(lib.clone()));
-//             }
-//         }
-//     }
+    if let Some(outline) = &glyph.outline {
+        for contour in &outline.contours {
+            if let Some(lib) = contour.get_lib() {
+                let id = contour.get_identifier();
+                debug_assert!(id.is_some());
+                object_libs.insert(
+                    String::from(id.as_ref().unwrap().as_str()),
+                    plist::Value::Dictionary(lib.clone()),
+                );
+            }
+            for point in &contour.points {
+                if let Some(lib) = point.get_lib() {
+                    let id = point.get_identifier();
+                    debug_assert!(id.is_some());
+                    object_libs.insert(
+                        String::from(id.as_ref().unwrap().as_str()),
+                        plist::Value::Dictionary(lib.clone()),
+                    );
+                }
+            }
+        }
+        for component in &outline.components {
+            if let Some(lib) = component.get_lib() {
+                let id = component.get_identifier();
+                debug_assert!(id.is_some());
+                object_libs.insert(
+                    String::from(id.as_ref().unwrap().as_str()),
+                    plist::Value::Dictionary(lib.clone()),
+                );
+            }
+        }
+    }
 
-//     object_libs
-// }
+    object_libs
+}
 
 /// Writing out the embedded lib plist that a glif may have.
 ///

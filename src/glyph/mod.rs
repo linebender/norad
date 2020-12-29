@@ -64,6 +64,11 @@ impl Glyph {
         if self.format != GlifVersion::V2 {
             return Err(Error::DowngradeUnsupported);
         }
+        if let Some(lib) = &self.lib {
+            if lib.contains_key("public.objectLibs") {
+                return Err(Error::PreexistingPublicObjectLibsKey);
+            }
+        }
         let data = self.encode_xml()?;
         std::fs::write(path, &data)?;
         Ok(())
