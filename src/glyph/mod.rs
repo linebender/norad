@@ -246,13 +246,13 @@ impl Anchor {
     }
 
     /// Returns an immutable reference to the anchor's lib.
-    pub fn get_lib(&self) -> &Option<Plist> {
-        &self.lib
+    pub fn lib(&self) -> Option<&Plist> {
+        self.lib.as_ref()
     }
 
     /// Returns a mutable reference to the anchor's lib.
-    pub fn get_lib_mut(&mut self) -> &mut Option<Plist> {
-        &mut self.lib
+    pub fn lib_mut(&mut self) -> Option<&mut Plist> {
+        self.lib.as_mut()
     }
 
     /// Replaces the actual lib by the lib given in parameter, returning the old
@@ -270,8 +270,8 @@ impl Anchor {
     }
 
     /// Returns an immutable reference to the anchor's identifier.
-    pub fn get_identifier(&self) -> &Option<Identifier> {
-        &self.identifier
+    pub fn identifier(&self) -> Option<&Identifier> {
+        self.identifier.as_ref()
     }
 
     /// Replaces the actual identifier by the identifier given in parameter,
@@ -291,13 +291,13 @@ impl Contour {
     }
 
     /// Returns an immutable reference to the contour's lib.
-    pub fn get_lib(&self) -> &Option<Plist> {
-        &self.lib
+    pub fn lib(&self) -> Option<&Plist> {
+        self.lib.as_ref()
     }
 
     /// Returns a mutable reference to the contour's lib.
-    pub fn get_lib_mut(&mut self) -> &mut Option<Plist> {
-        &mut self.lib
+    pub fn lib_mut(&mut self) -> Option<&mut Plist> {
+        self.lib.as_mut()
     }
 
     /// Replaces the actual lib by the lib given in parameter, returning the old
@@ -315,8 +315,8 @@ impl Contour {
     }
 
     /// Returns an immutable reference to the contour's identifier.
-    pub fn get_identifier(&self) -> &Option<Identifier> {
-        &self.identifier
+    pub fn identifier(&self) -> Option<&Identifier> {
+        self.identifier.as_ref()
     }
 
     /// Replaces the actual identifier by the identifier given in parameter,
@@ -340,13 +340,13 @@ impl ContourPoint {
     }
 
     /// Returns an immutable reference to the contour's lib.
-    pub fn get_lib(&self) -> &Option<Plist> {
-        &self.lib
+    pub fn lib(&self) -> Option<&Plist> {
+        self.lib.as_ref()
     }
 
     /// Returns a mutable reference to the contour's lib.
-    pub fn get_lib_mut(&mut self) -> &mut Option<Plist> {
-        &mut self.lib
+    pub fn lib_mut(&mut self) -> Option<&mut Plist> {
+        self.lib.as_mut()
     }
 
     /// Replaces the actual lib by the lib given in parameter, returning the old
@@ -364,8 +364,8 @@ impl ContourPoint {
     }
 
     /// Returns an immutable reference to the contour's identifier.
-    pub fn get_identifier(&self) -> &Option<Identifier> {
-        &self.identifier
+    pub fn identifier(&self) -> Option<&Identifier> {
+        self.identifier.as_ref()
     }
 
     /// Replaces the actual identifier by the identifier given in parameter,
@@ -386,13 +386,13 @@ impl Component {
     }
 
     /// Returns an immutable reference to the component's lib.
-    pub fn get_lib(&self) -> &Option<Plist> {
-        &self.lib
+    pub fn lib(&self) -> Option<&Plist> {
+        self.lib.as_ref()
     }
 
     /// Returns a mutable reference to the component's lib.
-    pub fn get_lib_mut(&mut self) -> &mut Option<Plist> {
-        &mut self.lib
+    pub fn lib_mut(&mut self) -> Option<&mut Plist> {
+        self.lib.as_mut()
     }
 
     /// Replaces the actual lib by the lib given in parameter, returning the old
@@ -410,8 +410,8 @@ impl Component {
     }
 
     /// Returns an immutable reference to the component's identifier.
-    pub fn get_identifier(&self) -> &Option<Identifier> {
-        &self.identifier
+    pub fn identifier(&self) -> Option<&Identifier> {
+        self.identifier.as_ref()
     }
 
     /// Replaces the actual identifier by the identifier given in parameter,

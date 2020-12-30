@@ -658,7 +658,7 @@ impl FontInfo {
         if let Some(guidelines) = &self.guidelines {
             let mut identifiers: HashSet<Identifier> = HashSet::new();
             for guideline in guidelines {
-                if let Some(id) = &guideline.get_identifier() {
+                if let Some(id) = guideline.identifier() {
                     if !identifiers.insert(id.clone()) {
                         return Err(Error::FontInfoError);
                     }

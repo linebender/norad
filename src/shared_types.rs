@@ -78,13 +78,13 @@ impl Guideline {
     }
 
     /// Returns an immutable reference to the Guideline's lib.
-    pub fn get_lib(&self) -> &Option<Plist> {
-        &self.lib
+    pub fn lib(&self) -> Option<&Plist> {
+        self.lib.as_ref()
     }
 
     /// Returns a mutable reference to the Guideline's lib.
-    pub fn get_lib_mut(&mut self) -> &mut Option<Plist> {
-        &mut self.lib
+    pub fn lib_mut(&mut self) -> Option<&mut Plist> {
+        self.lib.as_mut()
     }
 
     /// Replaces the actual lib by the lib given in parameter, returning the old
@@ -102,8 +102,8 @@ impl Guideline {
     }
 
     /// Returns an immutable reference to the Guideline's identifier.
-    pub fn get_identifier(&self) -> &Option<Identifier> {
-        &self.identifier
+    pub fn identifier(&self) -> Option<&Identifier> {
+        self.identifier.as_ref()
     }
 
     /// Replaces the actual identifier by the identifier given in parameter,

@@ -152,7 +152,7 @@ impl GlyphBuilder {
         if &self.glyph.format == &GlifVersion::V1 {
             return Err(ErrorKind::UnexpectedTag);
         }
-        insert_identifier(&mut self.identifiers, guideline.get_identifier().clone())?;
+        insert_identifier(&mut self.identifiers, guideline.identifier().cloned())?;
         self.glyph.guidelines.get_or_insert(Vec::new()).push(guideline);
         Ok(self)
     }
