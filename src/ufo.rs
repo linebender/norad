@@ -363,7 +363,7 @@ impl Ufo {
 
     /// Returns a mutable reference to the glyph with the given name,
     /// IN THE DEFAULT LAYER, if it exists.
-    pub fn get_glyph_mut<K>(&mut self, key: &K) -> Option<&mut Arc<Glyph>>
+    pub fn get_glyph_mut<K>(&mut self, key: &K) -> Option<&mut Glyph>
     where
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
