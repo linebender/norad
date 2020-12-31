@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use crate::error::ErrorKind;
 use crate::glyph::{
     Advance, AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    GlyphName, Guideline, Image, Outline, Plist, PointType,
+    GlyphName, Guideline, Image, Outline, PointType,
 };
-use crate::shared_types::Identifier;
+use crate::shared_types::{Identifier, Plist};
 
 /// A GlyphBuilder is a consuming builder for [`crate::glyph::Glyph`].
 ///
@@ -41,19 +41,21 @@ use crate::shared_types::Identifier;
 ///     builder
 ///         .width(10.0)?
 ///         .unicode('ä')
-///         .guideline(Guideline {
-///             line: Line::Horizontal(10.0),
-///             name: None,
-///             color: None,
-///             identifier: Some(Identifier::new("test1")?),
-///         })?
-///         .anchor(Anchor {
-///             x: 1.0,
-///             y: 2.0,
-///             name: Some("anchor1".into()),
-///             color: None,
-///             identifier: Some(Identifier::new("test3")?),
-///         })?;
+///         .guideline(Guideline::new(
+///             Line::Horizontal(10.0),
+///             None,
+///             None,
+///             Some(Identifier::new("test1")?),
+///             None,
+///         ))?
+///         .anchor(Anchor::new(
+///             1.0,
+///             2.0,
+///             Some("anchor1".into()),
+///             None,
+///             Some(Identifier::new("test3")?),
+///             None,
+///         ))?;
 ///     let mut outline_builder = OutlineBuilder::new();
 ///     outline_builder
 ///         .begin_path(Some(Identifier::new("abc")?))?
@@ -150,7 +152,7 @@ impl GlyphBuilder {
         if &self.glyph.format == &GlifVersion::V1 {
             return Err(ErrorKind::UnexpectedTag);
         }
-        insert_identifier(&mut self.identifiers, guideline.identifier.clone())?;
+        insert_identifier(&mut self.identifiers, guideline.identifier().cloned())?;
         self.glyph.guidelines.get_or_insert(Vec::new()).push(guideline);
         Ok(self)
     }
@@ -196,13 +198,14 @@ impl GlyphBuilder {
                     && c.points[0].name.is_some()
                 {
                     let anchor_point = c.points.remove(0);
-                    let anchor = Anchor {
-                        name: anchor_point.name,
-                        x: anchor_point.x,
-                        y: anchor_point.y,
-                        identifier: None,
-                        color: None,
-                    };
+                    let anchor = Anchor::new(
+                        anchor_point.x,
+                        anchor_point.y,
+                        anchor_point.name,
+                        None,
+                        None,
+                        None,
+                    );
                     self.glyph.anchors.get_or_insert(Vec::new()).push(anchor);
                 }
             }
@@ -296,7 +299,7 @@ impl OutlineBuilder {
             return Err(ErrorKind::UnfinishedDrawing);
         }
         insert_identifier(&mut self.identifiers, identifier.clone())?;
-        self.scratch_contour.replace(Contour { identifier, points: Vec::new() });
+        self.scratch_contour.replace(Contour::new(Vec::new(), identifier, None));
         Ok(self)
     }
 
@@ -320,7 +323,7 @@ impl OutlineBuilder {
         }
 
         let point =
-            ContourPoint { name, x: point.0, y: point.1, typ: segment_type, smooth, identifier };
+            ContourPoint::new(point.0, point.1, segment_type, smooth, name, identifier, None);
 
         match &mut self.scratch_contour {
             Some(c) => {
@@ -413,7 +416,7 @@ impl OutlineBuilder {
         identifier: Option<Identifier>,
     ) -> Result<&mut Self, ErrorKind> {
         insert_identifier(&mut self.identifiers, identifier.clone())?;
-        self.outline.components.push(Component { base, transform, identifier });
+        self.outline.components.push(Component::new(base, transform, identifier, None));
         Ok(self)
     }
 
@@ -456,32 +459,36 @@ mod tests {
             .unicode('\u{2020}')
             .unicode('\u{2021}')
             .note("hello".into())?
-            .guideline(Guideline {
-                line: Line::Horizontal(10.0),
-                name: None,
-                color: None,
-                identifier: Some(Identifier::new("test1").unwrap()),
-            })?
-            .guideline(Guideline {
-                line: Line::Vertical(20.0),
-                name: None,
-                color: None,
-                identifier: Some(Identifier::new("test2").unwrap()),
-            })?
-            .anchor(Anchor {
-                x: 1.0,
-                y: 2.0,
-                name: Some("anchor1".into()),
-                color: None,
-                identifier: Some(Identifier::new("test3").unwrap()),
-            })?
-            .anchor(Anchor {
-                x: 3.0,
-                y: 4.0,
-                name: Some("anchor2".into()),
-                color: None,
-                identifier: Some(Identifier::new("test4").unwrap()),
-            })?;
+            .guideline(Guideline::new(
+                Line::Horizontal(10.0),
+                None,
+                None,
+                Some(Identifier::new("test1").unwrap()),
+                None,
+            ))?
+            .guideline(Guideline::new(
+                Line::Vertical(20.0),
+                None,
+                None,
+                Some(Identifier::new("test2").unwrap()),
+                None,
+            ))?
+            .anchor(Anchor::new(
+                1.0,
+                2.0,
+                Some("anchor1".into()),
+                None,
+                Some(Identifier::new("test3").unwrap()),
+                None,
+            ))?
+            .anchor(Anchor::new(
+                3.0,
+                4.0,
+                Some("anchor2".into()),
+                None,
+                Some(Identifier::new("test4").unwrap()),
+                None,
+            ))?;
 
         let mut outline_builder = OutlineBuilder::new();
         outline_builder
@@ -515,76 +522,77 @@ mod tests {
                 codepoints: Some(vec!['†', '‡']),
                 note: Some("hello".into()),
                 guidelines: Some(vec![
-                    Guideline {
-                        line: Line::Horizontal(10.0),
-                        name: None,
-                        color: None,
-                        identifier: Some(Identifier::new("test1").unwrap()),
-                    },
-                    Guideline {
-                        line: Line::Vertical(20.0),
-                        name: None,
-                        color: None,
-                        identifier: Some(Identifier::new("test2").unwrap()),
-                    },
+                    Guideline::new(
+                        Line::Horizontal(10.0),
+                        None,
+                        None,
+                        Some(Identifier::new("test1").unwrap()),
+                        None,
+                    ),
+                    Guideline::new(
+                        Line::Vertical(20.0),
+                        None,
+                        None,
+                        Some(Identifier::new("test2").unwrap()),
+                        None,
+                    ),
                 ]),
                 anchors: Some(vec![
-                    Anchor {
-                        x: 1.0,
-                        y: 2.0,
-                        name: Some("anchor1".into()),
-                        color: None,
-                        identifier: Some(Identifier::new("test3").unwrap()),
-                    },
-                    Anchor {
-                        x: 3.0,
-                        y: 4.0,
-                        name: Some("anchor2".into()),
-                        color: None,
-                        identifier: Some(Identifier::new("test4").unwrap()),
-                    },
+                    Anchor::new(
+                        1.0,
+                        2.0,
+                        Some("anchor1".into()),
+                        None,
+                        Some(Identifier::new("test3").unwrap()),
+                        None
+                    ),
+                    Anchor::new(
+                        3.0,
+                        4.0,
+                        Some("anchor2".into()),
+                        None,
+                        Some(Identifier::new("test4").unwrap()),
+                        None
+                    ),
                 ]),
                 outline: Some(Outline {
-                    contours: vec![Contour {
-                        identifier: Some(Identifier::new("abc").unwrap()),
-                        points: vec![
-                            ContourPoint {
-                                name: None,
-                                x: 173.0,
-                                y: 536.0,
-                                typ: PointType::Line,
-                                smooth: false,
-                                identifier: None,
-                            },
-                            ContourPoint {
-                                name: None,
-                                x: 85.0,
-                                y: 536.0,
-                                typ: PointType::Line,
-                                smooth: false,
-                                identifier: None,
-                            },
-                            ContourPoint {
-                                name: None,
-                                x: 85.0,
-                                y: 0.0,
-                                typ: PointType::Line,
-                                smooth: false,
-                                identifier: None,
-                            },
-                            ContourPoint {
-                                name: None,
-                                x: 173.0,
-                                y: 0.0,
-                                typ: PointType::Line,
-                                smooth: false,
-                                identifier: Some(Identifier::new("def").unwrap()),
-                            },
+                    contours: vec![Contour::new(
+                        vec![
+                            ContourPoint::new(
+                                173.0,
+                                536.0,
+                                PointType::Line,
+                                false,
+                                None,
+                                None,
+                                None,
+                            ),
+                            ContourPoint::new(
+                                85.0,
+                                536.0,
+                                PointType::Line,
+                                false,
+                                None,
+                                None,
+                                None,
+                            ),
+                            ContourPoint::new(85.0, 0.0, PointType::Line, false, None, None, None),
+                            ContourPoint::new(
+                                173.0,
+                                0.0,
+                                PointType::Line,
+                                false,
+                                None,
+                                Some(Identifier::new("def").unwrap()),
+                                None,
+                            ),
                         ],
-                    },],
-                    components: vec![Component {
-                        base: "hallo".into(),
-                        transform: AffineTransform {
+                        Some(Identifier::new("abc").unwrap()),
+                        None,
+                    )],
+                    components: vec![Component::new(
+                        "hallo".into(),
+                        AffineTransform {
                             x_scale: 1.0,
                             xy_scale: 0.0,
                             yx_scale: 0.0,
@@ -592,8 +600,9 @@ mod tests {
                             x_offset: 0.0,
                             y_offset: 0.0,
                         },
-                        identifier: Some(Identifier::new("xyz").unwrap()),
-                    }]
+                        Some(Identifier::new("xyz").unwrap()),
+                        None,
+                    )]
                 }),
                 image: None,
                 lib: None,
@@ -625,13 +634,14 @@ mod tests {
                 codepoints: None,
                 note: None,
                 guidelines: None,
-                anchors: Some(vec![Anchor {
-                    x: 173.0,
-                    y: 536.0,
-                    name: Some("top".into()),
-                    color: None,
-                    identifier: None,
-                }]),
+                anchors: Some(vec![Anchor::new(
+                    173.0,
+                    536.0,
+                    Some("top".into()),
+                    None,
+                    None,
+                    None
+                )]),
                 outline: Some(Outline::default()),
                 image: None,
                 lib: None,
@@ -645,19 +655,21 @@ mod tests {
     #[should_panic(expected = "DuplicateIdentifier")]
     fn glyph_builder_add_guidelines_duplicate_id() {
         GlyphBuilder::new("test", GlifVersion::V2)
-            .guideline(Guideline {
-                line: Line::Horizontal(10.0),
-                name: None,
-                color: None,
-                identifier: Some(Identifier::new("test1").unwrap()),
-            })
+            .guideline(Guideline::new(
+                Line::Horizontal(10.0),
+                None,
+                None,
+                Some(Identifier::new("test1").unwrap()),
+                None,
+            ))
             .unwrap()
-            .guideline(Guideline {
-                line: Line::Vertical(20.0),
-                name: None,
-                color: None,
-                identifier: Some(Identifier::new("test1").unwrap()),
-            })
+            .guideline(Guideline::new(
+                Line::Vertical(20.0),
+                None,
+                None,
+                Some(Identifier::new("test1").unwrap()),
+                None,
+            ))
             .unwrap();
     }
 
@@ -665,20 +677,22 @@ mod tests {
     #[should_panic(expected = "DuplicateIdentifier")]
     fn glyph_builder_add_duplicate_id() {
         GlyphBuilder::new("test", GlifVersion::V2)
-            .guideline(Guideline {
-                line: Line::Horizontal(10.0),
-                name: None,
-                color: None,
-                identifier: Some(Identifier::new("test1").unwrap()),
-            })
+            .guideline(Guideline::new(
+                Line::Horizontal(10.0),
+                None,
+                None,
+                Some(Identifier::new("test1").unwrap()),
+                None,
+            ))
             .unwrap()
-            .anchor(Anchor {
-                x: 1.0,
-                y: 2.0,
-                name: None,
-                color: None,
-                identifier: Some(Identifier::new("test1").unwrap()),
-            })
+            .anchor(Anchor::new(
+                1.0,
+                2.0,
+                None,
+                None,
+                Some(Identifier::new("test1").unwrap()),
+                None,
+            ))
             .unwrap();
     }
 

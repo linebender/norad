@@ -16,6 +16,9 @@ use druid::Data;
 use crate::error::ErrorKind;
 use crate::Error;
 
+/// A Plist dictionary.
+pub type Plist = plist::Dictionary;
+
 /// Identifiers are optional attributes of several objects in the UFO.
 /// These identifiers are required to be unique within certain contexts
 /// as defined on a per object basis throughout this specification.
@@ -33,9 +36,11 @@ pub struct Guideline {
     pub name: Option<String>,
     /// The color of the line.
     pub color: Option<Color>,
-    /// Unique identifier for the guideline. This attribute is not required
-    /// and should only be added to guidelines as needed.
-    pub identifier: Option<Identifier>,
+    /// Unique identifier for the guideline within the glyph. This attribute is only required
+    /// when a lib is present and should otherwise only be added as needed.
+    identifier: Option<Identifier>,
+    /// The guideline's lib for arbitary data.
+    lib: Option<Plist>,
 }
 
 /// An infinite line.
@@ -61,6 +66,53 @@ pub struct Color {
     pub alpha: f32,
 }
 
+impl Guideline {
+    pub fn new(
+        line: Line,
+        name: Option<String>,
+        color: Option<Color>,
+        identifier: Option<Identifier>,
+        lib: Option<Plist>,
+    ) -> Self {
+        Self { line, name, color, identifier, lib }
+    }
+
+    /// Returns an immutable reference to the Guideline's lib.
+    pub fn lib(&self) -> Option<&Plist> {
+        self.lib.as_ref()
+    }
+
+    /// Returns a mutable reference to the Guideline's lib.
+    pub fn lib_mut(&mut self) -> Option<&mut Plist> {
+        self.lib.as_mut()
+    }
+
+    /// Replaces the actual lib by the lib given in parameter, returning the old
+    /// lib if present. Sets a new UUID v4 identifier if none is set already.
+    pub fn replace_lib(&mut self, lib: Plist) -> Option<Plist> {
+        if self.identifier.is_none() {
+            self.identifier.replace(Identifier::from_uuidv4());
+        }
+        self.lib.replace(lib)
+    }
+
+    /// Takes the lib out of the Guideline, leaving a None in its place.
+    pub fn take_lib(&mut self) -> Option<Plist> {
+        self.lib.take()
+    }
+
+    /// Returns an immutable reference to the Guideline's identifier.
+    pub fn identifier(&self) -> Option<&Identifier> {
+        self.identifier.as_ref()
+    }
+
+    /// Replaces the actual identifier by the identifier given in parameter,
+    /// returning the old identifier if present.
+    pub fn replace_identifier(&mut self, id: Identifier) -> Option<Identifier> {
+        self.identifier.replace(id)
+    }
+}
+
 impl Identifier {
     /// Create a new `Identifier` from a `String`, if it is valid.
     ///
@@ -75,9 +127,19 @@ impl Identifier {
         }
     }
 
+    pub fn from_uuidv4() -> Self {
+        Self::new(uuid::Uuid::new_v4().to_string()).unwrap()
+    }
+
     /// Return the raw identifier, as a `&str`.
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+impl PartialEq<String> for Identifier {
+    fn eq(&self, other: &String) -> bool {
+        *self.0 == *other
     }
 }
 
@@ -230,12 +292,7 @@ impl<'de> Deserialize<'de> for Guideline {
             }
         };
 
-        Ok(Guideline {
-            line,
-            name: guideline.name,
-            color: guideline.color,
-            identifier: guideline.identifier,
-        })
+        Ok(Guideline::new(line, guideline.name, guideline.color, guideline.identifier, None))
     }
 }
 
@@ -438,12 +495,13 @@ mod tests {
 
     #[test]
     fn guideline_parsing() {
-        let g1 = Guideline {
-            line: Line::Angle { x: 10.0, y: 20.0, degrees: 360.0 },
-            name: Some("hello".to_string()),
-            color: Some(Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 }),
-            identifier: Some(Identifier::new("abcABC123").unwrap()),
-        };
+        let g1 = Guideline::new(
+            Line::Angle { x: 10.0, y: 20.0, degrees: 360.0 },
+            Some("hello".to_string()),
+            Some(Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 }),
+            Some(Identifier::new("abcABC123").unwrap()),
+            None,
+        );
         assert_tokens(
             &g1,
             &[

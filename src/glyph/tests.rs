@@ -26,10 +26,10 @@ fn parse_v1_upgrade_anchors() {
     assert_eq!(
         glyph.anchors,
         Some(vec![
-            Anchor { name: Some("top".into()), x: 10.0, y: 10.0, color: None, identifier: None },
-            Anchor { name: Some("bottom".into()), x: 10.0, y: 20.0, color: None, identifier: None },
-            Anchor { name: Some("left".into()), x: 30.0, y: 20.0, color: None, identifier: None },
-            Anchor { name: Some("right".into()), x: 40.0, y: 20.0, color: None, identifier: None }
+            Anchor::new(10.0, 10.0, Some("top".into()), None, None, None),
+            Anchor::new(10.0, 20.0, Some("bottom".into()), None, None, None),
+            Anchor::new(30.0, 20.0, Some("left".into()), None, None, None),
+            Anchor::new(40.0, 20.0, Some("right".into()), None, None, None),
         ])
     );
     assert_eq!(glyph.format, GlifVersion::V2);

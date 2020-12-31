@@ -396,7 +396,7 @@ impl<'names> GlifParser<'names> {
             return Err(err!(reader, ErrorKind::BadAnchor));
         }
         self.builder
-            .anchor(Anchor { x: x.unwrap(), y: y.unwrap(), name, color, identifier })
+            .anchor(Anchor::new(x.unwrap(), y.unwrap(), name, color, identifier, None))
             .map_err(|e| err!(reader, e))?;
         Ok(())
     }
@@ -449,7 +449,7 @@ impl<'names> GlifParser<'names> {
             _other => return Err(err!(reader, ErrorKind::BadGuideline)),
         };
         self.builder
-            .guideline(Guideline { line, name, color, identifier })
+            .guideline(Guideline::new(line, name, color, identifier, None))
             .map_err(|e| err!(reader, e))?;
 
         Ok(())

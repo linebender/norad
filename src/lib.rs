@@ -32,10 +32,10 @@ pub use error::Error;
 pub use fontinfo::FontInfo;
 pub use glyph::{
     builder::GlyphBuilder, builder::OutlineBuilder, Advance, AffineTransform, Anchor, Component,
-    Contour, ContourPoint, GlifVersion, Glyph, GlyphName, Image, Outline, Plist, PointType,
+    Contour, ContourPoint, GlifVersion, Glyph, GlyphName, Image, Outline, PointType,
 };
 pub use layer::Layer;
 pub use shared_types::{
-    Color, Guideline, Identifier, IntegerOrFloat, Line, NonNegativeIntegerOrFloat,
+    Color, Guideline, Identifier, IntegerOrFloat, Line, NonNegativeIntegerOrFloat, Plist,
 };
 pub use ufo::{FormatVersion, LayerInfo, MetaInfo, Ufo};
