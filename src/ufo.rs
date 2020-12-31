@@ -18,7 +18,7 @@ use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
 use crate::names::NameList;
-use crate::shared_types::Plist;
+use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
 use crate::upconversion;
 use crate::Error;
 
@@ -269,7 +269,7 @@ impl Ufo {
         }
 
         if let Some(lib) = &self.lib {
-            if lib.contains_key("public.objectLibs") {
+            if lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
                 return Err(Error::PreexistingPublicObjectLibsKey);
             }
         }
@@ -291,16 +291,17 @@ impl Ufo {
         // font.lib in-memory. If there are object libs to serialize, clone the
         // existing lib and insert them there for serialization, otherwise avoid
         // cloning and write out the original.
-        let object_libs = libs_to_object_libs(&self.font_info);
+        let object_libs = self
+            .font_info
+            .as_ref()
+            .map(|f| f.libs_to_object_libs())
+            .unwrap_or_else(|| Plist::new());
         if !object_libs.is_empty() {
-            let mut new_lib =
-                if let Some(lib) = self.lib.as_ref() { lib.clone() } else { Plist::new() };
-            new_lib.insert("public.objectLibs".into(), plist::Value::Dictionary(object_libs));
+            let mut new_lib = self.lib.clone().unwrap_or_else(|| Plist::new());
+            new_lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), plist::Value::Dictionary(object_libs));
             plist::Value::Dictionary(new_lib).to_file_xml(path.join(LIB_FILE))?;
-        } else if let Some(lib) = self.lib.as_ref() {
-            if !lib.is_empty() {
-                plist::Value::Dictionary(lib.clone()).to_file_xml(path.join(LIB_FILE))?;
-            }
+        } else if let Some(lib) = self.lib.as_ref().filter(|lib| !lib.is_empty()) {
+            plist::Value::Dictionary(lib.clone()).to_file_xml(path.join(LIB_FILE))?;
         }
 
         if let Some(groups) = self.groups.as_ref() {
@@ -446,27 +447,6 @@ fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidationError> {
     }
 
     Ok(())
-}
-
-fn libs_to_object_libs(fontinfo: &Option<FontInfo>) -> Plist {
-    let mut object_libs = Plist::default();
-
-    if let Some(fontinfo) = fontinfo {
-        if let Some(guidelines) = &fontinfo.guidelines {
-            for guideline in guidelines {
-                if let Some(lib) = guideline.lib() {
-                    let id = guideline.identifier();
-                    debug_assert!(id.is_some());
-                    object_libs.insert(
-                        String::from(id.as_ref().unwrap().as_str()),
-                        plist::Value::Dictionary(lib.clone()),
-                    );
-                }
-            }
-        }
-    }
-
-    object_libs
 }
 
 /// KerningSerializer is a crutch to serialize kerning values as integers if they are

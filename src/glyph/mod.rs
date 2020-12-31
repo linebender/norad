@@ -14,7 +14,7 @@ use druid::{Data, Lens};
 
 use crate::error::{Error, ErrorKind, GlifError, GlifErrorInternal};
 use crate::names::NameList;
-use crate::shared_types::{Color, Guideline, Identifier, Line, Plist};
+use crate::shared_types::{Color, Guideline, Identifier, Line, Plist, PUBLIC_OBJECT_LIBS_KEY};
 
 /// The name of a glyph.
 pub type GlyphName = Arc<str>;
@@ -65,7 +65,7 @@ impl Glyph {
             return Err(Error::DowngradeUnsupported);
         }
         if let Some(lib) = &self.lib {
-            if lib.contains_key("public.objectLibs") {
+            if lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
                 return Err(Error::PreexistingPublicObjectLibsKey);
             }
         }
@@ -104,64 +104,100 @@ impl Glyph {
     /// Move libs from the lib's `public.objectLibs` into the actual objects.
     /// The key will be removed from the glyph lib.
     fn fill_in_libs(&mut self) -> Result<(), ErrorKind> {
-        if let Some(glyph_lib) = &mut self.lib {
-            if let Some(object_libs) = glyph_lib.remove("public.objectLibs") {
-                let object_libs = object_libs.into_dictionary().ok_or(ErrorKind::BadLib)?;
+        let object_libs = match self.lib.as_mut().and_then(|lib| lib.remove(PUBLIC_OBJECT_LIBS_KEY))
+        {
+            Some(lib) => lib.into_dictionary().ok_or(ErrorKind::BadLib)?,
+            None => return Ok(()),
+        };
 
-                'next_key: for (key, value) in object_libs.into_iter() {
-                    let value = value.into_dictionary().ok_or(ErrorKind::BadLib)?;
+        'next_key: for (key, value) in object_libs.into_iter() {
+            let value = value.into_dictionary().ok_or(ErrorKind::BadLib)?;
 
-                    if let Some(anchors) = &mut self.anchors {
-                        for anchor in anchors {
-                            if let Some(id) = anchor.identifier() {
-                                if id == &key {
-                                    anchor.replace_lib(value);
-                                    continue 'next_key;
-                                }
-                            }
+            if let Some(anchors) = &mut self.anchors {
+                for anchor in anchors {
+                    if anchor.identifier().map(Identifier::as_str) == Some(&key) {
+                        anchor.replace_lib(value);
+                        continue 'next_key;
+                    }
+                }
+            }
+            if let Some(guidelines) = &mut self.guidelines {
+                for guideline in guidelines {
+                    if guideline.identifier().map(Identifier::as_str) == Some(&key) {
+                        guideline.replace_lib(value);
+                        continue 'next_key;
+                    }
+                }
+            }
+            if let Some(outline) = &mut self.outline {
+                for contour in &mut outline.contours {
+                    if contour.identifier().map(Identifier::as_str) == Some(&key) {
+                        contour.replace_lib(value);
+                        continue 'next_key;
+                    }
+                    for point in &mut contour.points {
+                        if point.identifier().map(Identifier::as_str) == Some(&key) {
+                            point.replace_lib(value);
+                            continue 'next_key;
                         }
                     }
-                    if let Some(guidelines) = &mut self.guidelines {
-                        for guideline in guidelines {
-                            if let Some(id) = guideline.identifier() {
-                                if id == &key {
-                                    guideline.replace_lib(value);
-                                    continue 'next_key;
-                                }
-                            }
-                        }
-                    }
-                    if let Some(outline) = &mut self.outline {
-                        for contour in &mut outline.contours {
-                            if let Some(id) = contour.identifier() {
-                                if id == &key {
-                                    contour.replace_lib(value);
-                                    continue 'next_key;
-                                }
-                            }
-                            for point in &mut contour.points {
-                                if let Some(id) = point.identifier() {
-                                    if id == &key {
-                                        point.replace_lib(value);
-                                        continue 'next_key;
-                                    }
-                                }
-                            }
-                        }
-                        for component in &mut outline.components {
-                            if let Some(id) = component.identifier() {
-                                if id == &key {
-                                    component.replace_lib(value);
-                                    continue 'next_key;
-                                }
-                            }
-                        }
+                }
+                for component in &mut outline.components {
+                    if component.identifier().map(Identifier::as_str) == Some(&key) {
+                        component.replace_lib(value);
+                        continue 'next_key;
                     }
                 }
             }
         }
 
         Ok(())
+    }
+
+    /// Dump guideline libs into a Plist.
+    fn libs_to_object_libs(&self) -> Plist {
+        let mut object_libs = Plist::default();
+
+        let mut add_lib = |id: Option<&Identifier>, lib: &Plist| {
+            let id = id.map(|id| id.as_str().to_string());
+            object_libs.insert(id.unwrap(), plist::Value::Dictionary(lib.clone()));
+        };
+
+        if let Some(anchors) = &self.anchors {
+            for anchor in anchors {
+                if let Some(lib) = anchor.lib() {
+                    add_lib(anchor.identifier(), lib);
+                }
+            }
+        }
+
+        if let Some(guidelines) = &self.guidelines {
+            for guideline in guidelines {
+                if let Some(lib) = guideline.lib() {
+                    add_lib(guideline.identifier(), lib);
+                }
+            }
+        }
+
+        if let Some(outline) = &self.outline {
+            for contour in &outline.contours {
+                if let Some(lib) = contour.lib() {
+                    add_lib(contour.identifier(), lib);
+                }
+                for point in &contour.points {
+                    if let Some(lib) = point.lib() {
+                        add_lib(point.identifier(), lib);
+                    }
+                }
+            }
+            for component in &outline.components {
+                if let Some(lib) = component.lib() {
+                    add_lib(component.identifier(), lib);
+                }
+            }
+        }
+
+        object_libs
     }
 }
 

@@ -9,7 +9,7 @@ use quick_xml::{
 
 use super::{
     Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    Guideline, Image, Line, Plist, PointType,
+    Guideline, Image, Line, Plist, PointType, PUBLIC_OBJECT_LIBS_KEY,
 };
 
 use crate::error::{GlifWriteError, WriteError};
@@ -77,16 +77,13 @@ impl Glyph {
         // glyph.lib in-memory. If there are object libs to serialize, clone the
         // existing lib and insert them there for serialization, otherwise avoid
         // cloning and write out the original.
-        let object_libs = libs_to_object_libs(&self);
+        let object_libs = self.libs_to_object_libs();
         if !object_libs.is_empty() {
-            let mut new_lib =
-                if let Some(lib) = self.lib.as_ref() { lib.clone() } else { Plist::new() };
-            new_lib.insert("public.objectLibs".into(), plist::Value::Dictionary(object_libs));
+            let mut new_lib = self.lib.clone().unwrap_or_else(|| Plist::new());
+            new_lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), plist::Value::Dictionary(object_libs));
             write_lib_section(&new_lib, &mut writer)?;
-        } else if let Some(lib) = self.lib.as_ref() {
-            if !lib.is_empty() {
-                write_lib_section(lib, &mut writer)?;
-            }
+        } else if let Some(lib) = self.lib.as_ref().filter(|lib| !lib.is_empty()) {
+            write_lib_section(lib, &mut writer)?;
         }
 
         writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;
@@ -95,71 +92,6 @@ impl Glyph {
 
         Ok(writer.into_inner().into_inner())
     }
-}
-
-fn libs_to_object_libs(glyph: &Glyph) -> Plist {
-    let mut object_libs = Plist::default();
-
-    if let Some(anchors) = &glyph.anchors {
-        for anchor in anchors {
-            if let Some(lib) = anchor.lib() {
-                let id = anchor.identifier();
-                debug_assert!(id.is_some());
-                object_libs.insert(
-                    String::from(id.as_ref().unwrap().as_str()),
-                    plist::Value::Dictionary(lib.clone()),
-                );
-            }
-        }
-    }
-
-    if let Some(guidelines) = &glyph.guidelines {
-        for guideline in guidelines {
-            if let Some(lib) = guideline.lib() {
-                let id = guideline.identifier();
-                debug_assert!(id.is_some());
-                object_libs.insert(
-                    String::from(id.as_ref().unwrap().as_str()),
-                    plist::Value::Dictionary(lib.clone()),
-                );
-            }
-        }
-    }
-
-    if let Some(outline) = &glyph.outline {
-        for contour in &outline.contours {
-            if let Some(lib) = contour.lib() {
-                let id = contour.identifier();
-                debug_assert!(id.is_some());
-                object_libs.insert(
-                    String::from(id.as_ref().unwrap().as_str()),
-                    plist::Value::Dictionary(lib.clone()),
-                );
-            }
-            for point in &contour.points {
-                if let Some(lib) = point.lib() {
-                    let id = point.identifier();
-                    debug_assert!(id.is_some());
-                    object_libs.insert(
-                        String::from(id.as_ref().unwrap().as_str()),
-                        plist::Value::Dictionary(lib.clone()),
-                    );
-                }
-            }
-        }
-        for component in &outline.components {
-            if let Some(lib) = component.lib() {
-                let id = component.identifier();
-                debug_assert!(id.is_some());
-                object_libs.insert(
-                    String::from(id.as_ref().unwrap().as_str()),
-                    plist::Value::Dictionary(lib.clone()),
-                );
-            }
-        }
-    }
-
-    object_libs
 }
 
 /// Writing out the embedded lib plist that a glif may have.

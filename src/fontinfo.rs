@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::ErrorKind;
 use crate::shared_types::{
     Bitlist, Float, Guideline, Identifier, Integer, IntegerOrFloat, NonNegativeInteger,
-    NonNegativeIntegerOrFloat, Plist,
+    NonNegativeIntegerOrFloat, Plist, PUBLIC_OBJECT_LIBS_KEY,
 };
 use crate::{Error, FormatVersion};
 
@@ -761,28 +761,42 @@ impl FontInfo {
     /// Move libs from the font lib's `public.objectLibs` key into the actual objects.
     /// The key will be removed from the font lib.
     fn fill_in_libs(&mut self, lib: &mut Plist) -> Result<(), Error> {
-        if let Some(object_libs) = lib.remove("public.objectLibs") {
-            let object_libs =
-                object_libs.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
+        let object_libs = match lib.remove(PUBLIC_OBJECT_LIBS_KEY) {
+            Some(lib) => lib.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?,
+            None => return Ok(()),
+        };
 
-            'next_key: for (key, value) in object_libs.into_iter() {
-                let value =
-                    value.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
+        'next_key: for (key, value) in object_libs.into_iter() {
+            let value =
+                value.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
 
-                if let Some(guidelines) = &mut self.guidelines {
-                    for guideline in guidelines {
-                        if let Some(id) = guideline.identifier() {
-                            if id == &key {
-                                guideline.replace_lib(value);
-                                continue 'next_key;
-                            }
-                        }
+            if let Some(guidelines) = &mut self.guidelines {
+                for guideline in guidelines {
+                    if guideline.identifier().map(Identifier::as_str) == Some(&key) {
+                        guideline.replace_lib(value);
+                        continue 'next_key;
                     }
                 }
             }
         }
 
         Ok(())
+    }
+
+    /// Dump guideline libs into a Plist.
+    pub fn libs_to_object_libs(&self) -> Plist {
+        let mut object_libs = Plist::default();
+
+        if let Some(guidelines) = &self.guidelines {
+            for guideline in guidelines {
+                if let Some(lib) = guideline.lib() {
+                    let id = guideline.identifier().map(|id| id.as_str().to_string());
+                    object_libs.insert(id.unwrap(), plist::Value::Dictionary(lib.clone()));
+                }
+            }
+        }
+
+        object_libs
     }
 }
 
