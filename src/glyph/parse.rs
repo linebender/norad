@@ -88,7 +88,7 @@ impl<'names> GlifParser<'names> {
 
         let mut glyph = self.builder.finish().map_err(|e| err!(reader, e))?;
         // FIXME: Error returns the end of the byte stream as the location, which is misleading.
-        glyph.fill_in_libs().map_err(|e| err!(reader, e))?;
+        glyph.load_object_libs().map_err(|e| err!(reader, e))?;
 
         Ok(glyph)
     }

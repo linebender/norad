@@ -340,7 +340,7 @@ impl FontInfo {
                 let mut fontinfo: FontInfo = plist::from_file(path)?;
                 fontinfo.validate()?;
                 if let Some(lib) = lib {
-                    fontinfo.fill_in_libs(lib)?;
+                    fontinfo.load_object_libs(lib)?;
                 }
                 Ok(fontinfo)
             }
@@ -760,22 +760,20 @@ impl FontInfo {
 
     /// Move libs from the font lib's `public.objectLibs` key into the actual objects.
     /// The key will be removed from the font lib.
-    fn fill_in_libs(&mut self, lib: &mut Plist) -> Result<(), Error> {
-        let object_libs = match lib.remove(PUBLIC_OBJECT_LIBS_KEY) {
+    fn load_object_libs(&mut self, lib: &mut Plist) -> Result<(), Error> {
+        let mut object_libs = match lib.remove(PUBLIC_OBJECT_LIBS_KEY) {
             Some(lib) => lib.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?,
             None => return Ok(()),
         };
 
-        'next_key: for (key, value) in object_libs.into_iter() {
-            let value =
-                value.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
-
-            if let Some(guidelines) = &mut self.guidelines {
-                for guideline in guidelines {
-                    if guideline.identifier().map(Identifier::as_str) == Some(&key) {
-                        guideline.replace_lib(value);
-                        continue 'next_key;
-                    }
+        if let Some(guidelines) = &mut self.guidelines {
+            for guideline in guidelines {
+                if let Some(lib) =
+                    guideline.identifier().and_then(|id| object_libs.remove(id.as_str()))
+                {
+                    let lib =
+                        lib.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
+                    guideline.replace_lib(lib);
                 }
             }
         }
@@ -784,7 +782,7 @@ impl FontInfo {
     }
 
     /// Dump guideline libs into a Plist.
-    pub fn libs_to_object_libs(&self) -> Plist {
+    pub fn dump_object_libs(&self) -> Plist {
         let mut object_libs = Plist::default();
 
         if let Some(guidelines) = &self.guidelines {

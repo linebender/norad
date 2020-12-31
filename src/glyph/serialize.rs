@@ -77,7 +77,7 @@ impl Glyph {
         // glyph.lib in-memory. If there are object libs to serialize, clone the
         // existing lib and insert them there for serialization, otherwise avoid
         // cloning and write out the original.
-        let object_libs = self.libs_to_object_libs();
+        let object_libs = self.dump_object_libs();
         if !object_libs.is_empty() {
             let mut new_lib = self.lib.clone().unwrap_or_else(|| Plist::new());
             new_lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), plist::Value::Dictionary(object_libs));

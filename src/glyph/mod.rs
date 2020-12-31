@@ -103,50 +103,58 @@ impl Glyph {
 
     /// Move libs from the lib's `public.objectLibs` into the actual objects.
     /// The key will be removed from the glyph lib.
-    fn fill_in_libs(&mut self) -> Result<(), ErrorKind> {
-        let object_libs = match self.lib.as_mut().and_then(|lib| lib.remove(PUBLIC_OBJECT_LIBS_KEY))
-        {
-            Some(lib) => lib.into_dictionary().ok_or(ErrorKind::BadLib)?,
-            None => return Ok(()),
-        };
+    fn load_object_libs(&mut self) -> Result<(), ErrorKind> {
+        let mut object_libs =
+            match self.lib.as_mut().and_then(|lib| lib.remove(PUBLIC_OBJECT_LIBS_KEY)) {
+                Some(lib) => lib.into_dictionary().ok_or(ErrorKind::BadLib)?,
+                None => return Ok(()),
+            };
 
-        'next_key: for (key, value) in object_libs.into_iter() {
-            let value = value.into_dictionary().ok_or(ErrorKind::BadLib)?;
+        if let Some(anchors) = &mut self.anchors {
+            for anchor in anchors {
+                if let Some(lib) =
+                    anchor.identifier().and_then(|id| object_libs.remove(id.as_str()))
+                {
+                    let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
+                    anchor.replace_lib(lib);
+                }
+            }
+        }
 
-            if let Some(anchors) = &mut self.anchors {
-                for anchor in anchors {
-                    if anchor.identifier().map(Identifier::as_str) == Some(&key) {
-                        anchor.replace_lib(value);
-                        continue 'next_key;
+        if let Some(guidelines) = &mut self.guidelines {
+            for guideline in guidelines {
+                if let Some(lib) =
+                    guideline.identifier().and_then(|id| object_libs.remove(id.as_str()))
+                {
+                    let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
+                    guideline.replace_lib(lib);
+                }
+            }
+        }
+
+        if let Some(outline) = &mut self.outline {
+            for contour in &mut outline.contours {
+                if let Some(lib) =
+                    contour.identifier().and_then(|id| object_libs.remove(id.as_str()))
+                {
+                    let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
+                    contour.replace_lib(lib);
+                }
+                for point in &mut contour.points {
+                    if let Some(lib) =
+                        point.identifier().and_then(|id| object_libs.remove(id.as_str()))
+                    {
+                        let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
+                        point.replace_lib(lib);
                     }
                 }
             }
-            if let Some(guidelines) = &mut self.guidelines {
-                for guideline in guidelines {
-                    if guideline.identifier().map(Identifier::as_str) == Some(&key) {
-                        guideline.replace_lib(value);
-                        continue 'next_key;
-                    }
-                }
-            }
-            if let Some(outline) = &mut self.outline {
-                for contour in &mut outline.contours {
-                    if contour.identifier().map(Identifier::as_str) == Some(&key) {
-                        contour.replace_lib(value);
-                        continue 'next_key;
-                    }
-                    for point in &mut contour.points {
-                        if point.identifier().map(Identifier::as_str) == Some(&key) {
-                            point.replace_lib(value);
-                            continue 'next_key;
-                        }
-                    }
-                }
-                for component in &mut outline.components {
-                    if component.identifier().map(Identifier::as_str) == Some(&key) {
-                        component.replace_lib(value);
-                        continue 'next_key;
-                    }
+            for component in &mut outline.components {
+                if let Some(lib) =
+                    component.identifier().and_then(|id| object_libs.remove(id.as_str()))
+                {
+                    let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
+                    component.replace_lib(lib);
                 }
             }
         }
@@ -155,10 +163,10 @@ impl Glyph {
     }
 
     /// Dump guideline libs into a Plist.
-    fn libs_to_object_libs(&self) -> Plist {
+    fn dump_object_libs(&self) -> Plist {
         let mut object_libs = Plist::default();
 
-        let mut add_lib = |id: Option<&Identifier>, lib: &Plist| {
+        let mut dump_lib = |id: Option<&Identifier>, lib: &Plist| {
             let id = id.map(|id| id.as_str().to_string());
             object_libs.insert(id.unwrap(), plist::Value::Dictionary(lib.clone()));
         };
@@ -166,7 +174,7 @@ impl Glyph {
         if let Some(anchors) = &self.anchors {
             for anchor in anchors {
                 if let Some(lib) = anchor.lib() {
-                    add_lib(anchor.identifier(), lib);
+                    dump_lib(anchor.identifier(), lib);
                 }
             }
         }
@@ -174,7 +182,7 @@ impl Glyph {
         if let Some(guidelines) = &self.guidelines {
             for guideline in guidelines {
                 if let Some(lib) = guideline.lib() {
-                    add_lib(guideline.identifier(), lib);
+                    dump_lib(guideline.identifier(), lib);
                 }
             }
         }
@@ -182,17 +190,17 @@ impl Glyph {
         if let Some(outline) = &self.outline {
             for contour in &outline.contours {
                 if let Some(lib) = contour.lib() {
-                    add_lib(contour.identifier(), lib);
+                    dump_lib(contour.identifier(), lib);
                 }
                 for point in &contour.points {
                     if let Some(lib) = point.lib() {
-                        add_lib(point.identifier(), lib);
+                        dump_lib(point.identifier(), lib);
                     }
                 }
             }
             for component in &outline.components {
                 if let Some(lib) = component.lib() {
-                    add_lib(component.identifier(), lib);
+                    dump_lib(component.identifier(), lib);
                 }
             }
         }
