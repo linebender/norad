@@ -289,8 +289,8 @@ impl Ufo {
         // under the public.objectLibs parent key. To avoid mutation behind the
         // client's back, object libs are written out but not stored in
         // font.lib in-memory. If there are object libs to serialize, clone the
-        // existing lib and insert them there for serialization, otherwise avoid
-        // cloning and write out the original.
+        // existing lib and insert them there for serialization, otherwise write
+        // out the original.
         let object_libs = self
             .font_info
             .as_ref()
