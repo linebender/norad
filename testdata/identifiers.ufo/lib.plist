@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>public.objectLibs</key>
+    <dict>
+      <key>3f0f37d1-52d6-429c-aff4-3f81aed4abf0</key>
+      <dict>
+        <key>com.test.foo</key>
+        <integer>1234</integer>
+      </dict>
+    </dict>
+  </dict>
+</plist>
