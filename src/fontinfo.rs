@@ -782,7 +782,7 @@ impl FontInfo {
     }
 
     /// Dump guideline libs into a Plist.
-    pub fn dump_object_libs(&self) -> Plist {
+    pub(crate) fn dump_object_libs(&self) -> Plist {
         let mut object_libs = Plist::default();
 
         if let Some(guidelines) = &self.guidelines {
