@@ -340,7 +340,7 @@ impl FontInfo {
                 let mut fontinfo: FontInfo = plist::from_file(path)?;
                 fontinfo.validate()?;
                 if let Some(lib) = lib {
-                    fill_in_libs(&mut fontinfo, lib)?;
+                    fontinfo.fill_in_libs(lib)?;
                 }
                 Ok(fontinfo)
             }
@@ -752,6 +752,33 @@ impl FontInfo {
         if let Some(v) = &self.woff_metadata_trademark {
             if v.text.is_empty() {
                 return Err(Error::FontInfoError);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Move libs from the font lib's `public.objectLibs` key into the actual objects.
+    /// The key will be removed from the font lib.
+    fn fill_in_libs(&mut self, lib: &mut Plist) -> Result<(), Error> {
+        if let Some(object_libs) = lib.remove("public.objectLibs") {
+            let object_libs =
+                object_libs.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
+
+            'next_key: for (key, value) in object_libs.into_iter() {
+                let value =
+                    value.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
+
+                if let Some(guidelines) = &mut self.guidelines {
+                    for guideline in guidelines {
+                        if let Some(id) = guideline.identifier() {
+                            if id == &key {
+                                guideline.replace_lib(value);
+                                continue 'next_key;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -1175,33 +1202,6 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
             _ => Err(serde::de::Error::custom("unknown value for styleMapStyleName.")),
         }
     }
-}
-
-/// Move libs from the font lib's `public.objectLibs` key into the actual objects.
-/// They key will be removed from the font lib.
-fn fill_in_libs(fontinfo: &mut FontInfo, lib: &mut Plist) -> Result<(), Error> {
-    if let Some(object_libs) = lib.remove("public.objectLibs") {
-        let object_libs =
-            object_libs.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
-
-        'next_key: for (key, value) in object_libs.into_iter() {
-            let value =
-                value.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
-
-            if let Some(guidelines) = &mut fontinfo.guidelines {
-                for guideline in guidelines {
-                    if let Some(id) = guideline.identifier() {
-                        if id == &key {
-                            guideline.replace_lib(value);
-                            continue 'next_key;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]

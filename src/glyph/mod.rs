@@ -12,7 +12,7 @@ use std::sync::Arc;
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
 
-use crate::error::{Error, GlifError, GlifErrorInternal};
+use crate::error::{Error, ErrorKind, GlifError, GlifErrorInternal};
 use crate::names::NameList;
 use crate::shared_types::{Color, Guideline, Identifier, Line, Plist};
 
@@ -99,6 +99,69 @@ impl Glyph {
             image: None,
             lib: None,
         }
+    }
+
+    /// Move libs from the lib's `public.objectLibs` into the actual objects.
+    /// The key will be removed from the glyph lib.
+    fn fill_in_libs(&mut self) -> Result<(), ErrorKind> {
+        if let Some(glyph_lib) = &mut self.lib {
+            if let Some(object_libs) = glyph_lib.remove("public.objectLibs") {
+                let object_libs = object_libs.into_dictionary().ok_or(ErrorKind::BadLib)?;
+
+                'next_key: for (key, value) in object_libs.into_iter() {
+                    let value = value.into_dictionary().ok_or(ErrorKind::BadLib)?;
+
+                    if let Some(anchors) = &mut self.anchors {
+                        for anchor in anchors {
+                            if let Some(id) = anchor.identifier() {
+                                if id == &key {
+                                    anchor.replace_lib(value);
+                                    continue 'next_key;
+                                }
+                            }
+                        }
+                    }
+                    if let Some(guidelines) = &mut self.guidelines {
+                        for guideline in guidelines {
+                            if let Some(id) = guideline.identifier() {
+                                if id == &key {
+                                    guideline.replace_lib(value);
+                                    continue 'next_key;
+                                }
+                            }
+                        }
+                    }
+                    if let Some(outline) = &mut self.outline {
+                        for contour in &mut outline.contours {
+                            if let Some(id) = contour.identifier() {
+                                if id == &key {
+                                    contour.replace_lib(value);
+                                    continue 'next_key;
+                                }
+                            }
+                            for point in &mut contour.points {
+                                if let Some(id) = point.identifier() {
+                                    if id == &key {
+                                        point.replace_lib(value);
+                                        continue 'next_key;
+                                    }
+                                }
+                            }
+                        }
+                        for component in &mut outline.components {
+                            if let Some(id) = component.identifier() {
+                                if id == &key {
+                                    component.replace_lib(value);
+                                    continue 'next_key;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 

@@ -87,7 +87,8 @@ impl<'names> GlifParser<'names> {
         }
 
         let mut glyph = self.builder.finish().map_err(|e| err!(reader, e))?;
-        fill_in_libs(&mut glyph)?;
+        // FIXME: Error returns the end of the byte stream as the location, which is misleading.
+        glyph.fill_in_libs().map_err(|e| err!(reader, e))?;
 
         Ok(glyph)
     }
@@ -534,73 +535,6 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<GlyphBuilder, 
             _other => return Err(err!(reader, ErrorKind::WrongFirstElement)),
         }
     }
-}
-
-/// Move libs from the lib's `public.objectLibs` into the actual objects.
-/// They key will be removed from the glyph lib.
-fn fill_in_libs(glyph: &mut Glyph) -> Result<(), Error> {
-    if let Some(glyph_lib) = &mut glyph.lib {
-        if let Some(object_libs) = glyph_lib.remove("public.objectLibs") {
-            let object_libs = object_libs
-                .into_dictionary()
-                .ok_or(GlifErrorInternal::Spec { kind: ErrorKind::BadLib, position: 0 })?;
-
-            'next_key: for (key, value) in object_libs.into_iter() {
-                let value = value
-                    .into_dictionary()
-                    .ok_or(GlifErrorInternal::Spec { kind: ErrorKind::BadLib, position: 0 })?;
-
-                if let Some(anchors) = &mut glyph.anchors {
-                    for anchor in anchors {
-                        if let Some(id) = anchor.identifier() {
-                            if id == &key {
-                                anchor.replace_lib(value);
-                                continue 'next_key;
-                            }
-                        }
-                    }
-                }
-                if let Some(guidelines) = &mut glyph.guidelines {
-                    for guideline in guidelines {
-                        if let Some(id) = guideline.identifier() {
-                            if id == &key {
-                                guideline.replace_lib(value);
-                                continue 'next_key;
-                            }
-                        }
-                    }
-                }
-                if let Some(outline) = &mut glyph.outline {
-                    for contour in &mut outline.contours {
-                        if let Some(id) = contour.identifier() {
-                            if id == &key {
-                                contour.replace_lib(value);
-                                continue 'next_key;
-                            }
-                        }
-                        for point in &mut contour.points {
-                            if let Some(id) = point.identifier() {
-                                if id == &key {
-                                    point.replace_lib(value);
-                                    continue 'next_key;
-                                }
-                            }
-                        }
-                    }
-                    for component in &mut outline.components {
-                        if let Some(id) = component.identifier() {
-                            if id == &key {
-                                component.replace_lib(value);
-                                continue 'next_key;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(())
 }
 
 impl FromStr for GlifVersion {
