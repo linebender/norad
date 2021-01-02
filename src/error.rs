@@ -16,6 +16,9 @@ pub enum Error {
     NotCreatedHere,
     /// An error returned when trying to save an UFO in anything less than the latest version.
     DowngradeUnsupported,
+    /// An error returned when trying to save a Glyph that contains a `public.objectLibs`
+    /// lib key already (the key is automatically managed by Norad).
+    PreexistingPublicObjectLibsKey,
     IoError(IoError),
     ParseError(XmlError),
     Glif(GlifError),
@@ -127,6 +130,10 @@ impl std::fmt::Display for Error {
             Error::DowngradeUnsupported => {
                 write!(f, "Downgrading below UFO v3 is not currently supported.")
             }
+            Error::PreexistingPublicObjectLibsKey => write!(
+                f,
+                "The `public.objectLibs` lib key is managed by Norad and must not be set manually."
+            ),
             Error::IoError(e) => e.fmt(f),
             Error::ParseError(e) => e.fmt(f),
             Error::Glif(GlifError { path, position, kind }) => {

@@ -105,12 +105,12 @@ impl Layer {
     }
 
     /// Returns a mutable reference to the glyph with the given name, if it exists.
-    pub fn get_glyph_mut<K>(&mut self, glyph: &K) -> Option<&mut Arc<Glyph>>
+    pub fn get_glyph_mut<K>(&mut self, glyph: &K) -> Option<&mut Glyph>
     where
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
     {
-        self.glyphs.get_mut(glyph)
+        self.glyphs.get_mut(glyph).and_then(|g| Arc::get_mut(g))
     }
 
     /// Returns `true` if this layer contains a glyph with this name.

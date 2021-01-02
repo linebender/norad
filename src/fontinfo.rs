@@ -5,9 +5,10 @@ use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 
+use crate::error::ErrorKind;
 use crate::shared_types::{
     Bitlist, Float, Guideline, Identifier, Integer, IntegerOrFloat, NonNegativeInteger,
-    NonNegativeIntegerOrFloat,
+    NonNegativeIntegerOrFloat, Plist, PUBLIC_OBJECT_LIBS_KEY,
 };
 use crate::{Error, FormatVersion};
 
@@ -332,11 +333,15 @@ impl FontInfo {
     pub fn from_file<P: AsRef<Path>>(
         path: P,
         format_version: FormatVersion,
+        lib: Option<&mut Plist>,
     ) -> Result<Self, Error> {
         match format_version {
             FormatVersion::V3 => {
-                let fontinfo: FontInfo = plist::from_file(path)?;
+                let mut fontinfo: FontInfo = plist::from_file(path)?;
                 fontinfo.validate()?;
+                if let Some(lib) = lib {
+                    fontinfo.load_object_libs(lib)?;
+                }
                 Ok(fontinfo)
             }
             FormatVersion::V2 => {
@@ -751,6 +756,45 @@ impl FontInfo {
         }
 
         Ok(())
+    }
+
+    /// Move libs from the font lib's `public.objectLibs` key into the actual objects.
+    /// The key will be removed from the font lib.
+    fn load_object_libs(&mut self, lib: &mut Plist) -> Result<(), Error> {
+        let mut object_libs = match lib.remove(PUBLIC_OBJECT_LIBS_KEY) {
+            Some(lib) => lib.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?,
+            None => return Ok(()),
+        };
+
+        if let Some(guidelines) = &mut self.guidelines {
+            for guideline in guidelines {
+                if let Some(lib) =
+                    guideline.identifier().and_then(|id| object_libs.remove(id.as_str()))
+                {
+                    let lib =
+                        lib.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
+                    guideline.replace_lib(lib);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Dump guideline libs into a Plist.
+    pub(crate) fn dump_object_libs(&self) -> Plist {
+        let mut object_libs = Plist::default();
+
+        if let Some(guidelines) = &self.guidelines {
+            for guideline in guidelines {
+                if let Some(lib) = guideline.lib() {
+                    let id = guideline.identifier().map(|id| id.as_str().to_string());
+                    object_libs.insert(id.unwrap(), plist::Value::Dictionary(lib.clone()));
+                }
+            }
+        }
+
+        object_libs
     }
 }
 

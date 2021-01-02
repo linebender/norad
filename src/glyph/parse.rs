@@ -85,7 +85,12 @@ impl<'names> GlifParser<'names> {
                 _other => return Err(err!(reader, ErrorKind::MissingCloseTag)),
             }
         }
-        Ok(self.builder.finish().map_err(|e| err!(reader, e))?)
+
+        let mut glyph = self.builder.finish().map_err(|e| err!(reader, e))?;
+        // FIXME: Error returns the end of the byte stream as the location, which is misleading.
+        glyph.load_object_libs().map_err(|e| err!(reader, e))?;
+
+        Ok(glyph)
     }
 
     fn parse_outline(

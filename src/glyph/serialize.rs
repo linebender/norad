@@ -9,7 +9,7 @@ use quick_xml::{
 
 use super::{
     Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    Guideline, Image, Line, Plist, PointType,
+    Guideline, Image, Line, Plist, PointType, PUBLIC_OBJECT_LIBS_KEY,
 };
 
 use crate::error::{GlifWriteError, WriteError};
@@ -70,10 +70,20 @@ impl Glyph {
             }
         }
 
-        if let Some(lib) = self.lib.as_ref() {
-            if !lib.is_empty() {
-                write_lib_section(lib, &mut writer)?;
-            }
+        // Object libs are treated specially. The UFO v3 format won't allow us
+        // to store them inline, so they have to be placed into the glyph's lib
+        // under the public.objectLibs parent key. To avoid mutation behind the
+        // client's back, object libs are written out but not stored in
+        // glyph.lib in-memory. If there are object libs to serialize, clone the
+        // existing lib and insert them there for serialization, otherwise avoid
+        // cloning and write out the original.
+        let object_libs = self.dump_object_libs();
+        if !object_libs.is_empty() {
+            let mut new_lib = self.lib.clone().unwrap_or_else(|| Plist::new());
+            new_lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), plist::Value::Dictionary(object_libs));
+            write_lib_section(&new_lib, &mut writer)?;
+        } else if let Some(lib) = self.lib.as_ref().filter(|lib| !lib.is_empty()) {
+            write_lib_section(lib, &mut writer)?;
         }
 
         writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;

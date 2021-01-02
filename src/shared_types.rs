@@ -16,6 +16,8 @@ use druid::Data;
 use crate::error::ErrorKind;
 use crate::Error;
 
+pub static PUBLIC_OBJECT_LIBS_KEY: &str = "public.objectLibs";
+
 /// A Plist dictionary.
 pub type Plist = plist::Dictionary;
 
