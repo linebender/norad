@@ -333,7 +333,7 @@ impl FontInfo {
     pub fn from_file<P: AsRef<Path>>(
         path: P,
         format_version: FormatVersion,
-        lib: &mut Option<Plist>,
+        lib: Option<&mut Plist>,
     ) -> Result<Self, Error> {
         match format_version {
             FormatVersion::V3 => {

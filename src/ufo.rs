@@ -155,7 +155,7 @@ impl Ufo {
             let fontinfo_path = path.join(FONTINFO_FILE);
             let mut font_info = if fontinfo_path.exists() {
                 let font_info: FontInfo =
-                    FontInfo::from_file(fontinfo_path, meta.format_version, &mut lib)?;
+                    FontInfo::from_file(fontinfo_path, meta.format_version, lib.as_mut())?;
                 Some(font_info)
             } else {
                 None
