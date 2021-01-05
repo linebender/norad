@@ -653,6 +653,11 @@ impl From<druid::piet::Color> for Color {
 #[cfg(feature = "druid")]
 impl From<Color> for druid::piet::Color {
     fn from(src: Color) -> druid::piet::Color {
-        druid::piet::Color::rgba(src.red, src.green, src.blue, src.alpha)
+        druid::piet::Color::rgba(
+            src.red.into(),
+            src.green.into(),
+            src.blue.into(),
+            src.alpha.into(),
+        )
     }
 }
