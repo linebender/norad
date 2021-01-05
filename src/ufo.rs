@@ -292,9 +292,9 @@ impl Ufo {
         // existing lib and insert them there for serialization, otherwise write
         // out the original.
         let object_libs =
-            self.font_info.as_ref().map(|f| f.dump_object_libs()).unwrap_or_else(|| Plist::new());
+            self.font_info.as_ref().map(|f| f.dump_object_libs()).unwrap_or_else(Plist::new);
         if !object_libs.is_empty() {
-            let mut new_lib = self.lib.clone().unwrap_or_else(|| Plist::new());
+            let mut new_lib = self.lib.clone().unwrap_or_else(Plist::new);
             new_lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), plist::Value::Dictionary(object_libs));
             plist::Value::Dictionary(new_lib).to_file_xml(path.join(LIB_FILE))?;
         } else if let Some(lib) = self.lib.as_ref().filter(|lib| !lib.is_empty()) {
