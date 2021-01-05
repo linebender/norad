@@ -145,7 +145,7 @@ impl Layer {
     }
 
     /// Iterate over the glyphs in this layer.
-    pub fn iter_contents<'a>(&'a self) -> impl Iterator<Item = Arc<Glyph>> + 'a {
+    pub fn iter_contents(&self) -> impl Iterator<Item = Arc<Glyph>> + '_ {
         self.glyphs.values().map(Arc::clone)
     }
 
@@ -175,7 +175,7 @@ pub struct LayerInfo {
 impl LayerInfo {
     fn from_file(path: &PathBuf) -> Result<Self, Error> {
         let mut info_content = plist::Value::from_file(path)
-            .map_err(|e| Error::PlistError(e))?
+            .map_err(Error::PlistError)?
             .into_dictionary()
             .ok_or(Error::ExpectedPlistDictionaryError)?;
 
@@ -183,10 +183,8 @@ impl LayerInfo {
         let color_str = info_content.remove("color");
         if let Some(v) = color_str {
             match v.into_string() {
-                Some(s) => {
-                    color.replace(Color::from_str(&s).map_err(|e| Error::InvalidDataError(e))?)
-                }
-                None => Err(Error::ExpectedPlistStringError)?,
+                Some(s) => color.replace(Color::from_str(&s).map_err(Error::InvalidDataError)?),
+                None => return Err(Error::ExpectedPlistStringError),
             };
         };
 
@@ -195,7 +193,7 @@ impl LayerInfo {
         if let Some(v) = lib_content {
             match v.into_dictionary() {
                 Some(d) => lib.replace(d),
-                None => Err(Error::ExpectedPlistDictionaryError)?,
+                None => return Err(Error::ExpectedPlistDictionaryError),
             };
         };
 

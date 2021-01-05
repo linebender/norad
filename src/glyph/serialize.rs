@@ -79,7 +79,7 @@ impl Glyph {
         // cloning and write out the original.
         let object_libs = self.dump_object_libs();
         if !object_libs.is_empty() {
-            let mut new_lib = self.lib.clone().unwrap_or_else(|| Plist::new());
+            let mut new_lib = self.lib.clone().unwrap_or_else(Plist::new);
             new_lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), plist::Value::Dictionary(object_libs));
             write_lib_section(&new_lib, &mut writer)?;
         } else if let Some(lib) = self.lib.as_ref().filter(|lib| !lib.is_empty()) {
@@ -87,7 +87,7 @@ impl Glyph {
         }
 
         writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;
-        writer.inner().write("\n".as_bytes())?;
+        writer.inner().write_all("\n".as_bytes())?;
         writer.inner().flush()?;
 
         Ok(writer.into_inner().into_inner())
@@ -120,7 +120,7 @@ fn write_lib_section<T: Write>(lib: &Plist, writer: &mut Writer<T>) -> Result<()
 
     writer.write_event(Event::Start(BytesStart::borrowed_name(b"lib")))?;
     for line in to_write.lines() {
-        writer.inner().write("\n\t\t".as_bytes())?;
+        writer.inner().write_all("\n\t\t".as_bytes())?;
         writer.inner().write_all(line.as_bytes())?;
     }
     writer.write_event(Event::End(BytesEnd::borrowed(b"lib")))?;

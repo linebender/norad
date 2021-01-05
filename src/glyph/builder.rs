@@ -149,7 +149,7 @@ impl GlyphBuilder {
     ///
     /// Errors when format version 1 is set.
     pub fn guideline(&mut self, guideline: Guideline) -> Result<&mut Self, ErrorKind> {
-        if &self.glyph.format == &GlifVersion::V1 {
+        if self.glyph.format == GlifVersion::V1 {
             return Err(ErrorKind::UnexpectedTag);
         }
         insert_identifier(&mut self.identifiers, guideline.identifier().cloned())?;
@@ -161,7 +161,7 @@ impl GlyphBuilder {
     ///
     /// Errors when format version 1 is set or the optional identifier is not unique within the glyph.
     pub fn anchor(&mut self, anchor: Anchor) -> Result<&mut Self, ErrorKind> {
-        if &self.glyph.format == &GlifVersion::V1 {
+        if self.glyph.format == GlifVersion::V1 {
             return Err(ErrorKind::UnexpectedTag);
         }
         insert_identifier(&mut self.identifiers, anchor.identifier.clone())?;
@@ -183,7 +183,7 @@ impl GlyphBuilder {
         if self.glyph.outline.is_some() {
             return Err(ErrorKind::UnexpectedDuplicate);
         }
-        if &self.glyph.format == &GlifVersion::V1 && !identifiers.is_empty() {
+        if self.glyph.format == GlifVersion::V1 && !identifiers.is_empty() {
             return Err(ErrorKind::UnexpectedAttribute);
         }
         if !self.identifiers.is_disjoint(&identifiers) {
@@ -191,7 +191,7 @@ impl GlyphBuilder {
         }
         self.identifiers.extend(identifiers);
 
-        if &self.glyph.format == &GlifVersion::V1 {
+        if self.glyph.format == GlifVersion::V1 {
             for c in &mut outline.contours {
                 if c.points.len() == 1
                     && c.points[0].typ == PointType::Move
@@ -211,14 +211,7 @@ impl GlyphBuilder {
             }
 
             // Clean up now empty contours.
-            let mut i = 0;
-            while i != outline.contours.len() {
-                if outline.contours[i].points.len() == 0 {
-                    outline.contours.remove(i);
-                } else {
-                    i += 1;
-                }
-            }
+            outline.contours.retain(|c| !c.points.is_empty());
         }
 
         self.glyph.outline.replace(outline);
@@ -229,7 +222,7 @@ impl GlyphBuilder {
     ///
     /// Errors when format version 1 is set or the function is called more than once.
     pub fn image(&mut self, image: Image) -> Result<&mut Self, ErrorKind> {
-        if &self.glyph.format == &GlifVersion::V1 {
+        if self.glyph.format == GlifVersion::V1 {
             return Err(ErrorKind::UnexpectedTag);
         }
         if self.glyph.image.is_some() {
@@ -271,7 +264,7 @@ impl GlyphBuilder {
 /// Primarily to be used in conjunction with [`GlyphBuilder`].
 ///
 /// [fontTools point pen]: https://fonttools.readthedocs.io/en/latest/pens/basePen.html
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct OutlineBuilder {
     identifiers: HashSet<Identifier>,
     outline: Outline,
@@ -281,12 +274,7 @@ pub struct OutlineBuilder {
 
 impl OutlineBuilder {
     pub fn new() -> Self {
-        Self {
-            identifiers: HashSet::new(),
-            outline: Outline::default(),
-            scratch_contour: None,
-            number_of_offcurves: 0,
-        }
+        Default::default()
     }
 
     /// Start a new path to be added to the glyph with `end_path()`.
@@ -397,7 +385,7 @@ impl OutlineBuilder {
                 }
                 self.number_of_offcurves = 0;
                 // Empty contours are allowed by the specification but make no sense, skip them.
-                if c.points.len() > 0 {
+                if !c.points.is_empty() {
                     self.outline.contours.push(c);
                 }
                 Ok(self)

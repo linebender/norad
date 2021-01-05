@@ -639,7 +639,7 @@ impl From<druid::piet::Color> for Color {
         let g = ((rgba >> 16) & 0xff) as f32 / 255.0;
         let b = ((rgba >> 8) & 0xff) as f32 / 255.0;
         let a = (rgba & 0xff) as f32 / 255.0;
-        assert!(b >= 0.0 && b <= 1.0, "b: {}, raw {}", b, (rgba & (0xff << 8)));
+        assert!((0.0..=1.0).contains(&b), "b: {}, raw {}", b, (rgba & (0xff << 8)));
 
         Color {
             red: r.max(0.0).min(1.0),
