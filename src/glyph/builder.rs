@@ -268,8 +268,19 @@ impl GlyphBuilder {
 pub struct OutlineBuilder {
     identifiers: HashSet<Identifier>,
     outline: Outline,
-    scratch_contour: Option<Contour>,
-    number_of_offcurves: u32,
+    scratch_state: OutlineBuilderState,
+}
+
+#[derive(Debug)]
+enum OutlineBuilderState {
+    Idle,
+    Drawing { scratch_contour: Contour, number_of_offcurves: u32 },
+}
+
+impl Default for OutlineBuilderState {
+    fn default() -> Self {
+        OutlineBuilderState::Idle
+    }
 }
 
 impl OutlineBuilder {
@@ -277,98 +288,125 @@ impl OutlineBuilder {
         Default::default()
     }
 
-    /// Start a new path to be added to the glyph with `end_path()`.
+    /// Begin a new path to be added to the glyph.
+    ///
+    /// It must be finished with [`Self::end_path`] before the outline can be [`Self::finish`]ed
+    /// and retrieved.
     ///
     /// Errors when:
     /// 1. a path has been begun already but not ended yet.
     /// 2. the identifier is not unique within the glyph.
+    ///
+    /// On error, it won't begin a new path and you can continue drawing the previously started
+    /// path.
     pub fn begin_path(&mut self, identifier: Option<Identifier>) -> Result<&mut Self, ErrorKind> {
-        if self.scratch_contour.is_some() {
-            return Err(ErrorKind::UnfinishedDrawing);
+        match self.scratch_state {
+            OutlineBuilderState::Idle => {
+                insert_identifier(&mut self.identifiers, identifier.clone())?;
+                self.scratch_state = OutlineBuilderState::Drawing {
+                    scratch_contour: Contour::new(Vec::new(), identifier, None),
+                    number_of_offcurves: 0,
+                };
+                Ok(self)
+            }
+            OutlineBuilderState::Drawing { .. } => Err(ErrorKind::UnfinishedDrawing),
         }
-        insert_identifier(&mut self.identifiers, identifier.clone())?;
-        self.scratch_contour.replace(Contour::new(Vec::new(), identifier, None));
-        Ok(self)
     }
 
     /// Add a point to the path begun by `begin_path()`.
     ///
     /// Errors when:
-    /// 1. `begin_path()` wasn't called first.
+    /// 1. [`Self::begin_path`] wasn't called first.
     /// 2. the identifier is not unique within the outline.
     /// 3. the point is an off-curve with the smooth attribute set.
     /// 4. the point sequence is forbidden by the specification.
+    ///
+    /// On error, it won't add any part of the point, but you can try again with a new and improved
+    /// point.
     pub fn add_point(
         &mut self,
-        point: (f32, f32),
+        (x, y): (f32, f32),
         segment_type: PointType,
         smooth: bool,
         name: Option<String>,
         identifier: Option<Identifier>,
     ) -> Result<&mut Self, ErrorKind> {
-        if smooth && segment_type == PointType::OffCurve {
-            return Err(ErrorKind::UnexpectedSmooth);
-        }
+        match &mut self.scratch_state {
+            OutlineBuilderState::Idle => Err(ErrorKind::PenPathNotStarted),
+            OutlineBuilderState::Drawing { scratch_contour, number_of_offcurves } => {
+                // NOTE: Check identifier collision early, a duplicate identifier may otherwise
+                // leave behind a changed number_of_offcurves.
+                if let Some(identifier) = &identifier {
+                    if self.identifiers.contains(identifier) {
+                        return Err(ErrorKind::DuplicateIdentifier);
+                    }
+                }
 
-        let point =
-            ContourPoint::new(point.0, point.1, segment_type, smooth, name, identifier, None);
-
-        match &mut self.scratch_contour {
-            Some(c) => {
-                match point.typ {
+                match segment_type {
                     PointType::Move => {
-                        if !c.points.is_empty() {
+                        if !scratch_contour.points.is_empty() {
                             return Err(ErrorKind::UnexpectedMove);
                         }
                     }
                     PointType::Line => {
-                        if self.number_of_offcurves > 0 {
+                        if *number_of_offcurves > 0 {
                             return Err(ErrorKind::UnexpectedPointAfterOffCurve);
                         }
                     }
                     PointType::OffCurve => {
-                        self.number_of_offcurves = self.number_of_offcurves.saturating_add(1)
+                        if smooth {
+                            return Err(ErrorKind::UnexpectedSmooth);
+                        }
+                        *number_of_offcurves = number_of_offcurves.saturating_add(1)
                     }
-                    PointType::QCurve => self.number_of_offcurves = 0,
+                    PointType::QCurve => *number_of_offcurves = 0,
                     PointType::Curve => {
-                        if self.number_of_offcurves > 2 {
+                        if *number_of_offcurves > 2 {
                             return Err(ErrorKind::TooManyOffCurves);
                         }
-                        self.number_of_offcurves = 0;
+                        *number_of_offcurves = 0;
                     }
                 }
-                insert_identifier(&mut self.identifiers, point.identifier.clone())?;
-                c.points.push(point);
+                insert_identifier(&mut self.identifiers, identifier.clone()).unwrap();
+                scratch_contour.points.push(ContourPoint::new(
+                    x,
+                    y,
+                    segment_type,
+                    smooth,
+                    name,
+                    identifier,
+                    None,
+                ));
                 Ok(self)
             }
-            None => Err(ErrorKind::PenPathNotStarted),
         }
     }
 
-    /// Ends the path begun by `begin_path()` and adds the contour it to the glyph's outline.
-    ///
-    /// Discards path in case of error.
+    /// Ends the path begun by [`Self::begin_path`] and adds the contour it to the glyph's outline, unless
+    /// it's empty.
     ///
     /// Errors when:
-    /// 1. `begin_path()` wasn't called first.
+    /// 1. [`Self::begin_path`] wasn't called first.
     /// 2. the point sequence is forbidden by the specification.
+    ///
+    /// On error, it drops the path you were trying to end and you can [`Self::begin_path`] again. It
+    /// doesn't change the previously added paths.
     pub fn end_path(&mut self) -> Result<&mut Self, ErrorKind> {
-        let contour = self.scratch_contour.take();
-        match contour {
-            Some(c) => {
+        match std::mem::replace(&mut self.scratch_state, OutlineBuilderState::Idle) {
+            OutlineBuilderState::Idle => Err(ErrorKind::PenPathNotStarted),
+            OutlineBuilderState::Drawing { scratch_contour, mut number_of_offcurves } => {
                 // If ending a closed contour with off-curve points, wrap around and check
                 // from the beginning that we have a curve or qcurve following eventually.
-                if self.number_of_offcurves > 0 {
-                    if c.is_closed() {
-                        for point in &c.points {
+                if number_of_offcurves > 0 {
+                    if scratch_contour.is_closed() {
+                        for point in &scratch_contour.points {
                             match point.typ {
                                 PointType::OffCurve => {
-                                    self.number_of_offcurves =
-                                        self.number_of_offcurves.saturating_add(1)
+                                    number_of_offcurves = number_of_offcurves.saturating_add(1)
                                 }
                                 PointType::QCurve => break,
                                 PointType::Curve => {
-                                    if self.number_of_offcurves > 2 {
+                                    if number_of_offcurves > 2 {
                                         return Err(ErrorKind::TooManyOffCurves);
                                     }
                                     break;
@@ -383,20 +421,21 @@ impl OutlineBuilder {
                         return Err(ErrorKind::TrailingOffCurves);
                     }
                 }
-                self.number_of_offcurves = 0;
                 // Empty contours are allowed by the specification but make no sense, skip them.
-                if !c.points.is_empty() {
-                    self.outline.contours.push(c);
+                if !scratch_contour.points.is_empty() {
+                    self.outline.contours.push(scratch_contour);
                 }
                 Ok(self)
             }
-            None => Err(ErrorKind::PenPathNotStarted),
         }
     }
 
     /// Add a component to the glyph.
     ///
     /// Errors when the identifier is not unique within the glyph.
+    ///
+    /// On error, it won't add the component, but you can try again with a new and improved
+    /// component.
     pub fn add_component(
         &mut self,
         base: GlyphName,
@@ -408,15 +447,17 @@ impl OutlineBuilder {
         Ok(self)
     }
 
-    /// Consume the builder and return the final `Outline` with the set of hashed indetifiers.
+    /// Consume the builder and return the final [`Outline`] with its set of hashed indetifiers.
     ///
     /// Errors when a path has been begun but not ended.
+    ///
+    /// On error, it won't finish the outline and return it to you, but you can [`Self::end_path`]
+    /// before trying to finish again.
     pub fn finish(self) -> Result<(Outline, HashSet<Identifier>), ErrorKind> {
-        if self.scratch_contour.is_some() {
-            return Err(ErrorKind::UnfinishedDrawing);
+        match self.scratch_state {
+            OutlineBuilderState::Idle => Ok((self.outline, self.identifiers)),
+            OutlineBuilderState::Drawing { .. } => Err(ErrorKind::UnfinishedDrawing),
         }
-
-        Ok((self.outline, self.identifiers))
     }
 }
 
