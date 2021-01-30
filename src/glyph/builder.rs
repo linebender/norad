@@ -382,7 +382,7 @@ impl OutlineBuilder {
         }
     }
 
-    /// Ends the path begun by [`Self::begin_path`] and adds the contour it to the glyph's outline, unless
+    /// Ends the path begun by [`Self::begin_path`] and adds the contour to the glyph's outline, unless
     /// it's empty.
     ///
     /// Errors when:
