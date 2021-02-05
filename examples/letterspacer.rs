@@ -1,9 +1,10 @@
-use kurbo::{BezPath, Point, Shape};
+use kurbo::{BezPath, ParamCurve, Point, Shape};
 use norad::glyph::{Contour, ContourPoint, Glyph, PointType};
+use norad::Layer;
 
 fn main() {
     for arg in std::env::args().skip(1) {
-        let mut ufo = match norad::Ufo::load(&arg) {
+        let ufo = match norad::Ufo::load(&arg) {
             Ok(v) => v,
             Err(e) => {
                 eprintln!("Loading UFO failed: {}", e);
@@ -12,91 +13,124 @@ fn main() {
         };
 
         let default_layer = ufo.get_default_layer().unwrap();
-        let decomposed_glyphs: Vec<norad::Glyph> = default_layer
+        let decomposed_glyphs: Vec<Glyph> = default_layer
             .iter_contents()
             .map(|glyph| {
                 if glyph.outline.as_ref().map_or(false, |o| !o.components.is_empty()) {
                     decompose(&glyph, default_layer)
                 } else {
-                    norad::Glyph::clone(&glyph)
+                    Glyph::clone(&glyph)
                 }
             })
             .collect();
 
-        let mut decomposed_layer = norad::LayerInfo {
-            name: "public.background".into(),
-            path: std::path::PathBuf::from("glyphs.background"),
-            layer: norad::Layer::default(),
-        };
-        for glyph in decomposed_glyphs {
-            decomposed_layer.layer.insert_glyph(glyph)
-        }
-        ufo.layers.push(decomposed_layer);
+        // Fetch some glyphs to make a measurement polygon in the background.
+        let glyph_a = decomposed_glyphs.iter().find(|&x| x.name == "a".into()).unwrap();
+        let glyph_a_paths = path_for_glyph(&glyph_a).unwrap();
+        // let glyph_n = decomposed_glyphs.iter().find(|&x| x.name == "n".into()).unwrap();
+        // let glyph_n_paths = path_for_glyph(&glyph_n).unwrap();
 
-        ufo.meta.creator = "org.linebender.norad".into();
-        let output_path = std::path::PathBuf::from(&arg);
-        ufo.save(std::path::PathBuf::from("/tmp").join(output_path.file_name().unwrap())).unwrap();
+        let glyph_a_bounds = glyph_a_paths.bounding_box();
+        let measurement_line =
+            kurbo::Line::new((glyph_a_bounds.min_x(), 500.0), (glyph_a_bounds.max_x(), 500.0));
+        println!("{:?}", intersections_for_line(&glyph_a_paths, measurement_line));
+
+        // // Write out background layer.
+        // let mut decomposed_layer = norad::LayerInfo {
+        //     name: "public.background".into(),
+        //     path: std::path::PathBuf::from("glyphs.background"),
+        //     layer: Layer::default(),
+        // };
+        // for glyph in decomposed_glyphs {
+        //     decomposed_layer.layer.insert_glyph(glyph)
+        // }
+        // ufo.layers.push(decomposed_layer);
+
+        // ufo.meta.creator = "org.linebender.norad".into();
+        // let output_path = std::path::PathBuf::from(&arg);
+        // ufo.save(std::path::PathBuf::from("/tmp").join(output_path.file_name().unwrap())).unwrap();
     }
 }
 
-fn calculate_spacing(
-    glyph: &norad::Glyph,
-    glyph_ref: &norad::Glyph,
-    glyphset: &norad::Layer,
-    angle: f32,
-    factor: f32,
-    param_area: u32,
-    param_depth: u32,
-    param_over: u32,
-    tabular_width: Option<u32>,
-    upm: u16,
-    xheight: u32,
-) -> Option<(i32, i32, u32)> {
-    let glyph_decomposed = decompose(glyph, glyphset);
-    let glyph_paths = path_for_glyph(&glyph_decomposed);
-    if glyph_paths.is_none() {
-        return None;
-    }
-    let glyph_paths = glyph_paths.unwrap();
-
-    // TODO: handle this outside the function and just pass in the ref bounds.
-    let glyph_ref_decomposed = decompose(glyph_ref, glyphset);
-    let glyph_ref_paths = path_for_glyph(&glyph_ref_decomposed);
-    let (ref_bounds_ymin, ref_bounds_ymax) = match glyph_ref_paths {
-        Some(p) => {
-            // Use reference glyph lower and upper bounds.
-            let bounds = p.bounding_box();
-            (bounds.min_y(), bounds.max_y())
-        },
-        None => {
-            // Use glyph's own lower and upper bounds.
-            let bounds = glyph_paths.bounding_box();
-            (bounds.min_y(), bounds.max_y())
-        }
-    };
-
-    // The reference glyph provides the lower and upper bound of the vertical
-    // zone to use for spacing. Overshoot lets us measure a bit above and below.
-    let overshoot = xheight * param_over / 100;
-    let ref_ymin: i32 = ref_bounds_ymin.round() as i32 - overshoot as i32;
-    let ref_ymax: i32 = ref_bounds_ymax.round() as i32 + overshoot as i32;
-
-    // Feel out the outer outline of the glyph and deslant if it's slanted.
-
-
-    // Determine the extreme outer left and right points on the outline as
-    // the line from which to feel into the glyph.
-
-
-    //
-
-
-    Some((0, 0, 0))
+fn intersections_for_line(paths: &BezPath, line: kurbo::Line) -> Vec<Point> {
+    paths
+        .segments()
+        .flat_map(|s| s.intersect_line(line).into_iter().map(move |h| s.eval(h.segment_t).round()))
+        .collect()
 }
+
+// fn calculate_spacing(
+//     glyph: &Glyph,
+//     glyph_ref: &Glyph,
+//     glyphset: &Layer,
+//     angle: f32,
+//     factor: f32,
+//     param_area: u32,
+//     param_depth: u32,
+//     param_over: u32,
+//     param_freq: u32,
+//     tabular_width: Option<u32>,
+//     upm: u16,
+//     xheight: u32,
+// ) -> Option<(i32, i32, u32)> {
+//     let glyph_decomposed = decompose(glyph, glyphset);
+//     let glyph_paths = path_for_glyph(&glyph_decomposed);
+//     if glyph_paths.is_none() {
+//         return None;
+//     }
+//     let glyph_paths = glyph_paths.unwrap();
+//     let (bounds_ymin, bounds_ymax) = {
+//         let bounds = glyph_paths.bounding_box();
+//         (bounds.min_y(), bounds.max_y())
+//     };
+
+//     // TODO: handle this outside the function and just pass in the ref bounds.
+//     let glyph_ref_decomposed = decompose(glyph_ref, glyphset);
+//     let glyph_ref_paths = path_for_glyph(&glyph_ref_decomposed);
+//     let (ref_bounds_ymin, ref_bounds_ymax) = match glyph_ref_paths {
+//         Some(p) => {
+//             // Use reference glyph lower and upper bounds.
+//             let bounds = p.bounding_box();
+//             (bounds.min_y(), bounds.max_y())
+//         }
+//         None => {
+//             // Use glyph's own lower and upper bounds.
+//             let bounds = glyph_paths.bounding_box();
+//             (bounds.min_y(), bounds.max_y())
+//         }
+//     };
+
+//     // The reference glyph provides the lower and upper bound of the vertical
+//     // zone to use for spacing. Overshoot lets us measure a bit above and below.
+//     let overshoot = xheight * param_over / 100;
+//     let ref_ymin: i32 = ref_bounds_ymin.round() as i32 - overshoot as i32;
+//     let ref_ymax: i32 = ref_bounds_ymax.round() as i32 + overshoot as i32;
+
+//     // Feel out the outer outline of the glyph and deslant if it's slanted.
+//     let (mut margins_left_full, mut margins_right_full) = margin_list(glyph_paths, param_freq);
+//     if angle != 0.0 {
+//         margins_left_full = deslant(margins_left_full, angle, xheight);
+//         margins_right_full = deslant(margins_right_full, angle, xheight);
+//     }
+
+//     // Determine the extreme outer left and right points on the outline as
+//     // the line from which to feel into the glyph.
+
+//     //
+
+//     Some((0, 0, 0))
+// }
+
+// fn margin_list(
+//     glyph: &Glyph,
+//     glyph_ymax: i32,
+//     param_freq: u32,
+// ) -> (Vec<(f32, f32)>, Vec<(f32, f32)>) {
+// }
 
 /// Decompose a (composite) glyph. Ignores incoming identifiers and libs.
-fn decompose(glyph: &norad::Glyph, glyphset: &norad::Layer) -> norad::Glyph {
-    let mut decomposed_glyph = norad::Glyph::new_named(glyph.name.clone());
+fn decompose(glyph: &Glyph, glyphset: &Layer) -> Glyph {
+    let mut decomposed_glyph = Glyph::new_named(glyph.name.clone());
 
     if let Some(outline) = &glyph.outline {
         let mut decomposed_contours = outline.contours.clone();
