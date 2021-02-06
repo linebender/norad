@@ -1,10 +1,10 @@
-use kurbo::{BezPath, ParamCurve, Point, Shape};
+use kurbo::{BezPath, Line, ParamCurve, Point, Shape};
 use norad::glyph::{Contour, ContourPoint, Glyph, PointType};
-use norad::Layer;
+use norad::{GlifVersion, GlyphBuilder, Layer, OutlineBuilder};
 
 fn main() {
     for arg in std::env::args().skip(1) {
-        let ufo = match norad::Ufo::load(&arg) {
+        let mut ufo = match norad::Ufo::load(&arg) {
             Ok(v) => v,
             Err(e) => {
                 eprintln!("Loading UFO failed: {}", e);
@@ -16,43 +16,80 @@ fn main() {
         let decomposed_glyphs: Vec<Glyph> = default_layer
             .iter_contents()
             .map(|glyph| {
-                if glyph.outline.as_ref().map_or(false, |o| !o.components.is_empty()) {
+                let glyph = if glyph.outline.as_ref().map_or(false, |o| !o.components.is_empty()) {
                     decompose(&glyph, default_layer)
                 } else {
                     Glyph::clone(&glyph)
-                }
+                };
+                let paths = path_for_glyph(&glyph).unwrap();
+                let outlines = glyph_outer_outline(&paths, 5);
+                draw_glyph_outer_outline_into_glyph(&glyph, outlines)
             })
             .collect();
 
-        // Fetch some glyphs to make a measurement polygon in the background.
-        let glyph_a = decomposed_glyphs.iter().find(|&x| x.name == "a".into()).unwrap();
-        let glyph_a_paths = path_for_glyph(&glyph_a).unwrap();
-        // let glyph_n = decomposed_glyphs.iter().find(|&x| x.name == "n".into()).unwrap();
-        // let glyph_n_paths = path_for_glyph(&glyph_n).unwrap();
+        // Write out background layer.
+        let mut decomposed_layer = norad::LayerInfo {
+            name: "public.background".into(),
+            path: std::path::PathBuf::from("glyphs.background"),
+            layer: Layer::default(),
+        };
+        for glyph in decomposed_glyphs {
+            decomposed_layer.layer.insert_glyph(glyph)
+        }
+        ufo.layers.push(decomposed_layer);
 
-        let glyph_a_bounds = glyph_a_paths.bounding_box();
-        let measurement_line =
-            kurbo::Line::new((glyph_a_bounds.min_x(), 500.0), (glyph_a_bounds.max_x(), 500.0));
-        println!("{:?}", intersections_for_line(&glyph_a_paths, measurement_line));
-
-        // // Write out background layer.
-        // let mut decomposed_layer = norad::LayerInfo {
-        //     name: "public.background".into(),
-        //     path: std::path::PathBuf::from("glyphs.background"),
-        //     layer: Layer::default(),
-        // };
-        // for glyph in decomposed_glyphs {
-        //     decomposed_layer.layer.insert_glyph(glyph)
-        // }
-        // ufo.layers.push(decomposed_layer);
-
-        // ufo.meta.creator = "org.linebender.norad".into();
-        // let output_path = std::path::PathBuf::from(&arg);
-        // ufo.save(std::path::PathBuf::from("/tmp").join(output_path.file_name().unwrap())).unwrap();
+        ufo.meta.creator = "org.linebender.norad".into();
+        let output_path = std::path::PathBuf::from(&arg);
+        ufo.save(std::path::PathBuf::from("/tmp").join(output_path.file_name().unwrap())).unwrap();
     }
 }
 
-fn intersections_for_line(paths: &BezPath, line: kurbo::Line) -> Vec<Point> {
+fn draw_glyph_outer_outline_into_glyph(glyph: &Glyph, outlines: (Vec<Point>, Vec<Point>)) -> Glyph {
+    let mut builder = GlyphBuilder::new(glyph.name.clone(), GlifVersion::V2);
+    if let Some(width) = glyph.advance_width() {
+        builder.width(width).unwrap();
+    }
+    let mut outline_builder = OutlineBuilder::new();
+    outline_builder.begin_path(None).unwrap();
+    for left in outlines.0 {
+        outline_builder
+            .add_point((left.x as f32, left.y as f32), PointType::Line, false, None, None)
+            .unwrap();
+    }
+    outline_builder.end_path().unwrap();
+    outline_builder.begin_path(None).unwrap();
+    for right in outlines.1 {
+        outline_builder
+            .add_point((right.x as f32, right.y as f32), PointType::Line, false, None, None)
+            .unwrap();
+    }
+    outline_builder.end_path().unwrap();
+    let (outline, identifiers) = outline_builder.finish().unwrap();
+    builder.outline(outline, identifiers).unwrap();
+    builder.finish().unwrap()
+}
+
+fn glyph_outer_outline(paths: &BezPath, scan_frequency: usize) -> (Vec<Point>, Vec<Point>) {
+    let bounds = paths.bounding_box();
+    let mut left = Vec::new();
+    let mut right = Vec::new();
+    for y in
+        (bounds.min_y().round() as usize..bounds.max_y().round() as usize).step_by(scan_frequency)
+    {
+        let line = Line::new((bounds.min_x(), y as f64), (bounds.max_x(), y as f64));
+        let mut hits = intersections_for_line(paths, line);
+        hits.sort_by_key(|k| k.x.round() as i32);
+        if let Some(first) = hits.first() {
+            left.push(first.clone());
+        }
+        if let Some(last) = hits.last() {
+            right.push(last.clone());
+        }
+    }
+    (left, right)
+}
+
+fn intersections_for_line(paths: &BezPath, line: Line) -> Vec<Point> {
     paths
         .segments()
         .flat_map(|s| s.intersect_line(line).into_iter().map(move |h| s.eval(h.segment_t).round()))
