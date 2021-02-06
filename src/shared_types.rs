@@ -76,7 +76,14 @@ impl Guideline {
         identifier: Option<Identifier>,
         lib: Option<Plist>,
     ) -> Self {
-        Self { line, name, color, identifier, lib }
+        let mut this = Self { line, name, color, identifier: None, lib: None };
+        if let Some(id) = identifier {
+            this.replace_identifier(id);
+        }
+        if let Some(lib) = lib {
+            this.replace_lib(lib);
+        }
+        this
     }
 
     /// Returns an immutable reference to the Guideline's lib.
