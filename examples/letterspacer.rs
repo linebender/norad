@@ -43,9 +43,9 @@ fn draw_polygon(glyph: &Glyph, glyphset: &Layer) -> Glyph {
     };
     let paths = path_for_glyph(&glyph).unwrap();
     let bounds = paths.bounding_box();
-    let outlines = glyph_outer_outline(&paths, bounds, 5);
+    let samples = sample_margins(&paths, bounds, 5);
 
-    draw_glyph_outer_outline_into_glyph(&glyph, outlines)
+    draw_glyph_outer_outline_into_glyph(&glyph, samples)
 }
 
 fn draw_glyph_outer_outline_into_glyph(glyph: &Glyph, outlines: (Vec<Point>, Vec<Point>)) -> Glyph {
@@ -74,7 +74,7 @@ fn draw_glyph_outer_outline_into_glyph(glyph: &Glyph, outlines: (Vec<Point>, Vec
 }
 
 // TODO: Handle implicit deslanting of angle.
-fn glyph_outer_outline(
+fn sample_margins(
     paths: &BezPath,
     bounds: Rect,
     scan_frequency: usize,
