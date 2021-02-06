@@ -12,10 +12,11 @@ fn main() {
             }
         };
 
+        // TODO: fetch actual reference glyph.
         let default_layer = ufo.get_default_layer().unwrap();
         let decomposed_glyphs: Vec<Glyph> = default_layer
             .iter_contents()
-            .map(|glyph| draw_polygon(&glyph, &default_layer))
+            .map(|glyph| draw_polygon(&glyph, &glyph, &default_layer))
             .collect();
 
         // Write out background layer.
@@ -35,7 +36,7 @@ fn main() {
     }
 }
 
-fn draw_polygon(glyph: &Glyph, glyphset: &Layer) -> Glyph {
+fn draw_polygon(glyph: &Glyph, glyph_reference: &Glyph, glyphset: &Layer) -> Glyph {
     let glyph = if glyph.outline.as_ref().map_or(false, |o| !o.components.is_empty()) {
         decompose(&glyph, glyphset)
     } else {
@@ -43,9 +44,76 @@ fn draw_polygon(glyph: &Glyph, glyphset: &Layer) -> Glyph {
     };
     let paths = path_for_glyph(&glyph).unwrap();
     let bounds = paths.bounding_box();
-    let samples = sample_margins(&paths, bounds, 5);
+    let (samples_left, samples_right) = sample_margins(&paths, bounds, 5);
 
-    draw_glyph_outer_outline_into_glyph(&glyph, samples)
+    let paths_reference = path_for_glyph(&glyph_reference).unwrap();
+    let bounds_reference = paths_reference.bounding_box();
+    let (min_y, max_y) = (bounds_reference.min_y(), bounds_reference.max_y());
+
+    let (extreme_left_full, extreme_left, margins_left) = samples_left.iter().fold(
+        (None, None, Vec::new()),
+        |(extreme_full, extreme, mut margins): (Option<&Point>, Option<&Point>, Vec<&Point>),
+         point: &Point| {
+            let extreme_full_new = extreme_full
+                .map(|current_point| if point.x < current_point.x { point } else { current_point })
+                .or(Some(point));
+            let in_zone = min_y <= point.y || max_y <= point.y;
+            let extreme_new = if in_zone {
+                extreme
+                    .map(
+                        |current_point| {
+                            if point.x < current_point.x {
+                                point
+                            } else {
+                                current_point
+                            }
+                        },
+                    )
+                    .or(Some(point))
+            } else {
+                extreme
+            };
+            if in_zone {
+                margins.push(point)
+            };
+            (extreme_full_new, extreme_new, margins)
+        },
+    );
+    let (extreme_right_full, extreme_right, margins_right) = samples_right.iter().fold(
+        (None, None, Vec::new()),
+        |(extreme_full, extreme, mut margins): (Option<&Point>, Option<&Point>, Vec<&Point>),
+         point: &Point| {
+            let extreme_full_new = extreme_full
+                .map(|current_point| if point.x > current_point.x { point } else { current_point })
+                .or(Some(point));
+            let in_zone = min_y <= point.y || max_y <= point.y;
+            let extreme_new = if in_zone {
+                extreme
+                    .map(
+                        |current_point| {
+                            if point.x > current_point.x {
+                                point
+                            } else {
+                                current_point
+                            }
+                        },
+                    )
+                    .or(Some(point))
+            } else {
+                extreme
+            };
+            if in_zone {
+                margins.push(point)
+            };
+            (extreme_full_new, extreme_new, margins)
+        },
+    );
+
+    draw_glyph_outer_outline_into_glyph(&glyph, (samples_left, samples_right))
+}
+
+fn process_samples() -> (Vec<Point>, Vec<Point>) {
+
 }
 
 fn draw_glyph_outer_outline_into_glyph(glyph: &Glyph, outlines: (Vec<Point>, Vec<Point>)) -> Glyph {
