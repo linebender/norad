@@ -354,7 +354,14 @@ impl Anchor {
         identifier: Option<Identifier>,
         lib: Option<Plist>,
     ) -> Self {
-        Self { x, y, name, color, identifier, lib }
+        let mut this = Self { x, y, name, color, identifier: None, lib: None };
+        if let Some(id) = identifier {
+            this.replace_identifier(id);
+        }
+        if let Some(lib) = lib {
+            this.replace_lib(lib);
+        }
+        this
     }
 
     /// Returns an immutable reference to the anchor's lib.
@@ -399,7 +406,14 @@ impl Contour {
         identifier: Option<Identifier>,
         lib: Option<Plist>,
     ) -> Self {
-        Self { points, identifier, lib }
+        let mut this = Self { points, identifier: None, lib: None };
+        if let Some(id) = identifier {
+            this.replace_identifier(id);
+        }
+        if let Some(lib) = lib {
+            this.replace_lib(lib);
+        }
+        this
     }
 
     /// Returns an immutable reference to the contour's lib.
@@ -448,7 +462,14 @@ impl ContourPoint {
         identifier: Option<Identifier>,
         lib: Option<Plist>,
     ) -> Self {
-        Self { x, y, typ, smooth, name, identifier, lib }
+        let mut this = Self { x, y, typ, smooth, name, identifier: None, lib: None };
+        if let Some(id) = identifier {
+            this.replace_identifier(id);
+        }
+        if let Some(lib) = lib {
+            this.replace_lib(lib);
+        }
+        this
     }
 
     /// Returns an immutable reference to the contour's lib.
@@ -494,7 +515,14 @@ impl Component {
         identifier: Option<Identifier>,
         lib: Option<Plist>,
     ) -> Self {
-        Self { base, transform, identifier, lib }
+        let mut this = Self { base, transform, identifier: None, lib: None };
+        if let Some(id) = identifier {
+            this.replace_identifier(id);
+        }
+        if let Some(lib) = lib {
+            this.replace_lib(lib);
+        }
+        this
     }
 
     /// Returns an immutable reference to the component's lib.
