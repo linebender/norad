@@ -36,6 +36,55 @@ fn main() {
     }
 }
 
+fn sample_margins(
+    paths: &BezPath,
+    bounds: Rect,
+    angle: f32,
+    xheight: i32,
+    scan_frequency: usize,
+) -> (Vec<Point>, Vec<Point>) {
+    let lower_bound = bounds.min_y().round() as isize;
+    let upper_bound = bounds.max_y().round() as isize;
+    let left_bounds = bounds.min_x();
+    let right_bounds = bounds.max_x();
+
+    let skew_offset = xheight as f64 / 2.0;
+    let tan_angle = (angle as f64).to_radians().tan();
+
+    let mut left = Vec::new();
+    let mut right = Vec::new();
+
+    for y in (lower_bound..=upper_bound).step_by(scan_frequency) {
+        let line = Line::new((left_bounds, y as f64), (right_bounds, y as f64));
+
+        let mut hits = intersections_for_line(paths, line);
+        if hits.is_empty() {
+            left.push(Point::new(f64::INFINITY, y as f64));
+            right.push(Point::new(-f64::INFINITY, y as f64));
+        } else {
+            hits.sort_by_key(|k| k.x.round() as i32);
+            let first = hits.first().unwrap().clone();
+            let last = hits.last().unwrap().clone();
+            if angle != 0.0 {
+                left.push(Point::new(first.x - (y as f64 - skew_offset) * tan_angle, first.y));
+                right.push(Point::new(last.x - (y as f64 - skew_offset) * tan_angle, last.y));
+            } else {
+                left.push(first);
+                right.push(last);
+            }
+        }
+    }
+
+    (left, right)
+}
+
+fn intersections_for_line(paths: &BezPath, line: Line) -> Vec<Point> {
+    paths
+        .segments()
+        .flat_map(|s| s.intersect_line(line).into_iter().map(move |h| s.eval(h.segment_t).round()))
+        .collect()
+}
+
 fn draw_polygon(glyph: &Glyph, glyph_reference: &Glyph, glyphset: &Layer) -> Glyph {
     let glyph = if glyph.outline.as_ref().map_or(false, |o| !o.components.is_empty()) {
         decompose(&glyph, glyphset)
@@ -43,12 +92,11 @@ fn draw_polygon(glyph: &Glyph, glyph_reference: &Glyph, glyphset: &Layer) -> Gly
         Glyph::clone(&glyph)
     };
     let paths = path_for_glyph(&glyph).unwrap();
-    let bounds = paths.bounding_box();
-    let (samples_left, samples_right) = sample_margins(&paths, bounds, 5);
-
     let paths_reference = path_for_glyph(&glyph_reference).unwrap();
     let bounds_reference = paths_reference.bounding_box();
     let (min_y, max_y) = (bounds_reference.min_y(), bounds_reference.max_y());
+
+    let (samples_left, samples_right) = sample_margins(&paths, bounds_reference, 0.0, 500, 5);
 
     let (extreme_left_full, extreme_left, margins_left) = samples_left.iter().fold(
         (None, None, Vec::new()),
@@ -112,9 +160,8 @@ fn draw_polygon(glyph: &Glyph, glyph_reference: &Glyph, glyphset: &Layer) -> Gly
     draw_glyph_outer_outline_into_glyph(&glyph, (samples_left, samples_right))
 }
 
-fn process_samples() -> (Vec<Point>, Vec<Point>) {
-
-}
+// fn process_samples() -> (Vec<Point>, Vec<Point>) {
+// }
 
 fn draw_glyph_outer_outline_into_glyph(glyph: &Glyph, outlines: (Vec<Point>, Vec<Point>)) -> Glyph {
     let mut builder = GlyphBuilder::new(glyph.name.clone(), GlifVersion::V2);
@@ -139,37 +186,6 @@ fn draw_glyph_outer_outline_into_glyph(glyph: &Glyph, outlines: (Vec<Point>, Vec
     let (outline, identifiers) = outline_builder.finish().unwrap();
     builder.outline(outline, identifiers).unwrap();
     builder.finish().unwrap()
-}
-
-// TODO: Handle implicit deslanting of angle.
-fn sample_margins(
-    paths: &BezPath,
-    bounds: Rect,
-    scan_frequency: usize,
-) -> (Vec<Point>, Vec<Point>) {
-    let mut left = Vec::new();
-    let mut right = Vec::new();
-    for y in
-        (bounds.min_y().round() as usize..bounds.max_y().round() as usize).step_by(scan_frequency)
-    {
-        let line = Line::new((bounds.min_x(), y as f64), (bounds.max_x(), y as f64));
-        let mut hits = intersections_for_line(paths, line);
-        hits.sort_by_key(|k| k.x.round() as i32);
-        if let Some(first) = hits.first() {
-            left.push(first.clone());
-        }
-        if let Some(last) = hits.last() {
-            right.push(last.clone());
-        }
-    }
-    (left, right)
-}
-
-fn intersections_for_line(paths: &BezPath, line: Line) -> Vec<Point> {
-    paths
-        .segments()
-        .flat_map(|s| s.intersect_line(line).into_iter().map(move |h| s.eval(h.segment_t).round()))
-        .collect()
 }
 
 /// Decompose a (composite) glyph. Ignores incoming identifiers and libs.
