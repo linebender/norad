@@ -12,11 +12,40 @@ fn main() {
             }
         };
 
+        let angle: f64 = ufo.font_info.as_ref().map_or(0.0, |info| match info.italic_angle {
+            Some(a) => -a.get(),
+            None => 0.0,
+        });
+        let xheight: f64 = ufo.font_info.as_ref().map_or(0.0, |info| match info.x_height {
+            Some(a) => a.get(),
+            None => 0.0,
+        });
+        let param_overshoot: f64 = 0.0;
+        let param_depth: f64 = 15.0;
+        let param_sample_frequency: usize = 5;
+
         // TODO: fetch actual reference glyph.
         let default_layer = ufo.get_default_layer().unwrap();
         let decomposed_glyphs: Vec<Glyph> = default_layer
             .iter_contents()
-            .map(|glyph| draw_polygon(&glyph, &glyph, &default_layer))
+            .filter(|glyph| {
+                glyph
+                    .outline
+                    .as_ref()
+                    .map_or(false, |o| !o.components.is_empty() || !o.contours.is_empty())
+            })
+            .map(|glyph| {
+                draw_polygon(
+                    &glyph,
+                    &glyph,
+                    &default_layer,
+                    angle,
+                    xheight,
+                    param_overshoot,
+                    param_depth,
+                    param_sample_frequency,
+                )
+            })
             .collect();
 
         // Write out background layer.
@@ -36,46 +65,110 @@ fn main() {
     }
 }
 
-fn sample_margins(
+fn spacing_polygons(
     paths: &BezPath,
-    bounds: Rect,
-    angle: f32,
-    xheight: i32,
+    bounds: &Rect,
+    lower_bound_reference: isize,
+    upper_bound_reference: isize,
+    angle: f64,
+    xheight: f64,
     scan_frequency: usize,
-) -> (Vec<Point>, Vec<Point>) {
-    let lower_bound = bounds.min_y().round() as isize;
-    let upper_bound = bounds.max_y().round() as isize;
-    let left_bounds = bounds.min_x();
-    let right_bounds = bounds.max_x();
+    depth_cut: f64,
+) -> (Vec<Point>, Point, Point, Vec<Point>, Point, Point) {
+    // For deskewing angled glyphs. Makes subsequent processing easier.
+    let skew_offset = xheight / 2.0;
+    let tan_angle = angle.to_radians().tan();
 
-    let skew_offset = xheight as f64 / 2.0;
-    let tan_angle = (angle as f64).to_radians().tan();
+    // First pass: Collect the outer intersections of a horizontal line with the glyph on both sides, going bottom
+    // to top. The spacing polygon is vertically limited to lower_bound_reference..=upper_bound_reference,
+    // but we need to collect the extreme points on both sides for the full stretch for spacing later.
 
+    // A glyph can over- or undershoot its reference bounds. Measure the tallest stretch.
+    let lower_bound_sampling = (bounds.min_y().round() as isize).min(lower_bound_reference);
+    let upper_bound_sampling = (bounds.max_y().round() as isize).max(upper_bound_reference);
     let mut left = Vec::new();
+    let left_bounds = bounds.min_x();
+    let mut extreme_left_full: Option<Point> = None;
+    let mut extreme_left: Option<Point> = None;
     let mut right = Vec::new();
-
-    for y in (lower_bound..=upper_bound).step_by(scan_frequency) {
+    let right_bounds = bounds.max_x();
+    let mut extreme_right_full: Option<Point> = None;
+    let mut extreme_right: Option<Point> = None;
+    for y in (lower_bound_sampling..=upper_bound_sampling).step_by(scan_frequency) {
         let line = Line::new((left_bounds, y as f64), (right_bounds, y as f64));
 
         let mut hits = intersections_for_line(paths, line);
         if hits.is_empty() {
+            // Treat no hits as hits deep off the other side.
             left.push(Point::new(f64::INFINITY, y as f64));
             right.push(Point::new(-f64::INFINITY, y as f64));
         } else {
             hits.sort_by_key(|k| k.x.round() as i32);
-            let first = hits.first().unwrap().clone();
-            let last = hits.last().unwrap().clone();
+            let mut first = hits.first().unwrap().clone(); // XXX: don't clone but own?
+            let mut last = hits.last().unwrap().clone();
             if angle != 0.0 {
-                left.push(Point::new(first.x - (y as f64 - skew_offset) * tan_angle, first.y));
-                right.push(Point::new(last.x - (y as f64 - skew_offset) * tan_angle, last.y));
-            } else {
+                first = Point::new(first.x - (y as f64 - skew_offset) * tan_angle, first.y);
+                last = Point::new(last.x - (y as f64 - skew_offset) * tan_angle, last.y);
+            }
+            if lower_bound_reference <= y && y <= upper_bound_reference {
                 left.push(first);
                 right.push(last);
+
+                extreme_left = extreme_left
+                    .map(|l| if l.x < first.x { l } else { first.clone() })
+                    .or(Some(first.clone()));
+                extreme_right = extreme_right
+                    .map(|r| if r.x > last.x { r } else { last.clone() })
+                    .or(Some(last.clone()));
             }
+
+            extreme_left_full = extreme_left_full
+                .map(|l| if l.x < first.x { l } else { first.clone() })
+                .or(Some(first.clone()));
+            extreme_right_full = extreme_right_full
+                .map(|r| if r.x > last.x { r } else { last.clone() })
+                .or(Some(last.clone()));
         }
     }
 
-    (left, right)
+    let extreme_left_full = extreme_left_full.unwrap();
+    let extreme_left = extreme_left.unwrap();
+    let extreme_right_full = extreme_right_full.unwrap();
+    let extreme_right = extreme_right.unwrap();
+
+    // Second pass: Cap the margin samples to a maximum depth from the outermost point in to get our depth cut-in.
+    let depth = xheight * depth_cut / 100.0;
+    let max_depth = extreme_left.x + depth;
+    let min_depth = extreme_right.x - depth;
+    left.iter_mut().for_each(|s| s.x = s.x.min(max_depth));
+    right.iter_mut().for_each(|s| s.x = s.x.max(min_depth));
+
+    // Third pass: Close open counterforms at 45 degrees.
+    let dx_max = scan_frequency as f64;
+
+    for i in 0..left.len() - 1 {
+        if left[i + 1].x - left[i].x > dx_max {
+            left[i + 1].x = left[i].x + dx_max;
+        }
+        if right[i + 1].x - right[i].x < -dx_max {
+            right[i + 1].x = right[i].x - dx_max;
+        }
+    }
+    for i in (0..left.len() - 1).rev() {
+        if left[i].x - left[i + 1].x > dx_max {
+            left[i].x = left[i + 1].x + dx_max;
+        }
+        if right[i].x - right[i + 1].x < -dx_max {
+            right[i].x = right[i + 1].x - dx_max;
+        }
+    }
+
+    left.insert(0, Point { x: extreme_left.x, y: bounds.min_y() });
+    left.push(Point { x: extreme_left.x, y: bounds.max_y() });
+    right.insert(0, Point { x: extreme_right.x, y: bounds.min_y() });
+    right.push(Point { x: extreme_right.x, y: bounds.max_y() });
+
+    (left, extreme_left_full, extreme_left, right, extreme_right_full, extreme_right)
 }
 
 fn intersections_for_line(paths: &BezPath, line: Line) -> Vec<Point> {
@@ -85,85 +178,57 @@ fn intersections_for_line(paths: &BezPath, line: Line) -> Vec<Point> {
         .collect()
 }
 
-fn draw_polygon(glyph: &Glyph, glyph_reference: &Glyph, glyphset: &Layer) -> Glyph {
+fn draw_polygon(
+    glyph: &Glyph,
+    glyph_reference: &Glyph,
+    glyphset: &Layer,
+    angle: f64,
+    xheight: f64,
+    param_overshoot: f64,
+    param_depth: f64,
+    param_sample_frequency: usize,
+) -> Glyph {
     let glyph = if glyph.outline.as_ref().map_or(false, |o| !o.components.is_empty()) {
         decompose(&glyph, glyphset)
     } else {
         Glyph::clone(&glyph)
     };
+    let glyph_reference =
+        if glyph_reference.outline.as_ref().map_or(false, |o| !o.components.is_empty()) {
+            decompose(&glyph_reference, glyphset)
+        } else {
+            Glyph::clone(&glyph_reference)
+        };
+
+    println!("Drawing polygon for {}", glyph.name);
+
     let paths = path_for_glyph(&glyph).unwrap();
+    let bounds = paths.bounding_box();
     let paths_reference = path_for_glyph(&glyph_reference).unwrap();
     let bounds_reference = paths_reference.bounding_box();
-    let (min_y, max_y) = (bounds_reference.min_y(), bounds_reference.max_y());
 
-    let (samples_left, samples_right) = sample_margins(&paths, bounds_reference, 0.0, 500, 5);
+    let overshoot = xheight * param_overshoot / 100.0;
+    let lower_bound_reference = (bounds_reference.min_y() - overshoot).round() as isize;
+    let upper_bound_reference = (bounds_reference.max_y() + overshoot).round() as isize;
 
-    let (extreme_left_full, extreme_left, margins_left) = samples_left.iter().fold(
-        (None, None, Vec::new()),
-        |(extreme_full, extreme, mut margins): (Option<&Point>, Option<&Point>, Vec<&Point>),
-         point: &Point| {
-            let extreme_full_new = extreme_full
-                .map(|current_point| if point.x < current_point.x { point } else { current_point })
-                .or(Some(point));
-            let in_zone = min_y <= point.y || max_y <= point.y;
-            let extreme_new = if in_zone {
-                extreme
-                    .map(
-                        |current_point| {
-                            if point.x < current_point.x {
-                                point
-                            } else {
-                                current_point
-                            }
-                        },
-                    )
-                    .or(Some(point))
-            } else {
-                extreme
-            };
-            if in_zone {
-                margins.push(point)
-            };
-            (extreme_full_new, extreme_new, margins)
-        },
-    );
-    let (extreme_right_full, extreme_right, margins_right) = samples_right.iter().fold(
-        (None, None, Vec::new()),
-        |(extreme_full, extreme, mut margins): (Option<&Point>, Option<&Point>, Vec<&Point>),
-         point: &Point| {
-            let extreme_full_new = extreme_full
-                .map(|current_point| if point.x > current_point.x { point } else { current_point })
-                .or(Some(point));
-            let in_zone = min_y <= point.y || max_y <= point.y;
-            let extreme_new = if in_zone {
-                extreme
-                    .map(
-                        |current_point| {
-                            if point.x > current_point.x {
-                                point
-                            } else {
-                                current_point
-                            }
-                        },
-                    )
-                    .or(Some(point))
-            } else {
-                extreme
-            };
-            if in_zone {
-                margins.push(point)
-            };
-            (extreme_full_new, extreme_new, margins)
-        },
+    let (samples_left, _, _, samples_right, _, _) = spacing_polygons(
+        &paths,
+        &bounds,
+        lower_bound_reference,
+        upper_bound_reference,
+        angle,
+        xheight,
+        param_sample_frequency,
+        param_depth,
     );
 
-    draw_glyph_outer_outline_into_glyph(&glyph, (samples_left, samples_right))
+    draw_glyph_outer_outline_into_glyph(&glyph, (&samples_left, &samples_right))
 }
 
-// fn process_samples() -> (Vec<Point>, Vec<Point>) {
-// }
-
-fn draw_glyph_outer_outline_into_glyph(glyph: &Glyph, outlines: (Vec<Point>, Vec<Point>)) -> Glyph {
+fn draw_glyph_outer_outline_into_glyph(
+    glyph: &Glyph,
+    outlines: (&Vec<Point>, &Vec<Point>),
+) -> Glyph {
     let mut builder = GlyphBuilder::new(glyph.name.clone(), GlifVersion::V2);
     if let Some(width) = glyph.advance_width() {
         builder.width(width).unwrap();
