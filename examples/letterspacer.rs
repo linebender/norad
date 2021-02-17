@@ -12,6 +12,11 @@ fn main() {
             }
         };
 
+        let units_per_em: f64 =
+            ufo.font_info.as_ref().map_or(1000.0, |info| match info.units_per_em {
+                Some(a) => a.get(),
+                None => 1000.0,
+            });
         let angle: f64 = ufo.font_info.as_ref().map_or(0.0, |info| match info.italic_angle {
             Some(a) => -a.get(),
             None => 0.0,
@@ -20,49 +25,167 @@ fn main() {
             Some(a) => a.get(),
             None => 0.0,
         });
-        let param_overshoot: f64 = 0.0;
+        let param_area: f64 = 400.0;
         let param_depth: f64 = 15.0;
+        let param_overshoot: f64 = 0.0;
+        let overshoot = xheight * param_overshoot / 100.0;
         let param_sample_frequency: usize = 5;
 
         // TODO: fetch actual reference glyph.
         let default_layer = ufo.get_default_layer().unwrap();
-        let decomposed_glyphs: Vec<Glyph> = default_layer
-            .iter_contents()
-            .filter(|glyph| {
-                glyph
-                    .outline
-                    .as_ref()
-                    .map_or(false, |o| !o.components.is_empty() || !o.contours.is_empty())
-            })
-            .map(|glyph| {
-                draw_polygon(
-                    &glyph,
-                    &glyph,
-                    &default_layer,
+        let mut background_glyphs: Vec<Glyph> = Vec::new();
+
+        let reference_uppercase = default_layer.get_glyph("H").expect("Need an 'H'.");
+        let reference_uppercase_factor = 1.25;
+        let reference_lowercase = default_layer.get_glyph("x").expect("Need an 'x'.");
+        let reference_lowercase_factor = 1.0;
+
+        for glyph in default_layer.iter_contents() {
+            // TODO: Write `impl From<Glyph> for BezPath` which decomposes implicitly? Needs glyphset parameter though.
+            let glyph = match &glyph.outline {
+                Some(outline) => match (outline.components.is_empty(), outline.contours.is_empty())
+                {
+                    (true, true) => continue,
+                    (false, _) => decompose(&glyph, &default_layer),
+                    _ => Glyph::clone(&glyph),
+                },
+                _ => continue,
+            };
+
+            let (glyph_reference, factor) = match determine_unicode(&glyph, &default_layer) {
+                Some(u) => {
+                    if u.is_uppercase() {
+                        (reference_uppercase, reference_uppercase_factor)
+                    } else if u.is_lowercase() {
+                        (reference_lowercase, reference_lowercase_factor)
+                    } else {
+                        // TODO: introduce proper configuration so we can space more than upper- and lowercase glyphs.
+                        // also handle .sc
+                        continue;
+                    }
+                }
+                _ => continue,
+            };
+
+            let paths = path_for_glyph(&glyph).unwrap();
+            let bounds = paths.bounding_box();
+            let paths_reference = path_for_glyph(&glyph_reference).unwrap();
+            let bounds_reference = paths_reference.bounding_box();
+
+            let lower_bound_reference = (bounds_reference.min_y() - overshoot).round() as isize;
+            let upper_bound_reference = (bounds_reference.max_y() + overshoot).round() as isize;
+
+            let (left, extreme_left_full, extreme_left, right, extreme_right_full, extreme_right) =
+                spacing_polygons(
+                    &paths,
+                    &bounds,
+                    lower_bound_reference,
+                    upper_bound_reference,
                     angle,
                     xheight,
-                    param_overshoot,
-                    param_depth,
                     param_sample_frequency,
-                )
-            })
-            .collect();
+                    param_depth,
+                );
+
+            let background_glyph = draw_glyph_outer_outline_into_glyph(&glyph, (&left, &right));
+            background_glyphs.push(background_glyph);
+
+            // Difference between extreme points full and in zone.
+            let distance_left = (extreme_left.x - extreme_left_full.x).ceil();
+            let distance_right = (extreme_right_full.x - extreme_right.x).ceil();
+
+            let new_left = (-distance_left
+                + calculate_sidebearing_value(
+                    factor,
+                    lower_bound_reference as f64,
+                    upper_bound_reference as f64,
+                    param_area,
+                    &left,
+                    units_per_em,
+                    xheight,
+                ))
+            .ceil();
+            let new_right = (-distance_right
+                + calculate_sidebearing_value(
+                    factor,
+                    lower_bound_reference as f64,
+                    upper_bound_reference as f64,
+                    param_area,
+                    &right,
+                    units_per_em,
+                    xheight,
+                ))
+            .ceil();
+
+            // XXX: Merriweather lots of suspicious same-y values
+            println!(
+                "Glyph {}, reference {}, new left {}, new right {}",
+                glyph.name, glyph_reference.name, new_left, new_right
+            );
+        }
 
         // Write out background layer.
-        let mut decomposed_layer = norad::LayerInfo {
+        // TODO: write Ufo::new_layer method.
+        let mut background_layer = norad::LayerInfo {
             name: "public.background".into(),
             path: std::path::PathBuf::from("glyphs.background"),
             layer: Layer::default(),
         };
-        for glyph in decomposed_glyphs {
-            decomposed_layer.layer.insert_glyph(glyph)
+        for glyph in background_glyphs {
+            background_layer.layer.insert_glyph(glyph)
         }
-        ufo.layers.push(decomposed_layer);
+        ufo.layers.push(background_layer);
 
         ufo.meta.creator = "org.linebender.norad".into();
         let output_path = std::path::PathBuf::from(&arg);
         ufo.save(std::path::PathBuf::from("/tmp").join(output_path.file_name().unwrap())).unwrap();
     }
+}
+
+fn determine_unicode(glyph: &Glyph, glyphset: &Layer) -> Option<char> {
+    if let Some(codepoints) = &glyph.codepoints {
+        if let Some(codepoint) = codepoints.first() {
+            return Some(*codepoint);
+        }
+    }
+
+    let base_name = glyph.name.split(".").nth(0).unwrap();
+    if let Some(base_glyph) = glyphset.get_glyph(base_name) {
+        if let Some(codepoints) = &base_glyph.codepoints {
+            if let Some(codepoint) = codepoints.first() {
+                return Some(*codepoint);
+            }
+        }
+    }
+
+    None
+}
+
+fn calculate_sidebearing_value(
+    factor: f64,
+    lower_bound_reference: f64,
+    upper_bound_reference: f64,
+    param_area: f64,
+    polygon: &Vec<Point>,
+    units_per_em: f64,
+    xheight: f64,
+) -> f64 {
+    let amplitude_y = lower_bound_reference - upper_bound_reference;
+    let area_upm = param_area * (units_per_em / 1000.0).powi(2);
+    let white_area = area_upm * factor * 100.0;
+    let prop_area = (amplitude_y * white_area) / xheight;
+    let valor = prop_area - area(&polygon);
+    valor / amplitude_y
+}
+
+fn area(points: &Vec<Point>) -> f64 {
+    // https://mathopenref.com/coordpolygonarea2.html
+    let mut s = 0.0;
+    for i in 0..points.len() {
+        let (prev, next) = (points[i], points[i % points.len()]);
+        s += prev.x * next.y - next.x * prev.y
+    }
+    s.abs() / 2.0
 }
 
 fn spacing_polygons(
@@ -96,12 +219,15 @@ fn spacing_polygons(
     let mut extreme_right: Option<Point> = None;
     for y in (lower_bound_sampling..=upper_bound_sampling).step_by(scan_frequency) {
         let line = Line::new((left_bounds, y as f64), (right_bounds, y as f64));
+        let in_reference_zone = lower_bound_reference <= y && y <= upper_bound_reference;
 
         let mut hits = intersections_for_line(paths, line);
         if hits.is_empty() {
-            // Treat no hits as hits deep off the other side.
-            left.push(Point::new(f64::INFINITY, y as f64));
-            right.push(Point::new(-f64::INFINITY, y as f64));
+            if in_reference_zone {
+                // Treat no hits as hits deep off the other side.
+                left.push(Point::new(f64::INFINITY, y as f64));
+                right.push(Point::new(-f64::INFINITY, y as f64));
+            }
         } else {
             hits.sort_by_key(|k| k.x.round() as i32);
             let mut first = hits.first().unwrap().clone(); // XXX: don't clone but own?
@@ -110,7 +236,7 @@ fn spacing_polygons(
                 first = Point::new(first.x - (y as f64 - skew_offset) * tan_angle, first.y);
                 last = Point::new(last.x - (y as f64 - skew_offset) * tan_angle, last.y);
             }
-            if lower_bound_reference <= y && y <= upper_bound_reference {
+            if in_reference_zone {
                 left.push(first);
                 right.push(last);
 
@@ -163,10 +289,10 @@ fn spacing_polygons(
         }
     }
 
-    left.insert(0, Point { x: extreme_left.x, y: bounds.min_y() });
-    left.push(Point { x: extreme_left.x, y: bounds.max_y() });
-    right.insert(0, Point { x: extreme_right.x, y: bounds.min_y() });
-    right.push(Point { x: extreme_right.x, y: bounds.max_y() });
+    left.insert(0, Point { x: extreme_left.x, y: lower_bound_reference as f64 });
+    left.push(Point { x: extreme_left.x, y: upper_bound_reference as f64 });
+    right.insert(0, Point { x: extreme_right.x, y: lower_bound_reference as f64 });
+    right.push(Point { x: extreme_right.x, y: upper_bound_reference as f64 });
 
     (left, extreme_left_full, extreme_left, right, extreme_right_full, extreme_right)
 }
@@ -176,53 +302,6 @@ fn intersections_for_line(paths: &BezPath, line: Line) -> Vec<Point> {
         .segments()
         .flat_map(|s| s.intersect_line(line).into_iter().map(move |h| s.eval(h.segment_t).round()))
         .collect()
-}
-
-fn draw_polygon(
-    glyph: &Glyph,
-    glyph_reference: &Glyph,
-    glyphset: &Layer,
-    angle: f64,
-    xheight: f64,
-    param_overshoot: f64,
-    param_depth: f64,
-    param_sample_frequency: usize,
-) -> Glyph {
-    let glyph = if glyph.outline.as_ref().map_or(false, |o| !o.components.is_empty()) {
-        decompose(&glyph, glyphset)
-    } else {
-        Glyph::clone(&glyph)
-    };
-    let glyph_reference =
-        if glyph_reference.outline.as_ref().map_or(false, |o| !o.components.is_empty()) {
-            decompose(&glyph_reference, glyphset)
-        } else {
-            Glyph::clone(&glyph_reference)
-        };
-
-    println!("Drawing polygon for {}", glyph.name);
-
-    let paths = path_for_glyph(&glyph).unwrap();
-    let bounds = paths.bounding_box();
-    let paths_reference = path_for_glyph(&glyph_reference).unwrap();
-    let bounds_reference = paths_reference.bounding_box();
-
-    let overshoot = xheight * param_overshoot / 100.0;
-    let lower_bound_reference = (bounds_reference.min_y() - overshoot).round() as isize;
-    let upper_bound_reference = (bounds_reference.max_y() + overshoot).round() as isize;
-
-    let (samples_left, _, _, samples_right, _, _) = spacing_polygons(
-        &paths,
-        &bounds,
-        lower_bound_reference,
-        upper_bound_reference,
-        angle,
-        xheight,
-        param_sample_frequency,
-        param_depth,
-    );
-
-    draw_glyph_outer_outline_into_glyph(&glyph, (&samples_left, &samples_right))
 }
 
 fn draw_glyph_outer_outline_into_glyph(
