@@ -54,10 +54,12 @@ fn main() {
 
             let (glyph_reference, factor) = match determine_unicode(&glyph, &default_layer) {
                 Some(u) => {
-                    if u.is_uppercase() {
-                        (reference_uppercase, reference_uppercase_factor)
-                    } else if u.is_lowercase() {
-                        (reference_lowercase, reference_lowercase_factor)
+                    if u.is_ascii_uppercase() {
+                        (reference_uppercase.as_ref(), reference_uppercase_factor)
+                    } else if u.is_ascii_lowercase() {
+                        (reference_lowercase.as_ref(), reference_lowercase_factor)
+                    } else if u.is_ascii() {
+                        (&glyph, 1.0)
                     } else {
                         // TODO: introduce proper configuration so we can space more than upper- and lowercase glyphs.
                         // also handle .sc
@@ -75,6 +77,7 @@ fn main() {
             let lower_bound_reference = (bounds_reference.min_y() - overshoot).round() as isize;
             let upper_bound_reference = (bounds_reference.max_y() + overshoot).round() as isize;
 
+            println!("Glyph {}, reference {}", glyph.name, glyph_reference.name);
             let (left, extreme_left_full, extreme_left, right, extreme_right_full, extreme_right) =
                 spacing_polygons(
                     &paths,
@@ -118,10 +121,7 @@ fn main() {
             .ceil();
 
             // XXX: Merriweather lots of suspicious same-y values
-            println!(
-                "Glyph {}, reference {}, new left {}, new right {}",
-                glyph.name, glyph_reference.name, new_left, new_right
-            );
+            println!("-> new left {}, new right {}", new_left, new_right);
         }
 
         // Write out background layer.
