@@ -630,10 +630,10 @@ pub struct Image {
     pub transform: AffineTransform,
 }
 
-#[cfg(feature = "druid")]
-impl From<AffineTransform> for druid::kurbo::Affine {
-    fn from(src: AffineTransform) -> druid::kurbo::Affine {
-        druid::kurbo::Affine::new([
+#[cfg(feature = "kurbo")]
+impl From<AffineTransform> for kurbo::Affine {
+    fn from(src: AffineTransform) -> kurbo::Affine {
+        kurbo::Affine::new([
             src.x_scale as f64,
             src.xy_scale as f64,
             src.yx_scale as f64,
@@ -644,9 +644,9 @@ impl From<AffineTransform> for druid::kurbo::Affine {
     }
 }
 
-#[cfg(feature = "druid")]
-impl From<druid::kurbo::Affine> for AffineTransform {
-    fn from(src: druid::kurbo::Affine) -> AffineTransform {
+#[cfg(feature = "kurbo")]
+impl From<kurbo::Affine> for AffineTransform {
+    fn from(src: kurbo::Affine) -> AffineTransform {
         let coeffs = src.as_coeffs();
         AffineTransform {
             x_scale: coeffs[0] as f32,
