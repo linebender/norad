@@ -77,7 +77,6 @@ fn main() {
             let lower_bound_reference = (bounds_reference.min_y() - overshoot).round() as isize;
             let upper_bound_reference = (bounds_reference.max_y() + overshoot).round() as isize;
 
-            println!("Glyph {}, reference {}", glyph.name, glyph_reference.name);
             let (left, extreme_left_full, extreme_left, right, extreme_right_full, extreme_right) =
                 spacing_polygons(
                     &paths,
@@ -120,8 +119,7 @@ fn main() {
                 ))
             .ceil();
 
-            // XXX: Merriweather lots of suspicious same-y values
-            println!("-> new left {}, new right {}", new_left, new_right);
+            println!("{}: {}, {}", glyph.name, new_left, new_right);
         }
 
         // Write out background layer.
@@ -170,7 +168,7 @@ fn calculate_sidebearing_value(
     units_per_em: f64,
     xheight: f64,
 ) -> f64 {
-    let amplitude_y = lower_bound_reference - upper_bound_reference;
+    let amplitude_y = upper_bound_reference - lower_bound_reference;
     let area_upm = param_area * (units_per_em / 1000.0).powi(2);
     let white_area = area_upm * factor * 100.0;
     let prop_area = (amplitude_y * white_area) / xheight;
@@ -180,12 +178,12 @@ fn calculate_sidebearing_value(
 
 fn area(points: &Vec<Point>) -> f64 {
     // https://mathopenref.com/coordpolygonarea2.html
-    let mut s = 0.0;
-    for i in 0..points.len() {
-        let (prev, next) = (points[i], points[i % points.len()]);
-        s += prev.x * next.y - next.x * prev.y
-    }
-    s.abs() / 2.0
+    points
+        .iter()
+        .zip(points.iter().cycle().skip(1))
+        .fold(0.0, |sum, (prev, next)| sum + (prev.x * next.y - next.x * prev.y))
+        .abs()
+        / 2.0
 }
 
 fn spacing_polygons(
