@@ -340,7 +340,7 @@ fn decompose(glyph: &Glyph, glyphset: &Layer) -> Glyph {
         let mut queue: std::collections::VecDeque<(&norad::Component, kurbo::Affine)> =
             std::collections::VecDeque::new();
         for component in &outline.components {
-            let component_transformation = affine_norad_to_kurbo(&component.transform);
+            let component_transformation = component.transform.into();
             queue.push_front((component, component_transformation));
             while let Some((component, component_transformation)) = queue.pop_front() {
                 let new_glyph = glyphset.get_glyph(&component.base).expect(
@@ -371,8 +371,8 @@ fn decompose(glyph: &Glyph, glyphset: &Layer) -> Glyph {
                     }
 
                     for new_component in new_outline.components.iter().rev() {
-                        let new_component_transformation =
-                            affine_norad_to_kurbo(&new_component.transform);
+                        let new_component_transformation: kurbo::Affine =
+                            new_component.transform.into();
                         queue.push_front((
                             new_component,
                             component_transformation * new_component_transformation,
@@ -387,18 +387,6 @@ fn decompose(glyph: &Glyph, glyphset: &Layer) -> Glyph {
     }
 
     decomposed_glyph
-}
-
-// XXX: Copy-pasta! Make a separate "kurbo" feature that the "druid" feature depends on and move the From impl there.
-fn affine_norad_to_kurbo(src: &norad::AffineTransform) -> kurbo::Affine {
-    kurbo::Affine::new([
-        src.x_scale as f64,
-        src.xy_scale as f64,
-        src.yx_scale as f64,
-        src.y_scale as f64,
-        src.x_offset as f64,
-        src.y_offset as f64,
-    ])
 }
 
 fn path_for_glyph(glyph: &Glyph) -> Option<BezPath> {
