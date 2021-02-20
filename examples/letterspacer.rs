@@ -1,6 +1,6 @@
 use kurbo::{BezPath, Line, ParamCurve, Point, Rect, Shape};
 use norad::glyph::{Contour, ContourPoint, Glyph, PointType};
-use norad::{GlifVersion, GlyphBuilder, Layer, OutlineBuilder};
+use norad::{GlifVersion, GlyphBuilder, GlyphName, Layer, OutlineBuilder};
 
 fn main() {
     for arg in std::env::args().skip(1) {
@@ -73,51 +73,24 @@ fn main() {
             let bounds = paths.bounding_box();
             let paths_reference = path_for_glyph(&glyph_reference).unwrap();
             let bounds_reference = paths_reference.bounding_box();
-
             let lower_bound_reference = (bounds_reference.min_y() - overshoot).round();
             let upper_bound_reference = (bounds_reference.max_y() + overshoot).round();
 
-            let (left, extreme_left_full, extreme_left, right, extreme_right_full, extreme_right) =
-                spacing_polygons(
-                    &paths,
-                    &bounds,
-                    lower_bound_reference,
-                    upper_bound_reference,
-                    angle,
-                    xheight,
-                    param_sample_frequency,
-                    param_depth,
-                );
-
-            let background_glyph = draw_glyph_outer_outline_into_glyph(&glyph, (&left, &right));
-            background_glyphs.push(background_glyph);
-
-            // Difference between extreme points full and in zone.
-            let distance_left = (extreme_left.x - extreme_left_full.x).ceil();
-            let distance_right = (extreme_right_full.x - extreme_right.x).ceil();
-
-            let new_left = (-distance_left
-                + calculate_sidebearing_value(
-                    factor,
-                    lower_bound_reference,
-                    upper_bound_reference,
-                    param_area,
-                    &left,
-                    units_per_em,
-                    xheight,
-                ))
-            .ceil();
-            let new_right = (-distance_right
-                + calculate_sidebearing_value(
-                    factor,
-                    lower_bound_reference,
-                    upper_bound_reference,
-                    param_area,
-                    &right,
-                    units_per_em,
-                    xheight,
-                ))
-            .ceil();
+            let (new_left, new_right) = calculate_spacing(
+                paths,
+                bounds,
+                lower_bound_reference,
+                upper_bound_reference,
+                angle,
+                xheight,
+                param_sample_frequency,
+                param_depth,
+                glyph.name.clone(),
+                &mut background_glyphs,
+                factor,
+                param_area,
+                units_per_em,
+            );
 
             println!("{}: {}, {}", glyph.name, new_left, new_right);
         }
@@ -138,6 +111,66 @@ fn main() {
         let output_path = std::path::PathBuf::from(&arg);
         ufo.save(std::path::PathBuf::from("/tmp").join(output_path.file_name().unwrap())).unwrap();
     }
+}
+
+fn calculate_spacing(
+    paths: BezPath,
+    bounds: Rect,
+    lower_bound_reference: f64,
+    upper_bound_reference: f64,
+    angle: f64,
+    xheight: f64,
+    param_sample_frequency: usize,
+    param_depth: f64,
+    glyph_name: impl Into<GlyphName>,
+    background_glyphs: &mut Vec<Glyph>,
+    factor: f64,
+    param_area: f64,
+    units_per_em: f64,
+) -> (f64, f64) {
+    let (left, extreme_left_full, extreme_left, right, extreme_right_full, extreme_right) =
+        spacing_polygons(
+            &paths,
+            &bounds,
+            lower_bound_reference,
+            upper_bound_reference,
+            angle,
+            xheight,
+            param_sample_frequency,
+            param_depth,
+        );
+
+    let background_glyph = draw_glyph_outer_outline_into_glyph(glyph_name, (&left, &right));
+    background_glyphs.push(background_glyph);
+
+    // Difference between extreme points full and in zone.
+    let distance_left = (extreme_left.x - extreme_left_full.x).ceil();
+    let distance_right = (extreme_right_full.x - extreme_right.x).ceil();
+
+    let new_left = (-distance_left
+        + calculate_sidebearing_value(
+            factor,
+            lower_bound_reference,
+            upper_bound_reference,
+            param_area,
+            &left,
+            units_per_em,
+            xheight,
+        ))
+    .ceil();
+    let new_right = (-distance_right
+        + calculate_sidebearing_value(
+            factor,
+            lower_bound_reference,
+            upper_bound_reference,
+            param_area,
+            &right,
+            units_per_em,
+            xheight,
+        ))
+    .ceil();
+
+    (new_left, new_right)
 }
 
 fn determine_unicode(glyph: &Glyph, glyphset: &Layer) -> Option<char> {
@@ -305,25 +338,34 @@ fn intersections_for_line(paths: &BezPath, line: Line) -> Vec<Point> {
 }
 
 fn draw_glyph_outer_outline_into_glyph(
-    glyph: &Glyph,
+    glyph_name: impl Into<GlyphName>,
     outlines: (&Vec<Point>, &Vec<Point>),
 ) -> Glyph {
-    let mut builder = GlyphBuilder::new(glyph.name.clone(), GlifVersion::V2);
-    if let Some(width) = glyph.advance_width() {
-        builder.width(width).unwrap();
-    }
+    let mut builder = GlyphBuilder::new(glyph_name, GlifVersion::V2);
     let mut outline_builder = OutlineBuilder::new();
     outline_builder.begin_path(None).unwrap();
     for left in outlines.0 {
         outline_builder
-            .add_point((left.x as f32, left.y as f32), PointType::Line, false, None, None)
+            .add_point(
+                (left.x.round() as f32, left.y.round() as f32),
+                PointType::Line,
+                false,
+                None,
+                None,
+            )
             .unwrap();
     }
     outline_builder.end_path().unwrap();
     outline_builder.begin_path(None).unwrap();
     for right in outlines.1 {
         outline_builder
-            .add_point((right.x as f32, right.y as f32), PointType::Line, false, None, None)
+            .add_point(
+                (right.x.round() as f32, right.y.round() as f32),
+                PointType::Line,
+                false,
+                None,
+                None,
+            )
             .unwrap();
     }
     outline_builder.end_path().unwrap();
