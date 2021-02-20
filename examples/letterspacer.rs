@@ -74,8 +74,8 @@ fn main() {
             let paths_reference = path_for_glyph(&glyph_reference).unwrap();
             let bounds_reference = paths_reference.bounding_box();
 
-            let lower_bound_reference = (bounds_reference.min_y() - overshoot).round() as isize;
-            let upper_bound_reference = (bounds_reference.max_y() + overshoot).round() as isize;
+            let lower_bound_reference = (bounds_reference.min_y() - overshoot).round();
+            let upper_bound_reference = (bounds_reference.max_y() + overshoot).round();
 
             let (left, extreme_left_full, extreme_left, right, extreme_right_full, extreme_right) =
                 spacing_polygons(
@@ -99,8 +99,8 @@ fn main() {
             let new_left = (-distance_left
                 + calculate_sidebearing_value(
                     factor,
-                    lower_bound_reference as f64,
-                    upper_bound_reference as f64,
+                    lower_bound_reference,
+                    upper_bound_reference,
                     param_area,
                     &left,
                     units_per_em,
@@ -110,8 +110,8 @@ fn main() {
             let new_right = (-distance_right
                 + calculate_sidebearing_value(
                     factor,
-                    lower_bound_reference as f64,
-                    upper_bound_reference as f64,
+                    lower_bound_reference,
+                    upper_bound_reference,
                     param_area,
                     &right,
                     units_per_em,
@@ -189,8 +189,8 @@ fn area(points: &Vec<Point>) -> f64 {
 fn spacing_polygons(
     paths: &BezPath,
     bounds: &Rect,
-    lower_bound_reference: isize,
-    upper_bound_reference: isize,
+    lower_bound_reference: f64,
+    upper_bound_reference: f64,
     angle: f64,
     xheight: f64,
     scan_frequency: usize,
@@ -205,8 +205,9 @@ fn spacing_polygons(
     // but we need to collect the extreme points on both sides for the full stretch for spacing later.
 
     // A glyph can over- or undershoot its reference bounds. Measure the tallest stretch.
-    let lower_bound_sampling = (bounds.min_y().round() as isize).min(lower_bound_reference);
-    let upper_bound_sampling = (bounds.max_y().round() as isize).max(upper_bound_reference);
+    let lower_bound_sampling = bounds.min_y().round().min(lower_bound_reference) as isize;
+    let upper_bound_sampling = bounds.max_y().round().max(upper_bound_reference) as isize;
+
     let mut left = Vec::new();
     let left_bounds = bounds.min_x();
     let mut extreme_left_full: Option<Point> = None;
@@ -215,24 +216,25 @@ fn spacing_polygons(
     let right_bounds = bounds.max_x();
     let mut extreme_right_full: Option<Point> = None;
     let mut extreme_right: Option<Point> = None;
-    for y in (lower_bound_sampling..=upper_bound_sampling).step_by(scan_frequency) {
-        let line = Line::new((left_bounds, y as f64), (right_bounds, y as f64));
+    for y in (lower_bound_sampling..=upper_bound_sampling).step_by(scan_frequency).map(|v| v as f64)
+    {
+        let line = Line::new((left_bounds, y), (right_bounds, y));
         let in_reference_zone = lower_bound_reference <= y && y <= upper_bound_reference;
 
         let mut hits = intersections_for_line(paths, line);
         if hits.is_empty() {
             if in_reference_zone {
                 // Treat no hits as hits deep off the other side.
-                left.push(Point::new(f64::INFINITY, y as f64));
-                right.push(Point::new(-f64::INFINITY, y as f64));
+                left.push(Point::new(f64::INFINITY, y));
+                right.push(Point::new(-f64::INFINITY, y));
             }
         } else {
             hits.sort_by_key(|k| k.x.round() as i32);
             let mut first = hits.first().unwrap().clone(); // XXX: don't clone but own?
             let mut last = hits.last().unwrap().clone();
             if angle != 0.0 {
-                first = Point::new(first.x - (y as f64 - skew_offset) * tan_angle, first.y);
-                last = Point::new(last.x - (y as f64 - skew_offset) * tan_angle, last.y);
+                first = Point::new(first.x - (y - skew_offset) * tan_angle, first.y);
+                last = Point::new(last.x - (y - skew_offset) * tan_angle, last.y);
             }
             if in_reference_zone {
                 left.push(first);
