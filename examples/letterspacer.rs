@@ -91,7 +91,7 @@ fn main() {
                 units_per_em,
             );
 
-            println!("{}: {}, {}", glyph.name, new_left, new_right);
+            println!("{}: {:?}, {:?}", glyph.name, new_left, new_right);
         }
 
         // Write out background layer.
@@ -125,7 +125,11 @@ fn calculate_spacing(
     factor: f64,
     param_area: f64,
     units_per_em: f64,
-) -> (f64, f64) {
+) -> (Option<f64>, Option<f64>) {
+    if paths.is_empty() {
+        return (None, None);
+    }
+
     let (left, extreme_left_full, extreme_left, right, extreme_right_full, extreme_right) =
         spacing_polygons(
             &paths,
@@ -165,7 +169,7 @@ fn calculate_spacing(
         ))
     .ceil();
 
-    (new_left, new_right)
+    (Some(new_left), Some(new_right))
 }
 
 fn determine_unicode(glyph: &Glyph, glyphset: &Layer) -> Option<char> {
@@ -497,6 +501,7 @@ mod tests {
     #[test]
     fn space_mutatorsans() {
         let ufo = norad::Ufo::load("testdata/mutatorSans/MutatorSansLightWide.ufo").unwrap();
+        let default_layer = ufo.get_default_layer().unwrap();
 
         let units_per_em: f64 =
             ufo.font_info.as_ref().map_or(1000.0, |info| match info.units_per_em {
@@ -521,56 +526,57 @@ mod tests {
 
         // Skips "space".
         for (name, name_ref, factor, left, right) in &[
-            ("A", "H", 1.25, 31, 31),
-            ("acute", "acute", 1.0, 79, 79),
-            ("B", "H", 1.25, 100, 51),
-            ("C", "H", 1.25, 57, 51),
-            ("D", "H", 1.25, 100, 57),
-            ("E", "H", 1.25, 100, 41),
-            ("F", "H", 1.25, 100, 40),
-            ("G", "H", 1.25, 57, 74),
-            ("H", "H", 1.25, 100, 100),
-            ("I", "H", 1.25, 41, 41),
-            ("I.narrow", "H", 1.25, 100, 100),
-            ("IJ", "H", 1.25, 79, 80),
-            ("J", "H", 1.25, 49, 83),
-            ("J.narrow", "H", 1.25, 32, 80),
-            ("K", "H", 1.25, 100, 33),
-            ("L", "H", 1.25, 100, 33),
-            ("M", "H", 1.25, 100, 100),
-            ("N", "H", 1.25, 100, 100),
-            ("O", "H", 1.25, 57, 57),
-            ("P", "H", 1.25, 100, 54),
-            ("R", "H", 1.25, 100, 57),
-            ("S", "H", 1.25, 46, 52),
-            ("S.closed", "H", 1.25, 51, 50),
-            ("T", "H", 1.25, 33, 33),
-            ("U", "H", 1.25, 80, 80),
-            ("V", "H", 1.25, 31, 31),
-            ("W", "H", 1.25, 34, 34),
-            ("X", "H", 1.25, 27, 33),
-            ("Y", "H", 1.25, 30, 30),
-            ("Z", "H", 1.25, 41, 41),
-            ("arrowdown", "arrowdown", 1.5, 89, 91),
-            ("arrowleft", "arrowleft", 1.5, 95, 111),
-            ("arrowright", "arrowright", 1.5, 110, 96),
-            ("arrowup", "arrowup", 1.5, 91, 89),
-            ("period", "period", 1.4, 112, 112),
-            ("comma", "comma", 1.4, 110, 107),
-            ("dot", "dot", 1.0, 80, 80),
-            ("Aacute", "H", 1.25, 31, 31),
-            ("Q", "H", 1.25, 57, 57),
-            ("colon", "colon", 1.4, 104, 104),
-            ("quotedblbase", "quotedblbase", 1.2, 94, 91),
-            ("quotedblleft", "quotedblleft", 1.2, 91, 94),
-            ("quotedblright", "quotedblright", 1.2, 94, 91),
-            ("quotesinglbase", "quotesinglbase", 1.2, 94, 91),
-            ("semicolon", "semicolon", 1.4, 104, 102),
-            ("dieresis", "dieresis", 1.0, 80, 80),
-            ("Adieresis", "H", 1.25, 31, 31),
+            ("A", "H", 1.25, Some(31.0), Some(31.0)),
+            ("acute", "acute", 1.0, Some(79.0), Some(79.0)),
+            ("B", "H", 1.25, Some(100.0), Some(51.0)),
+            ("C", "H", 1.25, Some(57.0), Some(51.0)),
+            ("D", "H", 1.25, Some(100.0), Some(57.0)),
+            ("E", "H", 1.25, Some(100.0), Some(41.0)),
+            ("F", "H", 1.25, Some(100.0), Some(40.0)),
+            ("G", "H", 1.25, Some(57.0), Some(74.0)),
+            ("H", "H", 1.25, Some(100.0), Some(100.0)),
+            ("I", "H", 1.25, Some(41.0), Some(41.0)),
+            ("I.narrow", "H", 1.25, Some(100.0), Some(100.0)),
+            ("IJ", "H", 1.25, Some(79.0), Some(80.0)),
+            ("J", "H", 1.25, Some(49.0), Some(83.0)),
+            ("J.narrow", "H", 1.25, Some(32.0), Some(80.0)),
+            ("K", "H", 1.25, Some(100.0), Some(33.0)),
+            ("L", "H", 1.25, Some(100.0), Some(33.0)),
+            ("M", "H", 1.25, Some(100.0), Some(100.0)),
+            ("N", "H", 1.25, Some(100.0), Some(100.0)),
+            ("O", "H", 1.25, Some(57.0), Some(57.0)),
+            ("P", "H", 1.25, Some(100.0), Some(54.0)),
+            ("R", "H", 1.25, Some(100.0), Some(57.0)),
+            ("S", "H", 1.25, Some(46.0), Some(52.0)),
+            ("S.closed", "H", 1.25, Some(51.0), Some(50.0)),
+            ("T", "H", 1.25, Some(33.0), Some(33.0)),
+            ("U", "H", 1.25, Some(80.0), Some(80.0)),
+            ("V", "H", 1.25, Some(31.0), Some(31.0)),
+            ("W", "H", 1.25, Some(34.0), Some(34.0)),
+            ("X", "H", 1.25, Some(27.0), Some(33.0)),
+            ("Y", "H", 1.25, Some(30.0), Some(30.0)),
+            ("Z", "H", 1.25, Some(41.0), Some(41.0)),
+            ("arrowdown", "arrowdown", 1.5, Some(89.0), Some(91.0)),
+            ("arrowleft", "arrowleft", 1.5, Some(95.0), Some(111.0)),
+            ("arrowright", "arrowright", 1.5, Some(110.0), Some(96.0)),
+            ("arrowup", "arrowup", 1.5, Some(91.0), Some(89.0)),
+            ("period", "period", 1.4, Some(112.0), Some(112.0)),
+            ("comma", "comma", 1.4, Some(110.0), Some(107.0)),
+            ("dot", "dot", 1.0, Some(80.0), Some(80.0)),
+            ("Aacute", "H", 1.25, Some(31.0), Some(31.0)),
+            ("Q", "H", 1.25, Some(57.0), Some(57.0)),
+            ("colon", "colon", 1.4, Some(104.0), Some(104.0)),
+            ("quotedblbase", "quotedblbase", 1.2, Some(94.0), Some(91.0)),
+            ("quotedblleft", "quotedblleft", 1.2, Some(91.0), Some(94.0)),
+            ("quotedblright", "quotedblright", 1.2, Some(94.0), Some(91.0)),
+            ("quotesinglbase", "quotesinglbase", 1.2, Some(94.0), Some(91.0)),
+            ("semicolon", "semicolon", 1.4, Some(104.0), Some(102.0)),
+            ("dieresis", "dieresis", 1.0, Some(80.0), Some(80.0)),
+            ("Adieresis", "H", 1.25, Some(31.0), Some(31.0)),
+            ("space", "space", 1.0, None, None),
         ] {
-            let glyph = ufo.get_glyph(*name).unwrap();
-            let glyph_ref = ufo.get_glyph(*name_ref).unwrap();
+            let glyph = decompose(ufo.get_glyph(*name).unwrap(), &default_layer);
+            let glyph_ref = decompose(ufo.get_glyph(*name_ref).unwrap(), &default_layer);
 
             let paths = path_for_glyph(&glyph).unwrap();
             let bounds = paths.bounding_box();
@@ -594,8 +600,24 @@ mod tests {
                 units_per_em,
             );
 
-            assert_eq!(*left as f64, new_left, "Glyph {}", *name);
-            assert_eq!(*right as f64, new_right, "Glyph {}", *name);
+            match (left, new_left) {
+                (Some(v), Some(new_v)) => assert!((*v - new_v).abs() <= 1.0, "Glyph {}", *name),
+                (None, None) => (),
+                _ => assert!(
+                    false,
+                    "Glyph {}, left side: expected {:?}, got {:?}",
+                    *name, left, new_left
+                ),
+            }
+            match (right, new_right) {
+                (Some(v), Some(new_v)) => assert!((*v - new_v).abs() <= 1.0, "Glyph {}", *name),
+                (None, None) => (),
+                _ => assert!(
+                    false,
+                    "Glyph {}, right side: expected {:?}, got {:?}",
+                    *name, right, new_right
+                ),
+            }
         }
     }
 }
