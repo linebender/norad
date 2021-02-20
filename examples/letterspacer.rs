@@ -73,14 +73,13 @@ fn main() {
             let bounds = paths.bounding_box();
             let paths_reference = path_for_glyph(&glyph_reference).unwrap();
             let bounds_reference = paths_reference.bounding_box();
-            let lower_bound_reference = (bounds_reference.min_y() - overshoot).round();
-            let upper_bound_reference = (bounds_reference.max_y() + overshoot).round();
+            let bounds_reference_lower = (bounds_reference.min_y() - overshoot).round();
+            let bounds_reference_upper = (bounds_reference.max_y() + overshoot).round();
 
             let (new_left, new_right) = calculate_spacing(
                 paths,
                 bounds,
-                lower_bound_reference,
-                upper_bound_reference,
+                (bounds_reference_lower, bounds_reference_upper),
                 angle,
                 xheight,
                 param_sample_frequency,
@@ -116,8 +115,7 @@ fn main() {
 fn calculate_spacing(
     paths: BezPath,
     bounds: Rect,
-    lower_bound_reference: f64,
-    upper_bound_reference: f64,
+    (bounds_reference_lower, bounds_reference_upper): (f64, f64),
     angle: f64,
     xheight: f64,
     param_sample_frequency: usize,
@@ -132,8 +130,7 @@ fn calculate_spacing(
         spacing_polygons(
             &paths,
             &bounds,
-            lower_bound_reference,
-            upper_bound_reference,
+            (bounds_reference_lower, bounds_reference_upper),
             angle,
             xheight,
             param_sample_frequency,
@@ -150,8 +147,7 @@ fn calculate_spacing(
     let new_left = (-distance_left
         + calculate_sidebearing_value(
             factor,
-            lower_bound_reference,
-            upper_bound_reference,
+            (bounds_reference_lower, bounds_reference_upper),
             param_area,
             &left,
             units_per_em,
@@ -161,8 +157,7 @@ fn calculate_spacing(
     let new_right = (-distance_right
         + calculate_sidebearing_value(
             factor,
-            lower_bound_reference,
-            upper_bound_reference,
+            (bounds_reference_lower, bounds_reference_upper),
             param_area,
             &right,
             units_per_em,
@@ -194,14 +189,13 @@ fn determine_unicode(glyph: &Glyph, glyphset: &Layer) -> Option<char> {
 
 fn calculate_sidebearing_value(
     factor: f64,
-    lower_bound_reference: f64,
-    upper_bound_reference: f64,
+    (bounds_reference_lower, bounds_reference_upper): (f64, f64),
     param_area: f64,
     polygon: &Vec<Point>,
     units_per_em: f64,
     xheight: f64,
 ) -> f64 {
-    let amplitude_y = upper_bound_reference - lower_bound_reference;
+    let amplitude_y = bounds_reference_upper - bounds_reference_lower;
     let area_upm = param_area * (units_per_em / 1000.0).powi(2);
     let white_area = area_upm * factor * 100.0;
     let prop_area = (amplitude_y * white_area) / xheight;
@@ -222,8 +216,7 @@ fn area(points: &Vec<Point>) -> f64 {
 fn spacing_polygons(
     paths: &BezPath,
     bounds: &Rect,
-    lower_bound_reference: f64,
-    upper_bound_reference: f64,
+    (bounds_reference_lower, bounds_reference_upper): (f64, f64),
     angle: f64,
     xheight: f64,
     scan_frequency: usize,
@@ -238,8 +231,8 @@ fn spacing_polygons(
     // but we need to collect the extreme points on both sides for the full stretch for spacing later.
 
     // A glyph can over- or undershoot its reference bounds. Measure the tallest stretch.
-    let lower_bound_sampling = bounds.min_y().round().min(lower_bound_reference) as isize;
-    let upper_bound_sampling = bounds.max_y().round().max(upper_bound_reference) as isize;
+    let bounds_sampling_lower = bounds.min_y().round().min(bounds_reference_lower) as isize;
+    let bounds_sampling_upper = bounds.max_y().round().max(bounds_reference_upper) as isize;
 
     let mut left = Vec::new();
     let left_bounds = bounds.min_x();
@@ -249,10 +242,11 @@ fn spacing_polygons(
     let right_bounds = bounds.max_x();
     let mut extreme_right_full: Option<Point> = None;
     let mut extreme_right: Option<Point> = None;
-    for y in (lower_bound_sampling..=upper_bound_sampling).step_by(scan_frequency).map(|v| v as f64)
+    for y in
+        (bounds_sampling_lower..=bounds_sampling_upper).step_by(scan_frequency).map(|v| v as f64)
     {
         let line = Line::new((left_bounds, y), (right_bounds, y));
-        let in_reference_zone = lower_bound_reference <= y && y <= upper_bound_reference;
+        let in_reference_zone = bounds_reference_lower <= y && y <= bounds_reference_upper;
 
         let mut hits = intersections_for_line(paths, line);
         if hits.is_empty() {
@@ -322,10 +316,10 @@ fn spacing_polygons(
         }
     }
 
-    left.insert(0, Point { x: extreme_left.x, y: lower_bound_reference as f64 });
-    left.push(Point { x: extreme_left.x, y: upper_bound_reference as f64 });
-    right.insert(0, Point { x: extreme_right.x, y: lower_bound_reference as f64 });
-    right.push(Point { x: extreme_right.x, y: upper_bound_reference as f64 });
+    left.insert(0, Point { x: extreme_left.x, y: bounds_reference_lower as f64 });
+    left.push(Point { x: extreme_left.x, y: bounds_reference_upper as f64 });
+    right.insert(0, Point { x: extreme_right.x, y: bounds_reference_lower as f64 });
+    right.push(Point { x: extreme_right.x, y: bounds_reference_upper as f64 });
 
     (left, extreme_left_full, extreme_left, right, extreme_right_full, extreme_right)
 }
@@ -493,5 +487,115 @@ fn path_for_glyph(glyph: &Glyph) -> Option<BezPath> {
         Some(path)
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn space_mutatorsans() {
+        let ufo = norad::Ufo::load("testdata/mutatorSans/MutatorSansLightWide.ufo").unwrap();
+
+        let units_per_em: f64 =
+            ufo.font_info.as_ref().map_or(1000.0, |info| match info.units_per_em {
+                Some(a) => a.get(),
+                None => 1000.0,
+            });
+        let angle: f64 = ufo.font_info.as_ref().map_or(0.0, |info| match info.italic_angle {
+            Some(a) => -a.get(),
+            None => 0.0,
+        });
+        let xheight: f64 = ufo.font_info.as_ref().map_or(0.0, |info| match info.x_height {
+            Some(a) => a.get(),
+            None => 0.0,
+        });
+        let param_area: f64 = 400.0;
+        let param_depth: f64 = 15.0;
+        let param_overshoot: f64 = 0.0;
+        let overshoot = xheight * param_overshoot / 100.0;
+        let param_sample_frequency: usize = 5;
+
+        let mut background_glyphs = Vec::new();
+
+        // Skips "space".
+        for (name, name_ref, factor, left, right) in &[
+            ("A", "H", 1.25, 31, 31),
+            ("acute", "acute", 1.0, 79, 79),
+            ("B", "H", 1.25, 100, 51),
+            ("C", "H", 1.25, 57, 51),
+            ("D", "H", 1.25, 100, 57),
+            ("E", "H", 1.25, 100, 41),
+            ("F", "H", 1.25, 100, 40),
+            ("G", "H", 1.25, 57, 74),
+            ("H", "H", 1.25, 100, 100),
+            ("I", "H", 1.25, 41, 41),
+            ("I.narrow", "H", 1.25, 100, 100),
+            ("IJ", "H", 1.25, 79, 80),
+            ("J", "H", 1.25, 49, 83),
+            ("J.narrow", "H", 1.25, 32, 80),
+            ("K", "H", 1.25, 100, 33),
+            ("L", "H", 1.25, 100, 33),
+            ("M", "H", 1.25, 100, 100),
+            ("N", "H", 1.25, 100, 100),
+            ("O", "H", 1.25, 57, 57),
+            ("P", "H", 1.25, 100, 54),
+            ("R", "H", 1.25, 100, 57),
+            ("S", "H", 1.25, 46, 52),
+            ("S.closed", "H", 1.25, 51, 50),
+            ("T", "H", 1.25, 33, 33),
+            ("U", "H", 1.25, 80, 80),
+            ("V", "H", 1.25, 31, 31),
+            ("W", "H", 1.25, 34, 34),
+            ("X", "H", 1.25, 27, 33),
+            ("Y", "H", 1.25, 30, 30),
+            ("Z", "H", 1.25, 41, 41),
+            ("arrowdown", "arrowdown", 1.5, 89, 91),
+            ("arrowleft", "arrowleft", 1.5, 95, 111),
+            ("arrowright", "arrowright", 1.5, 110, 96),
+            ("arrowup", "arrowup", 1.5, 91, 89),
+            ("period", "period", 1.4, 112, 112),
+            ("comma", "comma", 1.4, 110, 107),
+            ("dot", "dot", 1.0, 80, 80),
+            ("Aacute", "H", 1.25, 31, 31),
+            ("Q", "H", 1.25, 57, 57),
+            ("colon", "colon", 1.4, 104, 104),
+            ("quotedblbase", "quotedblbase", 1.2, 94, 91),
+            ("quotedblleft", "quotedblleft", 1.2, 91, 94),
+            ("quotedblright", "quotedblright", 1.2, 94, 91),
+            ("quotesinglbase", "quotesinglbase", 1.2, 94, 91),
+            ("semicolon", "semicolon", 1.4, 104, 102),
+            ("dieresis", "dieresis", 1.0, 80, 80),
+            ("Adieresis", "H", 1.25, 31, 31),
+        ] {
+            let glyph = ufo.get_glyph(*name).unwrap();
+            let glyph_ref = ufo.get_glyph(*name_ref).unwrap();
+
+            let paths = path_for_glyph(&glyph).unwrap();
+            let bounds = paths.bounding_box();
+            let paths_reference = path_for_glyph(&glyph_ref).unwrap();
+            let bounds_reference = paths_reference.bounding_box();
+            let bounds_reference_lower = (bounds_reference.min_y() - overshoot).round();
+            let bounds_reference_upper = (bounds_reference.max_y() + overshoot).round();
+
+            let (new_left, new_right) = calculate_spacing(
+                paths,
+                bounds,
+                (bounds_reference_lower, bounds_reference_upper),
+                angle,
+                xheight,
+                param_sample_frequency,
+                param_depth,
+                name.clone(),
+                &mut background_glyphs,
+                *factor,
+                param_area,
+                units_per_em,
+            );
+
+            assert_eq!(*left as f64, new_left, "Glyph {}", *name);
+            assert_eq!(*right as f64, new_right, "Glyph {}", *name);
+        }
     }
 }
