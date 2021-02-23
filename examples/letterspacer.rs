@@ -1,6 +1,12 @@
-use kurbo::{BezPath, Line, ParamCurve, Point, Rect, Shape};
-use norad::glyph::{Contour, ContourPoint, Glyph, PointType};
+use kurbo::{Affine, BezPath, Line, ParamCurve, Point, Rect, Shape};
+use norad::glyph::{Component, Contour, ContourPoint, Glyph, PointType};
 use norad::{GlifVersion, GlyphBuilder, GlyphName, Layer, OutlineBuilder};
+
+// TODO:
+// - Write `set_(left|right)_margin` plus `move`
+// - Write deslanter for italic sidebearings
+// - Write new_layer
+// - Make spacing polygons BezPaths for free `area` fn?
 
 fn main() {
     for arg in std::env::args().skip(1) {
@@ -31,27 +37,15 @@ fn main() {
         let overshoot = xheight * param_overshoot / 100.0;
         let param_sample_frequency: usize = 5;
 
-        // TODO: fetch actual reference glyph.
         let default_layer = ufo.get_default_layer().unwrap();
         let mut background_glyphs: Vec<Glyph> = Vec::new();
 
         for glyph in default_layer.iter_contents() {
             let (factor, glyph_reference) = config_for_glyph(&glyph, &default_layer);
 
-            // TODO: Write `impl From<Glyph> for BezPath` which decomposes implicitly? Needs glyphset parameter though.
-            let glyph = match &glyph.outline {
-                Some(outline) => match (outline.components.is_empty(), outline.contours.is_empty())
-                {
-                    (true, true) => continue,
-                    (false, _) => decompose(&glyph, &default_layer),
-                    _ => Glyph::clone(&glyph),
-                },
-                _ => continue,
-            };
-
-            let paths = path_for_glyph(&glyph).unwrap();
+            let paths = path_for_glyph(&glyph, &default_layer).unwrap();
             let bounds = paths.bounding_box();
-            let paths_reference = path_for_glyph(&glyph_reference).unwrap();
+            let paths_reference = path_for_glyph(&glyph_reference, &default_layer).unwrap();
             let bounds_reference = paths_reference.bounding_box();
             let bounds_reference_lower = (bounds_reference.min_y() - overshoot).round();
             let bounds_reference_upper = (bounds_reference.max_y() + overshoot).round();
@@ -420,66 +414,56 @@ fn draw_glyph_outer_outline_into_glyph(
     builder.finish().unwrap()
 }
 
-/// Decompose a (composite) glyph. Ignores incoming identifiers and libs.
-fn decompose(glyph: &Glyph, glyphset: &Layer) -> Glyph {
-    let mut decomposed_glyph = Glyph::new_named(glyph.name.clone());
+/// Returns a Vec of decomposed components of a composite. Ignores incoming identifiers and libs
+/// and dangling components; contours are in no particular order.
+fn decomposed_components(glyph: &Glyph, glyphset: &Layer) -> Vec<Contour> {
+    let mut contours = Vec::new();
 
     if let Some(outline) = &glyph.outline {
-        let mut decomposed_contours = outline.contours.clone();
+        let mut stack: Vec<(&Component, Affine)> = Vec::new();
 
-        let mut queue: std::collections::VecDeque<(&norad::Component, kurbo::Affine)> =
-            std::collections::VecDeque::new();
         for component in &outline.components {
-            let component_transformation = component.transform.into();
-            queue.push_front((component, component_transformation));
-            while let Some((component, component_transformation)) = queue.pop_front() {
-                let new_glyph = glyphset.get_glyph(&component.base).expect(
-                    format!(
-                        "Glyph '{}': component '{}' points to non-existant glyph.",
-                        glyph.name, component.base
-                    )
-                    .as_str(),
-                );
-                if let Some(new_outline) = &new_glyph.outline {
-                    // decomposed_contours.extend(new_outline.contours.clone());
-                    for new_contour in &new_outline.contours {
-                        let mut new_decomposed_contour = norad::Contour::default();
-                        for new_point in &new_contour.points {
-                            let kurbo_point = component_transformation
-                                * kurbo::Point::new(new_point.x as f64, new_point.y as f64);
-                            new_decomposed_contour.points.push(norad::ContourPoint::new(
-                                kurbo_point.x as f32,
-                                kurbo_point.y as f32,
-                                new_point.typ.clone(),
-                                new_point.smooth,
-                                new_point.name.clone(),
-                                None,
-                                None,
-                            ))
-                        }
-                        decomposed_contours.push(new_decomposed_contour);
-                    }
+            stack.push((component, component.transform.into()));
 
-                    for new_component in new_outline.components.iter().rev() {
-                        let new_component_transformation: kurbo::Affine =
-                            new_component.transform.into();
-                        queue.push_front((
-                            new_component,
-                            component_transformation * new_component_transformation,
-                        ));
+            while let Some((component, transform)) = stack.pop() {
+                let new_outline = match glyphset.get_glyph(&component.base) {
+                    Some(g) => match &g.outline {
+                        Some(o) => o,
+                        None => continue,
+                    },
+                    None => continue,
+                };
+
+                for contour in &new_outline.contours {
+                    let mut decomposed_contour = Contour::default();
+                    for point in &contour.points {
+                        let new_point =
+                            transform * kurbo::Point::new(point.x as f64, point.y as f64);
+                        decomposed_contour.points.push(ContourPoint::new(
+                            new_point.x as f32,
+                            new_point.y as f32,
+                            point.typ.clone(),
+                            point.smooth,
+                            point.name.clone(),
+                            None,
+                            None,
+                        ))
                     }
+                    contours.push(decomposed_contour);
+                }
+
+                for new_component in new_outline.components.iter().rev() {
+                    let new_transform: Affine = new_component.transform.into();
+                    stack.push((new_component, transform * new_transform));
                 }
             }
         }
-
-        decomposed_glyph.outline =
-            Some(norad::Outline { contours: decomposed_contours, components: Vec::new() });
     }
 
-    decomposed_glyph
+    contours
 }
 
-fn path_for_glyph(glyph: &Glyph) -> Option<BezPath> {
+fn path_for_glyph(glyph: &Glyph, glyphset: &Layer) -> Option<BezPath> {
     /// An outline can have multiple contours, which correspond to subpaths
     fn add_contour(path: &mut BezPath, contour: &Contour) {
         let mut close: Option<&ContourPoint> = None;
@@ -536,6 +520,7 @@ fn path_for_glyph(glyph: &Glyph) -> Option<BezPath> {
     if let Some(outline) = glyph.outline.as_ref() {
         let mut path = BezPath::new();
         outline.contours.iter().for_each(|c| add_contour(&mut path, c));
+        decomposed_components(glyph, glyphset).iter().for_each(|c| add_contour(&mut path, c));
         Some(path)
     } else {
         None
@@ -572,7 +557,6 @@ mod tests {
 
         let mut background_glyphs = Vec::new();
 
-        // Skips "space".
         for (name, left, right) in &[
             ("A", Some(31.0), Some(31.0)),
             ("acute", Some(79.0), Some(79.0)),
@@ -623,15 +607,16 @@ mod tests {
             ("Adieresis", Some(31.0), Some(31.0)),
             ("space", None, None),
         ] {
-            let glyph = decompose(ufo.get_glyph(*name).unwrap(), &default_layer);
+            let glyph = ufo.get_glyph(*name).unwrap();
+
             let (mut factor, glyph_ref) = config_for_glyph(&glyph, &default_layer);
             if &*glyph.name == "dot" {
                 factor = 1.0;
             }
 
-            let paths = path_for_glyph(&glyph).unwrap();
+            let paths = path_for_glyph(&glyph, &default_layer).unwrap();
             let bounds = paths.bounding_box();
-            let paths_reference = path_for_glyph(&glyph_ref).unwrap();
+            let paths_reference = path_for_glyph(&glyph_ref, &default_layer).unwrap();
             let bounds_reference = paths_reference.bounding_box();
             let bounds_reference_lower = (bounds_reference.min_y() - overshoot).round();
             let bounds_reference_upper = (bounds_reference.max_y() + overshoot).round();
