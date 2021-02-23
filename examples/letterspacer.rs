@@ -146,11 +146,17 @@ fn config_for_glyph<'a>(glyph: &'a Glyph, glyphset: &'a Layer) -> (f64, &'a Glyp
                     }
                 }
                 CurrencySymbol => (1.6, glyph),
-                MathSymbol | OtherSymbol | ModifierSymbol => (1.5, glyph),
+                MathSymbol | OtherSymbol => (1.5, glyph),
                 _ => (1.0, glyph),
             }
         }
-        _ => (1.0, glyph),
+        _ => {
+            if &*glyph.name == "IJ" {
+                (1.25, glyph_ref_or_self("H"))
+            } else {
+                (1.0, glyph)
+            }
+        }
     }
 }
 
@@ -567,58 +573,61 @@ mod tests {
         let mut background_glyphs = Vec::new();
 
         // Skips "space".
-        for (name, name_ref, factor, left, right) in &[
-            ("A", "H", 1.25, Some(31.0), Some(31.0)),
-            ("acute", "acute", 1.0, Some(79.0), Some(79.0)),
-            ("B", "H", 1.25, Some(100.0), Some(51.0)),
-            ("C", "H", 1.25, Some(57.0), Some(51.0)),
-            ("D", "H", 1.25, Some(100.0), Some(57.0)),
-            ("E", "H", 1.25, Some(100.0), Some(41.0)),
-            ("F", "H", 1.25, Some(100.0), Some(40.0)),
-            ("G", "H", 1.25, Some(57.0), Some(74.0)),
-            ("H", "H", 1.25, Some(100.0), Some(100.0)),
-            ("I", "H", 1.25, Some(41.0), Some(41.0)),
-            ("I.narrow", "H", 1.25, Some(100.0), Some(100.0)),
-            ("IJ", "H", 1.25, Some(79.0), Some(80.0)),
-            ("J", "H", 1.25, Some(49.0), Some(83.0)),
-            ("J.narrow", "H", 1.25, Some(32.0), Some(80.0)),
-            ("K", "H", 1.25, Some(100.0), Some(33.0)),
-            ("L", "H", 1.25, Some(100.0), Some(33.0)),
-            ("M", "H", 1.25, Some(100.0), Some(100.0)),
-            ("N", "H", 1.25, Some(100.0), Some(100.0)),
-            ("O", "H", 1.25, Some(57.0), Some(57.0)),
-            ("P", "H", 1.25, Some(100.0), Some(54.0)),
-            ("R", "H", 1.25, Some(100.0), Some(57.0)),
-            ("S", "H", 1.25, Some(46.0), Some(52.0)),
-            ("S.closed", "H", 1.25, Some(51.0), Some(50.0)),
-            ("T", "H", 1.25, Some(33.0), Some(33.0)),
-            ("U", "H", 1.25, Some(80.0), Some(80.0)),
-            ("V", "H", 1.25, Some(31.0), Some(31.0)),
-            ("W", "H", 1.25, Some(34.0), Some(34.0)),
-            ("X", "H", 1.25, Some(27.0), Some(33.0)),
-            ("Y", "H", 1.25, Some(30.0), Some(30.0)),
-            ("Z", "H", 1.25, Some(41.0), Some(41.0)),
-            ("arrowdown", "arrowdown", 1.5, Some(89.0), Some(91.0)),
-            ("arrowleft", "arrowleft", 1.5, Some(95.0), Some(111.0)),
-            ("arrowright", "arrowright", 1.5, Some(110.0), Some(96.0)),
-            ("arrowup", "arrowup", 1.5, Some(91.0), Some(89.0)),
-            ("period", "period", 1.4, Some(112.0), Some(112.0)),
-            ("comma", "comma", 1.4, Some(110.0), Some(107.0)),
-            ("dot", "dot", 1.0, Some(80.0), Some(80.0)),
-            ("Aacute", "H", 1.25, Some(31.0), Some(31.0)),
-            ("Q", "H", 1.25, Some(57.0), Some(57.0)),
-            ("colon", "colon", 1.4, Some(104.0), Some(104.0)),
-            ("quotedblbase", "quotedblbase", 1.2, Some(94.0), Some(91.0)),
-            ("quotedblleft", "quotedblleft", 1.2, Some(91.0), Some(94.0)),
-            ("quotedblright", "quotedblright", 1.2, Some(94.0), Some(91.0)),
-            ("quotesinglbase", "quotesinglbase", 1.2, Some(94.0), Some(91.0)),
-            ("semicolon", "semicolon", 1.4, Some(104.0), Some(102.0)),
-            ("dieresis", "dieresis", 1.0, Some(80.0), Some(80.0)),
-            ("Adieresis", "H", 1.25, Some(31.0), Some(31.0)),
-            ("space", "space", 1.0, None, None),
+        for (name, left, right) in &[
+            ("A", Some(31.0), Some(31.0)),
+            ("acute", Some(79.0), Some(79.0)),
+            ("B", Some(100.0), Some(51.0)),
+            ("C", Some(57.0), Some(51.0)),
+            ("D", Some(100.0), Some(57.0)),
+            ("E", Some(100.0), Some(41.0)),
+            ("F", Some(100.0), Some(40.0)),
+            ("G", Some(57.0), Some(74.0)),
+            ("H", Some(100.0), Some(100.0)),
+            ("I", Some(41.0), Some(41.0)),
+            ("I.narrow", Some(100.0), Some(100.0)),
+            ("IJ", Some(79.0), Some(80.0)),
+            ("J", Some(49.0), Some(83.0)),
+            ("J.narrow", Some(32.0), Some(80.0)),
+            ("K", Some(100.0), Some(33.0)),
+            ("L", Some(100.0), Some(33.0)),
+            ("M", Some(100.0), Some(100.0)),
+            ("N", Some(100.0), Some(100.0)),
+            ("O", Some(57.0), Some(57.0)),
+            ("P", Some(100.0), Some(54.0)),
+            ("R", Some(100.0), Some(57.0)),
+            ("S", Some(46.0), Some(52.0)),
+            ("S.closed", Some(51.0), Some(50.0)),
+            ("T", Some(33.0), Some(33.0)),
+            ("U", Some(80.0), Some(80.0)),
+            ("V", Some(31.0), Some(31.0)),
+            ("W", Some(34.0), Some(34.0)),
+            ("X", Some(27.0), Some(33.0)),
+            ("Y", Some(30.0), Some(30.0)),
+            ("Z", Some(41.0), Some(41.0)),
+            ("arrowdown", Some(89.0), Some(91.0)),
+            ("arrowleft", Some(95.0), Some(111.0)),
+            ("arrowright", Some(110.0), Some(96.0)),
+            ("arrowup", Some(91.0), Some(89.0)),
+            ("period", Some(112.0), Some(112.0)),
+            ("comma", Some(110.0), Some(107.0)),
+            ("dot", Some(80.0), Some(80.0)),
+            ("Aacute", Some(31.0), Some(31.0)),
+            ("Q", Some(57.0), Some(57.0)),
+            ("colon", Some(104.0), Some(104.0)),
+            ("quotedblbase", Some(94.0), Some(91.0)),
+            ("quotedblleft", Some(91.0), Some(94.0)),
+            ("quotedblright", Some(94.0), Some(91.0)),
+            ("quotesinglbase", Some(94.0), Some(91.0)),
+            ("semicolon", Some(104.0), Some(102.0)),
+            ("dieresis", Some(80.0), Some(80.0)),
+            ("Adieresis", Some(31.0), Some(31.0)),
+            ("space", None, None),
         ] {
             let glyph = decompose(ufo.get_glyph(*name).unwrap(), &default_layer);
-            let glyph_ref = decompose(ufo.get_glyph(*name_ref).unwrap(), &default_layer);
+            let (mut factor, glyph_ref) = config_for_glyph(&glyph, &default_layer);
+            if &*glyph.name == "dot" {
+                factor = 1.0;
+            }
 
             let paths = path_for_glyph(&glyph).unwrap();
             let bounds = paths.bounding_box();
@@ -637,27 +646,41 @@ mod tests {
                 param_depth,
                 name.clone(),
                 &mut background_glyphs,
-                *factor,
+                factor,
                 param_area,
                 units_per_em,
             );
 
             match (left, new_left) {
-                (Some(v), Some(new_v)) => assert!((*v - new_v).abs() <= 1.0, "Glyph {}", *name),
+                (Some(v), Some(new_v)) => assert!(
+                    (*v - new_v).abs() <= 1.0,
+                    "Glyph {}: expected left {} but got {} (factor {})",
+                    *name,
+                    v,
+                    new_v,
+                    factor
+                ),
                 (None, None) => (),
                 _ => assert!(
                     false,
-                    "Glyph {}, left side: expected {:?}, got {:?}",
-                    *name, left, new_left
+                    "Glyph {}, left side: expected {:?}, got {:?} (factor {})",
+                    *name, left, new_left, factor
                 ),
             }
             match (right, new_right) {
-                (Some(v), Some(new_v)) => assert!((*v - new_v).abs() <= 1.0, "Glyph {}", *name),
+                (Some(v), Some(new_v)) => assert!(
+                    (*v - new_v).abs() <= 1.0,
+                    "Glyph {}: expected right {} but got {} (factor {})",
+                    *name,
+                    v,
+                    new_v,
+                    factor
+                ),
                 (None, None) => (),
                 _ => assert!(
                     false,
-                    "Glyph {}, right side: expected {:?}, got {:?}",
-                    *name, right, new_right
+                    "Glyph {}, right side: expected {:?}, got {:?} (factor {})",
+                    *name, right, new_right, factor
                 ),
             }
         }
