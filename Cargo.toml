@@ -14,6 +14,9 @@ exclude = [
     "/testdata/*"
 ]
 
+[features]
+default = ["kurbo"]
+
 [dependencies]
 plist = "1.0.1"
 uuid = { version = "0.8", features = ["v4"] }
@@ -35,3 +38,4 @@ failure = "0.1.6"
 serde_test = "1.0.102"
 tempdir = "0.3.7"
 maplit = "1.0.2"
+unic-ucd-category = "0.9.0"

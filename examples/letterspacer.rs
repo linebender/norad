@@ -35,12 +35,9 @@ fn main() {
         let default_layer = ufo.get_default_layer().unwrap();
         let mut background_glyphs: Vec<Glyph> = Vec::new();
 
-        let reference_uppercase = default_layer.get_glyph("H").expect("Need an 'H'.");
-        let reference_uppercase_factor = 1.25;
-        let reference_lowercase = default_layer.get_glyph("x").expect("Need an 'x'.");
-        let reference_lowercase_factor = 1.0;
-
         for glyph in default_layer.iter_contents() {
+            let (factor, glyph_reference) = config_for_glyph(&glyph, &default_layer);
+
             // TODO: Write `impl From<Glyph> for BezPath` which decomposes implicitly? Needs glyphset parameter though.
             let glyph = match &glyph.outline {
                 Some(outline) => match (outline.components.is_empty(), outline.contours.is_empty())
@@ -49,23 +46,6 @@ fn main() {
                     (false, _) => decompose(&glyph, &default_layer),
                     _ => Glyph::clone(&glyph),
                 },
-                _ => continue,
-            };
-
-            let (glyph_reference, factor) = match determine_unicode(&glyph, &default_layer) {
-                Some(u) => {
-                    if u.is_ascii_uppercase() {
-                        (reference_uppercase.as_ref(), reference_uppercase_factor)
-                    } else if u.is_ascii_lowercase() {
-                        (reference_lowercase.as_ref(), reference_lowercase_factor)
-                    } else if u.is_ascii() {
-                        (&glyph, 1.0)
-                    } else {
-                        // TODO: introduce proper configuration so we can space more than upper- and lowercase glyphs.
-                        // also handle .sc
-                        continue;
-                    }
-                }
                 _ => continue,
             };
 
@@ -109,6 +89,68 @@ fn main() {
         ufo.meta.creator = "org.linebender.norad".into();
         let output_path = std::path::PathBuf::from(&arg);
         ufo.save(std::path::PathBuf::from("/tmp").join(output_path.file_name().unwrap())).unwrap();
+    }
+}
+
+/// Returns the factor and reference glyph to be used for a glyph.
+///
+/// A rough port of HTLetterspacer's default configuration, as Glyphs.app provides richer metadata
+/// for glyph names and Unicode codepoints.
+fn config_for_glyph<'a>(glyph: &'a Glyph, glyphset: &'a Layer) -> (f64, &'a Glyph) {
+    use unic_ucd_category::GeneralCategory::*;
+
+    let glyph_ref_or_self =
+        |name: &str| glyphset.get_glyph(name).map(|g| g.as_ref()).unwrap_or(glyph);
+
+    match determine_unicode(glyph, glyphset) {
+        Some(u) => {
+            let category = unic_ucd_category::GeneralCategory::of(u);
+            match category {
+                UppercaseLetter => (1.25, glyph_ref_or_self("H")),
+                LowercaseLetter => {
+                    if glyph.name.contains(".sc") {
+                        (1.1, glyph_ref_or_self("h.sc"))
+                    } else if glyph.name.contains(".sups") {
+                        (0.7, glyph_ref_or_self("m.sups"))
+                    } else {
+                        (1.0, glyph_ref_or_self("x"))
+                    }
+                }
+                DecimalNumber => {
+                    if glyph.name.contains(".osf") {
+                        (1.2, glyph_ref_or_self("zero.osf"))
+                    } else {
+                        (1.2, glyph_ref_or_self("one"))
+                    }
+                }
+                OtherNumber => {
+                    // Skips special treatment for fractions because bare Unicode is missing info on that.
+                    if glyph.name.contains(".dnom")
+                        || glyph.name.contains(".numr")
+                        || glyph.name.contains(".inferior")
+                        || glyph.name.contains("superior")
+                    {
+                        (0.8, glyph)
+                    } else {
+                        (1.0, glyph)
+                    }
+                }
+                OpenPunctuation | ClosePunctuation | InitialPunctuation | FinalPunctuation => {
+                    (1.2, glyph)
+                }
+                OtherPunctuation => {
+                    if u == '/' {
+                        (1.0, glyph)
+                    } else {
+                        (1.4, glyph)
+                    }
+                }
+                CurrencySymbol => (1.6, glyph),
+                MathSymbol | OtherSymbol | ModifierSymbol => (1.5, glyph),
+                _ => (1.0, glyph),
+            }
+        }
+        _ => (1.0, glyph),
     }
 }
 
