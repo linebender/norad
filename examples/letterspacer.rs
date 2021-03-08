@@ -527,6 +527,57 @@ fn path_for_glyph(glyph: &Glyph, glyphset: &Layer) -> Option<BezPath> {
     }
 }
 
+fn draw_contour_segments(path: &mut BezPath, contour: &Contour) {
+    let segments = contour_segments(contour);
+
+    for segment in segments {
+        let segment_type = &segment.last().unwrap().typ;
+        match segment_type {
+            PointType::Move => todo!(),
+            PointType::Line => todo!(),
+            PointType::OffCurve => todo!(),
+            PointType::QCurve => todo!(),
+            PointType::Curve => todo!(),
+        }
+    }
+}
+
+fn contour_segments(contour: &Contour) -> Vec<Vec<&ContourPoint>> {
+    let mut points: Vec<&ContourPoint> = contour.points.iter().collect();
+    let mut segments = Vec::new();
+
+    // If we have 2 points or more, locate the first on-curve point and rotate the
+    // point list so that it _ends_ with that point. Probably because segment pens
+    // can't start a path on an offcurve (except for the on-curve-less quad blob).
+    if points.len() > 1 {
+        if let Some(first_oncurve) = points
+            .iter()
+            .enumerate()
+            .find(|(_, e)| e.typ != PointType::OffCurve)
+            .and_then(|(i, _)| Some(i))
+        {
+            points.rotate_left(first_oncurve + 1);
+        }
+    }
+
+    let mut current_segment = Vec::new();
+    for point in points {
+        current_segment.push(point);
+        if point.typ == PointType::OffCurve {
+            continue;
+        }
+        segments.push(current_segment.clone());
+        current_segment.clear();
+    }
+    // If the segment consists of only off-curves, the above loop would have
+    // ended without appending it, so append it whole.
+    if !current_segment.is_empty() {
+        segments.push(current_segment);
+    }
+
+    segments
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
