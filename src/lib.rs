@@ -1,4 +1,4 @@
-//! Utilties for working with [Universal Font Object][ufo] files.
+//! Utilties for working with [Unified Font Object][ufo] files.
 //!
 //! [ufo]: http://unifiedfontobject.org/versions/ufo3
 //!
