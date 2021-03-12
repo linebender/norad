@@ -527,21 +527,73 @@ fn path_for_glyph(glyph: &Glyph, glyphset: &Layer) -> Option<BezPath> {
     }
 }
 
-fn draw_contour_segments(path: &mut BezPath, contour: &Contour) {
-    let segments = contour_segments(contour);
-
-    for segment in segments {
-        let segment_type = &segment.last().unwrap().typ;
-        match segment_type {
-            PointType::Move => todo!(),
-            PointType::Line => todo!(),
-            PointType::OffCurve => todo!(),
-            PointType::QCurve => todo!(),
-            PointType::Curve => todo!(),
-        }
-    }
+enum ContourDrawingError {
+    IllegalPointCount(PointType, usize),
+    IllegalMove,
 }
 
+fn draw_contour_segments(path: &mut BezPath, contour: &Contour) -> Result<(), ContourDrawingError> {
+    let segments = contour_segments(contour);
+
+    // start point: always chose first if move and otherwise last oncurve?
+    // is "move" also moved to end?
+
+    let mut closed = true;
+    for (index, segment) in segments.iter().enumerate() {
+        let segment_type = &segment.last().unwrap().typ;
+        match segment_type {
+            PointType::Move => match segment.len() {
+                1 => {
+                    if index != 0 {
+                        return Err(ContourDrawingError::IllegalMove);
+                    }
+                    closed = false;
+                    path.move_to((segment[0].x as f64, segment[0].y as f64))
+                }
+                _ => {
+                    return Err(ContourDrawingError::IllegalPointCount(
+                        PointType::Move,
+                        segment.len(),
+                    ))
+                }
+            },
+            PointType::Line => match segment.len() {
+                1 => path.line_to((segment[0].x as f64, segment[0].y as f64)),
+                _ => {
+                    return Err(ContourDrawingError::IllegalPointCount(
+                        PointType::Line,
+                        segment.len(),
+                    ))
+                }
+            },
+            PointType::OffCurve => match segment.len() {
+                1 => todo!(), // convert to move or lineto?
+                _ => todo!(), // all off-curves -- preprocess (append computed implied point) and leave to QCurve?
+            },
+            PointType::QCurve => match segment.len() {
+                1 => todo!(), // convert to lineto
+                2 => todo!(), // standard curve
+                _ => todo!(), // decomposeQuadraticSegment
+            },
+            PointType::Curve => match segment.len() {
+                1 => todo!(), // convert to lineto
+                2 => todo!(), // convert to qcurve
+                3 => todo!(), // standard curve
+                _ => todo!(), // decomposeSuperBezierSegment
+            },
+        }
+    }
+
+    // XXX: empty contour?
+    if closed {
+        path.close_path();
+    }
+
+    Ok(())
+}
+
+// Instead generate Vec<PathElement enum> token stream or something that does all the conversion and fudging in one go?
+// or can be passed to bezpath directly?
 fn contour_segments(contour: &Contour) -> Vec<Vec<&ContourPoint>> {
     let mut points: Vec<&ContourPoint> = contour.points.iter().collect();
     let mut segments = Vec::new();
@@ -549,13 +601,9 @@ fn contour_segments(contour: &Contour) -> Vec<Vec<&ContourPoint>> {
     // If we have 2 points or more, locate the first on-curve point and rotate the
     // point list so that it _ends_ with that point. Probably because segment pens
     // can't start a path on an offcurve (except for the on-curve-less quad blob).
+    // XXX: what about move? should always be first?
     if points.len() > 1 {
-        if let Some(first_oncurve) = points
-            .iter()
-            .enumerate()
-            .find(|(_, e)| e.typ != PointType::OffCurve)
-            .and_then(|(i, _)| Some(i))
-        {
+        if let Some(first_oncurve) = points.iter().position(|e| e.typ != PointType::OffCurve) {
             points.rotate_left(first_oncurve + 1);
         }
     }
@@ -572,6 +620,7 @@ fn contour_segments(contour: &Contour) -> Vec<Vec<&ContourPoint>> {
     // If the segment consists of only off-curves, the above loop would have
     // ended without appending it, so append it whole.
     if !current_segment.is_empty() {
+        // append implied point if at least two points? see BasePen.qCurveTo
         segments.push(current_segment);
     }
 
