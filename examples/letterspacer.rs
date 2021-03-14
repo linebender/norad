@@ -1,4 +1,4 @@
-use kurbo::{Affine, BezPath, Line, ParamCurve, Point, Rect, Shape};
+use kurbo::{Affine, BezPath, Line, ParamCurve, PathEl, Point, Rect, Shape};
 use norad::glyph::{Component, Contour, ContourPoint, Glyph, PointType};
 use norad::{GlifVersion, GlyphBuilder, GlyphName, Layer, OutlineBuilder};
 
@@ -437,8 +437,7 @@ fn decomposed_components(glyph: &Glyph, glyphset: &Layer) -> Vec<Contour> {
                 for contour in &new_outline.contours {
                     let mut decomposed_contour = Contour::default();
                     for point in &contour.points {
-                        let new_point =
-                            transform * kurbo::Point::new(point.x as f64, point.y as f64);
+                        let new_point = transform * Point::new(point.x as f64, point.y as f64);
                         decomposed_contour.points.push(ContourPoint::new(
                             new_point.x as f32,
                             new_point.y as f32,
@@ -530,101 +529,127 @@ fn path_for_glyph(glyph: &Glyph, glyphset: &Layer) -> Option<BezPath> {
 enum ContourDrawingError {
     IllegalPointCount(PointType, usize),
     IllegalMove,
+    TrailingOffCurves,
 }
 
-fn draw_contour_segments(path: &mut BezPath, contour: &Contour) -> Result<(), ContourDrawingError> {
-    let segments = contour_segments(contour);
-
-    // start point: always chose first if move and otherwise last oncurve?
-    // is "move" also moved to end?
-
-    let mut closed = true;
-    for (index, segment) in segments.iter().enumerate() {
-        let segment_type = &segment.last().unwrap().typ;
-        match segment_type {
-            PointType::Move => match segment.len() {
-                1 => {
-                    if index != 0 {
-                        return Err(ContourDrawingError::IllegalMove);
-                    }
-                    closed = false;
-                    path.move_to((segment[0].x as f64, segment[0].y as f64))
-                }
-                _ => {
-                    return Err(ContourDrawingError::IllegalPointCount(
-                        PointType::Move,
-                        segment.len(),
-                    ))
-                }
-            },
-            PointType::Line => match segment.len() {
-                1 => path.line_to((segment[0].x as f64, segment[0].y as f64)),
-                _ => {
-                    return Err(ContourDrawingError::IllegalPointCount(
-                        PointType::Line,
-                        segment.len(),
-                    ))
-                }
-            },
-            PointType::OffCurve => match segment.len() {
-                1 => todo!(), // convert to move or lineto?
-                _ => todo!(), // all off-curves -- preprocess (append computed implied point) and leave to QCurve?
-            },
-            PointType::QCurve => match segment.len() {
-                1 => todo!(), // convert to lineto
-                2 => todo!(), // standard curve
-                _ => todo!(), // decomposeQuadraticSegment
-            },
-            PointType::Curve => match segment.len() {
-                1 => todo!(), // convert to lineto
-                2 => todo!(), // convert to qcurve
-                3 => todo!(), // standard curve
-                _ => todo!(), // decomposeSuperBezierSegment
-            },
-        }
-    }
-
-    // XXX: empty contour?
-    if closed {
-        path.close_path();
-    }
-
-    Ok(())
-}
-
-// Instead generate Vec<PathElement enum> token stream or something that does all the conversion and fudging in one go?
-// or can be passed to bezpath directly?
-fn contour_segments(contour: &Contour) -> Vec<Vec<&ContourPoint>> {
+fn contour_segments2(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingError> {
     let mut points: Vec<&ContourPoint> = contour.points.iter().collect();
     let mut segments = Vec::new();
 
-    // If we have 2 points or more, locate the first on-curve point and rotate the
-    // point list so that it _ends_ with that point. Probably because segment pens
-    // can't start a path on an offcurve (except for the on-curve-less quad blob).
-    // XXX: what about move? should always be first?
-    if points.len() > 1 {
-        if let Some(first_oncurve) = points.iter().position(|e| e.typ != PointType::OffCurve) {
-            points.rotate_left(first_oncurve + 1);
+    // If we have 2 points or more and aren't an open contour (first point is a move),
+    // locate the first on-curve point and rotate the point list so that it _ends_ with
+    // that point. The first point could be a curve with its off-curves at the end; moving
+    // the point makes always makes all associated off-curves reachable in a single pass
+    // without wrapping around.
+    let mut start_point: Option<&ContourPoint> = None;
+    let mut implied_oncurve: Option<ContourPoint> = None;
+    let mut closed = true;
+
+    match points.len() {
+        0 => return Ok(segments),
+        1 => {
+            let point = points[0];
+            segments.push(PathEl::MoveTo(Point::new(point.x as f64, point.y as f64)));
+            return Ok(segments);
+        }
+        _ => {
+            if points[0].typ == PointType::Move {
+                closed = false;
+                let point = points.remove(0);
+                segments.push(PathEl::MoveTo(Point::new(point.x as f64, point.y as f64)));
+            } else {
+                if let Some(first_oncurve) =
+                    points.iter().position(|e| e.typ != PointType::OffCurve)
+                {
+                    points.rotate_left(first_oncurve + 1);
+                    start_point = Some(points.last().unwrap());
+                } else {
+                    // We are an all-offcurve quad blob. Expand implied oncurves and moveto on last one.
+                    // Do all processing here and return?
+                    todo!();
+                }
+            }
         }
     }
 
-    let mut current_segment = Vec::new();
+    // 1. Single-point contour: convert to moveto, done.
+    // 2. Open contour: starts with move, use first point as starting moveto
+    // 3. Closed contour: does not start with move, ...
+    //   a. ...at least one on-curve: use last point (after rotation) as starting moveto
+    //   b. ...all off-curves: quad blob contour; use last implied point as starting point (append it) but do not emit moveto.
+    //
+    // segments handling:
+    //  move: must be 1 point
+    //  line: must be 1 point
+    //  offcurve:
+    //      1 => unreachable if we return early above?
+    //      n followed by oncurve => collect for oncurve
+    //      else => unreachable after we expand implied qcurve above and for closed, but open contour could have illegal trailing offcurves
+    //  qcurve:
+    //      1 => convert to lineto
+    //      2 => standard curve
+    //      else => decomposeQuadraticSegment
+    //  curve:
+    //      1 => convert to lineto
+    //      2 => convert to qcurve
+    //      3 => standard curve
+    //      else => decomposeSuperBezierSegment
+
+    let mut controls: Vec<Point> = Vec::new();
     for point in points {
-        current_segment.push(point);
-        if point.typ == PointType::OffCurve {
-            continue;
+        let p = Point::new(point.x as f64, point.y as f64);
+        match point.typ {
+            PointType::OffCurve => controls.push(p),
+            PointType::Move => return Err(ContourDrawingError::IllegalMove),
+            PointType::Line => {
+                if !controls.is_empty() {
+                    return Err(ContourDrawingError::IllegalPointCount(
+                        PointType::Line,
+                        controls.len(),
+                    ));
+                }
+                segments.push(PathEl::LineTo(p))
+            }
+            PointType::QCurve => match controls.len() {
+                0 => segments.push(PathEl::LineTo(p)),
+                1 => {
+                    segments.push(PathEl::QuadTo(controls[0], p));
+                    controls.clear()
+                }
+                _ => {
+                    // TODO: make iterator?
+                    for i in 0..controls.len() - 1 {
+                        let c = controls[i];
+                        let cn = controls[i + 1];
+                        let pi = Point::new(0.5 * (c.x + cn.x), 0.5 * (c.y + cn.y));
+                        segments.push(PathEl::QuadTo(c, pi));
+                    }
+                    segments.push(PathEl::QuadTo(controls[controls.len() - 1], p));
+                    controls.clear()
+                }
+            },
+            PointType::Curve => match controls.len() {
+                0 => segments.push(PathEl::LineTo(p)),
+                1 => {
+                    segments.push(PathEl::QuadTo(controls[0], p));
+                    controls.clear()
+                }
+                2 => {
+                    segments.push(PathEl::CurveTo(controls[0], controls[1], p));
+                    controls.clear()
+                }
+                _ => todo!(),
+            },
         }
-        segments.push(current_segment.clone());
-        current_segment.clear();
     }
-    // If the segment consists of only off-curves, the above loop would have
-    // ended without appending it, so append it whole.
-    if !current_segment.is_empty() {
-        // append implied point if at least two points? see BasePen.qCurveTo
-        segments.push(current_segment);
+    if !controls.is_empty() {
+        return Err(ContourDrawingError::TrailingOffCurves);
+    }
+    if closed {
+        segments.push(PathEl::ClosePath);
     }
 
-    segments
+    Ok(segments)
 }
 
 #[cfg(test)]
