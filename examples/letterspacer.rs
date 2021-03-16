@@ -43,9 +43,27 @@ fn main() {
         for glyph in default_layer.iter_contents() {
             let (factor, glyph_reference) = config_for_glyph(&glyph, &default_layer);
 
-            let paths = path_for_glyph(&glyph, &default_layer).unwrap();
+            let paths = match path_for_glyph(&glyph, &default_layer) {
+                Ok(maybe_path) => match maybe_path {
+                    Some(path) => path,
+                    None => continue,
+                },
+                Err(e) => {
+                    println!("Error while drawing {}: {:?}", glyph.name, e);
+                    continue;
+                }
+            };
             let bounds = paths.bounding_box();
-            let paths_reference = path_for_glyph(&glyph_reference, &default_layer).unwrap();
+            let paths_reference = match path_for_glyph(&glyph_reference, &default_layer) {
+                Ok(maybe_path) => match maybe_path {
+                    Some(path) => path,
+                    None => continue,
+                },
+                Err(e) => {
+                    println!("Error while drawing {}: {:?}", glyph_reference.name, e);
+                    continue;
+                }
+            };
             let bounds_reference = paths_reference.bounding_box();
             let bounds_reference_lower = (bounds_reference.min_y() - overshoot).round();
             let bounds_reference_upper = (bounds_reference.max_y() + overshoot).round();
@@ -462,77 +480,29 @@ fn decomposed_components(glyph: &Glyph, glyphset: &Layer) -> Vec<Contour> {
     contours
 }
 
-fn path_for_glyph(glyph: &Glyph, glyphset: &Layer) -> Option<BezPath> {
-    /// An outline can have multiple contours, which correspond to subpaths
-    fn add_contour(path: &mut BezPath, contour: &Contour) {
-        let mut close: Option<&ContourPoint> = None;
-
-        let start_idx = match contour.points.iter().position(|pt| pt.typ != PointType::OffCurve) {
-            Some(idx) => idx,
-            None => return,
-        };
-
-        let first = &contour.points[start_idx];
-        path.move_to((first.x as f64, first.y as f64));
-        if first.typ != PointType::Move {
-            close = Some(first);
-        }
-
-        let mut controls = Vec::with_capacity(2);
-
-        let mut add_curve = |to_point: Point, controls: &mut Vec<Point>| {
-            match controls.as_slice() {
-                &[] => path.line_to(to_point),
-                &[a] => path.quad_to(a, to_point),
-                &[a, b] => path.curve_to(a, b, to_point),
-                _illegal => panic!("existence of second point implies first"),
-            };
-            controls.clear();
-        };
-
-        let mut idx = (start_idx + 1) % contour.points.len();
-        while idx != start_idx {
-            let next = &contour.points[idx];
-            let point = Point::new(next.x as f64, next.y as f64);
-            match next.typ {
-                PointType::OffCurve => controls.push(point),
-                PointType::Line => {
-                    debug_assert!(controls.is_empty(), "line type cannot follow offcurve");
-                    add_curve(point, &mut controls);
-                }
-                PointType::Curve => add_curve(point, &mut controls),
-                PointType::QCurve => {
-                    // XXX
-                    // log::warn!("quadratic curves are currently ignored");
-                    add_curve(point, &mut controls);
-                }
-                PointType::Move => debug_assert!(false, "illegal move point in path?"),
-            }
-            idx = (idx + 1) % contour.points.len();
-        }
-
-        if let Some(to_close) = close.take() {
-            add_curve((to_close.x as f64, to_close.y as f64).into(), &mut controls);
-        }
-    }
-
+fn path_for_glyph(glyph: &Glyph, glyphset: &Layer) -> Result<Option<BezPath>, ContourDrawingError> {
     if let Some(outline) = glyph.outline.as_ref() {
         let mut path = BezPath::new();
-        outline.contours.iter().for_each(|c| add_contour(&mut path, c));
-        decomposed_components(glyph, glyphset).iter().for_each(|c| add_contour(&mut path, c));
-        Some(path)
+        for contour in outline.contours.iter().chain(decomposed_components(glyph, glyphset).iter())
+        {
+            for element in contour_segments(contour)? {
+                path.push(element);
+            }
+        }
+        Ok(Some(path))
     } else {
-        None
+        Ok(None)
     }
 }
 
+#[derive(Debug)]
 enum ContourDrawingError {
     IllegalPointCount(PointType, usize),
     IllegalMove,
     TrailingOffCurves,
 }
 
-fn contour_segments2(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingError> {
+fn contour_segments(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingError> {
     let mut points: Vec<&ContourPoint> = contour.points.iter().collect();
     let mut segments = Vec::new();
 
@@ -541,9 +511,9 @@ fn contour_segments2(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingErr
     // that point. The first point could be a curve with its off-curves at the end; moving
     // the point makes always makes all associated off-curves reachable in a single pass
     // without wrapping around.
-    let mut start_point: Option<&ContourPoint> = None;
-    let mut implied_oncurve: Option<ContourPoint> = None;
+    let mut start: Option<&ContourPoint> = None;
     let mut closed = true;
+    let implied_oncurve: ContourPoint;
 
     match points.len() {
         0 => return Ok(segments),
@@ -555,22 +525,35 @@ fn contour_segments2(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingErr
         _ => {
             if points[0].typ == PointType::Move {
                 closed = false;
-                let point = points.remove(0);
-                segments.push(PathEl::MoveTo(Point::new(point.x as f64, point.y as f64)));
+                start = Some(points.remove(0));
             } else {
                 if let Some(first_oncurve) =
                     points.iter().position(|e| e.typ != PointType::OffCurve)
                 {
                     points.rotate_left(first_oncurve + 1);
-                    start_point = Some(points.last().unwrap());
+                    start = Some(points.last().unwrap());
                 } else {
                     // We are an all-offcurve quad blob. Expand implied oncurves and moveto on last one.
                     // Do all processing here and return?
-                    todo!();
+                    let first = points.first().unwrap();
+                    let last = points.last().unwrap();
+                    implied_oncurve = ContourPoint::new(
+                        0.5 * (last.x + first.x),
+                        0.5 * (last.y + first.y),
+                        PointType::QCurve,
+                        false,
+                        None,
+                        None,
+                        None,
+                    );
+                    points.push(&implied_oncurve);
                 }
             }
         }
     }
+
+    let start = start.unwrap();
+    segments.push(PathEl::MoveTo(Point::new(start.x as f64, start.y as f64)));
 
     // 1. Single-point contour: convert to moveto, done.
     // 2. Open contour: starts with move, use first point as starting moveto
@@ -618,7 +601,7 @@ fn contour_segments2(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingErr
                 }
                 _ => {
                     // TODO: make iterator?
-                    for i in 0..controls.len() - 1 {
+                    for i in 0..=controls.len() - 2 {
                         let c = controls[i];
                         let cn = controls[i + 1];
                         let pi = Point::new(0.5 * (c.x + cn.x), 0.5 * (c.y + cn.y));
@@ -739,9 +722,9 @@ mod tests {
                 factor = 1.0;
             }
 
-            let paths = path_for_glyph(&glyph, &default_layer).unwrap();
+            let paths = path_for_glyph(&glyph, &default_layer).unwrap().unwrap();
             let bounds = paths.bounding_box();
-            let paths_reference = path_for_glyph(&glyph_ref, &default_layer).unwrap();
+            let paths_reference = path_for_glyph(&glyph_ref, &default_layer).unwrap().unwrap();
             let bounds_reference = paths_reference.bounding_box();
             let bounds_reference_lower = (bounds_reference.min_y() - overshoot).round();
             let bounds_reference_upper = (bounds_reference.max_y() + overshoot).round();
