@@ -506,53 +506,64 @@ fn contour_segments(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingErro
     let mut points: Vec<&ContourPoint> = contour.points.iter().collect();
     let mut segments = Vec::new();
 
-    // If we have 2 points or more and aren't an open contour (first point is a move),
-    // locate the first on-curve point and rotate the point list so that it _ends_ with
-    // that point. The first point could be a curve with its off-curves at the end; moving
-    // the point makes always makes all associated off-curves reachable in a single pass
-    // without wrapping around.
-    let mut start: Option<&ContourPoint> = None;
-    let mut closed = true;
+    let closed;
+    let start: &ContourPoint;
     let implied_oncurve: ContourPoint;
 
     match points.len() {
+        // Empty contours cannot be represented by segments.
         0 => return Ok(segments),
+        // Single points are converted to open MoveTos because closed single points of any
+        // PointType make no sense.
         1 => {
-            let point = points[0];
-            segments.push(PathEl::MoveTo(Point::new(point.x as f64, point.y as f64)));
+            segments.push(PathEl::MoveTo(Point::new(points[0].x as f64, points[0].y as f64)));
             return Ok(segments);
         }
+        // Contours with two or more points come in three flavors...:
         _ => {
-            if points[0].typ == PointType::Move {
+            // 1. ... Open contours begin with a Move. Start the segment on the first point
+            // and don't close it. Note: Trailing off-curves are an error.
+            if let PointType::Move = points[0].typ {
                 closed = false;
-                start = Some(points.remove(0));
+                // Pop off the Move here so the segmentation loop below can just error out on
+                // encountering any other Move.
+                start = points.remove(0);
             } else {
-                if let Some(first_oncurve) =
-                    points.iter().position(|e| e.typ != PointType::OffCurve)
-                {
-                    points.rotate_left(first_oncurve + 1);
-                    start = Some(points.last().unwrap());
-                } else {
-                    // We are an all-offcurve quad blob. Expand implied oncurves and moveto on last one.
-                    // Do all processing here and return?
-                    let first = points.first().unwrap();
-                    let last = points.last().unwrap();
-                    implied_oncurve = ContourPoint::new(
-                        0.5 * (last.x + first.x),
-                        0.5 * (last.y + first.y),
-                        PointType::QCurve,
-                        false,
-                        None,
-                        None,
-                        None,
-                    );
-                    points.push(&implied_oncurve);
+                closed = true;
+                match points.iter().position(|e| e.typ != PointType::OffCurve) {
+                    // 2. ... Closed contours begin with anything else. Locate the first on-curve
+                    // point and rotate the point list so that it _ends_ with that point. The first
+                    // point could be a curve with its off-curves at the end; moving the point
+                    // makes always makes all associated off-curves reachable in a single pass
+                    // without wrapping around. Start the segment on the last point.
+                    Some(first_oncurve) => {
+                        points.rotate_left(first_oncurve + 1);
+                        start = points.last().unwrap();
+                    }
+                    // 3. ... Closed all-offcurve quadratic contours: Rare special case of
+                    // TrueType's “implied on-curve points” principle. Compute the last implied
+                    // on-curve point and append it, so we can handle this normally in the loop
+                    // below. Start the segment on the last, computed point.
+                    None => {
+                        let first = points.first().unwrap();
+                        let last = points.last().unwrap();
+                        implied_oncurve = ContourPoint::new(
+                            0.5 * (last.x + first.x),
+                            0.5 * (last.y + first.y),
+                            PointType::QCurve,
+                            false,
+                            None,
+                            None,
+                            None,
+                        );
+                        points.push(&implied_oncurve);
+                        start = &implied_oncurve;
+                    }
                 }
             }
         }
     }
 
-    let start = start.unwrap();
     segments.push(PathEl::MoveTo(Point::new(start.x as f64, start.y as f64)));
 
     // 1. Single-point contour: convert to moveto, done.
@@ -584,15 +595,15 @@ fn contour_segments(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingErro
         match point.typ {
             PointType::OffCurve => controls.push(p),
             PointType::Move => return Err(ContourDrawingError::IllegalMove),
-            PointType::Line => {
-                if !controls.is_empty() {
+            PointType::Line => match controls.len() {
+                0 => segments.push(PathEl::LineTo(p)),
+                _ => {
                     return Err(ContourDrawingError::IllegalPointCount(
                         PointType::Line,
                         controls.len(),
-                    ));
+                    ))
                 }
-                segments.push(PathEl::LineTo(p))
-            }
+            },
             PointType::QCurve => match controls.len() {
                 0 => segments.push(PathEl::LineTo(p)),
                 1 => {
@@ -600,7 +611,7 @@ fn contour_segments(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingErro
                     controls.clear()
                 }
                 _ => {
-                    // TODO: make iterator?
+                    // TODO: make iterator? controls.iter().zip(controls.iter().cycle().skip(1))
                     for i in 0..=controls.len() - 2 {
                         let c = controls[i];
                         let cn = controls[i + 1];
@@ -621,11 +632,19 @@ fn contour_segments(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingErro
                     segments.push(PathEl::CurveTo(controls[0], controls[1], p));
                     controls.clear()
                 }
-                _ => todo!(),
+                _ => {
+                    return Err(ContourDrawingError::IllegalPointCount(
+                        PointType::Curve,
+                        controls.len(),
+                    ))
+                }
             },
         }
     }
+    // If we have control points left at this point, we are an open contour, which must end on
+    // an on-curve point.
     if !controls.is_empty() {
+        debug_assert!(!closed);
         return Err(ContourDrawingError::TrailingOffCurves);
     }
     if closed {
