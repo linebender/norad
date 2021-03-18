@@ -510,6 +510,7 @@ fn contour_segments(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingErro
     let start: &ContourPoint;
     let implied_oncurve: ContourPoint;
 
+    // Phase 1: Preparation
     match points.len() {
         // Empty contours cannot be represented by segments.
         0 => return Ok(segments),
@@ -530,71 +531,51 @@ fn contour_segments(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingErro
                 start = points.remove(0);
             } else {
                 closed = true;
-                match points.iter().position(|e| e.typ != PointType::OffCurve) {
-                    // 2. ... Closed contours begin with anything else. Locate the first on-curve
-                    // point and rotate the point list so that it _ends_ with that point. The first
-                    // point could be a curve with its off-curves at the end; moving the point
-                    // makes always makes all associated off-curves reachable in a single pass
-                    // without wrapping around. Start the segment on the last point.
-                    Some(first_oncurve) => {
-                        points.rotate_left(first_oncurve + 1);
-                        start = points.last().unwrap();
-                    }
-                    // 3. ... Closed all-offcurve quadratic contours: Rare special case of
-                    // TrueType's “implied on-curve points” principle. Compute the last implied
-                    // on-curve point and append it, so we can handle this normally in the loop
-                    // below. Start the segment on the last, computed point.
-                    None => {
-                        let first = points.first().unwrap();
-                        let last = points.last().unwrap();
-                        implied_oncurve = ContourPoint::new(
-                            0.5 * (last.x + first.x),
-                            0.5 * (last.y + first.y),
-                            PointType::QCurve,
-                            false,
-                            None,
-                            None,
-                            None,
-                        );
-                        points.push(&implied_oncurve);
-                        start = &implied_oncurve;
-                    }
+                // 2. ... Closed contours begin with anything else. Locate the first on-curve
+                // point and rotate the point list so that it _ends_ with that point. The first
+                // point could be a curve with its off-curves at the end; moving the point
+                // makes always makes all associated off-curves reachable in a single pass
+                // without wrapping around. Start the segment on the last point.
+                if let Some(first_oncurve) =
+                    points.iter().position(|e| e.typ != PointType::OffCurve)
+                {
+                    points.rotate_left(first_oncurve + 1);
+                    start = points.last().unwrap();
+                // 3. ... Closed all-offcurve quadratic contours: Rare special case of
+                // TrueType's “implied on-curve points” principle. Compute the last implied
+                // on-curve point and append it, so we can handle this normally in the loop
+                // below. Start the segment on the last, computed point.
+                } else {
+                    let first = points.first().unwrap();
+                    let last = points.last().unwrap();
+                    implied_oncurve = ContourPoint::new(
+                        0.5 * (last.x + first.x),
+                        0.5 * (last.y + first.y),
+                        PointType::QCurve,
+                        false,
+                        None,
+                        None,
+                        None,
+                    );
+                    points.push(&implied_oncurve);
+                    start = &implied_oncurve;
                 }
             }
         }
     }
 
+    // Phase 1.5: Always need a MoveTo as the first element.
     segments.push(PathEl::MoveTo(Point::new(start.x as f64, start.y as f64)));
 
-    // 1. Single-point contour: convert to moveto, done.
-    // 2. Open contour: starts with move, use first point as starting moveto
-    // 3. Closed contour: does not start with move, ...
-    //   a. ...at least one on-curve: use last point (after rotation) as starting moveto
-    //   b. ...all off-curves: quad blob contour; use last implied point as starting point (append it) but do not emit moveto.
-    //
-    // segments handling:
-    //  move: must be 1 point
-    //  line: must be 1 point
-    //  offcurve:
-    //      1 => unreachable if we return early above?
-    //      n followed by oncurve => collect for oncurve
-    //      else => unreachable after we expand implied qcurve above and for closed, but open contour could have illegal trailing offcurves
-    //  qcurve:
-    //      1 => convert to lineto
-    //      2 => standard curve
-    //      else => decomposeQuadraticSegment
-    //  curve:
-    //      1 => convert to lineto
-    //      2 => convert to qcurve
-    //      3 => standard curve
-    //      else => decomposeSuperBezierSegment
-
+    // Phase 2: Conversion
     let mut controls: Vec<Point> = Vec::new();
     for point in points {
         let p = Point::new(point.x as f64, point.y as f64);
         match point.typ {
             PointType::OffCurve => controls.push(p),
+            // The first Move is removed from the points above, any other Move we encounter is illegal.
             PointType::Move => return Err(ContourDrawingError::IllegalMove),
+            // A line must have 0 off-curves preceeding it.
             PointType::Line => match controls.len() {
                 0 => segments.push(PathEl::LineTo(p)),
                 _ => {
@@ -604,6 +585,8 @@ fn contour_segments(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingErro
                     ))
                 }
             },
+            // A quadratic curve can have any number of off-curves preceeding it. Zero means it's
+            // a line, numbers > 1 mean we must expand “implied on-curve points”.
             PointType::QCurve => match controls.len() {
                 0 => segments.push(PathEl::LineTo(p)),
                 1 => {
@@ -622,6 +605,8 @@ fn contour_segments(contour: &Contour) -> Result<Vec<PathEl>, ContourDrawingErro
                     controls.clear()
                 }
             },
+            // A curve can have 0, 1 or 2 off-curves preceeding it according to the UFO specification.
+            // Zero means it's a line, one means it's a quadratic curve, two means it's a cubic curve.
             PointType::Curve => match controls.len() {
                 0 => segments.push(PathEl::LineTo(p)),
                 1 => {
