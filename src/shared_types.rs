@@ -1,5 +1,8 @@
 use std::convert::TryFrom;
+use std::hash::Hash;
 use std::ops::Deref;
+use std::str::FromStr;
+use std::sync::Arc;
 
 use serde::de;
 use serde::de::Deserializer;
@@ -10,15 +13,21 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "druid")]
 use druid::Data;
 
+use crate::error::ErrorKind;
 use crate::Error;
+
+pub static PUBLIC_OBJECT_LIBS_KEY: &str = "public.objectLibs";
+
+/// A Plist dictionary.
+pub type Plist = plist::Dictionary;
 
 /// Identifiers are optional attributes of several objects in the UFO.
 /// These identifiers are required to be unique within certain contexts
 /// as defined on a per object basis throughout this specification.
 /// Identifiers are specified as a string between one and 100 characters long.
 /// All characters must be in the printable ASCII range, 0x20 to 0x7E.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Identifier(pub(crate) String);
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+pub struct Identifier(Arc<str>);
 
 /// A guideline associated with a glyph.
 #[derive(Debug, Clone, PartialEq)]
@@ -29,9 +38,11 @@ pub struct Guideline {
     pub name: Option<String>,
     /// The color of the line.
     pub color: Option<Color>,
-    /// Unique identifier for the guideline. This attribute is not required
-    /// and should only be added to guidelines as needed.
-    pub identifier: Option<Identifier>,
+    /// Unique identifier for the guideline within the glyph. This attribute is only required
+    /// when a lib is present and should otherwise only be added as needed.
+    identifier: Option<Identifier>,
+    /// The guideline's lib for arbitary data.
+    lib: Option<Plist>,
 }
 
 /// An infinite line.
@@ -43,6 +54,7 @@ pub enum Line {
     Horizontal(f32),
     /// An angled line passing through `(x, y)` at `degrees` degrees counteer-clockwise
     /// to the horizontal.
+    // TODO: make a Degrees newtype that checks `0 <= degrees <= 360`.
     Angle { x: f32, y: f32, degrees: f32 },
 }
 
@@ -56,6 +68,137 @@ pub struct Color {
     pub alpha: f32,
 }
 
+impl Guideline {
+    pub fn new(
+        line: Line,
+        name: Option<String>,
+        color: Option<Color>,
+        identifier: Option<Identifier>,
+        lib: Option<Plist>,
+    ) -> Self {
+        let mut this = Self { line, name, color, identifier: None, lib: None };
+        if let Some(id) = identifier {
+            this.replace_identifier(id);
+        }
+        if let Some(lib) = lib {
+            this.replace_lib(lib);
+        }
+        this
+    }
+
+    /// Returns an immutable reference to the Guideline's lib.
+    pub fn lib(&self) -> Option<&Plist> {
+        self.lib.as_ref()
+    }
+
+    /// Returns a mutable reference to the Guideline's lib.
+    pub fn lib_mut(&mut self) -> Option<&mut Plist> {
+        self.lib.as_mut()
+    }
+
+    /// Replaces the actual lib by the lib given in parameter, returning the old
+    /// lib if present. Sets a new UUID v4 identifier if none is set already.
+    pub fn replace_lib(&mut self, lib: Plist) -> Option<Plist> {
+        if self.identifier.is_none() {
+            self.identifier.replace(Identifier::from_uuidv4());
+        }
+        self.lib.replace(lib)
+    }
+
+    /// Takes the lib out of the Guideline, leaving a None in its place.
+    pub fn take_lib(&mut self) -> Option<Plist> {
+        self.lib.take()
+    }
+
+    /// Returns an immutable reference to the Guideline's identifier.
+    pub fn identifier(&self) -> Option<&Identifier> {
+        self.identifier.as_ref()
+    }
+
+    /// Replaces the actual identifier by the identifier given in parameter,
+    /// returning the old identifier if present.
+    pub fn replace_identifier(&mut self, id: Identifier) -> Option<Identifier> {
+        self.identifier.replace(id)
+    }
+}
+
+impl Identifier {
+    /// Create a new `Identifier` from a `String`, if it is valid.
+    ///
+    /// A valid identifier must have between 0 and 100 characters, and each
+    /// character must be in the printable ASCII range, 0x20 to 0x7E.
+    pub fn new(s: impl Into<Arc<str>>) -> Result<Self, ErrorKind> {
+        let string = s.into();
+        if is_valid_identifier(&string) {
+            Ok(Identifier(string))
+        } else {
+            Err(ErrorKind::BadIdentifier)
+        }
+    }
+
+    pub fn from_uuidv4() -> Self {
+        Self::new(uuid::Uuid::new_v4().to_string()).unwrap()
+    }
+
+    /// Return the raw identifier, as a `&str`.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl PartialEq<String> for Identifier {
+    fn eq(&self, other: &String) -> bool {
+        *self.0 == *other
+    }
+}
+
+impl FromStr for Identifier {
+    type Err = ErrorKind;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Identifier::new(s)
+    }
+}
+
+impl FromStr for Color {
+    type Err = ErrorKind;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut iter = s.split(',').map(|v| match v.parse::<f32>() {
+            Ok(val) if (0.0..=1.0).contains(&val) => Ok(val),
+            _ => Err(ErrorKind::BadColor),
+        });
+        let red = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
+        let green = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
+        let blue = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
+        let alpha = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
+        if iter.next().is_some() {
+            Err(ErrorKind::BadColor)
+        } else {
+            Ok(Color { red, green, blue, alpha })
+        }
+    }
+}
+
+impl Serialize for Color {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let color_string = format!("{},{},{},{}", self.red, self.green, self.blue, self.alpha);
+        serializer.serialize_str(&color_string)
+    }
+}
+
+impl<'de> Deserialize<'de> for Color {
+    fn deserialize<D>(deserializer: D) -> Result<Color, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let string = String::deserialize(deserializer)?;
+        Color::from_str(&string).map_err(|_| serde::de::Error::custom("Malformed color string."))
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawGuideline {
@@ -67,10 +210,8 @@ struct RawGuideline {
     identifier: Option<Identifier>,
 }
 
-impl Identifier {
-    fn is_valid(&self) -> bool {
-        self.0.len() <= 100 && self.0.bytes().all(|b| (0x20..=0x7E).contains(&b))
-    }
+fn is_valid_identifier(s: &Arc<str>) -> bool {
+    s.len() <= 100 && s.bytes().all(|b| (0x20..=0x7E).contains(&b))
 }
 
 impl Serialize for Identifier {
@@ -78,11 +219,11 @@ impl Serialize for Identifier {
     where
         S: Serializer,
     {
-        if self.is_valid() {
-            serializer.serialize_str(&self.0)
-        } else {
-            Err(ser::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."))
-        }
+        debug_assert!(
+            is_valid_identifier(&self.0),
+            "all identifiers are validated on construction"
+        );
+        serializer.serialize_str(&self.0)
     }
 }
 
@@ -92,13 +233,7 @@ impl<'de> Deserialize<'de> for Identifier {
         D: Deserializer<'de>,
     {
         let string = String::deserialize(deserializer)?;
-        let identifier = Identifier(string);
-
-        if identifier.is_valid() {
-            Ok(identifier)
-        } else {
-            Err(de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."))
-        }
+        Identifier::new(string).map_err(|_| de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."))
     }
 }
 
@@ -110,7 +245,12 @@ impl Serialize for Guideline {
         let (x, y, angle) = match self.line {
             Line::Vertical(x) => (Some(x), None, None),
             Line::Horizontal(y) => (None, Some(y), None),
-            Line::Angle { x, y, degrees } => (Some(x), Some(y), Some(degrees)),
+            Line::Angle { x, y, degrees } => {
+                if !(0.0..=360.0).contains(&degrees) {
+                    return Err(ser::Error::custom("angle must be between 0 and 360 degrees."));
+                }
+                (Some(x), Some(y), Some(degrees))
+            }
         };
 
         let mut guideline = serializer.serialize_struct("RawGuideline", 6)?;
@@ -161,52 +301,7 @@ impl<'de> Deserialize<'de> for Guideline {
             }
         };
 
-        Ok(Guideline {
-            line,
-            name: guideline.name,
-            color: guideline.color,
-            identifier: guideline.identifier,
-        })
-    }
-}
-
-impl Serialize for Color {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let color_string = format!("{},{},{},{}", self.red, self.green, self.blue, self.alpha);
-        serializer.serialize_str(&color_string)
-    }
-}
-
-impl<'de> Deserialize<'de> for Color {
-    fn deserialize<D>(deserializer: D) -> Result<Color, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let string = String::deserialize(deserializer)?;
-        let colors: Vec<f32> = string.split(',').map(|v| v.parse().unwrap()).collect();
-
-        if colors.len() != 4 {
-            return Err(serde::de::Error::custom(
-                "Color definition must contain exactly 4 values seperated by commas.",
-            ));
-        }
-
-        let red = colors[0];
-        let green = colors[1];
-        let blue = colors[2];
-        let alpha = colors[3];
-        if (0.0..=1.0).contains(&red)
-            && (0.0..=1.0).contains(&green)
-            && (0.0..=1.0).contains(&blue)
-            && (0.0..=1.0).contains(&alpha)
-        {
-            Ok(Color { red, green, blue, alpha })
-        } else {
-            Err(serde::de::Error::custom("Colors must be numbers between 0 and 1 inclusive."))
-        }
+        Ok(Guideline::new(line, guideline.name, guideline.color, guideline.identifier, None))
     }
 }
 
@@ -385,7 +480,7 @@ impl<'de> Deserialize<'de> for NonNegativeIntegerOrFloat {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_test::{assert_de_tokens_error, assert_ser_tokens_error, assert_tokens, Token};
+    use serde_test::{assert_tokens, Token};
 
     #[test]
     fn color_parsing() {
@@ -398,35 +493,24 @@ mod tests {
 
     #[test]
     fn identifier_parsing() {
-        let i1 = Identifier(
-            " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~".to_string(),
-        );
-        assert_tokens(
-            &i1,
-            &[Token::Str(" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~")],
-        );
+        let valid_chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+        assert!(Identifier::new(valid_chars).is_ok());
 
-        let i2 = Identifier("0aAä".to_string());
-        let error = "Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E.";
-        assert_ser_tokens_error(&i2, &[], error);
-        assert_de_tokens_error::<Identifier>(&[Token::Str("0aAä")], error);
-
-        let i3 = Identifier("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string());
-        assert_ser_tokens_error(&i3, &[], error);
-        assert_de_tokens_error::<Identifier>(
-            &[Token::Str("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")],
-            error,
-        );
+        let i2 = Identifier::new("0aAä");
+        assert!(i2.is_err());
+        let i3 = Identifier::new("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        assert!(i3.is_err());
     }
 
     #[test]
     fn guideline_parsing() {
-        let g1 = Guideline {
-            line: Line::Angle { x: 10.0, y: 20.0, degrees: 360.0 },
-            name: Some("hello".to_string()),
-            color: Some(Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 }),
-            identifier: Some(Identifier("abcABC123".to_string())),
-        };
+        let g1 = Guideline::new(
+            Line::Angle { x: 10.0, y: 20.0, degrees: 360.0 },
+            Some("hello".to_string()),
+            Some(Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 }),
+            Some(Identifier::new("abcABC123").unwrap()),
+            None,
+        );
         assert_tokens(
             &g1,
             &[

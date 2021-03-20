@@ -16,6 +16,9 @@ pub enum Error {
     NotCreatedHere,
     /// An error returned when trying to save an UFO in anything less than the latest version.
     DowngradeUnsupported,
+    /// An error returned when trying to save a Glyph that contains a `public.objectLibs`
+    /// lib key already (the key is automatically managed by Norad).
+    PreexistingPublicObjectLibsKey,
     IoError(IoError),
     ParseError(XmlError),
     Glif(GlifError),
@@ -26,7 +29,9 @@ pub enum Error {
     GroupsError(GroupsValidationError),
     GroupsUpconversionError(GroupsValidationError),
     ExpectedPlistDictionaryError,
+    ExpectedPlistStringError,
     ExpectedPositiveValue,
+    InvalidDataError(ErrorKind),
 }
 
 /// An error representing a failure to validate UFO groups.
@@ -47,8 +52,25 @@ pub struct GlifError {
 /// An error when attempting to write a .glif file
 #[derive(Debug)]
 pub struct GlifWriteError {
+    /// The name of the glif where the error occured.
     pub name: GlyphName,
-    pub inner: XmlError,
+    /// The actual error.
+    pub inner: WriteError,
+}
+
+/// The possible inner error types that can occur when attempting to write
+/// out a .glif type.
+#[derive(Debug)]
+pub enum WriteError {
+    Xml(XmlError),
+    /// When writing out the 'lib' section, we use the plist crate to generate
+    /// the plist xml, and then strip the preface and closing </plist> tag.
+    ///
+    /// If for some reason the implementation of that crate changes, we could
+    /// be affected, although this is very unlikely.
+    InternalLibWriteError,
+    IoError(IoError),
+    Plist(PlistError),
 }
 
 /// Errors that happen when parsing `glif` files. This is converted into either
@@ -77,10 +99,26 @@ pub enum ErrorKind {
     BadGuideline,
     BadComponent,
     BadImage,
+    BadIdentifier,
+    BadLib,
     UnexpectedDuplicate,
+    UnexpectedMove,
+    UnexpectedSmooth,
     UnexpectedElement,
     UnexpectedAttribute,
     UnexpectedEof,
+    UnexpectedPointAfterOffCurve,
+    TooManyOffCurves,
+    PenPathNotStarted,
+    TrailingOffCurves,
+    DuplicateIdentifier,
+    UnexpectedDrawing,
+    UnfinishedDrawing,
+    UnexpectedPointField,
+    UnexpectedComponentField,
+    UnexpectedAnchorField,
+    UnexpectedGuidelineField,
+    UnexpectedImageField,
 }
 
 impl std::fmt::Display for Error {
@@ -92,6 +130,10 @@ impl std::fmt::Display for Error {
             Error::DowngradeUnsupported => {
                 write!(f, "Downgrading below UFO v3 is not currently supported.")
             }
+            Error::PreexistingPublicObjectLibsKey => write!(
+                f,
+                "The `public.objectLibs` lib key is managed by Norad and must not be set manually."
+            ),
             Error::IoError(e) => e.fmt(f),
             Error::ParseError(e) => e.fmt(f),
             Error::Glif(GlifError { path, position, kind }) => {
@@ -102,11 +144,21 @@ impl std::fmt::Display for Error {
             }
             Error::PlistError(e) => e.fmt(f),
             Error::FontInfoError => write!(f, "FontInfo contains invalid data"),
-            Error::FontInfoUpconversionError => write!(f, "FontInfo contains invalid data after upconversion"),
+            Error::FontInfoUpconversionError => {
+                write!(f, "FontInfo contains invalid data after upconversion")
+            }
             Error::GroupsError(ge) => ge.fmt(f),
-            Error::GroupsUpconversionError(ge) => write!(f, "Upconverting UFO v1 or v2 kerning data to v3 failed: {}", ge),
-            Error::ExpectedPlistDictionaryError => write!(f, "The files groups.plist, kerning.plist and lib.plist must contain plist dictionaries."),
-            Error::ExpectedPositiveValue => write!(f, "PositiveIntegerOrFloat expects a positive value."),
+            Error::GroupsUpconversionError(ge) => {
+                write!(f, "Upconverting UFO v1 or v2 kerning data to v3 failed: {}", ge)
+            }
+            Error::ExpectedPlistDictionaryError => write!(f, "Expected a Plist dictionary."),
+            Error::ExpectedPlistStringError => write!(f, "Expected a Plist string."),
+            Error::ExpectedPositiveValue => {
+                write!(f, "PositiveIntegerOrFloat expects a positive value.")
+            }
+            Error::InvalidDataError(e) => {
+                write!(f, "Type parsing error: '{}", e)
+            }
         }
     }
 }
@@ -136,11 +188,75 @@ impl std::fmt::Display for ErrorKind {
             ErrorKind::BadGuideline => write!(f, "Bad guideline"),
             ErrorKind::BadComponent => write!(f, "Bad component"),
             ErrorKind::BadImage => write!(f, "Bad image"),
+            ErrorKind::BadIdentifier => write!(f, "Bad identifier"),
+            ErrorKind::BadLib => write!(f, "Bad lib"),
             ErrorKind::UnexpectedDuplicate => write!(f, "Unexpected duplicate"),
+            ErrorKind::UnexpectedMove => {
+                write!(f, "Unexpected move point, can only occur at start of contour")
+            }
+            ErrorKind::UnexpectedSmooth => {
+                write!(f, "Unexpected smooth attribute on an off-curve point")
+            }
             ErrorKind::UnexpectedElement => write!(f, "Unexpected element"),
             ErrorKind::UnexpectedAttribute => write!(f, "Unexpected attribute"),
             ErrorKind::UnexpectedEof => write!(f, "Unexpected EOF"),
+            ErrorKind::UnexpectedPointAfterOffCurve => {
+                write!(f, "An off-curve point must be followed by a curve or qcurve")
+            }
+            ErrorKind::TooManyOffCurves => {
+                write!(f, "At most two off-curve points can precede a curve")
+            }
+            ErrorKind::PenPathNotStarted => {
+                write!(f, "Must call begin_path() before calling add_point() or end_path()")
+            }
+            ErrorKind::TrailingOffCurves => {
+                write!(f, "Open contours must not have trailing off-curves")
+            }
+            ErrorKind::DuplicateIdentifier => write!(f, "Duplicate identifier"),
+            ErrorKind::UnexpectedDrawing => write!(f, "Unexpected drawing without an outline"),
+            ErrorKind::UnfinishedDrawing => write!(f, "Unfinished drawing, you must call end_path"),
+            ErrorKind::UnexpectedPointField => write!(f, "Unexpected point field"),
+            ErrorKind::UnexpectedComponentField => write!(f, "Unexpected component field "),
+            ErrorKind::UnexpectedAnchorField => write!(f, "Unexpected anchor field "),
+            ErrorKind::UnexpectedGuidelineField => write!(f, "Unexpected guideline field "),
+            ErrorKind::UnexpectedImageField => write!(f, "Unexpected image field "),
         }
+    }
+}
+
+impl std::fmt::Display for WriteError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            WriteError::IoError(err) => err.fmt(f),
+            WriteError::Xml(err) => err.fmt(f),
+            WriteError::Plist(err) => err.fmt(f),
+            WriteError::InternalLibWriteError => {
+                write!(f, "Internal error while writing lib data. Please open an issue.")
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for GlifWriteError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Failed to write glyph '{}': {}", self.name, self.inner)
+    }
+}
+
+impl std::error::Error for WriteError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            WriteError::IoError(inner) => Some(inner),
+            WriteError::Xml(inner) => Some(inner),
+            WriteError::Plist(inner) => Some(inner),
+            WriteError::InternalLibWriteError => None,
+        }
+    }
+}
+
+impl std::error::Error for GlifWriteError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.inner.source()
     }
 }
 
@@ -207,5 +323,26 @@ impl From<GlifError> for Error {
 impl From<XmlError> for GlifErrorInternal {
     fn from(src: XmlError) -> GlifErrorInternal {
         GlifErrorInternal::Xml(src)
+    }
+}
+
+#[doc(hidden)]
+impl From<XmlError> for WriteError {
+    fn from(src: XmlError) -> WriteError {
+        WriteError::Xml(src)
+    }
+}
+
+#[doc(hidden)]
+impl From<IoError> for WriteError {
+    fn from(src: IoError) -> WriteError {
+        WriteError::IoError(src)
+    }
+}
+
+#[doc(hidden)]
+impl From<PlistError> for WriteError {
+    fn from(src: PlistError) -> WriteError {
+        WriteError::Plist(src)
     }
 }

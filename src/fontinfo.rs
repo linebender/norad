@@ -1,12 +1,14 @@
+use std::collections::HashSet;
 use std::path::Path;
 
 use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 
+use crate::error::ErrorKind;
 use crate::shared_types::{
-    Bitlist, Float, Guideline, Integer, IntegerOrFloat, NonNegativeInteger,
-    NonNegativeIntegerOrFloat,
+    Bitlist, Float, Guideline, Identifier, Integer, IntegerOrFloat, NonNegativeInteger,
+    NonNegativeIntegerOrFloat, Plist, PUBLIC_OBJECT_LIBS_KEY,
 };
 use crate::{Error, FormatVersion};
 
@@ -331,11 +333,15 @@ impl FontInfo {
     pub fn from_file<P: AsRef<Path>>(
         path: P,
         format_version: FormatVersion,
+        lib: Option<&mut Plist>,
     ) -> Result<Self, Error> {
         match format_version {
             FormatVersion::V3 => {
-                let fontinfo: FontInfo = plist::from_file(path)?;
+                let mut fontinfo: FontInfo = plist::from_file(path)?;
                 fontinfo.validate()?;
+                if let Some(lib) = lib {
+                    fontinfo.load_object_libs(lib)?;
+                }
                 Ok(fontinfo)
             }
             FormatVersion::V2 => {
@@ -653,6 +659,18 @@ impl FontInfo {
             }
         }
 
+        // Guideline identifiers must be unique within fontinfo.
+        if let Some(guidelines) = &self.guidelines {
+            let mut identifiers: HashSet<Identifier> = HashSet::new();
+            for guideline in guidelines {
+                if let Some(id) = guideline.identifier() {
+                    if !identifiers.insert(id.clone()) {
+                        return Err(Error::FontInfoError);
+                    }
+                }
+            }
+        }
+
         // openTypeOS2Selection must not contain bits 0, 5 or 6.
         if let Some(v) = &self.open_type_os2_selection {
             if v.contains(&0) || v.contains(&5) || v.contains(&6) {
@@ -738,6 +756,45 @@ impl FontInfo {
         }
 
         Ok(())
+    }
+
+    /// Move libs from the font lib's `public.objectLibs` key into the actual objects.
+    /// The key will be removed from the font lib.
+    fn load_object_libs(&mut self, lib: &mut Plist) -> Result<(), Error> {
+        let mut object_libs = match lib.remove(PUBLIC_OBJECT_LIBS_KEY) {
+            Some(lib) => lib.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?,
+            None => return Ok(()),
+        };
+
+        if let Some(guidelines) = &mut self.guidelines {
+            for guideline in guidelines {
+                if let Some(lib) =
+                    guideline.identifier().and_then(|id| object_libs.remove(id.as_str()))
+                {
+                    let lib =
+                        lib.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
+                    guideline.replace_lib(lib);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Dump guideline libs into a Plist.
+    pub(crate) fn dump_object_libs(&self) -> Plist {
+        let mut object_libs = Plist::default();
+
+        if let Some(guidelines) = &self.guidelines {
+            for guideline in guidelines {
+                if let Some(lib) = guideline.lib() {
+                    let id = guideline.identifier().map(|id| id.as_str().to_string());
+                    object_libs.insert(id.unwrap(), plist::Value::Dictionary(lib.clone()));
+                }
+            }
+        }
+
+        object_libs
     }
 }
 
@@ -1162,6 +1219,7 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::shared_types::Line;
     use serde_test::{assert_tokens, Token};
 
     #[test]
@@ -1215,30 +1273,22 @@ mod tests {
         assert_eq!(
             font_info.guidelines,
             Some(vec![
-                Guideline {
-                    line: Line::Angle { x: 82.0, y: 720.0, degrees: 90.0 },
-                    name: None,
-                    color: None,
-                    identifier: None
-                },
-                Guideline {
-                    line: Line::Vertical(372.0),
-                    name: None,
-                    color: None,
-                    identifier: None
-                },
-                Guideline {
-                    line: Line::Horizontal(123.0),
-                    name: None,
-                    color: None,
-                    identifier: None
-                },
-                Guideline {
-                    line: Line::Angle { x: 1.0, y: 2.0, degrees: 0.0 },
-                    name: Some(" [locked]".to_string()),
-                    color: Some(Color { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }),
-                    identifier: Some(Identifier("abc".to_string()))
-                },
+                Guideline::new(
+                    Line::Angle { x: 82.0, y: 720.0, degrees: 90.0 },
+                    None,
+                    None,
+                    None,
+                    None
+                ),
+                Guideline::new(Line::Vertical(372.0), None, None, None, None),
+                Guideline::new(Line::Horizontal(123.0), None, None, None, None),
+                Guideline::new(
+                    Line::Angle { x: 1.0, y: 2.0, degrees: 0.0 },
+                    Some(" [locked]".to_string()),
+                    Some(Color { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }),
+                    Some(Identifier::new("abc").unwrap()),
+                    None
+                ),
             ])
         );
         assert_eq!(
@@ -1380,5 +1430,47 @@ mod tests {
             });
         }
         assert!(fi.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_guideline_identifiers() {
+        let mut fi = FontInfo::default();
+        assert!(fi.validate().is_ok());
+
+        fi.guidelines.replace(vec![
+            Guideline::new(
+                Line::Horizontal(10.0),
+                None,
+                None,
+                Some(Identifier::new("test1").unwrap()),
+                None,
+            ),
+            Guideline::new(
+                Line::Vertical(20.0),
+                None,
+                None,
+                Some(Identifier::new("test2").unwrap()),
+                None,
+            ),
+        ]);
+        assert!(fi.validate().is_ok());
+
+        fi.guidelines.replace(vec![
+            Guideline::new(
+                Line::Horizontal(10.0),
+                None,
+                None,
+                Some(Identifier::new("test1").unwrap()),
+                None,
+            ),
+            Guideline::new(
+                Line::Vertical(20.0),
+                None,
+                None,
+                Some(Identifier::new("test1").unwrap()),
+                None,
+            ),
+        ]);
+        assert!(fi.validate().is_err());
     }
 }

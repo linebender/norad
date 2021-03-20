@@ -1,4 +1,4 @@
-//! Utilties for working with [Universal Font Object][ufo] files.
+//! Utilties for working with [Unified Font Object][ufo] files.
 //!
 //! [ufo]: http://unifiedfontobject.org/versions/ufo3
 //!
@@ -30,9 +30,12 @@ mod upconversion;
 
 pub use error::Error;
 pub use fontinfo::FontInfo;
-pub use glyph::{Glyph, GlyphName};
+pub use glyph::{
+    builder::GlyphBuilder, builder::OutlineBuilder, Advance, AffineTransform, Anchor, Component,
+    Contour, ContourPoint, GlifVersion, Glyph, GlyphName, Image, Outline, PointType,
+};
 pub use layer::Layer;
 pub use shared_types::{
-    Color, Guideline, Identifier, IntegerOrFloat, Line, NonNegativeIntegerOrFloat,
+    Color, Guideline, Identifier, IntegerOrFloat, Line, NonNegativeIntegerOrFloat, Plist,
 };
 pub use ufo::{DataRequest, FormatVersion, LayerInfo, MetaInfo, Ufo};

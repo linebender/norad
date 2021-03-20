@@ -1,3 +1,12 @@
+//! A little tool for debugging glyph parsing
+//!
+//! You pass this a glyph, and it tries to load it. It will then write it
+//! back out to xml, and print this to stdout; you can redirect this to a file
+//! in order to inspect how a given glyph would be serialized.
+//!
+//! Afterwards it will print the xml tree to stderr, which may be useful when
+//! debugging parse errors.
+
 use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::path::PathBuf;
@@ -8,6 +17,8 @@ use quick_xml::{
     events::{attributes::Attribute, Event},
     Reader,
 };
+
+use norad::Glyph;
 
 fn main() -> Result<(), io::Error> {
     let path = match env::args().skip(1).next().map(PathBuf::from) {
@@ -22,7 +33,12 @@ fn main() -> Result<(), io::Error> {
         }
     };
 
-    eprintln!("doing something with '{:?}'", &path);
+    let glyph = Glyph::load(&path).unwrap();
+    let to_xml = glyph.encode_xml().unwrap();
+    let to_xml = String::from_utf8(to_xml).unwrap();
+    // redirect this to a file to get the rewritten glif
+    println!("{}", to_xml);
+
     let xml = fs::read_to_string(&path)?;
     match print_tokens(&xml) {
         Ok(_) => Ok(()),

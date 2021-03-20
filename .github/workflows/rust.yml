@@ -24,41 +24,35 @@ jobs:
           command: fmt
           args: --all -- --check
 
-  test:
-    name: Test Suite
-    runs-on: macOS-10.14
+  test-stable:
+    runs-on: ubuntu-latest
+    name: cargo test stable
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
 
-      - name: install cairo
-        run: brew install cairo
+      - name: install libgtk-dev
+        run: |
+          sudo apt update
+          sudo apt install libgtk-3-dev
 
-      - uses: actions-rs/toolchain@v1
+      - name: install stable toolchain
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          components: clippy
+          profile: minimal
           override: true
+
+      - name: cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
 
       - run: git submodule update --init --recursive
 
-      - uses: actions-rs/cargo@v1
+      - name: cargo test
+        uses: actions-rs/cargo@v1
         with:
           command: test
           args: --all-features
-
-  doc:
-    name: Docs
-    runs-on: macOS-10.14
-    steps:
-      - uses: actions/checkout@v1
-
-      - name: install cairo
-        run: brew install cairo
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --document-private-items

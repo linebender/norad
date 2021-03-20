@@ -10,11 +10,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use serde::ser::{SerializeMap, Serializer};
+use serde::Serialize;
+
 use crate::error::GroupsValidationError;
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::layer::Layer;
 use crate::names::NameList;
+use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
 use crate::upconversion;
 use crate::Error;
 
@@ -48,7 +52,7 @@ pub struct Ufo {
     pub groups: Option<Groups>,
     pub kerning: Option<Kerning>,
     pub features: Option<String>,
-    data_request: DataRequest,
+    pub data_request: DataRequest,
 }
 
 impl Default for Ufo {
@@ -202,6 +206,10 @@ impl Ufo {
     /// a directory with the structure described in [v3 of the Unified Font Object][v3]
     /// spec.
     ///
+    /// NOTE: This will consume the `public.objectLibs` key in the global lib and in glyph
+    /// libs and assign object libs found therein to global guidelines and glyph objects
+    /// with the matching identifier, respectively.
+    ///
     /// [v3]: http://unifiedfontobject.org/versions/ufo3/
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Ufo, Error> {
         Self::new().load_ufo(path)
@@ -215,14 +223,6 @@ impl Ufo {
             let meta_path = path.join(METAINFO_FILE);
             let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
-            let fontinfo_path = path.join(FONTINFO_FILE);
-            let mut font_info = if fontinfo_path.exists() {
-                let font_info: FontInfo = FontInfo::from_file(fontinfo_path, meta.format_version)?;
-                Some(font_info)
-            } else {
-                None
-            };
-
             let lib_path = path.join(LIB_FILE);
             let mut lib = if lib_path.exists() && self.data_request.lib {
                 // Value::as_dictionary(_mut) will only borrow the data, but we want to own it.
@@ -231,6 +231,15 @@ impl Ufo {
                     plist::Value::Dictionary(dict) => Some(dict),
                     _ => return Err(Error::ExpectedPlistDictionaryError),
                 }
+            } else {
+                None
+            };
+
+            let fontinfo_path = path.join(FONTINFO_FILE);
+            let mut font_info = if fontinfo_path.exists() {
+                let font_info: FontInfo =
+                    FontInfo::from_file(fontinfo_path, meta.format_version, lib.as_mut())?;
+                Some(font_info)
             } else {
                 None
             };
@@ -340,6 +349,9 @@ impl Ufo {
     /// This may fail; instead of saving directly to the target path, it is a good
     /// idea to save to a temporary location and then move that to the target path
     /// if the save is successful.
+    ///
+    /// This _will_ fail if either the global or any glyph lib contains the
+    /// `public.objectLibs` key, as object lib management is done automatically.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
         let path = path.as_ref();
         self.save_impl(path)
@@ -354,6 +366,12 @@ impl Ufo {
             return Err(Error::NotCreatedHere);
         }
 
+        if let Some(lib) = &self.lib {
+            if lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
+                return Err(Error::PreexistingPublicObjectLibsKey);
+            }
+        }
+
         if path.exists() {
             fs::remove_dir_all(path)?;
         }
@@ -364,8 +382,20 @@ impl Ufo {
             plist::to_file_xml(path.join(FONTINFO_FILE), &font_info)?;
         }
 
-        if let Some(lib) = self.lib.as_ref() {
-            // XXX: Can this be done without cloning?
+        // Object libs are treated specially. The UFO v3 format won't allow us
+        // to store them inline, so they have to be placed into the font's lib
+        // under the public.objectLibs parent key. To avoid mutation behind the
+        // client's back, object libs are written out but not stored in
+        // font.lib in-memory. If there are object libs to serialize, clone the
+        // existing lib and insert them there for serialization, otherwise write
+        // out the original.
+        let object_libs =
+            self.font_info.as_ref().map(|f| f.dump_object_libs()).unwrap_or_else(Plist::new);
+        if !object_libs.is_empty() {
+            let mut new_lib = self.lib.clone().unwrap_or_else(Plist::new);
+            new_lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), plist::Value::Dictionary(object_libs));
+            plist::Value::Dictionary(new_lib).to_file_xml(path.join(LIB_FILE))?;
+        } else if let Some(lib) = self.lib.as_ref().filter(|lib| !lib.is_empty()) {
             plist::Value::Dictionary(lib.clone()).to_file_xml(path.join(LIB_FILE))?;
         }
 
@@ -375,7 +405,8 @@ impl Ufo {
         }
 
         if let Some(kerning) = self.kerning.as_ref() {
-            plist::to_file_xml(path.join(KERNING_FILE), kerning)?;
+            let kerning_serializer = KerningSerializer { kerning: &kerning };
+            plist::to_file_xml(path.join(KERNING_FILE), &kerning_serializer)?;
         }
 
         if let Some(features) = self.features.as_ref() {
@@ -457,7 +488,7 @@ impl Ufo {
 
     /// Returns a mutable reference to the glyph with the given name,
     /// IN THE DEFAULT LAYER, if it exists.
-    pub fn get_glyph_mut<K>(&mut self, key: &K) -> Option<&mut Arc<Glyph>>
+    pub fn get_glyph_mut<K>(&mut self, key: &K) -> Option<&mut Glyph>
     where
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
@@ -513,10 +544,54 @@ fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidationError> {
     Ok(())
 }
 
+/// KerningSerializer is a crutch to serialize kerning values as integers if they are
+/// integers rather than floats. This spares us having to use a wrapper type like
+/// IntegerOrFloat for kerning values.
+struct KerningSerializer<'a> {
+    kerning: &'a Kerning,
+}
+
+struct KerningInnerSerializer<'a> {
+    inner_kerning: &'a BTreeMap<String, f32>,
+}
+
+impl<'a> Serialize for KerningSerializer<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.kerning.len()))?;
+        for (k, v) in self.kerning {
+            let inner_v = KerningInnerSerializer { inner_kerning: v };
+            map.serialize_entry(k, &inner_v)?;
+        }
+        map.end()
+    }
+}
+
+impl<'a> Serialize for KerningInnerSerializer<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.inner_kerning.len()))?;
+        for (k, v) in self.inner_kerning {
+            if (v - v.round()).abs() < std::f32::EPSILON {
+                map.serialize_entry(k, &(*v as i32))?;
+            } else {
+                map.serialize_entry(k, v)?;
+            }
+        }
+        map.end()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::shared_types::IntegerOrFloat;
+    use maplit::btreemap;
+    use serde_test::{assert_ser_tokens, Token};
 
     #[test]
     fn new_is_v3() {
@@ -638,5 +713,37 @@ mod tests {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo/metainfo.plist";
         let meta: MetaInfo = plist::from_file(path).expect("failed to load metainfo");
         assert_eq!(meta.creator, "org.robofab.ufoLib");
+    }
+
+    #[test]
+    fn serialize_kerning() {
+        let kerning: Kerning = btreemap! {
+            "A".into() => btreemap!{
+                "A".into() => 1.0,
+            },
+            "B".into() => btreemap!{
+                "A".into() => 5.4,
+            },
+        };
+
+        let kerning_serializer = KerningSerializer { kerning: &kerning };
+
+        assert_ser_tokens(
+            &kerning_serializer,
+            &[
+                Token::Map { len: Some(2) },
+                Token::Str("A"),
+                Token::Map { len: Some(1) },
+                Token::Str("A"),
+                Token::I32(1),
+                Token::MapEnd,
+                Token::Str("B"),
+                Token::Map { len: Some(1) },
+                Token::Str("A"),
+                Token::F32(5.4),
+                Token::MapEnd,
+                Token::MapEnd,
+            ],
+        );
     }
 }
