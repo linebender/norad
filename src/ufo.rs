@@ -1,6 +1,6 @@
 //! Reading and (maybe) writing Unified Font Object files.
 
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(broken_intra_doc_links)]
 
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
@@ -76,7 +76,8 @@ impl Default for Ufo {
 ///
 /// By default, we load all components of the UFO file; however if you only
 /// need some subset of these, you can pass this struct to [`Ufo::with_fields`]
-/// in order to only load the fields specified in this object.
+/// in order to only load the fields specified in this object. This can help a
+/// lot with performance with large UFO files if you don't need the glyph data.
 ///
 /// [`Ufo::with_fields`]: struct.Ufo.html#method.with_fields
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -94,34 +95,42 @@ impl DataRequest {
         DataRequest { layers: b, lib: b, groups: b, kerning: b, features: b }
     }
 
+    /// Returns a `DataRequest` requesting all UFO data.
     pub fn all() -> Self {
         DataRequest::from_bool(true)
     }
 
+    /// Returns a `DataRequest` requesting no UFO data.
     pub fn none() -> Self {
         DataRequest::from_bool(false)
     }
 
+    /// Request that returned UFO data include the glyph layers and points.
     pub fn layers(&mut self, b: bool) -> &mut Self {
         self.layers = b;
         self
     }
 
+    /// Request that returned UFO data include <lib> sections.
     pub fn lib(&mut self, b: bool) -> &mut Self {
         self.lib = b;
         self
     }
 
+    /// Request that returned UFO data include parsed `groups.plist`.
     pub fn groups(&mut self, b: bool) -> &mut Self {
         self.groups = b;
         self
     }
 
+    /// Request that returned UFO data include parsed `kerning.plist`.
     pub fn kerning(&mut self, b: bool) -> &mut Self {
         self.kerning = b;
         self
     }
 
+    /// Request that returned UFO data include OpenType Layout features in Adobe
+    /// .fea format.
     pub fn features(&mut self, b: bool) -> &mut Self {
         self.features = b;
         self
@@ -251,9 +260,8 @@ impl Ufo {
                 None
             };
 
-            let layers: Vec<LayerInfo>;
             let glyph_names = NameList::default();
-            if self.data_request.layers {
+            let layers: Vec<LayerInfo> = if self.data_request.layers {
                 let mut contents = match meta.format_version {
                     FormatVersion::V3 => {
                         let contents_path = path.join(LAYER_CONTENTS_FILE);
@@ -271,10 +279,10 @@ impl Ufo {
                         Ok(LayerInfo { name, path: p, layer })
                     })
                     .collect();
-                layers = layers_r?;
+                layers_r?
             } else {
-                layers = Vec::new();
-            }
+                Vec::new()
+            };
 
             // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
             // a groups.plist file, while a kerning.plist is optional.
