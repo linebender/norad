@@ -337,11 +337,11 @@ impl Ufo {
                 groups,
                 kerning,
                 features,
-                data_request: ufo.data_request.clone(),
+                data_request: ufo.data_request,
             })
         };
 
-        return load_impl(&self, path);
+        load_impl(&self, path)
     }
 
     /// Attempt to save this UFO to the given path, overriding any existing contents.
