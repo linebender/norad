@@ -38,4 +38,4 @@ pub use layer::Layer;
 pub use shared_types::{
     Color, Guideline, Identifier, IntegerOrFloat, Line, NonNegativeIntegerOrFloat, Plist,
 };
-pub use ufo::{FormatVersion, LayerInfo, MetaInfo, Ufo};
+pub use ufo::{DataRequest, FormatVersion, LayerInfo, MetaInfo, Ufo};

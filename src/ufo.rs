@@ -52,6 +52,7 @@ pub struct Ufo {
     pub groups: Option<Groups>,
     pub kerning: Option<Kerning>,
     pub features: Option<String>,
+    pub data_request: DataRequest,
 }
 
 impl Default for Ufo {
@@ -70,7 +71,79 @@ impl Default for Ufo {
             groups: None,
             kerning: None,
             features: None,
+            data_request: Default::default(),
         }
+    }
+}
+
+/// A type that describes which components of a UFO should be loaded.
+///
+/// By default, we load all components of the UFO file; however if you only
+/// need some subset of these, you can pass this struct to [`Ufo::with_fields`]
+/// in order to only load the fields specified in this object. This can help a
+/// lot with performance with large UFO files if you don't need the glyph data.
+///
+/// [`Ufo::with_fields`]: struct.Ufo.html#method.with_fields
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub struct DataRequest {
+    pub layers: bool,
+    pub lib: bool,
+    pub groups: bool,
+    pub kerning: bool,
+    pub features: bool,
+}
+
+impl DataRequest {
+    fn from_bool(b: bool) -> Self {
+        DataRequest { layers: b, lib: b, groups: b, kerning: b, features: b }
+    }
+
+    /// Returns a `DataRequest` requesting all UFO data.
+    pub fn all() -> Self {
+        DataRequest::from_bool(true)
+    }
+
+    /// Returns a `DataRequest` requesting no UFO data.
+    pub fn none() -> Self {
+        DataRequest::from_bool(false)
+    }
+
+    /// Request that returned UFO data include the glyph layers and points.
+    pub fn layers(&mut self, b: bool) -> &mut Self {
+        self.layers = b;
+        self
+    }
+
+    /// Request that returned UFO data include <lib> sections.
+    pub fn lib(&mut self, b: bool) -> &mut Self {
+        self.lib = b;
+        self
+    }
+
+    /// Request that returned UFO data include parsed `groups.plist`.
+    pub fn groups(&mut self, b: bool) -> &mut Self {
+        self.groups = b;
+        self
+    }
+
+    /// Request that returned UFO data include parsed `kerning.plist`.
+    pub fn kerning(&mut self, b: bool) -> &mut Self {
+        self.kerning = b;
+        self
+    }
+
+    /// Request that returned UFO data include OpenType Layout features in Adobe
+    /// .fea format.
+    pub fn features(&mut self, b: bool) -> &mut Self {
+        self.features = b;
+        self
+    }
+}
+
+impl Default for DataRequest {
+    fn default() -> Self {
+        DataRequest::from_bool(true)
     }
 }
 
@@ -117,9 +190,16 @@ impl Default for MetaInfo {
 }
 
 impl Ufo {
-    /// Crate a new `Ufo`.
+    /// Create a new `Ufo`.
     pub fn new() -> Self {
         Ufo::default()
+    }
+
+    /// Create a new `Ufo` only with certain fields
+    pub fn with_fields(data_request: DataRequest) -> Self {
+        let mut ufo = Self::new();
+        ufo.data_request = data_request;
+        ufo
     }
 
     /// Attempt to load a font object from a file. `path` must point to
@@ -132,16 +212,19 @@ impl Ufo {
     ///
     /// [v3]: http://unifiedfontobject.org/versions/ufo3/
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Ufo, Error> {
+        Self::new().load_ufo(path)
+    }
+
+    pub fn load_ufo<P: AsRef<Path>>(&self, path: P) -> Result<Ufo, Error> {
         let path = path.as_ref();
-        return load_impl(path);
 
         // minimize monomorphization
-        fn load_impl(path: &Path) -> Result<Ufo, Error> {
+        let load_impl = |ufo: &Ufo, path: &Path| -> Result<Ufo, Error> {
             let meta_path = path.join(METAINFO_FILE);
             let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
             let lib_path = path.join(LIB_FILE);
-            let mut lib = if lib_path.exists() {
+            let mut lib = if lib_path.exists() && self.data_request.lib {
                 // Value::as_dictionary(_mut) will only borrow the data, but we want to own it.
                 // https://github.com/ebarnard/rust-plist/pull/48
                 match plist::Value::from_file(&lib_path)? {
@@ -162,7 +245,7 @@ impl Ufo {
             };
 
             let groups_path = path.join(GROUPS_FILE);
-            let groups = if groups_path.exists() {
+            let groups = if groups_path.exists() && self.data_request.groups {
                 let groups: Groups = plist::from_file(groups_path)?;
                 validate_groups(&groups).map_err(Error::GroupsError)?;
                 Some(groups)
@@ -171,7 +254,7 @@ impl Ufo {
             };
 
             let kerning_path = path.join(KERNING_FILE);
-            let kerning = if kerning_path.exists() {
+            let kerning = if kerning_path.exists() && self.data_request.kerning {
                 let kerning: Kerning = plist::from_file(kerning_path)?;
                 Some(kerning)
             } else {
@@ -179,7 +262,7 @@ impl Ufo {
             };
 
             let features_path = path.join(FEATURES_FILE);
-            let mut features = if features_path.exists() {
+            let mut features = if features_path.exists() && self.data_request.features {
                 let features = fs::read_to_string(features_path)?;
                 Some(features)
             } else {
@@ -187,24 +270,28 @@ impl Ufo {
             };
 
             let glyph_names = NameList::default();
-            let mut contents = match meta.format_version {
-                FormatVersion::V3 => {
-                    let contents_path = path.join(LAYER_CONTENTS_FILE);
-                    let contents: Vec<(String, PathBuf)> = plist::from_file(contents_path)?;
-                    contents
-                }
-                _older => vec![(DEFAULT_LAYER_NAME.into(), DEFAULT_GLYPHS_DIRNAME.into())],
-            };
+            let layers: Vec<LayerInfo> = if self.data_request.layers {
+                let mut contents = match meta.format_version {
+                    FormatVersion::V3 => {
+                        let contents_path = path.join(LAYER_CONTENTS_FILE);
+                        let contents: Vec<(String, PathBuf)> = plist::from_file(contents_path)?;
+                        contents
+                    }
+                    _older => vec![(DEFAULT_LAYER_NAME.into(), DEFAULT_GLYPHS_DIRNAME.into())],
+                };
 
-            let layers: Result<Vec<LayerInfo>, Error> = contents
-                .drain(..)
-                .map(|(name, p)| {
-                    let layer_path = path.join(&p);
-                    let layer = Layer::load_impl(&layer_path, &glyph_names)?;
-                    Ok(LayerInfo { name, path: p, layer })
-                })
-                .collect();
-            let layers = layers?;
+                let layers_r: Result<Vec<LayerInfo>, Error> = contents
+                    .drain(..)
+                    .map(|(name, p)| {
+                        let layer_path = path.join(&p);
+                        let layer = Layer::load_impl(&layer_path, &glyph_names)?;
+                        Ok(LayerInfo { name, path: p, layer })
+                    })
+                    .collect();
+                layers_r?
+            } else {
+                Vec::new()
+            };
 
             // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
             // a groups.plist file, while a kerning.plist is optional.
@@ -242,8 +329,19 @@ impl Ufo {
 
             meta.format_version = FormatVersion::V3;
 
-            Ok(Ufo { layers, meta, font_info, lib, groups, kerning, features })
-        }
+            Ok(Ufo {
+                layers,
+                meta,
+                font_info,
+                lib,
+                groups,
+                kerning,
+                features,
+                data_request: ufo.data_request,
+            })
+        };
+
+        load_impl(&self, path)
     }
 
     /// Attempt to save this UFO to the given path, overriding any existing contents.
@@ -530,6 +628,17 @@ mod tests {
         assert_eq!(font_obj.groups.unwrap().get("public.kern1.@MMK_L_A"), Some(&vec!["A".into()]));
         assert_eq!(font_obj.kerning.unwrap().get("B").unwrap().get("H").unwrap(), &-40.0);
         assert_eq!(font_obj.features.unwrap(), "# this is the feature from lightWide\n");
+    }
+
+    #[test]
+    fn data_request() {
+        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
+        let font_obj = Ufo::with_fields(DataRequest::none()).load_ufo(path).unwrap();
+        assert_eq!(font_obj.iter_layers().count(), 0);
+        assert_eq!(font_obj.lib, None);
+        assert_eq!(font_obj.groups, None);
+        assert_eq!(font_obj.kerning, None);
+        assert_eq!(font_obj.features, None);
     }
 
     #[test]
