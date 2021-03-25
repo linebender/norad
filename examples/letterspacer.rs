@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use kurbo::{Affine, BezPath, Line, ParamCurve, PathEl, Point, Rect, Shape};
 use norad::glyph::{Component, Contour, ContourPoint, Glyph, PointType};
 use norad::{GlifVersion, GlyphBuilder, GlyphName, Layer, OutlineBuilder};
@@ -40,6 +42,7 @@ fn main() {
         let default_layer = ufo.get_default_layer().unwrap();
         let mut background_glyphs: Vec<Glyph> = Vec::new();
 
+        let mut new_side_bearings = HashMap::new();
         for glyph in default_layer.iter_contents() {
             let (factor, glyph_reference) = config_for_glyph(&glyph, &default_layer);
 
@@ -83,7 +86,24 @@ fn main() {
                 units_per_em,
             );
 
-            println!("{}: {:?}, {:?}", glyph.name, new_left, new_right);
+            // Stash new metrics away. We have to do a second iteration so we can get a
+            // mut ref to glyphs to modify them. Doing it in this loop is complicated by
+            // misc. functions needing a normal ref to default_layer while we hold a mut ref...
+            if let (Some(new_left), Some(new_right)) = (new_left, new_right) {
+                let delta_left = new_left - bounds.min_x();
+                let delta_right = bounds.max_x() + delta_left + new_right;
+                new_side_bearings.insert(glyph.name.clone(), (delta_left, delta_right));
+            }
+        }
+
+        let default_layer = ufo.get_default_layer_mut().unwrap();
+        for (name, (left, right)) in new_side_bearings {
+            let glyph = default_layer.get_glyph_mut(&name).unwrap();
+            move_glyph_x(glyph, left as f32);
+            if let Some(advance) = &mut glyph.advance {
+                advance.width = right as f32;
+            }
+            // TODO: go though all composites using `glyph` and counter-move them to keep them in place.
         }
 
         // Write out background layer.
@@ -102,6 +122,25 @@ fn main() {
         let output_path = std::path::PathBuf::from(&arg);
         ufo.save(std::path::PathBuf::from("/tmp").join(output_path.file_name().unwrap())).unwrap();
     }
+}
+
+/// Shift anchors, contours and components of a glyph horizontally by `delta`.
+fn move_glyph_x(glyph: &mut Glyph, delta: f32) {
+    if let Some(outline) = &mut glyph.outline {
+        for contour in &mut outline.contours {
+            for point in &mut contour.points {
+                point.x += delta;
+            }
+        }
+        for component in &mut outline.components {
+            component.transform.x_offset += delta;
+        }
+    };
+    if let Some(anchors) = &mut glyph.anchors {
+        for anchor in anchors {
+            anchor.x += delta;
+        }
+    };
 }
 
 /// Returns the factor and reference glyph to be used for a glyph.
@@ -434,6 +473,7 @@ fn draw_glyph_outer_outline_into_glyph(
 
 /// Returns a Vec of decomposed components of a composite. Ignores incoming identifiers and libs
 /// and dangling components; contours are in no particular order.
+// XXX: deal with cycles?!
 fn decomposed_components(glyph: &Glyph, glyphset: &Layer) -> Vec<Contour> {
     let mut contours = Vec::new();
 
