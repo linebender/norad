@@ -173,7 +173,7 @@ pub struct LayerInfo {
 // cannot adequately handle that, as ser/de is not implemented for plist::Value.
 // Ser/de must be done manually...
 impl LayerInfo {
-    fn from_file(path: &PathBuf) -> Result<Self, Error> {
+    fn from_file(path: &Path) -> Result<Self, Error> {
         let mut info_content = plist::Value::from_file(path)
             .map_err(Error::PlistError)?
             .into_dictionary()

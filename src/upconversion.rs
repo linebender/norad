@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::path::Path;
 
 use crate::fontinfo::FontInfo;
 use crate::names::NameList;
@@ -113,7 +114,7 @@ fn find_known_kerning_groups(groups: &Groups) -> (HashSet<String>, HashSet<Strin
 ///
 /// [1]: https://github.com/robotools/defcon/blob/76a7ac408e62f68c09eaf24ca6d9ad04523dd19c/Lib/defcon/objects/font.py#L1571-L1629
 pub(crate) fn upconvert_ufov1_robofab_data(
-    lib_path: &std::path::PathBuf,
+    lib_path: &Path,
     lib: &mut plist::Dictionary,
     fontinfo: &mut FontInfo,
 ) -> Result<Option<String>, Error> {
