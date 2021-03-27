@@ -146,7 +146,7 @@ pub(crate) fn upconvert_ufov1_robofab_data(
         v_stems: Option<Vec<IntegerOrFloat>>,
     }
 
-    // Reead lib.plist again because it is easier than pulling out the data manually.
+    // Read lib.plist again because it is easier than pulling out the data manually.
     let lib_data: LibData = plist::from_file(lib_path)?;
 
     // Convert features.

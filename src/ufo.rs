@@ -48,7 +48,7 @@ pub struct Ufo {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
     pub layers: Vec<LayerInfo>,
-    pub lib: Option<plist::Dictionary>,
+    pub lib: Plist,
     pub groups: Option<Groups>,
     pub kerning: Option<Kerning>,
     pub features: Option<String>,
@@ -67,7 +67,7 @@ impl Default for Ufo {
             meta: MetaInfo::default(),
             font_info: None,
             layers: vec![main_layer],
-            lib: None,
+            lib: Plist::new(),
             groups: None,
             kerning: None,
             features: None,
@@ -225,20 +225,17 @@ impl Ufo {
 
             let lib_path = path.join(LIB_FILE);
             let mut lib = if lib_path.exists() && self.data_request.lib {
-                // Value::as_dictionary(_mut) will only borrow the data, but we want to own it.
-                // https://github.com/ebarnard/rust-plist/pull/48
-                match plist::Value::from_file(&lib_path)? {
-                    plist::Value::Dictionary(dict) => Some(dict),
-                    _ => return Err(Error::ExpectedPlistDictionaryError),
-                }
+                plist::Value::from_file(&lib_path)?
+                    .into_dictionary()
+                    .ok_or(Error::ExpectedPlistDictionaryError)?
             } else {
-                None
+                Plist::new()
             };
 
             let fontinfo_path = path.join(FONTINFO_FILE);
             let mut font_info = if fontinfo_path.exists() {
                 let font_info: FontInfo =
-                    FontInfo::from_file(fontinfo_path, meta.format_version, lib.as_mut())?;
+                    FontInfo::from_file(fontinfo_path, meta.format_version, &mut lib)?;
                 Some(font_info)
             } else {
                 None
@@ -308,18 +305,12 @@ impl Ufo {
 
             // The v1 format stores some Postscript hinting related data in the lib,
             // which we only import into fontinfo if we're reading a v1 UFO.
-            if meta.format_version == FormatVersion::V1 {
+            if meta.format_version == FormatVersion::V1 && lib_path.exists() {
                 let mut fontinfo =
                     if let Some(fontinfo) = font_info { fontinfo } else { FontInfo::default() };
 
-                let mut features_upgraded: Option<String> = None;
-                if let Some(lib_data) = &mut lib {
-                    features_upgraded = upconversion::upconvert_ufov1_robofab_data(
-                        &lib_path,
-                        lib_data,
-                        &mut fontinfo,
-                    )?;
-                }
+                let features_upgraded: Option<String> =
+                    upconversion::upconvert_ufov1_robofab_data(&lib_path, &mut lib, &mut fontinfo)?;
 
                 if features_upgraded.is_some() && !features_upgraded.as_ref().unwrap().is_empty() {
                     features = features_upgraded;
@@ -366,10 +357,8 @@ impl Ufo {
             return Err(Error::NotCreatedHere);
         }
 
-        if let Some(lib) = &self.lib {
-            if lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
-                return Err(Error::PreexistingPublicObjectLibsKey);
-            }
+        if self.lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
+            return Err(Error::PreexistingPublicObjectLibsKey);
         }
 
         if path.exists() {
@@ -392,11 +381,11 @@ impl Ufo {
         let object_libs =
             self.font_info.as_ref().map(|f| f.dump_object_libs()).unwrap_or_else(Plist::new);
         if !object_libs.is_empty() {
-            let mut new_lib = self.lib.clone().unwrap_or_else(Plist::new);
+            let mut new_lib = self.lib.clone();
             new_lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), plist::Value::Dictionary(object_libs));
             plist::Value::Dictionary(new_lib).to_file_xml(path.join(LIB_FILE))?;
-        } else if let Some(lib) = self.lib.as_ref().filter(|lib| !lib.is_empty()) {
-            plist::Value::Dictionary(lib.clone()).to_file_xml(path.join(LIB_FILE))?;
+        } else if !self.lib.is_empty() {
+            plist::Value::Dictionary(self.lib.clone()).to_file_xml(path.join(LIB_FILE))?;
         }
 
         if let Some(groups) = self.groups.as_ref() {
@@ -622,7 +611,7 @@ mod tests {
             .expect("missing layer");
 
         assert_eq!(
-            font_obj.lib.unwrap().get("com.typemytype.robofont.compileSettings.autohint"),
+            font_obj.lib.get("com.typemytype.robofont.compileSettings.autohint"),
             Some(&plist::Value::Boolean(true))
         );
         assert_eq!(font_obj.groups.unwrap().get("public.kern1.@MMK_L_A"), Some(&vec!["A".into()]));
@@ -635,7 +624,7 @@ mod tests {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
         let font_obj = Ufo::with_fields(DataRequest::none()).load_ufo(path).unwrap();
         assert_eq!(font_obj.iter_layers().count(), 0);
-        assert_eq!(font_obj.lib, None);
+        assert_eq!(font_obj.lib, Plist::new());
         assert_eq!(font_obj.groups, None);
         assert_eq!(font_obj.kerning, None);
         assert_eq!(font_obj.features, None);
@@ -687,10 +676,7 @@ mod tests {
             Some(vec![IntegerOrFloat::from(80), IntegerOrFloat::from(90)])
         );
 
-        assert_eq!(
-            font.lib.unwrap().keys().collect::<Vec<&String>>(),
-            vec!["org.robofab.testFontLibData"]
-        );
+        assert_eq!(font.lib.keys().collect::<Vec<&String>>(), vec!["org.robofab.testFontLibData"]);
 
         assert_eq!(
             font.features.unwrap(),

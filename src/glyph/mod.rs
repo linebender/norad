@@ -36,7 +36,7 @@ pub struct Glyph {
     pub components: Vec<Component>,
     pub contours: Vec<Contour>,
     pub image: Option<Image>,
-    pub lib: Option<Plist>,
+    pub lib: Plist,
 }
 
 impl Glyph {
@@ -66,10 +66,8 @@ impl Glyph {
         if self.format != GlifVersion::V2 {
             return Err(Error::DowngradeUnsupported);
         }
-        if let Some(lib) = &self.lib {
-            if lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
-                return Err(Error::PreexistingPublicObjectLibsKey);
-            }
+        if self.lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
+            return Err(Error::PreexistingPublicObjectLibsKey);
         }
         let data = self.encode_xml()?;
         std::fs::write(path, &data)?;
@@ -94,18 +92,17 @@ impl Glyph {
             components: Vec::new(),
             contours: Vec::new(),
             image: None,
-            lib: None,
+            lib: Plist::new(),
         }
     }
 
     /// Move libs from the lib's `public.objectLibs` into the actual objects.
     /// The key will be removed from the glyph lib.
     fn load_object_libs(&mut self) -> Result<(), ErrorKind> {
-        let mut object_libs =
-            match self.lib.as_mut().and_then(|lib| lib.remove(PUBLIC_OBJECT_LIBS_KEY)) {
-                Some(lib) => lib.into_dictionary().ok_or(ErrorKind::BadLib)?,
-                None => return Ok(()),
-            };
+        let mut object_libs = match self.lib.remove(PUBLIC_OBJECT_LIBS_KEY) {
+            Some(lib) => lib.into_dictionary().ok_or(ErrorKind::BadLib)?,
+            None => return Ok(()),
+        };
 
         for anchor in &mut self.anchors {
             if let Some(lib) = anchor.identifier().and_then(|id| object_libs.remove(id.as_str())) {

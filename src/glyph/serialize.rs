@@ -76,11 +76,11 @@ impl Glyph {
         // cloning and write out the original.
         let object_libs = self.dump_object_libs();
         if !object_libs.is_empty() {
-            let mut new_lib = self.lib.clone().unwrap_or_else(Plist::new);
+            let mut new_lib = self.lib.clone();
             new_lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), plist::Value::Dictionary(object_libs));
             write_lib_section(&new_lib, &mut writer)?;
-        } else if let Some(lib) = self.lib.as_ref().filter(|lib| !lib.is_empty()) {
-            write_lib_section(lib, &mut writer)?;
+        } else if !self.lib.is_empty() {
+            write_lib_section(&self.lib, &mut writer)?;
         }
 
         writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;

@@ -35,7 +35,7 @@ fn parse_v1_upgrade_anchors() {
     assert_eq!(glyph.format, GlifVersion::V2);
     assert_eq!(glyph.guidelines, vec![]);
     assert_eq!(glyph.image, None);
-    assert_eq!(glyph.lib, None);
+    assert_eq!(glyph.lib, Plist::new());
     assert_eq!(glyph.note, None);
 }
 

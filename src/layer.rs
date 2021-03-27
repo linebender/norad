@@ -11,7 +11,7 @@ use rayon::prelude::*;
 use crate::glyph::GlyphName;
 use crate::names::NameList;
 use crate::shared_types::Color;
-use crate::{Error, Glyph};
+use crate::{Error, Glyph, Plist};
 
 static CONTENTS_FILE: &str = "contents.plist";
 static LAYER_INFO_FILE: &str = "layerinfo.plist";
@@ -166,7 +166,7 @@ impl Layer {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LayerInfo {
     pub color: Option<Color>,
-    pub lib: Option<plist::Dictionary>,
+    pub lib: Plist,
 }
 
 // Problem: layerinfo.plist contains a nested plist dictionary and the plist crate
@@ -188,13 +188,9 @@ impl LayerInfo {
             };
         };
 
-        let mut lib = None;
-        let lib_content = info_content.remove("lib");
-        if let Some(v) = lib_content {
-            match v.into_dictionary() {
-                Some(d) => lib.replace(d),
-                None => return Err(Error::ExpectedPlistDictionaryError),
-            };
+        let lib = match info_content.remove("lib") {
+            Some(v) => v.into_dictionary().ok_or(Error::ExpectedPlistDictionaryError)?,
+            None => Plist::new(),
         };
 
         Ok(Self { color, lib })
@@ -206,8 +202,8 @@ impl LayerInfo {
         if let Some(c) = &self.color {
             dict.insert("color".into(), plist::Value::String(c.to_rgba_string()));
         }
-        if let Some(l) = &self.lib {
-            dict.insert("lib".into(), plist::Value::Dictionary(l.clone()));
+        if !self.lib.is_empty() {
+            dict.insert("lib".into(), plist::Value::Dictionary(self.lib.clone()));
         }
 
         plist::Value::Dictionary(dict).to_file_xml(path.join(LAYER_INFO_FILE))?;
@@ -216,7 +212,7 @@ impl LayerInfo {
     }
 
     fn is_empty(&self) -> bool {
-        self.color.is_none() && self.lib.as_ref().map_or(true, |v| v.is_empty())
+        self.color.is_none() && self.lib.is_empty()
     }
 }
 
@@ -236,13 +232,7 @@ mod tests {
             &Color { red: 1.0, green: 0.75, blue: 0.0, alpha: 0.7 }
         );
         assert_eq!(
-            info.lib
-                .as_ref()
-                .unwrap()
-                .get("com.typemytype.robofont.segmentType")
-                .unwrap()
-                .as_string()
-                .unwrap(),
+            info.lib.get("com.typemytype.robofont.segmentType").unwrap().as_string().unwrap(),
             "curve"
         );
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
@@ -258,7 +248,7 @@ mod tests {
         let mut layer = Layer::load(layer_path).unwrap();
 
         layer.info.color.replace(Color { red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5 });
-        layer.info.lib.as_mut().unwrap().insert(
+        layer.info.lib.insert(
             "com.typemytype.robofont.segmentType".into(),
             plist::Value::String("test".into()),
         );
@@ -276,8 +266,6 @@ mod tests {
             layer2
                 .info
                 .lib
-                .as_ref()
-                .unwrap()
                 .get("com.typemytype.robofont.segmentType")
                 .unwrap()
                 .as_string()
@@ -296,7 +284,7 @@ mod tests {
         assert!(!dir.join("layerinfo.plist").exists());
 
         fs::remove_dir_all(&dir).unwrap();
-        layer.info.lib.replace(plist::dictionary::Dictionary::new());
+        layer.info.lib = Plist::new();
         layer.save(&dir).unwrap();
         assert!(!dir.join("layerinfo.plist").exists());
     }

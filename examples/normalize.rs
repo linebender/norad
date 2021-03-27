@@ -20,36 +20,30 @@ fn main() {
 
         // Prune the foreground layer's lib.
         let default_layer = ufo.get_default_layer_mut().unwrap();
-        default_layer.info.lib.as_mut().and_then(|lib| {
-            Some(lib.retain(|k, &mut _| {
-                k.starts_with("public.") || k.starts_with("com.schriftgestaltung.layerId")
-            }))
+        default_layer.info.lib.retain(|k, &mut _| {
+            k.starts_with("public.") || k.starts_with("com.schriftgestaltung.layerId")
         });
 
         // Prune all glyphs' libs.
         for glyph in default_layer.iter_contents_mut() {
-            glyph.lib.as_mut().and_then(|lib| {
-                Some(lib.retain(|k, &mut _| {
-                    (k.starts_with("public.")
-                        || k.starts_with("com.schriftgestaltung.")
-                        || k == "com.schriftgestaltung.componentsAlignment")
-                        && k != "public.markColor"
-                }))
+            glyph.lib.retain(|k, &mut _| {
+                (k.starts_with("public.")
+                    || k.starts_with("com.schriftgestaltung.")
+                    || k == "com.schriftgestaltung.componentsAlignment")
+                    && k != "public.markColor"
             });
         }
 
         // Prune the UFO lib.
-        ufo.lib.as_mut().and_then(|lib| {
-            Some(lib.retain(|k, &mut _| {
-                k.starts_with("public.")
-                    || k.starts_with("com.github.googlei18n.ufo2ft.")
-                    || k == "com.schriftgestaltung.appVersion"
-                    || k == "com.schriftgestaltung.fontMasterID"
-                    || k == "com.schriftgestaltung.customParameter.GSFont.disablesLastChange"
-                    || k == "com.schriftgestaltung.customParameter.GSFontMaster.paramArea"
-                    || k == "com.schriftgestaltung.customParameter.GSFontMaster.paramDepth"
-                    || k == "com.schriftgestaltung.customParameter.GSFontMaster.paramOver"
-            }))
+        ufo.lib.retain(|k, &mut _| {
+            k.starts_with("public.")
+                || k.starts_with("com.github.googlei18n.ufo2ft.")
+                || k == "com.schriftgestaltung.appVersion"
+                || k == "com.schriftgestaltung.fontMasterID"
+                || k == "com.schriftgestaltung.customParameter.GSFont.disablesLastChange"
+                || k == "com.schriftgestaltung.customParameter.GSFontMaster.paramArea"
+                || k == "com.schriftgestaltung.customParameter.GSFontMaster.paramDepth"
+                || k == "com.schriftgestaltung.customParameter.GSFontMaster.paramOver"
         });
 
         ufo.meta.creator = "org.linebender.norad".to_string();

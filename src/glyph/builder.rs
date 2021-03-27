@@ -87,6 +87,7 @@ pub struct GlyphBuilder {
     height: Option<f32>,
     width: Option<f32>,
     outline: Option<Outline>,
+    lib: Option<Plist>,
     identifiers: HashSet<Identifier>, // All identifiers within a glyph must be unique.
 }
 
@@ -99,6 +100,7 @@ impl GlyphBuilder {
             height: None,
             width: None,
             outline: None,
+            lib: None,
             identifiers: HashSet::new(),
         }
     }
@@ -238,10 +240,10 @@ impl GlyphBuilder {
     ///
     /// Errors when the function is called more than once.
     pub fn lib(&mut self, lib: Plist) -> Result<&mut Self, ErrorKind> {
-        if self.glyph.lib.is_some() {
+        if self.lib.is_some() {
             return Err(ErrorKind::UnexpectedDuplicate);
         }
-        self.glyph.lib.replace(lib);
+        self.lib.replace(lib);
         Ok(self)
     }
 
@@ -258,6 +260,9 @@ impl GlyphBuilder {
         if let Some(outline) = &mut self.outline {
             self.glyph.components.append(&mut outline.components);
             self.glyph.contours.append(&mut outline.contours);
+        }
+        if let Some(lib) = self.lib {
+            self.glyph.lib = lib;
         }
 
         self.glyph.format = GlifVersion::V2;
@@ -629,7 +634,7 @@ mod tests {
                     None,
                 )],
                 image: None,
-                lib: None,
+                lib: Plist::new(),
             }
         );
 
@@ -663,7 +668,7 @@ mod tests {
                 components: Vec::new(),
                 contours: Vec::new(),
                 image: None,
-                lib: None,
+                lib: Plist::new(),
             }
         );
 
