@@ -70,9 +70,9 @@ pub struct FontInfo {
     #[serde(rename = "openTypeOS2CodePageRanges")]
     pub open_type_os2_code_page_ranges: Option<Bitlist>,
     #[serde(rename = "openTypeOS2FamilyClass")]
-    pub open_type_os2_family_class: Option<OS2FamilyClass>,
+    pub open_type_os2_family_class: Option<Os2FamilyClass>,
     #[serde(rename = "openTypeOS2Panose")]
-    pub open_type_os2_panose: Option<OS2Panose>,
+    pub open_type_os2_panose: Option<Os2Panose>,
     #[serde(rename = "openTypeOS2Selection")]
     pub open_type_os2_selection: Option<Bitlist>,
     #[serde(rename = "openTypeOS2StrikeoutPosition")]
@@ -110,7 +110,7 @@ pub struct FontInfo {
     #[serde(rename = "openTypeOS2WeightClass")]
     pub open_type_os2_weight_class: Option<NonNegativeInteger>,
     #[serde(rename = "openTypeOS2WidthClass")]
-    pub open_type_os2_width_class: Option<OS2WidthClass>,
+    pub open_type_os2_width_class: Option<Os2WidthClass>,
     #[serde(rename = "openTypeOS2WinAscent")]
     pub open_type_os2_win_ascent: Option<NonNegativeInteger>,
     #[serde(rename = "openTypeOS2WinDescent")]
@@ -160,7 +160,7 @@ pub struct FontInfo {
     pub woff_metadata_licensee: Option<WoffMetadataLicensee>,
     pub woff_metadata_trademark: Option<WoffMetadataTrademark>,
     #[serde(rename = "woffMetadataUniqueID")]
-    pub woff_metadata_unique_id: Option<WoffMetadataUniqueID>,
+    pub woff_metadata_unique_id: Option<WoffMetadataUniqueId>,
     pub woff_metadata_vendor: Option<WoffMetadataVendor>,
     pub woff_minor_version: Option<NonNegativeInteger>,
     pub x_height: Option<IntegerOrFloat>,
@@ -209,8 +209,8 @@ struct FontInfoV2 {
     openTypeNameWWSFamilyName: Option<String>,
     openTypeNameWWSSubfamilyName: Option<String>,
     openTypeOS2CodePageRanges: Option<Bitlist>,
-    openTypeOS2FamilyClass: Option<OS2FamilyClass>,
-    openTypeOS2Panose: Option<OS2PanoseV2>,
+    openTypeOS2FamilyClass: Option<Os2FamilyClass>,
+    openTypeOS2Panose: Option<Os2PanoseV2>,
     openTypeOS2Selection: Option<Bitlist>,
     openTypeOS2StrikeoutPosition: Option<IntegerOrFloat>,
     openTypeOS2StrikeoutSize: Option<IntegerOrFloat>,
@@ -229,7 +229,7 @@ struct FontInfoV2 {
     openTypeOS2UnicodeRanges: Option<Bitlist>,
     openTypeOS2VendorID: Option<String>,
     openTypeOS2WeightClass: Option<NonNegativeInteger>,
-    openTypeOS2WidthClass: Option<OS2WidthClass>,
+    openTypeOS2WidthClass: Option<Os2WidthClass>,
     openTypeOS2WinAscent: Option<IntegerOrFloat>,
     openTypeOS2WinDescent: Option<IntegerOrFloat>,
     openTypeVheaCaretOffset: Option<IntegerOrFloat>,
@@ -394,7 +394,7 @@ impl FontInfo {
                     open_type_name_wws_subfamily_name: fontinfo_v2.openTypeNameWWSSubfamilyName,
                     open_type_os2_code_page_ranges: fontinfo_v2.openTypeOS2CodePageRanges,
                     open_type_os2_family_class: fontinfo_v2.openTypeOS2FamilyClass,
-                    open_type_os2_panose: fontinfo_v2.openTypeOS2Panose.map(OS2Panose::from),
+                    open_type_os2_panose: fontinfo_v2.openTypeOS2Panose.map(Os2Panose::from),
                     open_type_os2_selection: fontinfo_v2.openTypeOS2Selection,
                     open_type_os2_strikeout_position: fontinfo_v2
                         .openTypeOS2StrikeoutPosition
@@ -532,19 +532,19 @@ impl FontInfo {
                     },
                     open_type_os2_width_class: match fontinfo_v1.widthName {
                         Some(v) => match v.as_ref() {
-                            "Ultra-condensed" => Some(OS2WidthClass::UltraCondensed),
-                            "Extra-condensed" => Some(OS2WidthClass::ExtraCondensed),
-                            "Condensed" => Some(OS2WidthClass::Condensed),
-                            "Semi-condensed" => Some(OS2WidthClass::SemiCondensed),
-                            "Medium (normal)" => Some(OS2WidthClass::Normal),
-                            "Normal" => Some(OS2WidthClass::Normal),
-                            "All" => Some(OS2WidthClass::Normal),
-                            "medium" => Some(OS2WidthClass::Normal),
-                            "Medium" => Some(OS2WidthClass::Normal),
-                            "Semi-expanded" => Some(OS2WidthClass::SemiExpanded),
-                            "Expanded" => Some(OS2WidthClass::Expanded),
-                            "Extra-expanded" => Some(OS2WidthClass::ExtraExpanded),
-                            "Ultra-expanded" => Some(OS2WidthClass::UltraExpanded),
+                            "Ultra-condensed" => Some(Os2WidthClass::UltraCondensed),
+                            "Extra-condensed" => Some(Os2WidthClass::ExtraCondensed),
+                            "Condensed" => Some(Os2WidthClass::Condensed),
+                            "Semi-condensed" => Some(Os2WidthClass::SemiCondensed),
+                            "Medium (normal)" => Some(Os2WidthClass::Normal),
+                            "Normal" => Some(Os2WidthClass::Normal),
+                            "All" => Some(Os2WidthClass::Normal),
+                            "medium" => Some(Os2WidthClass::Normal),
+                            "Medium" => Some(Os2WidthClass::Normal),
+                            "Semi-expanded" => Some(Os2WidthClass::SemiExpanded),
+                            "Expanded" => Some(Os2WidthClass::Expanded),
+                            "Extra-expanded" => Some(Os2WidthClass::ExtraExpanded),
+                            "Ultra-expanded" => Some(Os2WidthClass::UltraExpanded),
                             _ => return Err(Error::FontInfoError),
                         },
                         None => None,
@@ -557,15 +557,15 @@ impl FontInfo {
                     postscript_weight_name: fontinfo_v1.weightName,
                     postscript_windows_character_set: match fontinfo_v1.msCharSet {
                         Some(v) => match v {
-                            0 => Some(PostscriptWindowsCharacterSet::ANSI),
+                            0 => Some(PostscriptWindowsCharacterSet::Ansi),
                             1 => Some(PostscriptWindowsCharacterSet::Default),
                             2 => Some(PostscriptWindowsCharacterSet::Symbol),
                             77 => Some(PostscriptWindowsCharacterSet::Macintosh),
-                            128 => Some(PostscriptWindowsCharacterSet::ShiftJIS),
+                            128 => Some(PostscriptWindowsCharacterSet::ShiftJis),
                             129 => Some(PostscriptWindowsCharacterSet::Hangul),
                             130 => Some(PostscriptWindowsCharacterSet::HangulJohab),
-                            134 => Some(PostscriptWindowsCharacterSet::GB2312),
-                            136 => Some(PostscriptWindowsCharacterSet::ChineseBIG5),
+                            134 => Some(PostscriptWindowsCharacterSet::Gb2312),
+                            136 => Some(PostscriptWindowsCharacterSet::ChineseBig5),
                             161 => Some(PostscriptWindowsCharacterSet::Greek),
                             162 => Some(PostscriptWindowsCharacterSet::Turkish),
                             163 => Some(PostscriptWindowsCharacterSet::Vietnamese),
@@ -576,7 +576,7 @@ impl FontInfo {
                             204 => Some(PostscriptWindowsCharacterSet::Cyrillic),
                             222 => Some(PostscriptWindowsCharacterSet::Thai),
                             238 => Some(PostscriptWindowsCharacterSet::EasternEuropean),
-                            255 => Some(PostscriptWindowsCharacterSet::OEM),
+                            255 => Some(PostscriptWindowsCharacterSet::Oem),
                             _ => return Err(Error::FontInfoError),
                         },
                         None => None,
@@ -836,7 +836,7 @@ pub struct NameRecord {
 /// Corresponds to the allowed values for [openTypeOS2WidthClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
-pub enum OS2WidthClass {
+pub enum Os2WidthClass {
     UltraCondensed = 1,
     ExtraCondensed = 2,
     Condensed = 3,
@@ -850,12 +850,12 @@ pub enum OS2WidthClass {
 
 /// Corresponds to [openTypeOS2FamilyClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct OS2FamilyClass {
+pub struct Os2FamilyClass {
     class_id: u8,
     subclass_id: u8,
 }
 
-impl OS2FamilyClass {
+impl Os2FamilyClass {
     /// The first number, representing the class ID, must be in the range 0-14.
     /// The second number, representing the subclass, must be in the range 0-15.
     fn is_valid(&self) -> bool {
@@ -863,7 +863,7 @@ impl OS2FamilyClass {
     }
 }
 
-impl Serialize for OS2FamilyClass {
+impl Serialize for Os2FamilyClass {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -875,8 +875,8 @@ impl Serialize for OS2FamilyClass {
     }
 }
 
-impl<'de> Deserialize<'de> for OS2FamilyClass {
-    fn deserialize<D>(deserializer: D) -> Result<OS2FamilyClass, D::Error>
+impl<'de> Deserialize<'de> for Os2FamilyClass {
+    fn deserialize<D>(deserializer: D) -> Result<Os2FamilyClass, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -887,13 +887,13 @@ impl<'de> Deserialize<'de> for OS2FamilyClass {
             ));
         }
 
-        Ok(OS2FamilyClass { class_id: values[0], subclass_id: values[1] })
+        Ok(Os2FamilyClass { class_id: values[0], subclass_id: values[1] })
     }
 }
 
 /// Corresponds to [openTypeOS2Panose](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct OS2Panose {
+pub struct Os2Panose {
     family_type: NonNegativeInteger,
     serif_style: NonNegativeInteger,
     weight: NonNegativeInteger,
@@ -906,7 +906,7 @@ pub struct OS2Panose {
     x_height: NonNegativeInteger,
 }
 
-impl Serialize for OS2Panose {
+impl Serialize for Os2Panose {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -926,8 +926,8 @@ impl Serialize for OS2Panose {
     }
 }
 
-impl<'de> Deserialize<'de> for OS2Panose {
-    fn deserialize<D>(deserializer: D) -> Result<OS2Panose, D::Error>
+impl<'de> Deserialize<'de> for Os2Panose {
+    fn deserialize<D>(deserializer: D) -> Result<Os2Panose, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -938,7 +938,7 @@ impl<'de> Deserialize<'de> for OS2Panose {
             ));
         }
 
-        Ok(OS2Panose {
+        Ok(Os2Panose {
             family_type: values[0],
             serif_style: values[1],
             weight: values[2],
@@ -953,9 +953,9 @@ impl<'de> Deserialize<'de> for OS2Panose {
     }
 }
 
-impl From<OS2PanoseV2> for OS2Panose {
-    fn from(value: OS2PanoseV2) -> Self {
-        OS2Panose {
+impl From<Os2PanoseV2> for Os2Panose {
+    fn from(value: Os2PanoseV2) -> Self {
+        Os2Panose {
             family_type: value.family_type.abs() as NonNegativeInteger,
             serif_style: value.serif_style.abs() as NonNegativeInteger,
             weight: value.weight.abs() as NonNegativeInteger,
@@ -973,7 +973,7 @@ impl From<OS2PanoseV2> for OS2Panose {
 /// OS2PanoseV2 is from UFO v2 and allows negative integers, while the OpenType specification
 /// specifies unsigned integers.
 #[derive(Debug, Clone, Default, PartialEq)]
-struct OS2PanoseV2 {
+struct Os2PanoseV2 {
     family_type: Integer,
     serif_style: Integer,
     weight: Integer,
@@ -986,8 +986,8 @@ struct OS2PanoseV2 {
     x_height: Integer,
 }
 
-impl<'de> Deserialize<'de> for OS2PanoseV2 {
-    fn deserialize<D>(deserializer: D) -> Result<OS2PanoseV2, D::Error>
+impl<'de> Deserialize<'de> for Os2PanoseV2 {
+    fn deserialize<D>(deserializer: D) -> Result<Os2PanoseV2, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -998,7 +998,7 @@ impl<'de> Deserialize<'de> for OS2PanoseV2 {
             ));
         }
 
-        Ok(OS2PanoseV2 {
+        Ok(Os2PanoseV2 {
             family_type: values[0],
             serif_style: values[1],
             weight: values[2],
@@ -1017,15 +1017,15 @@ impl<'de> Deserialize<'de> for OS2PanoseV2 {
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum PostscriptWindowsCharacterSet {
-    ANSI = 1,
+    Ansi = 1,
     Default = 2,
     Symbol = 3,
     Macintosh = 4,
-    ShiftJIS = 5,
+    ShiftJis = 5,
     Hangul = 6,
     HangulJohab = 7,
-    GB2312 = 8,
-    ChineseBIG5 = 9,
+    Gb2312 = 8,
+    ChineseBig5 = 9,
     Greek = 10,
     Turkish = 11,
     Vietnamese = 12,
@@ -1036,7 +1036,7 @@ pub enum PostscriptWindowsCharacterSet {
     Cyrillic = 17,
     Thai = 18,
     EasternEuropean = 19,
-    OEM = 20,
+    Oem = 20,
 }
 
 /// Corresponds to woffMetadataCopyright in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
@@ -1129,7 +1129,7 @@ pub struct WoffMetadataTrademark {
 
 /// Corresponds to woffMetadataUniqueID in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-pub struct WoffMetadataUniqueID {
+pub struct WoffMetadataUniqueId {
     id: String,
 }
 
@@ -1241,11 +1241,11 @@ mod tests {
         assert_eq!(font_info.family_name, Some("a".to_string()));
         assert_eq!(
             font_info.open_type_os2_family_class,
-            Some(OS2FamilyClass { class_id: 0, subclass_id: 0 })
+            Some(Os2FamilyClass { class_id: 0, subclass_id: 0 })
         );
         assert_eq!(
             font_info.open_type_os2_panose,
-            Some(OS2Panose {
+            Some(Os2Panose {
                 family_type: 2,
                 serif_style: 2,
                 weight: 2,
@@ -1304,7 +1304,7 @@ mod tests {
 
     #[test]
     fn test_serde_os2_family_class() {
-        let c1 = OS2FamilyClass { class_id: 14, subclass_id: 15 };
+        let c1 = Os2FamilyClass { class_id: 14, subclass_id: 15 };
         assert_tokens(
             &c1,
             &[Token::Seq { len: Some(2) }, Token::U8(14), Token::U8(15), Token::SeqEnd],
@@ -1313,7 +1313,7 @@ mod tests {
 
     #[test]
     fn test_serde_os2_panose() {
-        let p1 = OS2Panose {
+        let p1 = Os2Panose {
             family_type: 1,
             serif_style: 2,
             weight: 3,
