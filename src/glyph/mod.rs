@@ -27,12 +27,14 @@ pub type GlyphName = Arc<str>;
 pub struct Glyph {
     pub name: GlyphName,
     pub format: GlifVersion,
-    pub advance: Option<Advance>,
-    pub codepoints: Option<Vec<char>>,
+    pub height: f32,
+    pub width: f32,
+    pub codepoints: Vec<char>,
     pub note: Option<String>,
-    pub guidelines: Option<Vec<Guideline>>,
-    pub anchors: Option<Vec<Anchor>>,
-    pub outline: Option<Outline>,
+    pub guidelines: Vec<Guideline>,
+    pub anchors: Vec<Anchor>,
+    pub components: Vec<Component>,
+    pub contours: Vec<Contour>,
     pub image: Option<Image>,
     pub lib: Option<Plist>,
 }
@@ -79,23 +81,18 @@ impl Glyph {
         Glyph::new(name.into(), GlifVersion::V2)
     }
 
-    /// If this glyph has an advance, return the width value.
-    ///
-    /// This is purely a convenience method.
-    pub fn advance_width(&self) -> Option<f32> {
-        self.advance.as_ref().map(|adv| adv.width)
-    }
-
     pub(crate) fn new(name: GlyphName, format: GlifVersion) -> Self {
         Glyph {
             name,
             format,
-            advance: None,
-            codepoints: None,
+            height: 0.0,
+            width: 0.0,
+            codepoints: Vec::new(),
             note: None,
-            guidelines: None,
-            anchors: None,
-            outline: None,
+            guidelines: Vec::new(),
+            anchors: Vec::new(),
+            components: Vec::new(),
+            contours: Vec::new(),
             image: None,
             lib: None,
         }
@@ -110,52 +107,39 @@ impl Glyph {
                 None => return Ok(()),
             };
 
-        if let Some(anchors) = &mut self.anchors {
-            for anchor in anchors {
-                if let Some(lib) =
-                    anchor.identifier().and_then(|id| object_libs.remove(id.as_str()))
-                {
-                    let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
-                    anchor.replace_lib(lib);
-                }
+        for anchor in &mut self.anchors {
+            if let Some(lib) = anchor.identifier().and_then(|id| object_libs.remove(id.as_str())) {
+                let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
+                anchor.replace_lib(lib);
             }
         }
 
-        if let Some(guidelines) = &mut self.guidelines {
-            for guideline in guidelines {
-                if let Some(lib) =
-                    guideline.identifier().and_then(|id| object_libs.remove(id.as_str()))
-                {
-                    let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
-                    guideline.replace_lib(lib);
-                }
+        for guideline in &mut self.guidelines {
+            if let Some(lib) = guideline.identifier().and_then(|id| object_libs.remove(id.as_str()))
+            {
+                let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
+                guideline.replace_lib(lib);
             }
         }
 
-        if let Some(outline) = &mut self.outline {
-            for contour in &mut outline.contours {
-                if let Some(lib) =
-                    contour.identifier().and_then(|id| object_libs.remove(id.as_str()))
+        for contour in &mut self.contours {
+            if let Some(lib) = contour.identifier().and_then(|id| object_libs.remove(id.as_str())) {
+                let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
+                contour.replace_lib(lib);
+            }
+            for point in &mut contour.points {
+                if let Some(lib) = point.identifier().and_then(|id| object_libs.remove(id.as_str()))
                 {
                     let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
-                    contour.replace_lib(lib);
-                }
-                for point in &mut contour.points {
-                    if let Some(lib) =
-                        point.identifier().and_then(|id| object_libs.remove(id.as_str()))
-                    {
-                        let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
-                        point.replace_lib(lib);
-                    }
+                    point.replace_lib(lib);
                 }
             }
-            for component in &mut outline.components {
-                if let Some(lib) =
-                    component.identifier().and_then(|id| object_libs.remove(id.as_str()))
-                {
-                    let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
-                    component.replace_lib(lib);
-                }
+        }
+        for component in &mut self.components {
+            if let Some(lib) = component.identifier().and_then(|id| object_libs.remove(id.as_str()))
+            {
+                let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
+                component.replace_lib(lib);
             }
         }
 
@@ -171,37 +155,31 @@ impl Glyph {
             object_libs.insert(id.unwrap(), plist::Value::Dictionary(lib.clone()));
         };
 
-        if let Some(anchors) = &self.anchors {
-            for anchor in anchors {
-                if let Some(lib) = anchor.lib() {
-                    dump_lib(anchor.identifier(), lib);
-                }
+        for anchor in &self.anchors {
+            if let Some(lib) = anchor.lib() {
+                dump_lib(anchor.identifier(), lib);
             }
         }
 
-        if let Some(guidelines) = &self.guidelines {
-            for guideline in guidelines {
-                if let Some(lib) = guideline.lib() {
-                    dump_lib(guideline.identifier(), lib);
-                }
+        for guideline in &self.guidelines {
+            if let Some(lib) = guideline.lib() {
+                dump_lib(guideline.identifier(), lib);
             }
         }
 
-        if let Some(outline) = &self.outline {
-            for contour in &outline.contours {
-                if let Some(lib) = contour.lib() {
-                    dump_lib(contour.identifier(), lib);
-                }
-                for point in &contour.points {
-                    if let Some(lib) = point.lib() {
-                        dump_lib(point.identifier(), lib);
-                    }
+        for contour in &self.contours {
+            if let Some(lib) = contour.lib() {
+                dump_lib(contour.identifier(), lib);
+            }
+            for point in &contour.points {
+                if let Some(lib) = point.lib() {
+                    dump_lib(point.identifier(), lib);
                 }
             }
-            for component in &outline.components {
-                if let Some(lib) = component.lib() {
-                    dump_lib(component.identifier(), lib);
-                }
+        }
+        for component in &self.components {
+            if let Some(lib) = component.lib() {
+                dump_lib(component.identifier(), lib);
             }
         }
 
@@ -214,12 +192,14 @@ impl Data for Glyph {
     fn same(&self, other: &Glyph) -> bool {
         self.name.same(&other.name)
             && self.format.same(&other.format)
-            && self.advance.same(&other.advance)
+            && self.height == other.height
+            && self.width == other.width
             && self.codepoints == other.codepoints
             && self.note == other.note
             && self.guidelines == other.guidelines
             && self.anchors == other.anchors
-            && self.outline == other.outline
+            && self.components == other.components
+            && self.contours == other.contours
             && self.image == other.image
             && self.lib == other.lib
     }
@@ -230,14 +210,6 @@ impl Data for Glyph {
 pub enum GlifVersion {
     V1 = 1,
     V2 = 2,
-}
-
-/// Horizontal and vertical metrics.
-#[derive(Debug, Default, Clone, PartialEq)]
-#[cfg_attr(feature = "druid", derive(Data))]
-pub struct Advance {
-    pub height: f32,
-    pub width: f32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -252,12 +224,6 @@ pub struct Anchor {
     identifier: Option<Identifier>,
     /// The anchor's lib for arbitary data.
     lib: Option<Plist>,
-}
-
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct Outline {
-    pub components: Vec<Component>,
-    pub contours: Vec<Contour>,
 }
 
 /// Another glyph inserted as part of the outline.

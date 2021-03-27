@@ -223,7 +223,6 @@ impl LayerInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::glyph::Advance;
     use std::path::Path;
 
     #[test]
@@ -247,9 +246,9 @@ mod tests {
             "curve"
         );
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
-        assert_eq!(glyph.advance, Some(Advance { width: 1290., height: 0. }));
-        assert_eq!(glyph.codepoints.as_ref().map(Vec::len), Some(1));
-        assert_eq!(glyph.codepoints.as_ref().unwrap()[0], 'A');
+        assert_eq!(glyph.height, 0.);
+        assert_eq!(glyph.width, 1290.);
+        assert_eq!(glyph.codepoints, vec!['A']);
     }
 
     #[test]
@@ -321,9 +320,9 @@ mod tests {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         let mut layer = Layer::load(layer_path).unwrap();
         let mut glyph = Glyph::new_named("A");
-        glyph.advance = Some(Advance { height: 69., width: 0. });
+        glyph.width = 69.;
         layer.insert_glyph(glyph);
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
-        assert_eq!(glyph.advance, Some(Advance { height: 69., width: 0. }));
+        assert_eq!(glyph.width, 69.);
     }
 }

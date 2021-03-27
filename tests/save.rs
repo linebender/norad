@@ -23,7 +23,7 @@ fn save_default() {
 fn save_new_file() {
     let mut my_ufo = Ufo::new();
     let mut my_glyph = Glyph::new_named("A");
-    my_glyph.codepoints = Some(vec!['A']);
+    my_glyph.codepoints = vec!['A'];
     my_glyph.note = Some("I did a glyph!".into());
     let mut plist = Plist::new();
     plist.insert("my-cool-key".into(), plist::Value::Integer(420_u32.into()));
@@ -41,7 +41,7 @@ fn save_new_file() {
     let loaded = Ufo::load(dir).unwrap();
     assert!(loaded.get_default_layer().unwrap().get_glyph("A").is_some());
     let glyph = loaded.get_default_layer().unwrap().get_glyph("A").unwrap();
-    assert_eq!(glyph.codepoints.as_ref(), Some(&vec!['A']));
+    assert_eq!(glyph.codepoints, vec!['A']);
     let lib_val = glyph
         .lib
         .as_ref()
@@ -106,7 +106,7 @@ fn roundtrip_object_libs() {
     let glyph2 = ufo2.get_glyph("test").unwrap();
     assert_eq!(glyph2.lib.as_ref().unwrap().contains_key("public.objectLibs"), false);
 
-    let anchor_second = &glyph2.anchors.as_ref().unwrap()[1];
+    let anchor_second = &glyph2.anchors[1];
     assert_eq!(
         anchor_second.identifier(),
         Some(&Identifier::new("90b7eb80-e21a-4a79-a8c0-7634c25ddc18").unwrap())
@@ -123,13 +123,12 @@ fn roundtrip_object_libs() {
         true
     );
 
-    let guideline_second = &glyph2.guidelines.as_ref().unwrap()[1];
     assert_eq!(
-        guideline_second.identifier(),
+        glyph2.guidelines[1].identifier(),
         Some(&Identifier::new("c76955c2-e9f2-4adf-8b51-1ae03da11dca").unwrap())
     );
     assert_eq!(
-        guideline_second
+        glyph2.guidelines[1]
             .lib()
             .as_ref()
             .unwrap()
@@ -140,29 +139,21 @@ fn roundtrip_object_libs() {
         4321
     );
 
-    let outline2 = glyph2.outline.as_ref().unwrap();
     assert_eq!(
-        outline2.contours[0].identifier(),
+        glyph.contours[0].identifier(),
         Some(&Identifier::new("9bf0591d-6281-4c76-8c13-9ff3d93eec4f").unwrap())
     );
     assert_eq!(
-        outline2.contours[0]
-            .lib()
-            .as_ref()
-            .unwrap()
-            .get("com.test.foo")
-            .unwrap()
-            .as_string()
-            .unwrap(),
+        glyph.contours[0].lib().as_ref().unwrap().get("com.test.foo").unwrap().as_string().unwrap(),
         "a"
     );
 
     assert_eq!(
-        outline2.contours[1].points[0].identifier(),
+        glyph.contours[1].points[0].identifier(),
         Some(&Identifier::new("f32ac0e8-4ec8-45f6-88b1-0e49390b8f5b").unwrap())
     );
     assert_eq!(
-        outline2.contours[1].points[0]
+        glyph.contours[1].points[0]
             .lib()
             .as_ref()
             .unwrap()
@@ -173,17 +164,17 @@ fn roundtrip_object_libs() {
         "c"
     );
     assert_eq!(
-        outline2.contours[1].points[2].identifier(),
+        glyph.contours[1].points[2].identifier(),
         Some(&Identifier::new("spare-id").unwrap())
     );
-    assert!(outline2.contours[1].points[2].lib().is_none());
+    assert!(glyph.contours[1].points[2].lib().is_none());
 
     assert_eq!(
-        outline2.components[0].identifier(),
+        glyph.components[0].identifier(),
         Some(&Identifier::new("a50e8ccd-2ba4-4279-a011-4c82a8075dd9").unwrap())
     );
     assert_eq!(
-        outline2.components[0]
+        glyph.components[0]
             .lib()
             .as_ref()
             .unwrap()
@@ -210,14 +201,16 @@ fn object_libs_reject_existing_key() {
     let glyph = Glyph {
         name: "test".into(),
         format: norad::GlifVersion::V2,
-        advance: None,
-        anchors: None,
-        codepoints: None,
-        guidelines: None,
+        height: 0.,
+        width: 0.,
+        anchors: vec![],
+        codepoints: vec![],
+        guidelines: vec![],
         image: None,
         lib: Some(test_lib),
         note: None,
-        outline: None,
+        components: vec![],
+        contours: vec![],
     };
     ufo.get_default_layer_mut().unwrap().insert_glyph(glyph);
     assert!(ufo.save(&dir).is_err());

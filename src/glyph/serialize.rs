@@ -8,7 +8,7 @@ use quick_xml::{
 };
 
 use super::{
-    Advance, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
+    AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
     Guideline, Image, Line, Plist, PointType, PUBLIC_OBJECT_LIBS_KEY,
 };
 
@@ -27,15 +27,18 @@ impl Glyph {
         start.push_attribute(("format", self.format.as_str()));
         writer.write_event(Event::Start(start))?;
 
-        if let Some(codepoints) = self.codepoints.as_ref() {
-            for codepoint in codepoints.iter() {
-                writer.write_event(char_to_event(*codepoint))?;
-            }
+        for codepoint in &self.codepoints {
+            writer.write_event(char_to_event(*codepoint))?;
         }
 
-        if let Some(event) = self.advance.as_ref().map(Advance::to_event) {
-            writer.write_event(event)?;
+        let mut start = BytesStart::borrowed_name(b"advance");
+        if self.width != 0. {
+            start.push_attribute(("width", self.width.to_string().as_str()));
         }
+        if self.height != 0. {
+            start.push_attribute(("height", self.height.to_string().as_str()));
+        }
+        writer.write_event(Event::Empty(start))?;
 
         if let Some(ref note) = self.note {
             writer.write_event(Event::Start(BytesStart::borrowed_name(b"note")))?;
@@ -47,27 +50,21 @@ impl Glyph {
             writer.write_event(image.to_event())?;
         }
 
-        if let Some(guides) = self.guidelines.as_ref() {
-            for guide in guides.iter() {
-                writer.write_event(guide.to_event())?;
-            }
+        for guide in &self.guidelines {
+            writer.write_event(guide.to_event())?;
         }
 
-        if let Some(ref outline) = self.outline {
-            writer.write_event(Event::Start(BytesStart::borrowed_name(b"outline")))?;
-            for contour in &outline.contours {
-                contour.write_xml(&mut writer)?;
-            }
-            for component in &outline.components {
-                writer.write_event(component.to_event())?;
-            }
-            writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
+        writer.write_event(Event::Start(BytesStart::borrowed_name(b"outline")))?;
+        for contour in &self.contours {
+            contour.write_xml(&mut writer)?;
         }
+        for component in &self.components {
+            writer.write_event(component.to_event())?;
+        }
+        writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
 
-        if let Some(anchors) = self.anchors.as_ref() {
-            for anchor in anchors.iter() {
-                writer.write_event(anchor.to_event())?;
-            }
+        for anchor in &self.anchors {
+            writer.write_event(anchor.to_event())?;
         }
 
         // Object libs are treated specially. The UFO v3 format won't allow us
@@ -133,20 +130,6 @@ impl GlifVersion {
             GlifVersion::V1 => "1",
             GlifVersion::V2 => "2",
         }
-    }
-}
-
-impl Advance {
-    fn to_event(&self) -> Event {
-        let mut start = BytesStart::borrowed_name(b"advance");
-        if self.width != 0. {
-            start.push_attribute(("width", self.width.to_string().as_str()));
-        }
-
-        if self.height != 0. {
-            start.push_attribute(("height", self.height.to_string().as_str()));
-        }
-        Event::Empty(start)
     }
 }
 

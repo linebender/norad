@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use super::*;
 use crate::error::{ErrorKind, GlifErrorInternal};
-use crate::glyph::builder::{GlyphBuilder, OutlineBuilder};
+use crate::glyph::builder::{GlyphBuilder, Outline, OutlineBuilder};
 use crate::names::NameList;
 
 use quick_xml::{
