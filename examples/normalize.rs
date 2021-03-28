@@ -20,7 +20,7 @@ fn main() {
 
         // Prune the foreground layer's lib.
         let default_layer = ufo.get_default_layer_mut().unwrap();
-        default_layer.info.lib.retain(|k, &mut _| {
+        default_layer.lib.retain(|k, &mut _| {
             k.starts_with("public.") || k.starts_with("com.schriftgestaltung.layerId")
         });
 
