@@ -7,6 +7,10 @@ use crate::glyph::{
 };
 use crate::shared_types::{Identifier, Plist};
 
+// NOTE: The builders are private to the crate until we have a real-world use-case for making
+// them public. Then, we need to think about maybe doing without a GlyphBuilder at all (check
+// for elements occuring once in parse.rs) and only keeping OutlineBuilder.
+
 /// A GlyphBuilder is a consuming builder for [`crate::glyph::Glyph`].
 ///
 /// It is different from fontTools' Pen concept, in that it is used to build the entire `Glyph`,
@@ -27,7 +31,7 @@ use crate::shared_types::{Identifier, Plist};
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// use std::str::FromStr;
 ///
 /// use norad::error::ErrorKind;
@@ -82,7 +86,7 @@ use crate::shared_types::{Identifier, Plist};
 /// }
 /// ```
 #[derive(Debug)]
-pub struct GlyphBuilder {
+pub(crate) struct GlyphBuilder {
     glyph: Glyph,
     height: Option<f32>,
     width: Option<f32>,
@@ -276,16 +280,16 @@ impl GlyphBuilder {
 ///
 /// [fontTools point pen]: https://fonttools.readthedocs.io/en/latest/pens/basePen.html
 #[derive(Debug, Default)]
-pub struct OutlineBuilder {
+pub(crate) struct OutlineBuilder {
     identifiers: HashSet<Identifier>,
     outline: Outline,
     scratch_state: OutlineBuilderState,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct Outline {
-    pub components: Vec<Component>,
-    pub contours: Vec<Contour>,
+pub(crate) struct Outline {
+    components: Vec<Component>,
+    contours: Vec<Contour>,
 }
 
 #[derive(Debug)]
