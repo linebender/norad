@@ -333,15 +333,13 @@ impl FontInfo {
     pub fn from_file<P: AsRef<Path>>(
         path: P,
         format_version: FormatVersion,
-        lib: Option<&mut Plist>,
+        lib: &mut Plist,
     ) -> Result<Self, Error> {
         match format_version {
             FormatVersion::V3 => {
                 let mut fontinfo: FontInfo = plist::from_file(path)?;
                 fontinfo.validate()?;
-                if let Some(lib) = lib {
-                    fontinfo.load_object_libs(lib)?;
-                }
+                fontinfo.load_object_libs(lib)?;
                 Ok(fontinfo)
             }
             FormatVersion::V2 => {

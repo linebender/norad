@@ -25,17 +25,17 @@ fn parse_v1_upgrade_anchors() {
     let glyph = parse_glyph(bytes).unwrap();
     assert_eq!(
         glyph.anchors,
-        Some(vec![
+        vec![
             Anchor::new(10.0, 10.0, Some("top".into()), None, None, None),
             Anchor::new(10.0, 20.0, Some("bottom".into()), None, None, None),
             Anchor::new(30.0, 20.0, Some("left".into()), None, None, None),
             Anchor::new(40.0, 20.0, Some("right".into()), None, None, None),
-        ])
+        ]
     );
     assert_eq!(glyph.format, GlifVersion::V2);
-    assert_eq!(glyph.guidelines, None);
+    assert_eq!(glyph.guidelines, vec![]);
     assert_eq!(glyph.image, None);
-    assert_eq!(glyph.lib, None);
+    assert_eq!(glyph.lib, Plist::new());
     assert_eq!(glyph.note, None);
 }
 
@@ -43,22 +43,21 @@ fn parse_v1_upgrade_anchors() {
 fn curve_types() {
     let bytes = include_bytes!("../../testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs/D_.glif");
     let glyph = parse_glyph(bytes).unwrap();
-    let outline = glyph.outline.as_ref().unwrap();
-    assert_eq!(outline.contours.len(), 2);
-    assert_eq!(outline.contours[1].points[0].typ, PointType::Line);
-    assert_eq!(outline.contours[1].points[0].smooth, false);
-    assert_eq!(outline.contours[1].points[1].smooth, true);
-    assert_eq!(outline.contours[1].points[2].typ, PointType::OffCurve);
-    assert_eq!(outline.contours[1].points[4].typ, PointType::Curve);
+    assert_eq!(glyph.contours.len(), 2);
+    assert_eq!(glyph.contours[1].points[0].typ, PointType::Line);
+    assert_eq!(glyph.contours[1].points[0].smooth, false);
+    assert_eq!(glyph.contours[1].points[1].smooth, true);
+    assert_eq!(glyph.contours[1].points[2].typ, PointType::OffCurve);
+    assert_eq!(glyph.contours[1].points[4].typ, PointType::Curve);
 }
 
 #[test]
 fn guidelines() {
     let bytes = include_bytes!("../../testdata/Blinker_one.glif");
     let glyph = parse_glyph(bytes).unwrap();
-    assert_eq!(glyph.guidelines.as_ref().map(Vec::len), Some(8));
-    assert_eq!(glyph.outline.as_ref().map(|o| o.contours.len()), Some(2));
-    assert_eq!(glyph.advance, Some(Advance { width: 364., height: 0. }));
+    assert_eq!(glyph.guidelines.len(), 8);
+    assert_eq!(glyph.contours.len(), 2);
+    assert_eq!(glyph.width, 364.);
 }
 
 #[test]
@@ -98,10 +97,12 @@ fn save() {
     let glyph2 = parse_glyph(buf.as_slice()).expect("re-parse failed");
     assert_eq!(glyph.name, glyph2.name);
     assert_eq!(glyph.format, glyph2.format);
-    assert_eq!(glyph.advance, glyph2.advance);
+    assert_eq!(glyph.height, glyph2.height);
+    assert_eq!(glyph.width, glyph2.width);
     assert_eq!(glyph.codepoints, glyph2.codepoints);
     assert_eq!(glyph.note, glyph2.note);
-    assert_eq!(glyph.outline, glyph2.outline);
+    assert_eq!(glyph.components, glyph2.components);
+    assert_eq!(glyph.contours, glyph2.contours);
     assert_eq!(glyph.image, glyph2.image);
     assert_eq!(glyph.anchors, glyph2.anchors);
     assert_eq!(glyph.guidelines, glyph2.guidelines);
@@ -418,9 +419,11 @@ fn empty_outlines() {
         </glyph>
         "#;
     let test1 = parse_glyph(data1.as_bytes()).unwrap();
-    assert_eq!(test1.outline.unwrap(), Outline::default());
+    assert_eq!(test1.components, vec![]);
+    assert_eq!(test1.contours, vec![]);
     let test2 = parse_glyph(data2.as_bytes()).unwrap();
-    assert_eq!(test2.outline.unwrap(), Outline::default());
+    assert_eq!(test2.components, vec![]);
+    assert_eq!(test2.contours, vec![]);
 }
 
 #[test]
@@ -446,7 +449,9 @@ fn empty_contours() {
         </glyph>
         "#;
     let test1 = parse_glyph(data1.as_bytes()).unwrap();
-    assert_eq!(test1.outline.unwrap(), Outline::default());
+    assert_eq!(test1.components, vec![]);
+    assert_eq!(test1.contours, vec![]);
     let test2 = parse_glyph(data2.as_bytes()).unwrap();
-    assert_eq!(test2.outline.unwrap(), Outline::default());
+    assert_eq!(test2.components, vec![]);
+    assert_eq!(test2.contours, vec![]);
 }

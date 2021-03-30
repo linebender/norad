@@ -11,7 +11,7 @@ use rayon::prelude::*;
 use crate::glyph::GlyphName;
 use crate::names::NameList;
 use crate::shared_types::Color;
-use crate::{Error, Glyph};
+use crate::{Error, Glyph, Plist};
 
 static CONTENTS_FILE: &str = "contents.plist";
 static LAYER_INFO_FILE: &str = "layerinfo.plist";
@@ -24,7 +24,8 @@ static LAYER_INFO_FILE: &str = "layerinfo.plist";
 pub struct Layer {
     pub(crate) glyphs: BTreeMap<GlyphName, Arc<Glyph>>,
     contents: BTreeMap<GlyphName, PathBuf>,
-    pub info: LayerInfo,
+    pub color: Option<Color>,
+    pub lib: Plist,
 }
 
 impl Layer {
@@ -67,13 +68,58 @@ impl Layer {
             .collect::<Result<_, _>>()?;
 
         let layerinfo_path = path.join(LAYER_INFO_FILE);
-        let info = if layerinfo_path.exists() {
-            LayerInfo::from_file(&layerinfo_path)?
+        let (color, lib) = if layerinfo_path.exists() {
+            Self::layerinfo_from_file(&layerinfo_path)?
         } else {
-            LayerInfo::default()
+            (None, Plist::new())
         };
 
-        Ok(Layer { contents, glyphs, info })
+        Ok(Layer { contents, glyphs, color, lib })
+    }
+
+    // Problem: layerinfo.plist contains a nested plist dictionary and the plist crate
+    // cannot adequately handle that, as ser/de is not implemented for plist::Value.
+    // Ser/de must be done manually...
+    fn layerinfo_from_file(path: &Path) -> Result<(Option<Color>, Plist), Error> {
+        let mut info_content = plist::Value::from_file(path)
+            .map_err(Error::PlistError)?
+            .into_dictionary()
+            .ok_or(Error::ExpectedPlistDictionaryError)?;
+
+        let mut color = None;
+        let color_str = info_content.remove("color");
+        if let Some(v) = color_str {
+            match v.into_string() {
+                Some(s) => color.replace(Color::from_str(&s).map_err(Error::InvalidDataError)?),
+                None => return Err(Error::ExpectedPlistStringError),
+            };
+        };
+
+        let lib = match info_content.remove("lib") {
+            Some(v) => v.into_dictionary().ok_or(Error::ExpectedPlistDictionaryError)?,
+            None => Plist::new(),
+        };
+
+        Ok((color, lib))
+    }
+
+    fn layerinfo_to_file(&self, path: &Path) -> Result<(), Error> {
+        let mut dict = plist::dictionary::Dictionary::new();
+
+        if let Some(c) = &self.color {
+            dict.insert("color".into(), plist::Value::String(c.to_rgba_string()));
+        }
+        if !self.lib.is_empty() {
+            dict.insert("lib".into(), plist::Value::Dictionary(self.lib.clone()));
+        }
+
+        plist::Value::Dictionary(dict).to_file_xml(path.join(LAYER_INFO_FILE))?;
+
+        Ok(())
+    }
+
+    fn layerinfo_is_empty(&self) -> bool {
+        self.color.is_none() && self.lib.is_empty()
     }
 
     /// Attempt to write this layer to the given path.
@@ -84,8 +130,8 @@ impl Layer {
         fs::create_dir(&path)?;
         plist::to_file_xml(path.join(CONTENTS_FILE), &self.contents)?;
         // Avoid writing empty layerinfo.plist file.
-        if !self.info.is_empty() {
-            self.info.to_file(&path)?;
+        if !self.layerinfo_is_empty() {
+            self.layerinfo_to_file(&path)?;
         }
         for (name, glyph_path) in self.contents.iter() {
             let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
@@ -160,70 +206,9 @@ impl Layer {
     }
 }
 
-/// The contents of the [`layerinfo.plist`] file.
-///
-/// [`layerinfo.plist`]: https://unifiedfontobject.org/versions/ufo3/glyphs/layerinfo.plist/
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct LayerInfo {
-    pub color: Option<Color>,
-    pub lib: Option<plist::Dictionary>,
-}
-
-// Problem: layerinfo.plist contains a nested plist dictionary and the plist crate
-// cannot adequately handle that, as ser/de is not implemented for plist::Value.
-// Ser/de must be done manually...
-impl LayerInfo {
-    fn from_file(path: &Path) -> Result<Self, Error> {
-        let mut info_content = plist::Value::from_file(path)
-            .map_err(Error::PlistError)?
-            .into_dictionary()
-            .ok_or(Error::ExpectedPlistDictionaryError)?;
-
-        let mut color = None;
-        let color_str = info_content.remove("color");
-        if let Some(v) = color_str {
-            match v.into_string() {
-                Some(s) => color.replace(Color::from_str(&s).map_err(Error::InvalidDataError)?),
-                None => return Err(Error::ExpectedPlistStringError),
-            };
-        };
-
-        let mut lib = None;
-        let lib_content = info_content.remove("lib");
-        if let Some(v) = lib_content {
-            match v.into_dictionary() {
-                Some(d) => lib.replace(d),
-                None => return Err(Error::ExpectedPlistDictionaryError),
-            };
-        };
-
-        Ok(Self { color, lib })
-    }
-
-    fn to_file(&self, path: &Path) -> Result<(), Error> {
-        let mut dict = plist::dictionary::Dictionary::new();
-
-        if let Some(c) = &self.color {
-            dict.insert("color".into(), plist::Value::String(c.to_rgba_string()));
-        }
-        if let Some(l) = &self.lib {
-            dict.insert("lib".into(), plist::Value::Dictionary(l.clone()));
-        }
-
-        plist::Value::Dictionary(dict).to_file_xml(path.join(LAYER_INFO_FILE))?;
-
-        Ok(())
-    }
-
-    fn is_empty(&self) -> bool {
-        self.color.is_none() && self.lib.as_ref().map_or(true, |v| v.is_empty())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::glyph::Advance;
     use std::path::Path;
 
     #[test]
@@ -231,25 +216,18 @@ mod tests {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
         let layer = Layer::load(layer_path).unwrap();
-        let info = &layer.info;
         assert_eq!(
-            info.color.as_ref().unwrap(),
+            layer.color.as_ref().unwrap(),
             &Color { red: 1.0, green: 0.75, blue: 0.0, alpha: 0.7 }
         );
         assert_eq!(
-            info.lib
-                .as_ref()
-                .unwrap()
-                .get("com.typemytype.robofont.segmentType")
-                .unwrap()
-                .as_string()
-                .unwrap(),
+            layer.lib.get("com.typemytype.robofont.segmentType").unwrap().as_string().unwrap(),
             "curve"
         );
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
-        assert_eq!(glyph.advance, Some(Advance { width: 1290., height: 0. }));
-        assert_eq!(glyph.codepoints.as_ref().map(Vec::len), Some(1));
-        assert_eq!(glyph.codepoints.as_ref().unwrap()[0], 'A');
+        assert_eq!(glyph.height, 0.);
+        assert_eq!(glyph.width, 1290.);
+        assert_eq!(glyph.codepoints, vec!['A']);
     }
 
     #[test]
@@ -258,8 +236,8 @@ mod tests {
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
         let mut layer = Layer::load(layer_path).unwrap();
 
-        layer.info.color.replace(Color { red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5 });
-        layer.info.lib.as_mut().unwrap().insert(
+        layer.color.replace(Color { red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5 });
+        layer.lib.insert(
             "com.typemytype.robofont.segmentType".into(),
             plist::Value::String("test".into()),
         );
@@ -270,19 +248,11 @@ mod tests {
         let layer2 = Layer::load(&dir).unwrap();
 
         assert_eq!(
-            layer2.info.color.as_ref().unwrap(),
+            layer2.color.as_ref().unwrap(),
             &Color { red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5 }
         );
         assert_eq!(
-            layer2
-                .info
-                .lib
-                .as_ref()
-                .unwrap()
-                .get("com.typemytype.robofont.segmentType")
-                .unwrap()
-                .as_string()
-                .unwrap(),
+            layer2.lib.get("com.typemytype.robofont.segmentType").unwrap().as_string().unwrap(),
             "test"
         );
     }
@@ -297,7 +267,7 @@ mod tests {
         assert!(!dir.join("layerinfo.plist").exists());
 
         fs::remove_dir_all(&dir).unwrap();
-        layer.info.lib.replace(plist::dictionary::Dictionary::new());
+        layer.lib = Plist::new();
         layer.save(&dir).unwrap();
         assert!(!dir.join("layerinfo.plist").exists());
     }
@@ -321,9 +291,9 @@ mod tests {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         let mut layer = Layer::load(layer_path).unwrap();
         let mut glyph = Glyph::new_named("A");
-        glyph.advance = Some(Advance { height: 69., width: 0. });
+        glyph.width = 69.;
         layer.insert_glyph(glyph);
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
-        assert_eq!(glyph.advance, Some(Advance { height: 69., width: 0. }));
+        assert_eq!(glyph.width, 69.);
     }
 }
