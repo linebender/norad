@@ -1237,7 +1237,7 @@ mod tests {
 
     #[test]
     fn fontinfo2() {
-        use crate::shared_types::Color;
+        use crate::color::Color;
 
         let path = "testdata/fontinfotest.ufo/fontinfo.plist";
         let font_info: FontInfo = plist::from_file(path).expect("failed to load fontinfo");

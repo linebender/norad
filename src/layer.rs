@@ -8,9 +8,9 @@ use std::sync::Arc;
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
+use crate::color::Color;
 use crate::glyph::GlyphName;
 use crate::names::NameList;
-use crate::shared_types::Color;
 use crate::{Error, Glyph, Plist};
 
 static CONTENTS_FILE: &str = "contents.plist";

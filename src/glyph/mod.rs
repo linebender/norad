@@ -1,22 +1,23 @@
 //! Data related to individual glyphs.
 
-pub mod builder;
-mod parse;
-mod serialize;
-#[cfg(test)]
-mod tests;
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
 
+use crate::color::Color;
 use crate::error::{Error, ErrorKind, GlifError, GlifErrorInternal};
 use crate::guideline::{Guideline, Line};
 use crate::identifier::Identifier;
 use crate::names::NameList;
-use crate::shared_types::{Color, Plist, PUBLIC_OBJECT_LIBS_KEY};
+use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
+
+pub mod builder;
+mod parse;
+mod serialize;
+#[cfg(test)]
+mod tests;
 
 /// The name of a glyph.
 pub type GlyphName = Arc<str>;
@@ -621,36 +622,5 @@ impl From<kurbo::Affine> for AffineTransform {
             x_offset: coeffs[4] as f32,
             y_offset: coeffs[5] as f32,
         }
-    }
-}
-
-#[cfg(feature = "druid")]
-impl From<druid::piet::Color> for Color {
-    fn from(src: druid::piet::Color) -> Color {
-        let rgba = src.as_rgba_u32();
-        let r = ((rgba >> 24) & 0xff) as f32 / 255.0;
-        let g = ((rgba >> 16) & 0xff) as f32 / 255.0;
-        let b = ((rgba >> 8) & 0xff) as f32 / 255.0;
-        let a = (rgba & 0xff) as f32 / 255.0;
-        assert!((0.0..=1.0).contains(&b), "b: {}, raw {}", b, (rgba & (0xff << 8)));
-
-        Color {
-            red: r.max(0.0).min(1.0),
-            green: g.max(0.0).min(1.0),
-            blue: b.max(0.0).min(1.0),
-            alpha: a.max(0.0).min(1.0),
-        }
-    }
-}
-
-#[cfg(feature = "druid")]
-impl From<Color> for druid::piet::Color {
-    fn from(src: Color) -> druid::piet::Color {
-        druid::piet::Color::rgba(
-            src.red.into(),
-            src.green.into(),
-            src.blue.into(),
-            src.alpha.into(),
-        )
     }
 }

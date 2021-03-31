@@ -1,71 +1,16 @@
 use std::convert::TryFrom;
 use std::ops::Deref;
-use std::str::FromStr;
-
-#[cfg(feature = "druid")]
-use druid::Data;
 
 use serde::de::Deserializer;
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 
-use crate::error::ErrorKind;
 use crate::Error;
 
 pub static PUBLIC_OBJECT_LIBS_KEY: &str = "public.objectLibs";
 
 /// A Plist dictionary.
 pub type Plist = plist::Dictionary;
-
-/// A color.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "druid", derive(Data))]
-pub struct Color {
-    pub red: f32,
-    pub green: f32,
-    pub blue: f32,
-    pub alpha: f32,
-}
-
-impl FromStr for Color {
-    type Err = ErrorKind;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut iter = s.split(',').map(|v| match v.parse::<f32>() {
-            Ok(val) if (0.0..=1.0).contains(&val) => Ok(val),
-            _ => Err(ErrorKind::BadColor),
-        });
-        let red = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
-        let green = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
-        let blue = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
-        let alpha = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
-        if iter.next().is_some() {
-            Err(ErrorKind::BadColor)
-        } else {
-            Ok(Color { red, green, blue, alpha })
-        }
-    }
-}
-
-impl Serialize for Color {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let color_string = format!("{},{},{},{}", self.red, self.green, self.blue, self.alpha);
-        serializer.serialize_str(&color_string)
-    }
-}
-
-impl<'de> Deserialize<'de> for Color {
-    fn deserialize<D>(deserializer: D) -> Result<Color, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let string = String::deserialize(deserializer)?;
-        Color::from_str(&string).map_err(|_| serde::de::Error::custom("Malformed color string."))
-    }
-}
 
 // Types used in fontinfo.plist.
 
@@ -243,6 +188,7 @@ impl<'de> Deserialize<'de> for NonNegativeIntegerOrFloat {
 mod tests {
     use serde_test::{assert_tokens, Token};
 
+    use crate::color::Color;
     use crate::guideline::*;
     use crate::identifier::Identifier;
 
