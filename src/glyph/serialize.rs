@@ -10,10 +10,11 @@ use quick_xml::{
 use crate::color::Color;
 use crate::error::{GlifWriteError, WriteError};
 use crate::glyph::anchor::Anchor;
+use crate::glyph::component::Component;
 use crate::guideline::{Guideline, Line};
 
 use super::{
-    AffineTransform, Component, Contour, ContourPoint, GlifVersion, Glyph, Image, Plist, PointType,
+    AffineTransform, Contour, ContourPoint, GlifVersion, Glyph, Image, Plist, PointType,
     PUBLIC_OBJECT_LIBS_KEY,
 };
 
@@ -201,7 +202,7 @@ impl Component {
 
         write_transform_attributes(&mut start, &self.transform);
 
-        if let Some(id) = &self.identifier {
+        if let Some(id) = &self.identifier() {
             start.push_attribute(("identifier", id.as_str()));
         }
         Event::Empty(start)

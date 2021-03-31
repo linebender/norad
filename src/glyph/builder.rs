@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 
 use crate::error::ErrorKind;
+use crate::glyph::component::Component;
 use crate::glyph::{
-    AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, Image, PointType,
+    AffineTransform, Anchor, Contour, ContourPoint, GlifVersion, Glyph, Image, PointType,
 };
 use crate::guideline::Guideline;
 use crate::identifier::Identifier;
