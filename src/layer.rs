@@ -9,7 +9,7 @@ use std::sync::Arc;
 use rayon::prelude::*;
 
 use crate::color::Color;
-use crate::glyph::GlyphName;
+use crate::names::GlyphName;
 use crate::names::NameList;
 use crate::{Error, Glyph, Plist};
 

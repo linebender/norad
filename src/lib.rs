@@ -19,10 +19,23 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_repr;
 
+pub use color::Color;
+pub use error::Error;
+pub use fontinfo::FontInfo;
+pub use glyph::{
+    AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, Image, PointType,
+};
+pub use guideline::{Guideline, Line};
+pub use identifier::Identifier;
+pub use layer::Layer;
+pub use names::GlyphName;
+pub use shared_types::{IntegerOrFloat, NonNegativeIntegerOrFloat, Plist};
+pub use ufo::{DataRequest, FormatVersion, LayerInfo, MetaInfo, Ufo};
+
+mod color;
 pub mod error;
 pub mod fontinfo;
 pub mod glyph;
-mod color;
 mod guideline;
 mod identifier;
 mod layer;
@@ -30,16 +43,3 @@ mod names;
 mod shared_types;
 mod ufo;
 mod upconversion;
-
-pub use color::Color;
-pub use error::Error;
-pub use fontinfo::FontInfo;
-pub use glyph::{
-    AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, GlyphName,
-    Image, PointType,
-};
-pub use guideline::{Guideline, Line};
-pub use identifier::Identifier;
-pub use layer::Layer;
-pub use shared_types::{IntegerOrFloat, NonNegativeIntegerOrFloat, Plist};
-pub use ufo::{DataRequest, FormatVersion, LayerInfo, MetaInfo, Ufo};

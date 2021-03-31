@@ -215,7 +215,7 @@ mod tests {
     extern crate maplit;
 
     use super::*;
-    use crate::glyph::GlyphName;
+    use crate::names::GlyphName;
     use crate::ufo::{FormatVersion, Ufo};
     use maplit::btreemap;
 

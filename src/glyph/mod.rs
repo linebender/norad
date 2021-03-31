@@ -1,7 +1,6 @@
 //! Data related to individual glyphs.
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
@@ -10,7 +9,7 @@ use crate::color::Color;
 use crate::error::{Error, ErrorKind, GlifError, GlifErrorInternal};
 use crate::guideline::{Guideline, Line};
 use crate::identifier::Identifier;
-use crate::names::NameList;
+use crate::names::{GlyphName, NameList};
 use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
 
 pub mod builder;
@@ -18,9 +17,6 @@ mod parse;
 mod serialize;
 #[cfg(test)]
 mod tests;
-
-/// The name of a glyph.
-pub type GlyphName = Arc<str>;
 
 /// A glyph, loaded from a [.glif file][glif].
 ///

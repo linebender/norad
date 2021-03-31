@@ -15,9 +15,9 @@ use serde::Serialize;
 
 use crate::error::GroupsValidationError;
 use crate::fontinfo::FontInfo;
-use crate::glyph::{Glyph, GlyphName};
+use crate::glyph::Glyph;
 use crate::layer::Layer;
-use crate::names::NameList;
+use crate::names::{GlyphName, NameList};
 use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
 use crate::upconversion;
 use crate::Error;
@@ -577,10 +577,12 @@ impl<'a> Serialize for KerningInnerSerializer<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::shared_types::IntegerOrFloat;
     use maplit::btreemap;
     use serde_test::{assert_ser_tokens, Token};
+
+    use crate::shared_types::IntegerOrFloat;
+
+    use super::*;
 
     #[test]
     fn new_is_v3() {

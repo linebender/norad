@@ -2,11 +2,11 @@ use std::collections::HashSet;
 
 use crate::error::ErrorKind;
 use crate::glyph::{
-    AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, GlyphName,
-    Image, PointType,
+    AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, Image, PointType,
 };
 use crate::guideline::Guideline;
 use crate::identifier::Identifier;
+use crate::names::GlyphName;
 use crate::shared_types::Plist;
 
 // NOTE: The builders are private to the crate until we have a real-world use-case for making
@@ -499,8 +499,9 @@ fn insert_identifier(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::glyph::Line;
+
+    use super::*;
 
     #[test]
     fn glyph_builder_basic() -> Result<(), ErrorKind> {

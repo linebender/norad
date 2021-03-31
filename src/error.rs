@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use plist::Error as PlistError;
 use quick_xml::Error as XmlError;
 
-use crate::GlyphName;
+use crate::names::GlyphName;
 
 /// Errors that occur while working with font objects.
 #[derive(Debug)]

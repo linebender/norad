@@ -1,10 +1,13 @@
+use std::collections::HashSet;
+use std::sync::Arc;
+
 #[cfg(not(feature = "rayon"))]
 use std::cell::RefCell;
-use std::collections::HashSet;
 #[cfg(feature = "rayon")]
 use std::sync::RwLock;
 
-use crate::glyph::GlyphName;
+/// The name of a glyph.
+pub type GlyphName = Arc<str>;
 
 /// Manages interned names
 ///
