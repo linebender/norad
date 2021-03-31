@@ -9,11 +9,12 @@ use quick_xml::{
 
 use crate::color::Color;
 use crate::error::{GlifWriteError, WriteError};
+use crate::glyph::anchor::Anchor;
 use crate::guideline::{Guideline, Line};
 
 use super::{
-    AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, Image, Plist,
-    PointType, PUBLIC_OBJECT_LIBS_KEY,
+    AffineTransform, Component, Contour, ContourPoint, GlifVersion, Glyph, Image, Plist, PointType,
+    PUBLIC_OBJECT_LIBS_KEY,
 };
 
 impl Glyph {
@@ -182,7 +183,7 @@ impl Anchor {
         start.push_attribute(("x", self.x.to_string().as_str()));
         start.push_attribute(("y", self.y.to_string().as_str()));
 
-        if let Some(id) = &self.identifier {
+        if let Some(id) = &self.identifier().cloned() {
             start.push_attribute(("identifier", id.as_str()));
         }
 

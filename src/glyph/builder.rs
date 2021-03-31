@@ -174,7 +174,7 @@ impl GlyphBuilder {
         if self.glyph.format == GlifVersion::V1 {
             return Err(ErrorKind::UnexpectedTag);
         }
-        insert_identifier(&mut self.identifiers, anchor.identifier.clone())?;
+        insert_identifier(&mut self.identifiers, anchor.identifier().cloned())?;
         self.glyph.anchors.push(anchor);
         Ok(self)
     }
