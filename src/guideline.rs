@@ -2,7 +2,8 @@ use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use serde::{de, ser};
 
-use crate::shared_types::{Color, Identifier, Plist};
+use crate::identifier::Identifier;
+use crate::shared_types::{Color, Plist};
 
 /// A guideline associated with a glyph.
 #[derive(Debug, Clone, PartialEq)]

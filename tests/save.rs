@@ -1,6 +1,7 @@
 //! Testing saving files.
 
-use norad::{FormatVersion, Glyph, Identifier, Layer, Plist, Ufo};
+use norad::Identifier;
+use norad::{FormatVersion, Glyph, Layer, Plist, Ufo};
 
 #[test]
 fn save_default() {

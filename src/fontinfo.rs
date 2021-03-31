@@ -7,9 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::ErrorKind;
 use crate::guideline::Guideline;
+use crate::identifier::Identifier;
 use crate::shared_types::{
-    Bitlist, Float, Identifier, Integer, IntegerOrFloat, NonNegativeInteger,
-    NonNegativeIntegerOrFloat, Plist, PUBLIC_OBJECT_LIBS_KEY,
+    Bitlist, Float, Integer, IntegerOrFloat, NonNegativeInteger, NonNegativeIntegerOrFloat, Plist,
+    PUBLIC_OBJECT_LIBS_KEY,
 };
 use crate::{Error, FormatVersion};
 
@@ -1217,9 +1218,12 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::guideline::Line;
     use serde_test::{assert_tokens, Token};
+
+    use crate::guideline::Line;
+    use crate::identifier::Identifier;
+
+    use super::*;
 
     #[test]
     fn fontinfo() {
@@ -1233,7 +1237,7 @@ mod tests {
 
     #[test]
     fn fontinfo2() {
-        use crate::shared_types::{Color, Identifier};
+        use crate::shared_types::Color;
 
         let path = "testdata/fontinfotest.ufo/fontinfo.plist";
         let font_info: FontInfo = plist::from_file(path).expect("failed to load fontinfo");
