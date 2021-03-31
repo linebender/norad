@@ -3,8 +3,9 @@ use std::collections::HashSet;
 use crate::error::ErrorKind;
 use crate::glyph::{
     AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, GlyphName,
-    Guideline, Image, PointType,
+    Image, PointType,
 };
+use crate::guideline::Guideline;
 use crate::shared_types::{Identifier, Plist};
 
 // NOTE: The builders are private to the crate until we have a real-world use-case for making

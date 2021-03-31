@@ -8,11 +8,12 @@ use quick_xml::{
 };
 
 use super::{
-    AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    Guideline, Image, Line, Plist, PointType, PUBLIC_OBJECT_LIBS_KEY,
+    AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph, Image,
+    Plist, PointType, PUBLIC_OBJECT_LIBS_KEY,
 };
 
 use crate::error::{GlifWriteError, WriteError};
+use crate::guideline::{Guideline, Line};
 
 impl Glyph {
     pub fn encode_xml(&self) -> Result<Vec<u8>, GlifWriteError> {
