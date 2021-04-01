@@ -1,24 +1,26 @@
 //! Data related to individual glyphs.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
 
-pub use anchor::Anchor;
-pub use component::Component;
-
-use crate::color::Color;
 use crate::error::{Error, ErrorKind, GlifError, GlifErrorInternal};
-use crate::guideline::{Guideline, Line};
-use crate::identifier::Identifier;
-use crate::names::{GlyphName, NameList};
-use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
+use crate::names::NameList;
+use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
+use crate::{
+    AffineTransform, Anchor, Color, Component, Contour, GlyphName, Guideline, Identifier, Image,
+    Line, Plist,
+};
 
+pub mod affinetransform;
 pub mod anchor;
 pub mod builder;
 pub mod component;
+pub mod contour;
+pub mod image;
 mod parse;
+pub mod point;
 mod serialize;
 #[cfg(test)]
 mod tests;
@@ -213,200 +215,6 @@ pub enum GlifVersion {
     V2 = 2,
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct Contour {
-    pub points: Vec<ContourPoint>,
-    /// Unique identifier for the contour within the glyph. This attribute is only required
-    /// when a lib is present and should otherwise only be added as needed.
-    identifier: Option<Identifier>,
-    /// The contour's lib for arbitary data.
-    lib: Option<Plist>,
-}
-
-impl Contour {
-    fn is_closed(&self) -> bool {
-        self.points.first().map_or(true, |v| v.typ != PointType::Move)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ContourPoint {
-    pub x: f32,
-    pub y: f32,
-    pub typ: PointType,
-    pub smooth: bool,
-    pub name: Option<String>,
-    /// Unique identifier for the point within the glyph. This attribute is only required
-    /// when a lib is present and should otherwise only be added as needed.
-    identifier: Option<Identifier>,
-    /// The point's lib for arbitary data.
-    lib: Option<Plist>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum PointType {
-    /// A point of this type must be the first in a contour. The reverse is not true:
-    /// a contour does not necessarily start with a move point. When a contour
-    /// does start with a move point, it signifies the beginning of an open contour.
-    /// A closed contour does not start with a move and is defined as a cyclic
-    /// list of points, with no predominant start point. There is always a next
-    /// point and a previous point. For this purpose the list of points can be
-    /// seen as endless in both directions. The actual list of points can be
-    /// rotated arbitrarily (by removing the first N points and appending
-    /// them at the end) while still describing the same outline.
-    Move,
-    /// Draw a straight line from the previous point to this point.
-    /// The previous point must be a move, a line, a curve or a qcurve.
-    /// It must not be an offcurve.
-    Line,
-    /// This point is part of a curve segment that goes up to the next point
-    /// that is either a curve or a qcurve.
-    OffCurve,
-    /// Draw a cubic bezier curve from the last non-offcurve point to this point.
-    /// The number of offcurve points can be zero, one or two.
-    /// If the number of offcurve points is zero, a straight line is drawn.
-    /// If it is one, a quadratic curve is drawn.
-    /// If it is two, a regular cubic bezier is drawn.
-    Curve,
-    /// Similar to curve, but uses quadratic curves, using the TrueType
-    /// “implied on-curve points” principle.
-    QCurve,
-}
-
-/// Taken together in order, these fields represent an affine transformation matrix.
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "druid", derive(Data))]
-pub struct AffineTransform {
-    pub x_scale: f32,
-    pub xy_scale: f32,
-    pub yx_scale: f32,
-    pub y_scale: f32,
-    pub x_offset: f32,
-    pub y_offset: f32,
-}
-
-impl Contour {
-    pub fn new(
-        points: Vec<ContourPoint>,
-        identifier: Option<Identifier>,
-        lib: Option<Plist>,
-    ) -> Self {
-        let mut this = Self { points, identifier: None, lib: None };
-        if let Some(id) = identifier {
-            this.replace_identifier(id);
-        }
-        if let Some(lib) = lib {
-            this.replace_lib(lib);
-        }
-        this
-    }
-
-    /// Returns an immutable reference to the contour's lib.
-    pub fn lib(&self) -> Option<&Plist> {
-        self.lib.as_ref()
-    }
-
-    /// Returns a mutable reference to the contour's lib.
-    pub fn lib_mut(&mut self) -> Option<&mut Plist> {
-        self.lib.as_mut()
-    }
-
-    /// Replaces the actual lib by the lib given in parameter, returning the old
-    /// lib if present. Sets a new UUID v4 identifier if none is set already.
-    pub fn replace_lib(&mut self, lib: Plist) -> Option<Plist> {
-        if self.identifier.is_none() {
-            self.identifier.replace(Identifier::from_uuidv4());
-        }
-        self.lib.replace(lib)
-    }
-
-    /// Takes the lib out of the contour, leaving a None in its place.
-    pub fn take_lib(&mut self) -> Option<Plist> {
-        self.lib.take()
-    }
-
-    /// Returns an immutable reference to the contour's identifier.
-    pub fn identifier(&self) -> Option<&Identifier> {
-        self.identifier.as_ref()
-    }
-
-    /// Replaces the actual identifier by the identifier given in parameter,
-    /// returning the old identifier if present.
-    pub fn replace_identifier(&mut self, id: Identifier) -> Option<Identifier> {
-        self.identifier.replace(id)
-    }
-}
-
-impl ContourPoint {
-    pub fn new(
-        x: f32,
-        y: f32,
-        typ: PointType,
-        smooth: bool,
-        name: Option<String>,
-        identifier: Option<Identifier>,
-        lib: Option<Plist>,
-    ) -> Self {
-        let mut this = Self { x, y, typ, smooth, name, identifier: None, lib: None };
-        if let Some(id) = identifier {
-            this.replace_identifier(id);
-        }
-        if let Some(lib) = lib {
-            this.replace_lib(lib);
-        }
-        this
-    }
-
-    /// Returns an immutable reference to the contour's lib.
-    pub fn lib(&self) -> Option<&Plist> {
-        self.lib.as_ref()
-    }
-
-    /// Returns a mutable reference to the contour's lib.
-    pub fn lib_mut(&mut self) -> Option<&mut Plist> {
-        self.lib.as_mut()
-    }
-
-    /// Replaces the actual lib by the lib given in parameter, returning the old
-    /// lib if present. Sets a new UUID v4 identifier if none is set already.
-    pub fn replace_lib(&mut self, lib: Plist) -> Option<Plist> {
-        if self.identifier.is_none() {
-            self.identifier.replace(Identifier::from_uuidv4());
-        }
-        self.lib.replace(lib)
-    }
-
-    /// Takes the lib out of the contour, leaving a None in its place.
-    pub fn take_lib(&mut self) -> Option<Plist> {
-        self.lib.take()
-    }
-
-    /// Returns an immutable reference to the contour's identifier.
-    pub fn identifier(&self) -> Option<&Identifier> {
-        self.identifier.as_ref()
-    }
-
-    /// Replaces the actual identifier by the identifier given in parameter,
-    /// returning the old identifier if present.
-    pub fn replace_identifier(&mut self, id: Identifier) -> Option<Identifier> {
-        self.identifier.replace(id)
-    }
-}
-
-impl AffineTransform {
-    ///  [1 0 0 1 0 0]; the identity transformation.
-    fn identity() -> Self {
-        AffineTransform {
-            x_scale: 1.0,
-            xy_scale: 0.,
-            yx_scale: 0.,
-            y_scale: 1.0,
-            x_offset: 0.,
-            y_offset: 0.,
-        }
-    }
-}
-
 //NOTE: this is hacky, and intended mostly as a placeholder. It was adapted from
 // https://github.com/unified-font-object/ufoLib/blob/master/Lib/ufoLib/filenames.py
 /// given a glyph name, compute an appropriate file name.
@@ -446,47 +254,4 @@ pub(crate) fn default_file_name_for_glyph_name(name: impl AsRef<str>) -> String 
 
     let name = name.as_ref();
     fn_impl(name)
-}
-
-impl std::default::Default for AffineTransform {
-    fn default() -> Self {
-        Self::identity()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Image {
-    /// Not an absolute / relative path, but the name of the image file.
-    pub file_name: PathBuf,
-    pub color: Option<Color>,
-    pub transform: AffineTransform,
-}
-
-#[cfg(feature = "kurbo")]
-impl From<AffineTransform> for kurbo::Affine {
-    fn from(src: AffineTransform) -> kurbo::Affine {
-        kurbo::Affine::new([
-            src.x_scale as f64,
-            src.xy_scale as f64,
-            src.yx_scale as f64,
-            src.y_scale as f64,
-            src.x_offset as f64,
-            src.y_offset as f64,
-        ])
-    }
-}
-
-#[cfg(feature = "kurbo")]
-impl From<kurbo::Affine> for AffineTransform {
-    fn from(src: kurbo::Affine) -> AffineTransform {
-        let coeffs = src.as_coeffs();
-        AffineTransform {
-            x_scale: coeffs[0] as f32,
-            xy_scale: coeffs[1] as f32,
-            yx_scale: coeffs[2] as f32,
-            y_scale: coeffs[3] as f32,
-            x_offset: coeffs[4] as f32,
-            y_offset: coeffs[5] as f32,
-        }
-    }
 }

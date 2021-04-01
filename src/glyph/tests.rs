@@ -1,6 +1,9 @@
+use std::path::PathBuf;
+
+use crate::PointType;
+
 use super::parse::parse_glyph;
 use super::*;
-use std::path::PathBuf;
 
 #[test]
 fn transform() {

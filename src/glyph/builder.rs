@@ -1,14 +1,11 @@
 use std::collections::HashSet;
 
 use crate::error::ErrorKind;
-use crate::glyph::component::Component;
-use crate::glyph::{
-    AffineTransform, Anchor, Contour, ContourPoint, GlifVersion, Glyph, Image, PointType,
+
+use crate::{
+    AffineTransform, Anchor, Component, Contour, GlifVersion, Glyph, GlyphName, Guideline,
+    Identifier, Image, Plist, Point, PointType,
 };
-use crate::guideline::Guideline;
-use crate::identifier::Identifier;
-use crate::names::GlyphName;
-use crate::shared_types::Plist;
 
 // NOTE: The builders are private to the crate until we have a real-world use-case for making
 // them public. Then, we need to think about maybe doing without a GlyphBuilder at all (check
@@ -392,7 +389,7 @@ impl OutlineBuilder {
                     }
                 }
                 insert_identifier(&mut self.identifiers, identifier.clone()).unwrap();
-                scratch_contour.points.push(ContourPoint::new(
+                scratch_contour.points.push(Point::new(
                     x,
                     y,
                     segment_type,
@@ -612,10 +609,10 @@ mod tests {
                 ],
                 contours: vec![Contour::new(
                     vec![
-                        ContourPoint::new(173.0, 536.0, PointType::Line, false, None, None, None,),
-                        ContourPoint::new(85.0, 536.0, PointType::Line, false, None, None, None,),
-                        ContourPoint::new(85.0, 0.0, PointType::Line, false, None, None, None),
-                        ContourPoint::new(
+                        Point::new(173.0, 536.0, PointType::Line, false, None, None, None,),
+                        Point::new(85.0, 536.0, PointType::Line, false, None, None, None,),
+                        Point::new(85.0, 0.0, PointType::Line, false, None, None, None),
+                        Point::new(
                             173.0,
                             0.0,
                             PointType::Line,

@@ -5,15 +5,17 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use super::*;
-use crate::error::{ErrorKind, GlifErrorInternal};
-use crate::glyph::builder::{GlyphBuilder, Outline, OutlineBuilder};
-use crate::names::NameList;
-
 use quick_xml::{
     events::{BytesStart, Event},
     Reader,
 };
+
+use crate::error::{ErrorKind, GlifErrorInternal};
+use crate::glyph::builder::{GlyphBuilder, Outline, OutlineBuilder};
+use crate::names::NameList;
+use crate::PointType;
+
+use super::*;
 
 #[cfg(test)]
 pub(crate) fn parse_glyph(xml: &[u8]) -> Result<Glyph, GlifErrorInternal> {

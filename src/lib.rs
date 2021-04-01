@@ -22,9 +22,13 @@ extern crate serde_repr;
 pub use color::Color;
 pub use error::Error;
 pub use fontinfo::FontInfo;
-pub use glyph::{
-    AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, Image, PointType,
-};
+pub use glyph::affinetransform::AffineTransform;
+pub use glyph::anchor::Anchor;
+pub use glyph::component::Component;
+pub use glyph::contour::Contour;
+pub use glyph::image::Image;
+pub use glyph::point::{Point, PointType};
+pub use glyph::{GlifVersion, Glyph};
 pub use guideline::{Guideline, Line};
 pub use identifier::Identifier;
 pub use layer::Layer;

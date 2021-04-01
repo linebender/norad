@@ -7,16 +7,13 @@ use quick_xml::{
     Error as XmlError, Writer,
 };
 
-use crate::color::Color;
 use crate::error::{GlifWriteError, WriteError};
-use crate::glyph::anchor::Anchor;
-use crate::glyph::component::Component;
-use crate::guideline::{Guideline, Line};
-
-use super::{
-    AffineTransform, Contour, ContourPoint, GlifVersion, Glyph, Image, Plist, PointType,
-    PUBLIC_OBJECT_LIBS_KEY,
+use crate::{
+    AffineTransform, Anchor, Color, Component, Contour, GlifVersion, Glyph, Guideline, Image, Line,
+    Plist, Point, PointType,
 };
+
+use super::PUBLIC_OBJECT_LIBS_KEY;
 
 impl Glyph {
     pub fn encode_xml(&self) -> Result<Vec<u8>, GlifWriteError> {
@@ -213,7 +210,7 @@ impl Contour {
     fn write_xml<T: Write>(&self, writer: &mut Writer<T>) -> Result<(), XmlError> {
         let mut start = BytesStart::borrowed_name(b"contour");
 
-        if let Some(id) = &self.identifier {
+        if let Some(id) = &self.identifier() {
             start.push_attribute(("identifier", id.as_str()));
         }
 
@@ -227,7 +224,7 @@ impl Contour {
     }
 }
 
-impl ContourPoint {
+impl Point {
     fn to_event(&self) -> Event {
         let mut start = BytesStart::borrowed_name(b"point");
 
@@ -247,7 +244,7 @@ impl ContourPoint {
             start.push_attribute(("name", name.as_str()));
         }
 
-        if let Some(id) = &self.identifier {
+        if let Some(id) = &self.identifier() {
             start.push_attribute(("identifier", id.as_str()));
         }
         Event::Empty(start)
