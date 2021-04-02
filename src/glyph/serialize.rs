@@ -7,9 +7,10 @@ use quick_xml::{
     Error as XmlError, Writer,
 };
 
-use super::{
+use super::PUBLIC_OBJECT_LIBS_KEY;
+use crate::{
     AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    Guideline, Image, Line, Plist, PointType, PUBLIC_OBJECT_LIBS_KEY,
+    Guideline, Image, Line, Plist, PointType,
 };
 
 use crate::error::{GlifWriteError, WriteError};

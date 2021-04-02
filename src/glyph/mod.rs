@@ -14,7 +14,8 @@ use druid::{Data, Lens};
 
 use crate::error::{Error, ErrorKind, GlifError, GlifErrorInternal};
 use crate::names::NameList;
-use crate::shared_types::{Color, Guideline, Identifier, Line, Plist, PUBLIC_OBJECT_LIBS_KEY};
+use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
+use crate::{Color, Guideline, Identifier, Line, Plist};
 
 /// The name of a glyph.
 pub type GlyphName = Arc<str>;

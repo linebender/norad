@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::ErrorKind;
 use crate::shared_types::{
-    Bitlist, Float, Guideline, Identifier, Integer, IntegerOrFloat, NonNegativeInteger,
-    NonNegativeIntegerOrFloat, Plist, PUBLIC_OBJECT_LIBS_KEY,
+    Bitlist, Float, Integer, IntegerOrFloat, NonNegativeInteger, NonNegativeIntegerOrFloat,
+    PUBLIC_OBJECT_LIBS_KEY,
 };
-use crate::{Error, FormatVersion};
+use crate::{Error, FormatVersion, Guideline, Identifier, Plist};
 
 /// The contents of the [`fontinfo.plist`][] file. This structure is hard-wired to the
 /// available attributes in UFO version 3.
@@ -1217,7 +1217,7 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::shared_types::Line;
+    use crate::{Color, Identifier, Line};
     use serde_test::{assert_tokens, Token};
 
     #[test]
@@ -1232,8 +1232,6 @@ mod tests {
 
     #[test]
     fn fontinfo2() {
-        use crate::shared_types::{Color, Identifier, Line};
-
         let path = "testdata/fontinfotest.ufo/fontinfo.plist";
         let font_info: FontInfo = plist::from_file(path).expect("failed to load fontinfo");
         assert_eq!(font_info.family_name, Some("a".to_string()));

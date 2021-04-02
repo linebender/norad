@@ -479,8 +479,11 @@ impl<'de> Deserialize<'de> for NonNegativeIntegerOrFloat {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::convert::TryFrom;
+
     use serde_test::{assert_tokens, Token};
+
+    use crate::{Color, Guideline, Identifier, IntegerOrFloat, Line, NonNegativeIntegerOrFloat};
 
     #[test]
     fn color_parsing() {
