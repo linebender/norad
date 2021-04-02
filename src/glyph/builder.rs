@@ -1,11 +1,10 @@
 use std::collections::HashSet;
 
 use crate::error::ErrorKind;
-use crate::glyph::{
+use crate::{
     AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, GlyphName,
-    Guideline, Image, PointType,
+    Guideline, Identifier, Image, Plist, PointType,
 };
-use crate::shared_types::{Identifier, Plist};
 
 // NOTE: The builders are private to the crate until we have a real-world use-case for making
 // them public. Then, we need to think about maybe doing without a GlyphBuilder at all (check

@@ -22,6 +22,7 @@ extern crate serde_repr;
 pub mod error;
 pub mod fontinfo;
 pub mod glyph;
+mod guideline;
 mod layer;
 mod names;
 mod shared_types;
@@ -34,8 +35,7 @@ pub use glyph::{
     AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, GlyphName,
     Image, PointType,
 };
+pub use guideline::{Guideline, Line};
 pub use layer::Layer;
-pub use shared_types::{
-    Color, Guideline, Identifier, IntegerOrFloat, Line, NonNegativeIntegerOrFloat, Plist,
-};
+pub use shared_types::{Color, Identifier, IntegerOrFloat, NonNegativeIntegerOrFloat, Plist};
 pub use ufo::{DataRequest, FormatVersion, LayerInfo, MetaInfo, Ufo};
