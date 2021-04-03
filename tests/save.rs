@@ -50,7 +50,7 @@ fn save_new_file() {
 fn save_fancy() {
     let mut my_ufo = Ufo::new();
     let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
-    let layer = Layer::load(layer_path).unwrap();
+    let layer = Layer::load("public.default", layer_path).unwrap();
     *my_ufo.get_default_layer_mut().unwrap() = layer;
 
     let dir = tempdir::TempDir::new("Fancy.ufo").unwrap();

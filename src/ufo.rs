@@ -47,7 +47,7 @@ pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
 pub struct Ufo {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
-    pub layers: Vec<LayerInfo>,
+    pub layers: Vec<Layer>,
     pub lib: Plist,
     pub groups: Option<Groups>,
     pub kerning: Option<Kerning>,
@@ -57,11 +57,7 @@ pub struct Ufo {
 
 impl Default for Ufo {
     fn default() -> Self {
-        let main_layer = LayerInfo {
-            name: DEFAULT_LAYER_NAME.into(),
-            path: PathBuf::from(DEFAULT_GLYPHS_DIRNAME),
-            layer: Layer::default(),
-        };
+        let main_layer = Layer::new_named(DEFAULT_LAYER_NAME, Path::new(DEFAULT_GLYPHS_DIRNAME));
 
         Ufo {
             meta: MetaInfo::default(),
@@ -145,18 +141,6 @@ impl Default for DataRequest {
     fn default() -> Self {
         DataRequest::from_bool(true)
     }
-}
-
-/// A [font layer], along with its name and path.
-///
-/// This corresponds to a 'glyphs' directory on disk.
-///
-/// [font layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
-#[derive(Debug, Clone, PartialEq)]
-pub struct LayerInfo {
-    pub name: String,
-    pub path: PathBuf,
-    pub layer: Layer,
 }
 
 /// A version of the [UFO spec].
@@ -267,7 +251,7 @@ impl Ufo {
             };
 
             let glyph_names = NameList::default();
-            let layers: Vec<LayerInfo> = if self.data_request.layers {
+            let layers: Vec<Layer> = if self.data_request.layers {
                 let mut contents = match meta.format_version {
                     FormatVersion::V3 => {
                         let contents_path = path.join(LAYER_CONTENTS_FILE);
@@ -277,12 +261,11 @@ impl Ufo {
                     _older => vec![(DEFAULT_LAYER_NAME.into(), DEFAULT_GLYPHS_DIRNAME.into())],
                 };
 
-                let layers_r: Result<Vec<LayerInfo>, Error> = contents
+                let layers_r: Result<Vec<Layer>, Error> = contents
                     .drain(..)
-                    .map(|(name, p)| {
-                        let layer_path = path.join(&p);
-                        let layer = Layer::load_impl(&layer_path, &glyph_names)?;
-                        Ok(LayerInfo { name, path: p, layer })
+                    .map(|(name, glyphs_dirname)| {
+                        let layer_path = path.join(&glyphs_dirname);
+                        Layer::load_impl(name.as_str(), &layer_path, &glyph_names)
                     })
                     .collect();
                 layers_r?
@@ -408,38 +391,35 @@ impl Ufo {
 
         for layer in self.layers.iter() {
             let layer_path = path.join(&layer.path);
-            layer.layer.save(layer_path)?;
+            layer.save(layer_path)?;
         }
 
         Ok(())
     }
 
     /// Returns a reference to the first layer matching a predicate.
-    /// The predicate takes a `LayerInfo` struct, which includes the layer's
+    /// The predicate takes a `Layer` struct, which includes the layer's
     /// name and path as well as the layer itself.
     pub fn find_layer<P>(&self, mut predicate: P) -> Option<&Layer>
     where
-        P: FnMut(&LayerInfo) -> bool,
+        P: FnMut(&Layer) -> bool,
     {
-        self.layers.iter().find(|l| predicate(l)).map(|l| &l.layer)
+        self.layers.iter().find(|l| predicate(l))
     }
 
     /// Returns a mutable reference to the first layer matching a predicate.
-    /// The predicate takes a `LayerInfo` struct, which includes the layer's
+    /// The predicate takes a `Layer` struct, which includes the layer's
     /// name and path as well as the layer itself.
     pub fn find_layer_mut<P>(&mut self, mut predicate: P) -> Option<&mut Layer>
     where
-        P: FnMut(&LayerInfo) -> bool,
+        P: FnMut(&Layer) -> bool,
     {
-        self.layers.iter_mut().find(|l| predicate(l)).map(|l| &mut l.layer)
+        self.layers.iter_mut().find(|l| predicate(l))
     }
 
     /// Returns a reference to the default layer, if it exists.
     pub fn get_default_layer(&self) -> Option<&Layer> {
-        self.layers
-            .iter()
-            .find(|l| l.path.file_name() == Some(OsStr::new(DEFAULT_GLYPHS_DIRNAME)))
-            .map(|l| &l.layer)
+        self.layers.iter().find(|l| l.path.file_name() == Some(OsStr::new(DEFAULT_GLYPHS_DIRNAME)))
     }
 
     /// Returns a mutable reference to the default layer, if it exists.
@@ -447,11 +427,10 @@ impl Ufo {
         self.layers
             .iter_mut()
             .find(|l| l.path.file_name() == Some(OsStr::new(DEFAULT_GLYPHS_DIRNAME)))
-            .map(|l| &mut l.layer)
     }
 
     /// Returns an iterator over all layers in this font object.
-    pub fn iter_layers(&self) -> impl Iterator<Item = &LayerInfo> {
+    pub fn iter_layers(&self) -> impl Iterator<Item = &Layer> {
         self.layers.iter()
     }
 
@@ -461,7 +440,7 @@ impl Ufo {
         self.layers
             .iter()
             .filter(|l| l.path.file_name() == Some(OsStr::new(DEFAULT_GLYPHS_DIRNAME)))
-            .flat_map(|l| l.layer.glyphs.keys().cloned())
+            .flat_map(|l| l.glyphs.keys().cloned())
     }
 
     //FIXME: support for multiple layers.

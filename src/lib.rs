@@ -40,4 +40,4 @@ pub use guideline::{Guideline, Line};
 pub use identifier::Identifier;
 pub use layer::Layer;
 pub use shared_types::{Color, IntegerOrFloat, NonNegativeIntegerOrFloat, Plist};
-pub use ufo::{DataRequest, FormatVersion, LayerInfo, MetaInfo, Ufo};
+pub use ufo::{DataRequest, FormatVersion, MetaInfo, Ufo};

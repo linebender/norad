@@ -22,28 +22,44 @@ static LAYER_INFO_FILE: &str = "layerinfo.plist";
 /// [layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Layer {
+    pub name: String,
+    /// The layer dir name inside the UFO.
+    pub path: PathBuf,
     pub(crate) glyphs: BTreeMap<GlyphName, Arc<Glyph>>,
+    /// The layer's contents.plist, a glyph name to file name mapping.
     contents: BTreeMap<GlyphName, PathBuf>,
     pub color: Option<Color>,
     pub lib: Plist,
 }
 
 impl Layer {
+    /// Create a new layer with the given layer name and dir name.
+    pub fn new_named(name: &str, path: &Path) -> Self {
+        Self {
+            name: name.into(),
+            path: path.into(),
+            glyphs: Default::default(),
+            contents: Default::default(),
+            color: None,
+            lib: Default::default(),
+        }
+    }
+
     /// Load the layer at this path.
     ///
     /// Internal callers should use `load_impl` directly, so that glyph names
     /// can be reused between layers.
-    pub fn load(path: impl AsRef<Path>) -> Result<Layer, Error> {
+    pub fn load(name: &str, path: impl AsRef<Path>) -> Result<Layer, Error> {
         let path = path.as_ref();
         let names = NameList::default();
-        Layer::load_impl(path, &names)
+        Layer::load_impl(name, path, &names)
     }
 
     /// the actual loading logic.
     ///
     /// `names` is a map of glyphnames; we pass it throughout parsing
     /// so that we reuse the same Arc<str> for identical names.
-    pub(crate) fn load_impl(path: &Path, names: &NameList) -> Result<Layer, Error> {
+    pub(crate) fn load_impl(name: &str, path: &Path, names: &NameList) -> Result<Layer, Error> {
         let contents_path = path.join(CONTENTS_FILE);
         // these keys are never used; a future optimization would be to skip the
         // names and deserialize to a vec; that would not be a one-liner, though.
@@ -74,7 +90,14 @@ impl Layer {
             (None, Plist::new())
         };
 
-        Ok(Layer { contents, glyphs, color, lib })
+        Ok(Layer {
+            name: name.into(),
+            path: path.file_name().unwrap().into(),
+            contents,
+            glyphs,
+            color,
+            lib,
+        })
     }
 
     // Problem: layerinfo.plist contains a nested plist dictionary and the plist crate
@@ -215,7 +238,7 @@ mod tests {
     fn load_layer() {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
-        let layer = Layer::load(layer_path).unwrap();
+        let layer = Layer::load("public.default", layer_path).unwrap();
         assert_eq!(
             layer.color.as_ref().unwrap(),
             &Color { red: 1.0, green: 0.75, blue: 0.0, alpha: 0.7 }
@@ -234,7 +257,7 @@ mod tests {
     fn load_write_layerinfo() {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
-        let mut layer = Layer::load(layer_path).unwrap();
+        let mut layer = Layer::load("public.default", layer_path).unwrap();
 
         layer.color.replace(Color { red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5 });
         layer.lib.insert(
@@ -245,7 +268,7 @@ mod tests {
         let temp_dir = tempdir::TempDir::new("test.ufo").unwrap();
         let dir = temp_dir.path().join("glyphs");
         layer.save(&dir).unwrap();
-        let layer2 = Layer::load(&dir).unwrap();
+        let layer2 = Layer::load("public.default", &dir).unwrap();
 
         assert_eq!(
             layer2.color.as_ref().unwrap(),
@@ -275,7 +298,7 @@ mod tests {
     #[test]
     fn delete() {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
-        let mut layer = Layer::load(layer_path).unwrap();
+        let mut layer = Layer::load("public.default", layer_path).unwrap();
         layer.remove_glyph("A");
         if let Some(glyph) = layer.get_glyph("A") {
             panic!("{:?}", glyph);
@@ -289,7 +312,7 @@ mod tests {
     #[test]
     fn set_glyph() {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
-        let mut layer = Layer::load(layer_path).unwrap();
+        let mut layer = Layer::load("public.default", layer_path).unwrap();
         let mut glyph = Glyph::new_named("A");
         glyph.width = 69.;
         layer.insert_glyph(glyph);
