@@ -20,8 +20,8 @@ extern crate serde_derive;
 extern crate serde_repr;
 
 pub mod error;
-pub mod fontinfo;
-pub mod glyph;
+mod fontinfo;
+mod glyph;
 mod guideline;
 mod layer;
 mod names;
