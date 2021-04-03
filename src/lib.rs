@@ -23,6 +23,7 @@ pub mod error;
 pub mod fontinfo;
 pub mod glyph;
 mod guideline;
+mod identifier;
 mod layer;
 mod names;
 mod shared_types;
@@ -36,6 +37,7 @@ pub use glyph::{
     Image, PointType,
 };
 pub use guideline::{Guideline, Line};
+pub use identifier::Identifier;
 pub use layer::Layer;
-pub use shared_types::{Color, Identifier, IntegerOrFloat, NonNegativeIntegerOrFloat, Plist};
+pub use shared_types::{Color, IntegerOrFloat, NonNegativeIntegerOrFloat, Plist};
 pub use ufo::{DataRequest, FormatVersion, LayerInfo, MetaInfo, Ufo};
