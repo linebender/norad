@@ -21,7 +21,7 @@ impl Glyph {
     }
 
     fn encode_xml_impl(&self) -> Result<Vec<u8>, WriteError> {
-        let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b'\t', 1);
+        let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b' ', 2);
         writer.write_event(Event::Decl(BytesDecl::new(b"1.0", Some(b"UTF-8"), None)))?;
         let mut start = BytesStart::borrowed_name(b"glyph");
         start.push_attribute(("name", &*self.name));
@@ -106,7 +106,7 @@ fn write_lib_section<T: Write>(lib: &Plist, writer: &mut Writer<T>) -> Result<()
     let as_value: plist::Value = lib.to_owned().into();
     let mut out_buffer = Vec::with_capacity(256); // a reasonable min size?
     as_value.to_writer_xml(&mut out_buffer)?;
-    let lib_xml = String::from_utf8(out_buffer).expect("xml writer writs valid utf8");
+    let lib_xml = String::from_utf8(out_buffer).expect("XML writer writes valid UTF-8");
     let header = "<plist version=\"1.0\">\n";
     let footer = "\n</plist>";
     let start_idx = lib_xml
@@ -118,7 +118,7 @@ fn write_lib_section<T: Write>(lib: &Plist, writer: &mut Writer<T>) -> Result<()
 
     writer.write_event(Event::Start(BytesStart::borrowed_name(b"lib")))?;
     for line in to_write.lines() {
-        writer.inner().write_all("\n\t\t".as_bytes())?;
+        writer.inner().write_all("\n    ".as_bytes())?;
         writer.inner().write_all(line.as_bytes())?;
     }
     writer.write_event(Event::End(BytesEnd::borrowed(b"lib")))?;
