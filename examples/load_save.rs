@@ -3,13 +3,13 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use norad::Ufo;
+use norad::Font;
 
 fn main() {
     let (input, output) = get_path_or_exit();
 
     let start_load = Instant::now();
-    let mut my_ufo = match Ufo::load(input) {
+    let mut my_ufo = match Font::load(input) {
         Ok(v) => v,
         Err(e) => {
             eprintln!("Loading the UFO failed: {}", e);

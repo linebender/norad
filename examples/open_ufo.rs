@@ -5,13 +5,13 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use norad::Ufo;
+use norad::Font;
 
 fn main() {
     let path = get_path_or_exit();
 
     let start = Instant::now();
-    let ufo = Ufo::load(&path).expect("failed to load file");
+    let ufo = Font::load(&path).expect("failed to load file");
 
     let duration = start.elapsed();
     let time_str = format_time(duration);
