@@ -7,7 +7,7 @@
 
 fn main() {
     for arg in std::env::args().skip(1) {
-        let mut ufo = match norad::Ufo::load(&arg) {
+        let mut ufo = match norad::Font::load(&arg) {
             Ok(v) => v,
             Err(e) => {
                 eprintln!("Loading UFO failed: {}", e);

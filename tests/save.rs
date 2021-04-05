@@ -1,10 +1,10 @@
 //! Testing saving files.
 
-use norad::{FormatVersion, Glyph, Identifier, Layer, Plist, Ufo};
+use norad::{Font, FormatVersion, Glyph, Identifier, Layer, Plist};
 
 #[test]
 fn save_default() {
-    let my_ufo = Ufo::new();
+    let my_ufo = Font::new();
 
     let dir = tempdir::TempDir::new("Test.ufo").unwrap();
     my_ufo.save(&dir).unwrap();
@@ -13,7 +13,7 @@ fn save_default() {
     assert!(dir.path().join("glyphs").exists());
     assert!(dir.path().join("glyphs/contents.plist").exists());
 
-    let loaded = Ufo::load(dir).unwrap();
+    let loaded = Font::load(dir).unwrap();
     assert!(loaded.meta.format_version == FormatVersion::V3);
     assert!(loaded.meta.creator == "org.linebender.norad");
     assert!(loaded.get_default_layer().is_some());
@@ -21,7 +21,7 @@ fn save_default() {
 
 #[test]
 fn save_new_file() {
-    let mut my_ufo = Ufo::new();
+    let mut my_ufo = Font::new();
     let mut my_glyph = Glyph::new_named("A");
     my_glyph.codepoints = vec!['A'];
     my_glyph.note = Some("I did a glyph!".into());
@@ -38,7 +38,7 @@ fn save_new_file() {
     assert!(dir.path().join("glyphs/contents.plist").exists());
     assert!(dir.path().join("glyphs/A_.glif").exists());
 
-    let loaded = Ufo::load(dir).unwrap();
+    let loaded = Font::load(dir).unwrap();
     assert!(loaded.get_default_layer().unwrap().get_glyph("A").is_some());
     let glyph = loaded.get_default_layer().unwrap().get_glyph("A").unwrap();
     assert_eq!(glyph.codepoints, vec!['A']);
@@ -48,7 +48,7 @@ fn save_new_file() {
 
 #[test]
 fn save_fancy() {
-    let mut my_ufo = Ufo::new();
+    let mut my_ufo = Font::new();
     let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
     let layer = Layer::load(layer_path).unwrap();
     *my_ufo.get_default_layer_mut().unwrap() = layer;
@@ -56,7 +56,7 @@ fn save_fancy() {
     let dir = tempdir::TempDir::new("Fancy.ufo").unwrap();
     my_ufo.save(&dir).unwrap();
 
-    let loaded = Ufo::load(dir).unwrap();
+    let loaded = Font::load(dir).unwrap();
     let pre_layer = my_ufo.get_default_layer().unwrap();
     let post_layer = loaded.get_default_layer().unwrap();
     assert_eq!(pre_layer.iter_contents().count(), post_layer.iter_contents().count());
@@ -70,7 +70,7 @@ fn save_fancy() {
 
 #[test]
 fn roundtrip_object_libs() {
-    let ufo = Ufo::load("testdata/identifiers.ufo").unwrap();
+    let ufo = Font::load("testdata/identifiers.ufo").unwrap();
     assert_eq!(ufo.lib.contains_key("public.objectLibs"), false);
 
     let glyph = ufo.get_glyph("test").unwrap();
@@ -80,7 +80,7 @@ fn roundtrip_object_libs() {
     ufo.save(&dir).unwrap();
     assert_eq!(glyph.lib.contains_key("public.objectLibs"), false);
 
-    let ufo2 = Ufo::load(&dir).unwrap();
+    let ufo2 = Font::load(&dir).unwrap();
     assert_eq!(ufo2.lib.contains_key("public.objectLibs"), false);
 
     let font_guideline_second = &ufo2.font_info.as_ref().unwrap().guidelines.as_ref().unwrap()[1];
@@ -186,7 +186,7 @@ fn roundtrip_object_libs() {
 #[test]
 fn object_libs_reject_existing_key() {
     let dir = tempdir::TempDir::new("test.ufo").unwrap();
-    let mut ufo = Ufo::new();
+    let mut ufo = Font::new();
 
     let mut test_lib = plist::Dictionary::new();
     test_lib.insert("public.objectLibs".into(), plist::Value::Dictionary(plist::Dictionary::new()));

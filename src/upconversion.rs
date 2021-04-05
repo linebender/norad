@@ -216,7 +216,7 @@ mod tests {
 
     use super::*;
     use crate::glyph::GlyphName;
-    use crate::ufo::{FormatVersion, Ufo};
+    use crate::ufo::{Font, FormatVersion};
     use maplit::btreemap;
 
     #[test]
@@ -482,9 +482,9 @@ mod tests {
     #[test]
     fn test_upconvert_kerning_glyphname_groupname() {
         let ufo_v1 =
-            Ufo::load("testdata/upconversion_kerning/glyphname_groupname_UFOv1.ufo").unwrap();
+            Font::load("testdata/upconversion_kerning/glyphname_groupname_UFOv1.ufo").unwrap();
         let ufo_v2 =
-            Ufo::load("testdata/upconversion_kerning/glyphname_groupname_UFOv2.ufo").unwrap();
+            Font::load("testdata/upconversion_kerning/glyphname_groupname_UFOv2.ufo").unwrap();
 
         let groups_expected: Groups = plist::from_file(
             "testdata/upconversion_kerning/glyphname_groupname_groups_expected.plist",

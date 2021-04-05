@@ -44,7 +44,7 @@ pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
 /// A Unified Font Object.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
-pub struct Ufo {
+pub struct Font {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
     pub layers: Vec<LayerInfo>,
@@ -55,7 +55,11 @@ pub struct Ufo {
     pub data_request: DataRequest,
 }
 
-impl Default for Ufo {
+#[doc(hidden)]
+#[deprecated(since = "0.4.0", note = "Renamed to Font")]
+pub type Ufo = Font;
+
+impl Default for Font {
     fn default() -> Self {
         let main_layer = LayerInfo {
             name: DEFAULT_LAYER_NAME.into(),
@@ -63,7 +67,7 @@ impl Default for Ufo {
             layer: Layer::default(),
         };
 
-        Ufo {
+        Font {
             meta: MetaInfo::default(),
             font_info: None,
             layers: vec![main_layer],
@@ -189,10 +193,10 @@ impl Default for MetaInfo {
     }
 }
 
-impl Ufo {
+impl Font {
     /// Create a new `Ufo`.
     pub fn new() -> Self {
-        Ufo::default()
+        Font::default()
     }
 
     /// Create a new `Ufo` only with certain fields
@@ -211,15 +215,15 @@ impl Ufo {
     /// with the matching identifier, respectively.
     ///
     /// [v3]: http://unifiedfontobject.org/versions/ufo3/
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Ufo, Error> {
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Font, Error> {
         Self::new().load_ufo(path)
     }
 
-    pub fn load_ufo<P: AsRef<Path>>(&self, path: P) -> Result<Ufo, Error> {
+    pub fn load_ufo<P: AsRef<Path>>(&self, path: P) -> Result<Font, Error> {
         let path = path.as_ref();
 
         // minimize monomorphization
-        let load_impl = |ufo: &Ufo, path: &Path| -> Result<Ufo, Error> {
+        let load_impl = |ufo: &Font, path: &Path| -> Result<Font, Error> {
             let meta_path = path.join(METAINFO_FILE);
             let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
@@ -320,7 +324,7 @@ impl Ufo {
 
             meta.format_version = FormatVersion::V3;
 
-            Ok(Ufo {
+            Ok(Font {
                 layers,
                 meta,
                 font_info,
@@ -584,7 +588,7 @@ mod tests {
 
     #[test]
     fn new_is_v3() {
-        let font = Ufo::new();
+        let font = Font::new();
         assert_eq!(font.meta.format_version, FormatVersion::V3);
     }
 
@@ -592,7 +596,7 @@ mod tests {
     fn downgrade_unsupported() {
         let dir = tempdir::TempDir::new("Test.ufo").unwrap();
 
-        let mut font = Ufo::new();
+        let mut font = Font::new();
         font.meta.format_version = FormatVersion::V1;
         assert_eq!(font.save(&dir).is_err(), true);
         font.meta.format_version = FormatVersion::V2;
@@ -604,7 +608,7 @@ mod tests {
     #[test]
     fn loading() {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
-        let font_obj = Ufo::load(path).unwrap();
+        let font_obj = Font::load(path).unwrap();
         assert_eq!(font_obj.iter_layers().count(), 2);
         font_obj
             .find_layer(|l| l.path.to_str() == Some("glyphs.background"))
@@ -622,7 +626,7 @@ mod tests {
     #[test]
     fn data_request() {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
-        let font_obj = Ufo::with_fields(DataRequest::none()).load_ufo(path).unwrap();
+        let font_obj = Font::with_fields(DataRequest::none()).load_ufo(path).unwrap();
         assert_eq!(font_obj.iter_layers().count(), 0);
         assert_eq!(font_obj.lib, Plist::new());
         assert_eq!(font_obj.groups, None);
@@ -633,7 +637,7 @@ mod tests {
     #[test]
     fn upconvert_ufov1_robofab_data() {
         let path = "testdata/fontinfotest_v1.ufo";
-        let font = Ufo::load(path).unwrap();
+        let font = Font::load(path).unwrap();
 
         assert_eq!(font.meta.format_version, FormatVersion::V3);
 
@@ -686,9 +690,9 @@ mod tests {
 
     #[test]
     fn upconversion_fontinfo_v123() {
-        let ufo_v1 = Ufo::load("testdata/fontinfotest_v1.ufo").unwrap();
-        let ufo_v2 = Ufo::load("testdata/fontinfotest_v2.ufo").unwrap();
-        let ufo_v3 = Ufo::load("testdata/fontinfotest_v3.ufo").unwrap();
+        let ufo_v1 = Font::load("testdata/fontinfotest_v1.ufo").unwrap();
+        let ufo_v2 = Font::load("testdata/fontinfotest_v2.ufo").unwrap();
+        let ufo_v3 = Font::load("testdata/fontinfotest_v3.ufo").unwrap();
 
         assert_eq!(ufo_v1, ufo_v3);
         assert_eq!(ufo_v2, ufo_v3);
