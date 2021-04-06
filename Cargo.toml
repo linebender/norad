@@ -14,6 +14,9 @@ exclude = [
     "/testdata/*"
 ]
 
+[workspace]
+members = ["pynorad"]
+
 [dependencies]
 plist = "1.0.1"
 uuid = { version = "0.8", features = ["v4"] }

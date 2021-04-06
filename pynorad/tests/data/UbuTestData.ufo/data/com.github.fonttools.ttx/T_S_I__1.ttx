@@ -1,0 +1,2349 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ttFont sfntVersion="\x00\x01\x00\x00" ttLibVersion="3.32">
+
+  <TSI1>
+
+    <glyphProgram name="A">
+/* VTT 6.20 compiler */
+SVTCA[Y]
+MIAP[R], 6, 66
+MIAP[R], 11, 65
+MIAP[R], 12, 65
+MIAP[R], 17, 66
+SRP2[], 12
+IP[], 21
+IP[], 18
+MDAP[R], 21
+MDAP[R], 18
+DLTP1[(21 @5 8)(21 @6 8)(21 @7 8)]
+SHP[1], 24
+MIRP[m&gt;RBl], 4, 121
+SHP[2], 3
+SVTCA[X]
+SRP0[], 25
+MDRP[m&lt;RWh], 6
+SDB[], 8
+DLTP1[(6 @0 8)(6 @1 8)]
+DLTP1[(26 @0 8)]
+DLTP1[(26 @4 -8)(26 @7 -8)(26 @10 -8)(26 @13 -8)]
+DLTP2[(26 @0 -8)]
+SRP0[], 26
+MDRP[m&lt;RWh], 17
+SRP1[], 6
+IP[], 21
+RTHG[]
+MDAP[R], 21
+/* Diagonal [17,0]106-[12,21]90 */
+SRP0[], 17
+SVTCA[Y]
+MDRP[m&lt;rBl], 0
+SDPVTL[R], 17, 12
+SFVTCA[X]
+RTG[]
+CALL[], 0, 115, 17, 12, 20
+SDPVTL[R], 0, 21
+RDTG[]
+MDRP[m&lt;RGr], 12
+SVTCA[X]
+CALL[], 0, -16, 12, 1, 77
+/* DAlign [21...0] */
+SRP0[], 21
+SDPVTL[R], 21, 0
+SFVTPV[]
+MDRP[m&lt;RGr], 20
+MDRP[m&lt;RGr], 19
+SFVTCA[X]
+MDRP[m&lt;RGr], 18
+MDRP[m&lt;RGr], 3
+SFVTPV[]
+MDRP[m&lt;RGr], 2
+MDRP[m&lt;RGr], 1
+/* Diagonal [6,5]101-[11,21]85 */
+SRP0[], 6
+SVTCA[Y]
+MDRP[m&lt;rBl], 5
+SDPVTL[R], 6, 11
+SFVTCA[X]
+RTG[]
+CALL[], 5, 115, 6, 11, 20
+SDPVTL[R], 5, 21
+RDTG[]
+MDRP[m&lt;RGr], 11
+SVTCA[X]
+CALL[], 5, 32, 12, 18, 1, 76
+/* DAlign [21...5] */
+SRP0[], 21
+SDPVTL[R], 21, 5
+SFVTPV[]
+MDRP[m&lt;RGr], 22
+MDRP[m&lt;RGr], 23
+SFVTCA[X]
+MDRP[m&lt;RGr], 24
+MDRP[m&lt;RGr], 4
+/* DAlign [11...6] */
+SRP0[], 11
+SDPVTL[R], 11, 6
+SFVTPV[]
+MDRP[m&lt;RGr], 10
+MDRP[m&lt;RGr], 9
+MDRP[m&lt;RGr], 8
+MDRP[m&lt;RGr], 7
+/* DAlign [12...17] */
+SRP0[], 12
+SDPVTL[R], 12, 17
+SFVTPV[]
+MDRP[m&lt;RGr], 13
+MDRP[m&lt;RGr], 14
+MDRP[m&lt;RGr], 15
+MDRP[m&lt;RGr], 16
+IUP[Y]
+IUP[X]
+SVTCA[X]
+CALL[], 15, -8, 13, 0, 77
+
+    </glyphProgram>
+
+    <glyphProgram name="a">
+/* VTT 6.20 compiler */
+SVTCA[Y]
+MIAP[R], 15, 80
+SHP[1], 51
+MIRP[m&gt;RBl], 47, 136
+SHP[2], 50
+MIAP[R], 26, 81
+SHP[1], 21
+MIRP[m&gt;RBl], 0, 136
+SHP[2], 3
+SRP2[], 15
+IP[], 7
+MDAP[R], 7
+CALL[], 7, -64, 8, 0, 77
+CALL[], 7, 64, 17, 18, 0, 76
+CALL[], 7, -64, 8, 1, 77
+CALL[], 7, 64, 18, 1, 77
+SHP[1], 4
+MIRP[m&gt;RBl], 36, 136
+SHP[2], 41
+SVTCA[X]
+SRP0[], 54
+MDRP[M&lt;RWh], 31
+CALL[], 31, 64, 8, 0, 77
+CALL[], 31, 80, 9, 10, 0, 76
+CALL[], 31, -16, 17, 0, 77
+CALL[], 31, -24, 18, 0, 77
+CALL[], 31, 64, 8, 9, 1, 76
+MIRP[m&gt;RBl], 12, 130
+MDRP[m&lt;RGr], 51
+CALL[], 51, -64, 10, 12, 0, 76
+SHP[2], 50
+DLTP1[(55 @1 8)]
+SRP0[], 55
+MIRP[M&lt;RWh], 20, 170
+CALL[], 20, 56, 8, 9, 0, 76
+CALL[], 20, -8, 10, 0, 77
+CALL[], 20, 64, 8, 9, 1, 76
+MIRP[M&gt;RBl], 41, 127
+CALL[], 41, 8, 18, 0, 77
+MDRP[m&lt;RGr], 3
+IUP[Y]
+IUP[X]
+SVTCA[Y]
+CALL[], 10, 8, 17, 0, 77
+CALL[], 18, -32, 8, 0, 77
+CALL[], 34, -32, 8, 0, 77
+CALL[], 44, 8, 17, 0, 77
+SVTCA[X]
+CALL[], 33, 8, 10, 0, 77
+
+    </glyphProgram>
+
+    <extraProgram name="cvt">
+/* DMOTE Autohinter Control Program */
+
+GROUP Symbols
+GROUP Accents
+GROUP SmallFigures
+GROUP Logotype "H H H"
+
+InstructionsOn @8..999
+DropOutCtrlOff @144
+CvtCutIn =4,2.5@29,1@72,0@128
+
+UpperCase
+ Grey
+ Y
+ SquareHeight
+  65: 693 Delta(1@15)
+  66: 0
+  67: -185
+  68: 738
+ RoundHeight
+  69: 16 ~ 65@91
+  70: -15 ~ 66@91
+  71: -2 ~ 67@91
+  72: 839
+
+LowerCase
+ Grey
+ Y
+ SquareHeight
+  73: 520 Delta (1@20;22;24)
+  74: 0
+  75: -185
+  76: -145
+  77: 738
+  78: 769 Delta(1@11)
+ RoundHeight
+  79: 7 ~ 78@144
+  80: 13 ~ 73@144
+  81: -11 ~ 74@144
+  82: -2 ~ 75@144
+  83: -2 ~ 77@144
+  84: 681
+
+Figure
+ Grey
+ Y
+ SquareHeight
+  85: 0
+  86: 693
+ RoundHeight
+  87: -15 ~ 85@67
+  88: 16 ~ 86@67
+
+Symbols
+ Grey
+ Y
+ SquareHeight
+  89: -185
+  90: 783
+  91: 693
+  92: 0
+  93: 98
+  94: 241
+  95: 328
+  96: 501
+  97: 590
+ RoundHeight
+  98: 0 ~ 89@91
+  99: -13 ~ 92@91
+  100: 0 ~ 90@91
+  101: -153
+  102: 23 ~ 93@91
+  103: -17 ~ 95@91
+  104: 16 ~ 91@91
+
+Accents
+ Grey
+ Y
+ SquareHeight
+  105: 20
+ RoundHeight
+  106: -189
+  107: 580
+  108: 616
+  109: 734
+  110: 776
+
+SmallFigures
+ Grey
+ Y
+ SquareHeight
+  111: 315
+  112: 701
+ RoundHeight
+  113: 8 ~ 112@126
+  114: -8 ~ 111@126
+AnyGroup
+ AnyColor
+ X
+  1: 69
+ Y
+  2: 69
+UpperCase
+ Black
+ X
+ StraightStroke
+  115: 97 = 1@19 Delta(-1@26..27;37;47..48) /* Used by: BDEFGHIJKLNPRTUY AE Eng Eogonek Eth Gamma Hbar Iogonek Lslash OE Phi Pi Psi Tbar Thorn Uhorn Uogonek afii10020 afii10021 afii10024 afii10026 afii10029 afii10033 afii10040 afii10041 afii10042 afii10043 afii10044 afii10045 afii10046 afii10048 afii10049 afii10051 afii10058 afii10059 afii10060 afii10098 afii10145 afii61289 afii61352 four.alt one.alt sterling tenge uni0181 uni0182 uni0185 uni018A uni018B uni018E uni0191 uni0193 uni0196 uni0197 uni0198 uni019C uni019D uni01A2 uni01A4 uni01AC uni01AE uni01B3 uni01E4 uni01F6 uni01F7 uni0220 uni0224 uni0228 uni023D uni023E uni0241 uni0243 uni0244 uni0248 uni024A uni024C uni024E uni048A uni048C uni048E uni0492 uni0494 uni0496 uni049A uni049C uni049E uni04A0 uni04A2 uni04A4 uni04A6 uni04AC uni04B0 uni04B2 uni04B4 uni04B6 uni04B8 uni04BA uni04BE uni04C3 uni04C5 uni04C7 uni04C9 uni04CB uni04CF uni04F6 uni20AE yen */
+  116: 156 = 1@5 /* Used by: dieresis_acute.cap dieresis_grave.cap */
+  117: 73 = 1@125 /* Used by: afii10098 paragraph registered uni049C uni04B8 */
+ RoundStroke
+  118: 102 = 115@100 /* Used by: BCDGOPQRS Ccedilla Eth OE Ohorn Omega Oslash Phi Scedilla Theta Thorn Uhorn afii10025 afii10044 afii10045 afii10046 afii10047 afii10048 afii10049 afii10051 afii10058 afii10059 ampersand eight.alt five.alt nine.alt three.alt two.alt uni0181 uni0182 uni0185 uni0186 uni0187 uni018A uni018B uni018F uni0190 uni0193 uni019F uni01A2 uni01A4 uni01A7 uni01B7 uni01B8 uni01BB uni01BC uni01E4 uni01EA uni01F7 uni021C uni0222 uni023C uni0241 uni0243 uni0247 uni024A uni024C uni0472 uni048C uni048E uni0494 uni0498 uni04A6 uni04A8 uni04BC uni04BE uni04C3 uni04D8 uni04E8 uni20B4 zero.alt */
+  119: 78 = 117@126 /* Used by: Ccedilla Scedilla afii61289 afii61352 ampersand copyright percent perthousand registered uni0181 uni018A uni0194 uni01A4 uni01AC uni0228 uni0498 uni04BC uni04BE */
+  120: 176 = 116@25 /* Used by: Aogonek Eogonek Iogonek Uogonek ogonek uni01BB uni01EA */
+ Black
+ Y
+ StraightStroke
+  121: 79 = 2@18 Delta(1@30..31) /* Used by: ABEFHLPRTZ AE Aogonek Aring Aringacute Delta Eogonek Eth Gamma Hbar Lslash OE Omega Pi Sigma Tbar Theta Thorn Xi afii10020 afii10021 afii10025 afii10029 afii10033 afii10040 afii10042 afii10043 afii10044 afii10047 afii10048 afii10049 afii10051 afii10058 afii10059 afii10060 afii10098 afii10145 afii61352 five.alt florin four.alt numbersign seven.alt sterling tenge three.alt two.alt uni0181 uni0182 uni018B uni018E uni018F uni0190 uni0191 uni0197 uni019F uni01A4 uni01A9 uni01AC uni01AE uni01B5 uni01B7 uni01B8 uni01BB uni01BC uni01E4 uni01F6 uni021C uni0224 uni0228 uni023D uni023E uni0243 uni0244 uni0248 uni024C uni024E uni048A uni048C uni048E uni0492 uni0494 uni0498 uni049C uni049E uni04A0 uni04A2 uni04A4 uni04A6 uni04AC uni04B0 uni04B4 uni04BC uni04BE uni04C5 uni04C7 uni04C9 uni04CD uni04D8 uni04E8 uni04F6 uni20AE yen */
+  122: 268 = 2@2 /* Used by: afii10021 afii10040 afii10043 uni0496 uni049A uni04A2 uni04AC uni04B2 uni04B4 uni04B6 uni04CB uni04F6 */
+  123: 58 = 2@45 /* Used by: registered uni0247 uni20B4 */
+ RoundStroke
+  124: 84 = 121@100 /* Used by: BCDGJOPQRSU Ccedilla Eng Eth OE Ohorn Omega Oslash Phi Psi Scedilla Theta Thorn Uhorn afii10025 afii10037 afii10041 afii10044 afii10045 afii10046 afii10047 afii10048 afii10049 afii10051 afii10058 afii10059 afii10060 afii61289 ampersand eight.alt five.alt florin nine.alt sterling three.alt two.alt uni0181 uni0182 uni0185 uni0186 uni0187 uni018A uni018B uni018F uni0190 uni0191 uni0193 uni0194 uni0196 uni0198 uni019C uni019D uni019F uni01A2 uni01A4 uni01A7 uni01AE uni01B7 uni01B8 uni01BB uni01BC uni01E4 uni01EA uni01F6 uni01F7 uni021C uni0220 uni0222 uni0224 uni023C uni0241 uni0243 uni0244 uni0247 uni0248 uni024A uni024C uni0472 uni0474 uni048C uni048E uni0494 uni0498 uni04A6 uni04A8 uni04B6 uni04BA uni04BC uni04BE uni04C3 uni04C7 uni04CB uni04D8 uni04E8 uni20B4 zero.alt */
+  125: 67 = 123@55 /* Used by: Aogonek Aring Aringacute Ccedilla Eogonek Iogonek Scedilla Uogonek afii61352 ampersand copyright ogonek percent perthousand registered uni01EA uni0228 uni048A uni0498 */
+  126: 110 = 121@51 /* Used by: afii10025 afii10037 dieresis_acute.cap dieresis_breve.cap dieresis_grave.cap five.alt three.alt uni0190 uni01B7 uni01B8 uni01BC uni023C uni0247 uni04BC uni04BE uni20B4 */
+
+LowerCase
+ Black
+ X
+ StraightStroke
+  127: 93 = 1@19 Delta(-1@27) /* Used by: abdfghijklmnpqrtu afii10067 afii10068 afii10069 afii10072 afii10074 afii10076 afii10077 afii10079 afii10081 afii10084 afii10086 afii10088 afii10089 afii10090 afii10091 afii10092 afii10093 afii10094 afii10096 afii10097 afii10099 afii10106 afii10107 afii10108 afii10193 alpha beta caron.alt cent dcroat dollar dotlessi dotlessj eng eta exclamdown fi fl germandbls hbar integral iogonek iota kappa kgreenlandic longs lslash mu omega phi pi product psi rho tau tbar thorn uhorn uni0180 uni0183 uni0184 uni018C uni0195 uni0199 uni019A uni019E uni01A3 uni01A5 uni01A6 uni01AA uni01AB uni01AD uni01BE uni01BF uni01E5 uni0225 uni0235 uni0238 uni0239 uni0242 uni0246 uni0249 uni024B uni024D uni0462 uni0463 uni048D uni048F uni0493 uni0495 uni0497 uni049B uni049D uni049F uni04A1 uni04A3 uni04A5 uni04A7 uni04AD uni04AF uni04B1 uni04B3 uni04B5 uni04B7 uni04B9 uni04BF uni04C4 uni04C8 uni04CC uni04F7 uogonek upsilon */
+  128: 196 = 1@3 /* Used by: eogonek uni0221 uni0234 uni0235 uni0236 uni1FBE */
+  129: 68 = 1@200 /* Used by: dagger daggerdbl uni049D uni04B9 */
+ RoundStroke
+  130: 96 = 127@166 /* Used by: abcdegopqs ae afii10066 afii10067 afii10073 afii10077 afii10086 afii10092 afii10093 afii10094 afii10095 afii10096 afii10097 afii10106 afii10107 alpha aogonek apostrophe beta ccedilla cent dcroat delta dollar eogonek epsilon eth germandbls oe omega oslash partialdiff phi questiondown quoteleft quotesinglbase rho scedilla section sigma sigma1 theta thorn uhorn uni0180 uni0183 uni0184 uni0188 uni018C uni018D uni01A3 uni01A5 uni01A6 uni01A8 uni01B1 uni01B9 uni01BA uni01BD uni01BE uni01BF uni01DD uni01E5 uni01EB uni021D uni0221 uni0223 uni0229 uni0238 uni0239 uni023B uni023F uni0242 uni024B uni0292 uni0462 uni0463 uni048D uni048F uni0495 uni0499 uni04A7 uni04A9 uni04C4 uni04D9 uni04E1 uni04E9 xi zeta */
+  131: 76 = 129@201 /* Used by: afii10066 ccedilla questiondown scedilla section uni01AA uni01AB uni0221 uni0229 uni0234 uni0235 uni0236 uni023F uni0499 uni04A9 uni04BD uni04BF */
+  132: 176 = 128@25 /* Used by: aogonek eogonek iogonek omega uni01EB uogonek */
+ Black
+ Y
+ StraightStroke
+  133: 69 = 2@1 Delta(1@19..21) /* Used by: e Euro ae afii10067 afii10069 afii10073 afii10095 afii10096 afii10097 afii10099 afii10108 beta dcroat eogonek epsilon hbar oe tbar uni0180 uni019A uni01B6 uni01BD uni01DD uni01E5 uni0229 uni023A uni0249 uni024D uni024F uni0463 uni048D uni0493 uni0499 uni049D uni049F uni04B1 uni04BD uni04BF uni04D9 uni04E9 */
+  134: 222 = 2@3 /* Used by: afii10069 afii10088 afii10091 uni0246 uni0497 uni049B uni04A3 uni04AD uni04B3 uni04B5 uni04B7 uni04CC uni04F7 */
+  135: 84 = 2@19 Delta(-1@30..31;42..44;54..57) /* Used by: ftz afii10068 afii10069 afii10077 afii10079 afii10081 afii10084 afii10088 afii10090 afii10091 afii10092 afii10106 afii10107 afii10193 dagger daggerdbl fi fl integral pi product sigma summation tau tbar theta underscore uni0183 uni018C uni01A6 uni01AB uni01AD uni01B1 uni01B9 uni01BA uni01BE uni0225 uni0236 uni0240 uni0246 uni0292 uni0462 uni0493 uni0495 uni04A1 uni04A3 uni04A5 uni04A7 uni04AD uni04B5 uni04C8 uni04E1 uni04F7 xi zeta */
+ RoundStroke
+  136: 80 = 135@100  /* Used by: abcdefghjmnopqrstuy Euro ae afii10066 afii10067 afii10073 afii10089 afii10092 afii10093 afii10094 afii10095 afii10096 afii10097 afii10099 afii10106 afii10107 afii10108 alpha aogonek beta ccedilla dcroat delta dotlessj eng eogonek epsilon eta eth fi fl germandbls hbar iogonek lambda longs mu oe omega oslash partialdiff questiondown rho scedilla section sigma sigma1 tau tbar theta thorn uhorn uni0180 uni0183 uni0184 uni0188 uni018C uni018D uni0195 uni0199 uni019B uni019E uni01A3 uni01A5 uni01A6 uni01A8 uni01AA uni01AB uni01AD uni01B1 uni01B4 uni01B9 uni01BD uni01BE uni01BF uni01DD uni01E5 uni01EB uni021D uni0221 uni0223 uni0225 uni0229 uni0234 uni0235 uni0236 uni0238 uni0239 uni023B uni023F uni0240 uni0242 uni0249 uni024B uni024D uni024F uni0292 uni0462 uni0463 uni0473 uni0475 uni048D uni048F uni0495 uni0499 uni04A7 uni04A9 uni04B7 uni04BD uni04BF uni04C4 uni04C8 uni04CC uni04D9 uni04E1 uni04E9 uogonek upsilon xi */
+  137: 107 = 135@34 /* Used by: ceijst Euro ae afii10073 afii10095 cent eogonek epsilon exclamdown fi germandbls iogonek oe questiondown tbar uni0188 uni018D uni01A8 uni01AD uni01BD uni01BE uni023F uni0249 uni04BD uni04BF */
+  138: 61 = 133@62 /* Used by: ccedilla commaaccent scedilla uni01AA uni0221 uni0229 uni0234 uni0235 uni0236 uni023F uni0473 uni0499 uni1FBE */
+Figure
+ Black
+ X
+ StraightStroke
+  139: 92 = 1@19 /* Used by: four one rouble uni01B2 */
+ RoundStroke
+  140: 96 = 139@125 /* Used by: eight five nine rouble six six.alt three two uni01B2 zero */
+  141: 51 = 139@22 /* Used by: six six.alt */
+ Black
+ Y
+ StraightStroke
+  142: 76 = 2@2 Delta(1@19;31..32;45;56..59) /* Used by: five four rouble seven three two */
+ RoundStroke
+  143: 81 = 142@100 /* Used by: eight five nine rouble six six.alt three two uni01B2 zero */
+  144: 117 = 142@72 /* Used by: five three */
+Symbols
+ Black
+ X
+ StraightStroke
+  145: 89 = 1@25 /* Used by: afii10050 asterisk at bar braceleft braceright bracketleft bracketright brokenbar caron.alt.short exclam logicalnot ohorn plus plusminus quotesingle revcommaaccent uni01C2 uni048B uni04C6 uni04CA */
+  146: 50 = 1@26 /* Used by: .notdef */
+  147: 69 = 1@1 /* Used by: ordfeminine trademark */
+ RoundStroke
+  148: 72 = 147@166 /* Used by: currency degree dieresis_grave infinity ninesuperior ordfeminine ordmasculine question */
+  149: 93 = 145@125 /* Used by: at comma ohorn parenleft parenright question uni04C6 */
+  150: 181 = 145@26 /* Used by: uni04C6 */
+ Black
+ Y
+ StraightStroke
+  151: 79 = 2@50 /* Used by: afii00208 afii10050 bracketleft bracketright divide emdash endash equal hyphen logicalnot macron notequal plus plusminus uni01C2 uni04C6 uni04CA */
+  152: 62 = 2@71 /* Used by: .notdef dieresis_macron dot_macron tilde_macron trademark */
+  153: 133 = 2@7 /* Used by: acute.asc */
+ RoundStroke
+  154: 66 = 152@125 /* Used by: asciitilde at braceleft braceright breve_inverted currency degree infinity ninesuperior ohorn ordfeminine ordmasculine question tilde_macron uni048B uni1FC0 uni1FC1 */
+  155: 110 = 153@21 /* Used by: at dieresis_acute dieresis_grave dieresis_macron divide dot_macron radical uni1FC1 */
+  156: 134 = 153@200 /* Used by: ellipsis exclam period question */
+Accents
+ Black
+ X
+ StraightStroke
+  157: 178 = 1@4 /* Used by: double_grave hungarumlaut tonos uni1FCD uni1FCE uni1FDD uni1FDE */
+  158: 156 = 1@5 /* Used by: dieresistonos uni1FED */
+  159: 266 = 1@2 /* Used by: uni1FCF uni1FDF */
+ RoundStroke
+  160: 47 = 158@6 /* Used by: ring ring_acute */
+  161: 114 = 158@11 /* Used by: cedilla uni1FBF uni1FCD uni1FCE uni1FCF */
+  162: 82 = 158@6 /* Used by: cedilla */
+ Black
+ Y
+ StraightStroke
+  163: 196 = 2@3 /* Used by: acute circumflex grave uni1FEF uni1FFD */
+  164: 133 = 2@7 /* Used by: ring_acute */
+ RoundStroke
+  165: 110 = 164@21 /* Used by: dieresis dieresistonos dotaccent uni1FED */
+  166: 61 = 164@8 /* Used by: breve cedilla kratka uni1FCF uni1FDF */
+  167: 42 = 164@8 /* Used by: ring ring_acute */
+
+/*SideBearings*/
+  168:88  /*Cap Square*/
+  169:60 /*Cap Round*/
+  170:82 /*LC Square*/ Delta(-1@19;31)
+  171:53 /*LC Round*/ Delta(-1@29..31)
+
+  172:162 Delta(-1@10;19)/*Percent x counter*/
+  173:230 Delta(-1@8..12)/*Percent y counter*/
+  174:78 Delta(1@19)/*Percent x weight*/
+  175:80  /*Math Sign weight*/
+  176:195 Delta(-1@13;18..19) /* Plus Sign arm lengths*/
+
+  177:388 /*Suprior Figure Height*/
+  178:72 Delta(1@19..20) /*Superior Figure Vertical Weight*/
+  179:62 Delta(1@22..24) /*Superior Figure Horizontal Weight*/
+
+
+255:98 Delta(-1@16..24;26..36;37..40)
+
+Logotype
+ Grey
+ Y
+ SquareHeight
+  260: 520 Delta (1@20;22;24)
+  263: 769 Delta(1@11)
+   265: 0
+ RoundHeight
+  261: 13 ~ 260@144
+  262: -11 ~ 265@144
+  264: 7 ~  263@144
+
+Logotype
+ Black
+ X
+ StraightStroke
+  256: 93 = 1@19 Delta(-1@27) /* Used by: abdfghijklmnpqrtu afii10067 afii10068 afii10069 afii10072 afii10074 afii10076 afii10077 afii10079 afii10081 afii10084 afii10086 afii10088 afii10089 afii10090 afii10091 afii10092 afii10093 afii10094 afii10096 afii10097 afii10099 afii10106 afii10107 afii10108 afii10193 alpha beta caron.alt cent dcroat dollar dotlessi dotlessj eng eta exclamdown fi fl germandbls hbar integral iogonek iota kappa kgreenlandic longs lslash mu omega phi pi product psi rho tau tbar thorn uhorn uni0180 uni0183 uni0184 uni018C uni0195 uni0199 uni019A uni019E uni01A3 uni01A5 uni01A6 uni01AA uni01AB uni01AD uni01BE uni01BF uni01E5 uni0225 uni0235 uni0238 uni0239 uni0242 uni0246 uni0249 uni024B uni024D uni0462 uni0463 uni048D uni048F uni0493 uni0495 uni0497 uni049B uni049D uni049F uni04A1 uni04A3 uni04A5 uni04A7 uni04AD uni04AF uni04B1 uni04B3 uni04B5 uni04B7 uni04B9 uni04BF uni04C4 uni04C8 uni04CC uni04F7 uogonek upsilon */
+ RoundStroke
+   257: 96 = 256@166 /* Used by: abcdegopqs ae afii10066 afii10067 afii10073 afii10077 afii10086 afii10092 afii10093 afii10094 afii10095 afii10096 afii10097 afii10106 afii10107 alpha aogonek apostrophe beta ccedilla cent dcroat delta dollar eogonek epsilon eth germandbls oe omega oslash partialdiff phi questiondown quoteleft quotesinglbase rho scedilla section sigma sigma1 theta thorn uhorn uni0180 uni0183 uni0184 uni0188 uni018C uni018D uni01A3 uni01A5 uni01A6 uni01A8 uni01B1 uni01B9 uni01BA uni01BD uni01BE uni01BF uni01DD uni01E5 uni01EB uni021D uni0221 uni0223 uni0229 uni0238 uni0239 uni023B uni023F uni0242 uni024B uni0292 uni0462 uni0463 uni048D uni048F uni0495 uni0499 uni04A7 uni04A9 uni04C4 uni04D9 uni04E1 uni04E9 xi zeta */
+
+Y
+ StraightStroke
+  258: 84 = 2@19 Delta(-1@30..31;42..44;54..57)
+ RoundStroke
+  259:  80 = 258@100
+
+    </extraProgram>
+
+    <extraProgram name="fpgm">
+/* Function 0 takes 4 args */
+FDEF[], 0
+#BEGIN
+#PUSHOFF
+RCVT[]
+SWAP[]
+GC[N]
+ADD[]
+DUP[]
+#PUSH, 38
+ADD[]
+#PUSH, 4
+MINDEX[]
+SWAP[]
+SCFS[]
+SCFS[]
+#END
+ENDF[]
+#PUSHON
+/* Function 1 takes 4 args */
+FDEF[], 1
+#BEGIN
+#PUSHOFF
+RCVT[]
+SWAP[]
+GC[N]
+SWAP[]
+SUB[]
+DUP[]
+#PUSH, 38
+SUB[]
+#PUSH, 4
+MINDEX[]
+SWAP[]
+SCFS[]
+SCFS[]
+#END
+ENDF[]
+#PUSHON
+/* Function 2 takes 4 args */
+FDEF[], 2
+#BEGIN
+#PUSHOFF
+RCVT[]
+SWAP[]
+GC[N]
+ADD[]
+#PUSH, 32
+SUB[]
+DUP[]
+#PUSH, 70
+ADD[]
+#PUSH, 4
+MINDEX[]
+SWAP[]
+SCFS[]
+SCFS[]
+#END
+ENDF[]
+#PUSHON
+/* Function 3 takes 4 args */
+FDEF[], 3
+#BEGIN
+#PUSHOFF
+RCVT[]
+SWAP[]
+GC[N]
+SWAP[]
+SUB[]
+#PUSH, 32
+ADD[]
+DUP[]
+#PUSH, 38
+SUB[]
+#PUSH, 32
+SUB[]
+#PUSH, 4
+MINDEX[]
+SWAP[]
+SCFS[]
+SCFS[]
+#END
+ENDF[]
+#PUSHON
+/* Function 4 takes 4 args */
+FDEF[], 4
+#BEGIN
+#PUSHOFF
+RCVT[]
+SWAP[]
+GC[N]
+ADD[]
+#PUSH, 64
+SUB[]
+DUP[]
+#PUSH, 102
+ADD[]
+#PUSH, 4
+MINDEX[]
+SWAP[]
+SCFS[]
+SCFS[]
+#END
+ENDF[]
+#PUSHON
+/* Function 5 takes 4 args */
+FDEF[], 5
+#BEGIN
+#PUSHOFF
+RCVT[]
+SWAP[]
+GC[N]
+SWAP[]
+SUB[]
+#PUSH, 64
+ADD[]
+DUP[]
+#PUSH, 38
+SUB[]
+#PUSH, 64
+SUB[]
+#PUSH, 4
+MINDEX[]
+SWAP[]
+SCFS[]
+SCFS[]
+#END
+ENDF[]
+#PUSHON
+/* Function 6 takes 2 args */
+FDEF[], 6
+#BEGIN
+#PUSHOFF
+SVTCA[X]
+SRP0[]
+DUP[]
+ALIGNRP[]
+SVTCA[Y]
+ALIGNRP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 7 takes 2 arguments */
+FDEF[], 7
+#BEGIN
+#PUSHOFF
+DUP[]
+RCVT[]
+SWAP[]
+DUP[]
+#PUSH, 205
+WCVTP[]
+SWAP[]
+DUP[]
+#PUSH, 346
+LTEQ[]
+IF[]
+SWAP[]
+DUP[]
+#PUSH, 141
+WCVTP[]
+SWAP[]
+EIF[]
+DUP[]
+#PUSH, 237
+LTEQ[]
+IF[]
+SWAP[]
+DUP[]
+#PUSH, 77
+WCVTP[]
+SWAP[]
+EIF[]
+DUP[]
+#PUSH, 4
+MINDEX[]
+LTEQ[]
+IF[]
+SWAP[]
+DUP[]
+#PUSH, 13
+WCVTP[]
+SWAP[]
+EIF[]
+POP[]
+POP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 8 takes 1 argument */
+FDEF[], 8
+#BEGIN
+#PUSHOFF
+DUP[]
+DUP[]
+RCVT[]
+RTG[]
+ROUND[Gr]
+WCVTP[]
+DUP[]
+#PUSH, 1
+ADD[]
+DUP[]
+RCVT[]
+#PUSH, 70
+SROUND[]
+ROUND[Gr]
+ROLL[]
+RCVT[]
+ADD[]
+WCVTP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 9 takes 0 arguments */
+FDEF[], 9
+#BEGIN
+#PUSHOFF
+SVTCA[X]
+#PUSH, 11, 10
+RS[]
+SWAP[]
+RS[]
+NEG[]
+SPVFS[]
+#END
+#PUSHON
+ENDF[]
+/* Function 10 takes 0 arguments */
+FDEF[], 10
+#BEGIN
+#PUSHOFF
+SVTCA[Y]
+#PUSH, 10, 11
+RS[]
+SWAP[]
+RS[]
+SFVFS[]
+#END
+#PUSHON
+ENDF[]
+/* Function 11 takes 2 args */
+FDEF[], 11
+#BEGIN
+#PUSHOFF
+SVTCA[Y]
+#PUSH, 40
+SWAP[]
+WCVTF[]
+#PUSH, 1, 40
+MIAP[r]
+SVTCA[X]
+#PUSH, 40
+SWAP[]
+WCVTF[]
+#PUSH, 2, 40
+RCVT[]
+MSIRP[m]
+#PUSH, 2, 0
+SFVTL[r]
+GFV[]
+#END
+ENDF[]
+#PUSHON
+/* Function 13 */
+FDEF[], 13
+#BEGIN
+#PUSHOFF
+DUP[]
+RCVT[]
+#PUSH, 3
+CINDEX[]
+RCVT[]
+SUB[]
+ABS[]
+#PUSH, 80
+LTEQ[]
+IF[]
+RCVT[]
+WCVTP[]
+ELSE[]
+POP[]
+POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+/* Function 15 takes 1 arg */
+FDEF[], 15
+#BEGIN
+#PUSHOFF
+DUP[]
+RCVT[]
+#PUSH, 0
+RS[]
+ADD[]
+WCVTP[]
+#END
+ENDF[]
+#PUSHON
+/* Function 16 takes 0 arguments */
+FDEF[], 16
+#BEGIN
+#PUSHOFF
+SVTCA[X]
+#PUSH, 6
+RS[]
+#PUSH, 7
+RS[]
+NEG[]
+SPVFS[]
+#END
+#PUSHON
+ENDF[]
+/* Function 17 takes 1 arg */
+FDEF[], 17
+#BEGIN
+#PUSHOFF
+DUP[]
+ROUND[Bl]
+#PUSH, 64
+SUB[]
+#PUSH, 0
+MAX[]
+DUP[]
+#PUSH, 44, 192
+ROLL[]
+MIN[]
+#PUSH, 4096
+DIV[]
+ADD[]
+CALL[]
+GPV[]
+ABS[]
+SWAP[]
+ABS[]
+SUB[]
+NOT[]
+IF[]
+#PUSH, 3
+SUB[]
+EIF[]
+#END
+ENDF[]
+#PUSHON
+/* Function 20 takes 4 arguments */
+FDEF[], 20
+#BEGIN
+#PUSHOFF
+ROLL[]
+SPVTCA[X]
+RCVT[]
+ROLL[]
+ROLL[]
+SDPVTL[R]
+#PUSH, 17
+CALL[]
+#PUSH, 41
+SWAP[]
+WCVTP[]
+#PUSH, 41
+ROFF[]
+MIRP[m&lt;RGr]
+RTG[]
+#END
+#PUSHON
+ENDF[]
+/* Function 24 takes 2 args */
+FDEF[], 24
+#BEGIN
+#PUSHOFF
+RCVT[]
+NEG[]
+#PUSH, 44
+SWAP[]
+WCVTP[]
+RCVT[]
+#PUSH, 43
+SWAP[]
+WCVTP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 31 takes 3 arguments */
+FDEF[], 31
+#BEGIN
+#PUSHOFF
+MPPEM[]
+GT[]
+IF[]
+RCVT[]
+WCVTP[]
+ELSE[]
+POP[]
+POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+/* Function 34 takes 5 arguments*/
+FDEF[], 34
+#BEGIN
+#PUSHOFF
+SVTCA[X]
+#PUSH, 5
+CINDEX[]
+SRP0[]
+SWAP[]
+DUP[]
+ROLL[]
+MIRP[M&lt;RBl]
+SVTCA[Y]
+#PUSH, 1
+ADD[]
+SWAP[]
+MIRP[m&gt;RBl]
+MIRP[m&gt;RGr]
+#END
+#PUSHON
+ENDF[]
+/* Function 35 takes 5 arguments */
+FDEF[], 35
+#BEGIN
+#PUSHOFF
+SVTCA[X]
+#PUSH, 5
+CINDEX[]
+SRP0[]
+SWAP[]
+DUP[]
+ROLL[]
+MIRP[M&lt;RBl]
+SVTCA[Y]
+#PUSH, 1
+SUB[]
+SWAP[]
+MIRP[m&gt;RBl]
+MIRP[m&gt;RGr]
+#END
+#PUSHON
+ENDF[]
+/* Function 36 takes 6 arguments */
+FDEF[], 36
+#BEGIN
+#PUSHOFF
+SVTCA[X]
+#PUSH, 6
+CINDEX[]
+SRP0[]
+MIRP[M&lt;RBl]
+SVTCA[Y]
+MIRP[m&gt;RBl]
+MIRP[m&gt;RGr]
+#END
+#PUSHON
+ENDF[]
+/* Function 37 takes 1 args */
+FDEF[], 37
+#BEGIN
+#PUSHOFF
+DUP[]
+#PUSH, 1
+ADD[]
+SVTCA[X]
+SRP0[]
+DUP[]
+ALIGNRP[]
+SVTCA[Y]
+ALIGNRP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 38 takes 1 args */
+FDEF[], 38
+#BEGIN
+#PUSHOFF
+DUP[]
+#PUSH, 1
+SUB[]
+SVTCA[X]
+SRP0[]
+DUP[]
+ALIGNRP[]
+SVTCA[Y]
+ALIGNRP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 40 takes 0 arguments */
+FDEF[], 40
+#BEGIN
+#PUSHOFF
+SVTCA[Y]
+#PUSH, 7
+RS[]
+#PUSH, 6
+RS[]
+SFVFS[]
+#END
+#PUSHON
+ENDF[]
+/* Function 44 takes 2 arguments */
+FDEF[], 44
+#BEGIN
+#PUSHOFF
+POP[]
+POP[]
+GPV[]
+ABS[]
+SWAP[]
+ABS[]
+MAX[]
+#PUSH, 16384
+DIV[]
+#END
+#PUSHON
+ENDF[]
+/* Function 45 takes 2 arguments */
+FDEF[], 45
+#BEGIN
+#PUSHOFF
+POP[]
+#PUSH, 128
+LTEQ[]
+IF[]
+GPV[]
+ABS[]
+SWAP[]
+ABS[]
+MAX[]
+#PUSH, 8192
+DIV[]
+ELSE[]
+#PUSH, 0, 64, 47
+CALL[]
+EIF[]
+#PUSH, 2
+ADD[]
+#END
+#PUSHON
+ENDF[]
+/* Function 46 takes 2 arguments */
+FDEF[], 46
+#BEGIN
+#PUSHOFF
+POP[]
+#PUSH, 192
+LTEQ[]
+IF[]
+GPV[]
+ABS[]
+SWAP[]
+ABS[]
+MAX[]
+#PUSH, 5461
+DIV[]
+ELSE[]
+#PUSH, 0, 128, 47
+CALL[]
+EIF[]
+#PUSH, 2
+ADD[]
+#END
+#PUSHON
+ENDF[]
+/* Function 47 takes 2 arguments */
+FDEF[], 47
+#BEGIN
+#PUSHOFF
+GPV[]
+ABS[]
+SWAP[]
+ABS[]
+MAX[]
+#PUSH, 16384
+DIV[]
+ADD[]
+SWAP[]
+POP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 53:                */
+/*   IN SR_ARG, l1, r1, l2, r2 */
+/*   OUT sum/2, sum/2          */
+FDEF[], 53
+#BEGIN
+#PUSHOFF
+RCVT[]
+SWAP[]
+RCVT[]
+ADD[]
+SWAP[]
+RCVT[]
+ADD[]
+SWAP[]
+RCVT[]
+ADD[]
+SWAP[]
+SROUND[]
+ROUND[Gr]
+RTG[]
+#PUSH, 128
+DIV[]
+DUP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 54:                */
+/*   STACK: sum/2, sum/2       */
+/*   IN li, rj                 */
+/*   OUT - - - -               */
+FDEF[], 54
+#BEGIN
+#PUSHOFF
+#PUSH, 4
+MINDEX[]
+#PUSH, 4
+MINDEX[]
+#PUSH, 4
+CINDEX[]
+#PUSH, 4
+CINDEX[]
+RCVT[]
+SWAP[]
+RCVT[]
+DUP[]
+#PUSH, 3
+MINDEX[]
+ADD[]
+DIV[]
+MUL[]
+ROUND[Gr]
+DUP[]
+#PUSH, 3
+MINDEX[]
+SUB[]
+NEG[]
+ROLL[]
+SWAP[]
+WCVTP[]
+/* cvt[rj] = sum/2 - sum/2 * ratio */
+WCVTP[]
+/* cvt[li] = sum/2 * ratio         */
+#END
+#PUSHON
+ENDF[]
+/* Function 55:                */
+/*   IN l1, r2                 */
+/*   OUT - -                   */
+FDEF[], 55
+#BEGIN
+#PUSHOFF
+DUP[]
+RCVT[]
+#PUSH, 0
+EQ[]
+IF[]
+  #PUSH, 64
+  WCVTP[]
+  /* cvt[r2] = 1 */
+  DUP[]
+  RCVT[]
+  #PUSH, 64
+  SUB[]
+  WCVTP[]
+  /* cvt[l1] = cvt[l1] - 1 */
+ELSE[]
+  POP[]
+  POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+/* Function 56:                                            */
+/*   IN i = index, pi = parent-&gt;index,                     */
+/*   GLOBALS: Uses CVT[47] representative-&gt;distance, and   */
+/*            CVT[48] parent-&gt;distance (both unhinted)     */
+FDEF[], 56
+#BEGIN
+#PUSHOFF
+RCVT[]
+#PUSH, 48, 47
+RCVT[]
+SWAP[]
+RCVT[]
+SUB[]
+ADD[]
+#PUSH, 1
+ADD[]
+ROUND[Bl]
+WCVTP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 57:                                       */
+/*   IN ratio = reprDist/parentDist (F26.6)           */
+/*   IN rd = representative-&gt;distance, p = pt-&gt;ppem   */
+/*   GLOBALS: S[20] = ratio, cvt[47] = repr           */
+FDEF[], 57
+#BEGIN
+#PUSHOFF
+MPPEM[]
+LTEQ[]
+IF[]
+  #PUSH, 47
+  SWAP[]
+  WCVTF[]
+  #PUSH, 20
+  SWAP[]
+  WS[]
+ELSE[]
+  POP[]
+  POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+/* Function 58:                                        */
+/*   IN i = index, v = value, p = ppem                 */
+/*   cvt[i] = max (v, cvt[i])  for ppem &gt;= p           */
+FDEF[], 58
+#BEGIN
+#PUSHOFF
+MPPEM[]
+LTEQ[]
+IF[]
+  DUP[]
+  #PUSH, 3
+  CINDEX[]
+  RCVT[]
+  ROUND[Bl]
+  GTEQ[]
+  IF[]
+    WCVTP[]
+  ELSE[]
+    POP[]
+    POP[]
+  EIF[]
+ELSE[]
+  POP[]
+  POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+/* Function 59:                                            */
+/*   IN i = index, pi = parent-&gt;index,                     */
+/*   GLOBALS: Uses CVT[47] representative-&gt;distance, and   */
+/*            CVT[48] parent-&gt;distance (both unhinted)     */
+FDEF[], 59
+#BEGIN
+#PUSHOFF
+RCVT[]
+#PUSH, 20
+RS[]
+#PUSH, 0
+ADD[]
+MUL[]
+#PUSH, 1
+ADD[]
+ROUND[Bl]
+WCVTP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 60:                                            */
+/*   IN                                                    */
+/*   GLOBALS: Uses CVT[50] (min sidebearing sum)           */
+FDEF[], 60
+#BEGIN
+#PUSHOFF
+#PUSH, 47
+RCVT[]
+WCVTP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 61:                                    */
+/*   IN i = index, k = keyIndex                    */
+/*   cvt[i] = cvt[i] + cvt[keyIndex]               */
+FDEF[], 61
+#BEGIN
+#PUSHOFF
+RCVT[]
+SWAP[]
+DUP[]
+RCVT[]
+ROLL[]
+ADD[]
+WCVTP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 62:                                        */
+/*   IN i = index, ki = keyIndex, ci = ctrlIndex       */
+/*   cvt[i] = cvt[ki] + cvt[ci]                        */
+FDEF[], 62
+#BEGIN
+#PUSHOFF
+RCVT[]
+SWAP[]
+RCVT[]
+ADD[]
+WCVTP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 63:                                        */
+/*   IN ThresholdPpem                                  */
+/*   if (MPPEM &gt; ThresholdPpem) borrow .5 pixel        */
+FDEF[], 63
+#BEGIN
+#PUSHOFF
+MPPEM[]
+SWAP[]
+LTEQ[]
+IF[]
+  #PUSH, 51, -32, 52, 32
+ELSE[]
+  #PUSH, 51, 0, 52, 0
+EIF[]
+WCVTP[]
+WCVTP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 64 takes 5 arguments */
+FDEF[], 64
+#BEGIN
+#PUSHOFF
+#PUSH, 22
+RS[]
+IF[]
+  #PUSH,3
+  MINDEX[]
+  RCVT[]
+  ROLL[]
+  IF[]
+    ABS[]
+    FLOOR[]
+    #PUSH,31
+    ADD[]
+  ELSE[]
+    ABS[]
+    #PUSH,32
+    ADD[]
+    FLOOR[]
+    DUP[]
+    IF[]
+    ELSE[]
+      POP[]
+      #PUSH,64
+    EIF[]
+    #PUSH,1
+    SUB[]
+  EIF[]
+  SWAP[]
+  IF[]
+    NEG[]
+  EIF[]
+  #PUSH,41
+  SWAP[]
+  WCVTP[]
+  SWAP[]
+  SRP0[]
+  #PUSH,41
+  MIRP[m&lt;rGr]
+ELSE[]
+  POP[]
+  POP[]
+  POP[]
+  POP[]
+  POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+/* Function 65 takes 8 arguments */
+FDEF[], 65
+#BEGIN
+#PUSHOFF
+#PUSH, 22
+RS[]
+IF[]
+#PUSH,4
+CINDEX[]
+RCVT[]
+ABS[]
+#PUSH,32
+ADD[]
+FLOOR[]
+DUP[]
+IF[]
+ELSE[]
+POP[]
+#PUSH,64
+EIF[]
+#PUSH,1
+SUB[]
+SWAP[]
+IF[]
+NEG[]
+EIF[]
+#PUSH,41
+SWAP[]
+WCVTP[]
+#PUSH,4
+CINDEX[]
+#PUSH,7
+CINDEX[]
+SFVTL[r]
+DUP[]
+IF[]
+  SPVTCA[Y]
+ELSE[]
+  SPVTCA[X]
+EIF[]
+#PUSH,5
+CINDEX[]
+SRP0[]
+#PUSH,4
+CINDEX[]
+DUP[]
+GC[N]
+#PUSH,4
+CINDEX[]
+SWAP[]
+WS[]
+ALIGNRP[]
+#PUSH,7
+CINDEX[]
+SRP0[]
+#PUSH,6
+CINDEX[]
+DUP[]
+GC[N]
+#PUSH,4
+CINDEX[]
+#PUSH,1
+ADD[]
+SWAP[]
+WS[]
+ALIGNRP[]
+DUP[]
+IF[]
+  SVTCA[X]
+ELSE[]
+  SVTCA[Y]
+EIF[]
+#PUSH,5
+CINDEX[]
+SRP0[]
+#PUSH,4
+CINDEX[]
+#PUSH,41
+MIRP[m&lt;rGr]
+#PUSH,7
+CINDEX[]
+SRP0[]
+#PUSH,6
+CINDEX[]
+#PUSH,41
+MIRP[m&lt;rGr]
+#PUSH,4
+CINDEX[]
+#PUSH,7
+CINDEX[]
+SFVTL[r]
+DUP[]
+IF[]
+  SPVTCA[Y]
+ELSE[]
+  SPVTCA[X]
+EIF[]
+#PUSH,4
+CINDEX[]
+#PUSH,3
+CINDEX[]
+RS[]
+SCFS[]
+#PUSH,6
+CINDEX[]
+#PUSH,3
+CINDEX[]
+#PUSH,1
+ADD[]
+RS[]
+SCFS[]
+ELSE[]
+POP[]
+EIF[]
+POP[]
+POP[]
+POP[]
+POP[]
+POP[]
+POP[]
+POP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 66 takes 8 arguments */
+FDEF[], 66
+#BEGIN
+#PUSHOFF
+#PUSH, 22
+RS[]
+IF[]
+#PUSH,4
+CINDEX[]
+RCVT[]
+ABS[]
+#PUSH,32
+ADD[]
+FLOOR[]
+DUP[]
+IF[]
+ELSE[]
+POP[]
+#PUSH,64
+EIF[]
+#PUSH,1
+SUB[]
+SWAP[]
+IF[]
+ELSE[]
+NEG[]
+EIF[]
+#PUSH,41
+SWAP[]
+WCVTP[]
+#PUSH,5
+CINDEX[]
+#PUSH,8
+CINDEX[]
+SFVTL[r]
+DUP[]
+IF[]
+  SPVTCA[Y]
+ELSE[]
+  SPVTCA[X]
+EIF[]
+#PUSH,4
+CINDEX[]
+SRP0[]
+#PUSH,5
+CINDEX[]
+DUP[]
+GC[N]
+#PUSH,4
+CINDEX[]
+SWAP[]
+WS[]
+ALIGNRP[]
+#PUSH,4
+CINDEX[]
+#PUSH,7
+CINDEX[]
+SFVTL[r]
+#PUSH,7
+CINDEX[]
+SRP0[]
+#PUSH,6
+CINDEX[]
+DUP[]
+GC[N]
+#PUSH,4
+CINDEX[]
+#PUSH,1
+ADD[]
+SWAP[]
+WS[]
+ALIGNRP[]
+DUP[]
+IF[]
+  SVTCA[X]
+ELSE[]
+  SVTCA[Y]
+EIF[]
+#PUSH,4
+CINDEX[]
+SRP0[]
+#PUSH,5
+CINDEX[]
+#PUSH,41
+MIRP[m&lt;rGr]
+#PUSH,41
+DUP[]
+RCVT[]
+NEG[]
+WCVTP[]
+#PUSH,7
+CINDEX[]
+SRP0[]
+#PUSH,6
+CINDEX[]
+#PUSH,41
+MIRP[m&lt;rGr]
+#PUSH,5
+CINDEX[]
+#PUSH,8
+CINDEX[]
+SFVTL[r]
+DUP[]
+IF[]
+  SPVTCA[Y]
+ELSE[]
+  SPVTCA[X]
+EIF[]
+#PUSH,5
+CINDEX[]
+#PUSH,3
+CINDEX[]
+RS[]
+SCFS[]
+#PUSH,4
+CINDEX[]
+#PUSH,7
+CINDEX[]
+SFVTL[r]
+#PUSH,6
+CINDEX[]
+#PUSH,3
+CINDEX[]
+#PUSH,1
+ADD[]
+RS[]
+SCFS[]
+ELSE[]
+POP[]
+EIF[]
+POP[]
+POP[]
+POP[]
+POP[]
+POP[]
+POP[]
+POP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 67 takes 4 arguments */
+FDEF[], 67
+#BEGIN
+#PUSHOFF
+SPVTCA[Y]
+#PUSH,4
+CINDEX[]
+DUP[]
+DUP[]
+GC[N]
+#PUSH,4
+CINDEX[]
+SWAP[]
+WS[]
+#PUSH,5
+CINDEX[]
+SFVTL[r]
+#PUSH,3
+CINDEX[]
+RCVT[]
+SCFS[]
+POP[]
+POP[]
+POP[]
+POP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 68 takes 3 arguments */
+FDEF[], 68
+#BEGIN
+#PUSHOFF
+SPVTCA[Y]
+#PUSH,3
+CINDEX[]
+DUP[]
+#PUSH,4
+CINDEX[]
+SFVTL[r]
+#PUSH,2
+CINDEX[]
+RS[]
+SCFS[]
+POP[]
+POP[]
+POP[]
+#END
+#PUSHON
+ENDF[]
+/* Function 69 takes 2 arguments */
+FDEF[], 69
+#BEGIN
+#PUSHOFF
+RCVT[]
+SWAP[]
+DUP[]
+RCVT[]
+RTG[]
+DUP[]
+#PUSH,0
+LT[]
+DUP[]
+IF[]
+  SWAP[]
+  NEG[]
+  SWAP[]
+EIF[]
+SWAP[]
+ROUND[Gr]
+DUP[]
+#PUSH,64
+LT[]
+IF[]
+  POP[]
+  #PUSH,64
+EIF[]
+SWAP[]
+IF[]
+  NEG[]
+EIF[]
+ROLL[]
+ADD[]
+WCVTP[]
+#END
+#PUSHON
+ENDF[]
+
+/***** functions to implement ranges of deltas and deltas with odd amounts
+*****/
+
+/* Function 70 takes 5 arguments */
+/* This function changes a CVT within a range of PPEM sizes */
+/* CALL[],&lt;amount&gt;,&lt;CVT&gt;,&lt;low PPEM&gt;,&lt;high PPEM&gt;,70 */
+
+/* &lt;high PPEM&gt; Highest PPEM in range to be modified (inclusive */
+/* &lt;low PPEM&gt;  Lowest PPEM in range to be modified (inclusive) */
+/* &lt;CVT&gt;       CVT to be modified */
+/* &lt;amount&gt;    Amount to change CVT, in +/- 64ths */
+
+FDEF[],70
+#BEGIN
+#PUSHOFF
+MPPEM[]
+GTEQ[]
+SWAP[]
+MPPEM[]
+LTEQ[]
+AND[]
+IF[]
+DUP[]
+RCVT[]
+ROLL[]
+ADD[]
+WCVTP[]
+ELSE[]
+POP[]
+POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+
+/* Function 71 takes 4 arguments */
+/* This function changes a CVT at a specific PPEM */
+/* CALL[],&lt;amount&gt;,&lt;CVT&gt;,&lt;ppem size&gt;,71 */
+
+/* &lt;ppem size&gt; PPEM to be modified */
+/* &lt;CVT&gt;       CVT to be modified */
+/* &lt;amount&gt;    Amount to change CVT, in +/- 64ths */
+
+FDEF[],71
+#BEGIN
+#PUSHOFF
+MPPEM[]
+EQ[]
+IF[]
+DUP[]
+RCVT[]
+ROLL[]
+ADD[]
+WCVTP[]
+ELSE[]
+POP[]
+POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+
+/* Function 72 takes 5 arguments */
+/* This function moves a point within a range of PPEM sizes */
+/* CALL[],&lt;point&gt;,&lt;amount&gt;,&lt;low PPEM&gt;,&lt;high PPEM&gt;,72 */
+
+/* &lt;high ppem&gt; Highest PPEM in range to be modified (inclusive */
+/* &lt;low ppem&gt;  Lowest PPEM in range to be modified (inclusive) */
+/* &lt;amount&gt;    Amount to move point, in +/- 64ths */
+/* &lt;Point&gt;     point to be modified */
+
+FDEF[],72
+#BEGIN
+#PUSHOFF
+MPPEM[]
+GTEQ[]
+SWAP[]
+MPPEM[]
+LTEQ[]
+AND[]
+IF[]
+SHPIX[]
+ELSE[]
+POP[]
+POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+
+/* Function 73 takes 4 arguments */
+/* This function moves a point at a specific PPEM */
+/* CALL[],&lt;point&gt;,&lt;amount&gt;,&lt;ppem size&gt;,73 */
+
+/* &lt;ppem size&gt; PPEM to be modified */
+/* &lt;amount&gt; Amount to move point, in +/- 64ths */
+/* &lt;point&gt; point to be moved */
+
+FDEF[],73
+#BEGIN
+#PUSHOFF
+MPPEM[]
+EQ[]
+IF[]
+SHPIX[]
+ELSE[]
+POP[]
+POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+
+/***** The following 4 functions essentially repeat the above 4
+	however, they accept an extra flag to indicate whether the
+	delta applies to grey scaling (1) or black-and-white (0) only. *****/
+
+/* CALL[],&lt;amount&gt;,&lt;CVT&gt;,&lt;low PPEM&gt;,&lt;high PPEM&gt;,&lt;flag&gt;,74 */
+FDEF[],74
+#BEGIN
+#PUSHOFF
+#PUSH, 2
+RS[]
+EQ[]
+IF[]         /* if storage #2 and flag match */
+#PUSH, 70
+CALL[]       /* forward to "standard" function */
+ELSE[]
+POP[]        /* else cleanup stack and bail out */
+POP[]
+POP[]
+POP[]
+EIF[]
+#PUSHON
+#END
+ENDF[]
+
+/* CALL[],&lt;amount&gt;,&lt;CVT&gt;,&lt;ppem size&gt;,&lt;flag&gt;,75 */
+FDEF[],75
+#BEGIN
+#PUSHOFF
+#PUSH, 2
+RS[]
+EQ[]
+IF[]         /* if storage #2 and flag match */
+#PUSH, 71
+CALL[]       /* forward to "standard" function */
+ELSE[]
+POP[]        /* else cleanup stack and bail out */
+POP[]
+POP[]
+EIF[]
+#PUSHON
+#END
+ENDF[]
+
+/* CALL[],&lt;point&gt;,&lt;amount&gt;,&lt;low PPEM&gt;,&lt;high PPEM&gt;,&lt;flag&gt;,76 */
+FDEF[],76
+#BEGIN
+#PUSHOFF
+#PUSH, 2
+RS[]
+EQ[]
+IF[]         /* if storage #2 and flag match */
+#PUSH, 72
+CALL[]       /* forward to "standard" function */
+ELSE[]
+POP[]        /* else cleanup stack and bail out */
+POP[]
+POP[]
+POP[]
+EIF[]
+#PUSHON
+#END
+ENDF[]
+
+/* CALL[],&lt;point&gt;,&lt;amount&gt;,&lt;ppem size&gt;,&lt;flag&gt;,77 */
+FDEF[],77
+#BEGIN
+#PUSHOFF
+#PUSH, 2
+RS[]
+EQ[]
+IF[]         /* if storage #2 and flag match */
+#PUSH, 73
+CALL[]       /* forward to "standard" function */
+ELSE[]
+POP[]        /* else cleanup stack and bail out */
+POP[]
+POP[]
+EIF[]
+#PUSHON
+#END
+ENDF[]
+
+/************* New glyph hinting functions  ***************/
+/* Function 78 takes 5 arguments */
+/* Moves a point along the angle of two pts. VincentC 5-15-95 */
+/* The point being moved should also be one of the pts for the anlge &lt;pt2&gt; */
+/* CALL[], &lt;amount&gt;, &lt;low cutoff&gt;, &lt;high cutoff&gt;, &lt;pt1&gt;, &lt;pt2&gt;, &lt;fn&gt; */
+/* &lt;amount&gt; in 64ths */
+/* &lt;low cutoff&gt; ppem size to cutoff the function (inclusive) */
+/* &lt;high cutoff&gt; ppem size to cutoff the function (inclusive) */
+/* &lt;fn&gt; function number, here should be 1 */
+FDEF[],78
+#BEGIN
+#PUSHOFF
+DUP[]
+ROLL[]
+SFVTL[r]
+SWAP[]
+MPPEM[]
+GTEQ[]
+ROLL[]
+MPPEM[]
+LTEQ[]
+AND[]
+IF[]
+SWAP[]
+SHPIX[]
+ELSE[]
+POP[]
+POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+/* Function 79 takes 3 arguments , used for Y positioning of accents */
+/*   Example:    CALL[], 1, 10, 14,  79   call,outline#,a1,b1,funct#  */
+FDEF[], 79
+#BEGIN
+SVTCA[Y]
+#PUSHOFF
+DUP[]
+ROLL[]
+MD[N]
+#PUSH, 0
+LTEQ[]
+IF[]
+#PUSH, 64
+SWAP[]
+DUP[]
+ROLL[]
+SHPIX[]
+SRP2[]
+SHC[2]
+ELSE[]
+POP[]
+POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+
+/* fn 80 centers accents on base glyph in x direction
+   CALL[], &lt;offset&gt;, &lt;left point on accent&gt;, &lt;right point on accent&gt;,
+           &lt;left point on base glyph&gt;, &lt;right point on base glyph&gt;, 80
+   - offset denotes accent's offset in fUnits (e.g. for grave, acute)
+   - offset may be 0 (e.g. perfectly centered circumflex)
+   - left and right point may be the same (e.g. center of circumflex)
+   fn call must be followed by
+   SHC[2], &lt;contour number&gt;
+   for each contour that is part of the accent */
+
+FDEF[], 80
+#BEGIN
+#PUSHOFF
+SVTCA[X]
+GC[N]        /* rightBase.x */
+SWAP[]
+GC[N]        /* leftBase.x */
+ADD[]        /* rightBase.x + leftBase.x */
+SWAP[]
+GC[N]        /* rightAccent.x */
+SUB[]        /* rightBase.x + leftBase.x - rightAccent.x */
+SWAP[]
+DUP[]        /* save leftAccent for MSIRP below */
+SRP0[]
+DUP[]
+GC[N]        /* leftAccent.x */
+ROLL[]
+SUB[]        /* rightBase.x + leftBase.x - (rightAccent.x + leftAccent .x) */
+#PUSH, -128
+DIV[]        /* (leftAccent .x + rightAccent.x)/2 - (leftBase.x + rightBase.x)/2
+*/
+ROLL[]       /* fetch offset */
+#PUSH, 64, 64
+ROLL[]       /* fetch offset again... */
+WCVTF[]      /* scale... */
+RCVT[]       /* fetch scaled offset */
+ADD[]
+ROUND[Gr]    /* add and round */
+MSIRP[m]
+#PUSHON
+#END
+ENDF[]
+
+/* Function 81 TAKES 3 ARGUMENTS, aligns a point until a specific distance is
+reached.
+	Used for flares. First link p1 to p2, then call the function. VC Dec
+11,1995*/
+/* CALL[], amt, p1, p2, 81 ... amt is in 64ths, p1 is start pt, p2 is point
+moved, 81 is function# */
+FDEF[], 81
+#BEGIN
+#PUSHOFF
+DUP[]
+ROLL[]
+SWAP[]
+MD[N]
+ABS[]
+ROLL[]
+SWAP[]
+GTEQ[]
+IF[]
+ALIGNRP[]
+ELSE[]
+POP[]
+EIF[]
+#END
+#PUSHON
+ENDF[]
+
+/* Function 82 takes 1 argument (ppemLimit), used in Diagonal, DAlign, and
+Intersect
+   if current ppem size &lt; ppemLimit then RDTG[] else ROFF[] end. B.St. 23-Jun-98
+*/
+
+FDEF[],82
+#BEGIN
+#PUSHOFF
+  MPPEM[]
+  GT[]
+  IF[]
+  #BEGIN
+    RDTG[]
+  #END
+  ELSE[]
+  #BEGIN
+    ROFF[]
+  #END
+  EIF[]
+#PUSHON
+#END
+ENDF[]
+
+
+/***** functions for control program *****/
+
+/* fn 83 determines whether or not the aspect
+   ratio of the resolutions in x and y is the
+   same, recording the result in s[18] */
+
+FDEF[],83
+#BEGIN
+#PUSHOFF
+#PUSH, 18
+SVTCA[Y]
+MPPEM[]
+SVTCA[X]
+MPPEM[]
+EQ[]
+WS[] /* s[18] = square (1:1) aspect ratio */
+#PUSHON
+#END
+ENDF[]
+
+/* fn 84 determines whether or not we are cur-
+   rently rasterizing with grey scales, recor-
+   ding the result in s[2], used in functions
+   74 through 77 */
+
+FDEF[],84
+#BEGIN
+#PUSHOFF
+#PUSH,2,0
+WS[]            /* s[2] = grey scaling: off (by default) */
+#PUSH,35,1      /* 35 = MS Rasterizer version 1.7 */
+GETINFO[]       /* 1 = tell GETINFO to give us the rasterizer version */
+LTEQ[]          /* 35 &lt;= version ? */
+#PUSH,64,1      /* 64 = highest rasterizer version assigned to MS */
+GETINFO[]       /* 1 = tell GETINFO to give us the rasterizer version */
+GTEQ[]          /* 64 &gt;= version ? */
+AND[]           /* 35 &lt;= version &amp;&amp; version &lt;= 64 ? */
+IF[]            /* if so, we're running MS rasterizer version 1.7 or higher */
+  #PUSH,4096,32 /* 4096 = flag returned by GETINFO if grey scaling bit is on */
+  GETINFO[]     /* 32 = tell GETINFO to give us the grey scaling bit */
+  EQ[]          /* 4096 == flag ? */
+  IF[]          /* if so, we're running under grey scaling */
+    #PUSH,2,1
+    WS[]        /* s[2] = grey scaling: on (by now) */
+  EIF[]
+EIF[]
+#PUSHON
+#END
+ENDF[]
+
+/* fn 85 equalizes double specified heights
+   below a given ppem size
+   CALL[], &lt;rel height cvt&gt;, &lt;ppem size&gt;, &lt;abs height cvt&gt;, 85 */
+
+FDEF[], 85
+#BEGIN
+#PUSHOFF
+RCVT[] /* pick absolute (square) height */
+RTG[]
+ROUND[Gr]
+SWAP[]
+MPPEM[]
+LTEQ[] /* specified ppem size &lt;= actual ppem size ? */
+IF[]
+  SWAP[]
+  DUP[]
+  RCVT[] /* pick relative height (overshoot) */
+  DUP[]
+  ABS[]
+  #PUSH,64
+  LT[] /* Abs(overshoot) &lt; 1 pixel ? */
+  IF[]
+    RUTG[] /* force overshoot */
+  EIF[]
+  ROUND[Gr]
+  ROLL[]
+  ADD[] /* add overshoot to square height */
+EIF[]
+WCVTP[] /* make this the round height */
+#END
+#PUSHON
+ENDF[]
+
+/* fn 86, 87 reserved for "inheritence by pixel size" */
+
+/* fn 88 sets up 4 storage locations with the
+   x and y components of the italic and adjusted
+   italic angle as follows:
+
+     s[10] = italic angle y
+     s[11] = italic angle x
+     s[ 6] = adjusted italic angle y
+     s[ 7] = adjusted italic angle x
+
+   CALL[], &lt;italic rise cvt&gt;, &lt;italic run cvt&gt;, 88 */
+
+FDEF[], 88
+#BEGIN
+#PUSHOFF
+
+#PUSH, 0 /* Use twilight points to calculate stroke angles */
+SZPS[]
+
+#PUSH, 2 /* Dup the two parameters, we need them twice */
+CINDEX[]
+#PUSH, 2
+CINDEX[]
+
+SVTCA[X] /* Set twilight point 1 with italic run cvt in x */
+#PUSH, 1
+SWAP[]
+MIAP[r]
+
+SVTCA[Y] /* Set twilight point 2 with italic rise cvt in y */
+#PUSH, 2
+SWAP[]
+MIAP[r]
+
+#PUSH, 1, 2 /* and let the rasterizer do the math */
+SPVTL[r]
+GPV[]
+
+#PUSH, 10 /* store the x and y components of the italic angle */
+SWAP[]
+NEG[]     /* notice that since we're essentially setting the pv to a line  */
+WS[]      /* from (runCvt,0) to (0,riseCvt), the calculcated pv will be    */
+#PUSH, 11 /* proportional to (runCvt,0) - (0,riseCvt) = (runCvt,-riseCvt). */
+SWAP[]    /* Hence we have to mirror the result at the base line, which is */
+WS[]      /* done by flipping (negating) the sign of the y component here. */
+
+SVTCA[X] /* same for the adjusted italic angle */
+#PUSH, 1
+SWAP[]
+MIAP[R]  /* except to round the twilight point in x... */
+
+SVTCA[Y]
+#PUSH, 2
+SWAP[]
+MIAP[R]  /* ...and in y */
+
+#PUSH, 1, 2
+SPVTL[r]
+GPV[]
+
+#PUSH, 6
+SWAP[]
+NEG[]    /* same neg as above */
+WS[]
+#PUSH, 7
+SWAP[]
+WS[]
+
+#PUSH, 1 /* restore graphics state */
+SZPS[]
+SVTCA[X]
+#PUSHON
+#END
+ENDF[]
+
+    </extraProgram>
+
+    <extraProgram name="ppgm">
+/* auto-generated pre-program */
+/* VTT 6.20 compiler */
+/* Grey scaling? */
+CALL[], 84
+
+/* InstructionsOn */
+#PUSHOFF
+MPPEM[]
+#PUSH, 999
+GT[]
+MPPEM[]
+#PUSH, 8
+LT[]
+OR[]
+#PUSH, 1
+GETINFO[]
+#PUSH, 37
+GTEQ[]
+#PUSH, 1
+GETINFO[]
+#PUSH, 64
+LTEQ[]
+AND[]
+#PUSH, 6
+GETINFO[]
+#PUSH, 0
+NEQ[]
+AND[]
+OR[]
+IF[]
+    #PUSH, 1, 1
+    INSTCTRL[]
+EIF[]
+#PUSHON
+
+/* DropOutCtrlOff */
+SCANCTRL[], 400
+
+SCANTYPE[], 1
+SCANTYPE[], 5
+
+/* CvtCutIn */
+SVTCA[Y]
+SCVTCI[], 256
+WS[], 3, 256
+#PUSHOFF
+MPPEM[]
+#PUSH, 29
+GTEQ[]
+IF[]
+#PUSH, 3, 160, 160
+SCVTCI[]
+WS[]
+EIF[]
+MPPEM[]
+#PUSH, 72
+GTEQ[]
+IF[]
+#PUSH, 3, 64, 64
+SCVTCI[]
+WS[]
+EIF[]
+MPPEM[]
+#PUSH, 128
+GTEQ[]
+IF[]
+#PUSH, 3, 0, 0
+SCVTCI[]
+WS[]
+EIF[]
+#PUSHON
+
+DLTC1[(65 @6 8)]
+CALL[], 69, 91, 65, 85
+CALL[], 70, 91, 66, 85
+CALL[], 71, 91, 67, 85
+DLTC1[(73 @11 8)(73 @13 8)(73 @15 8)]
+DLTC1[(78 @2 8)]
+CALL[], 79, 144, 78, 85
+CALL[], 80, 144, 73, 85
+CALL[], 81, 144, 74, 85
+CALL[], 82, 144, 75, 85
+CALL[], 83, 144, 77, 85
+CALL[], 87, 67, 85, 85
+CALL[], 88, 67, 86, 85
+CALL[], 98, 91, 89, 85
+CALL[], 99, 91, 92, 85
+CALL[], 100, 91, 90, 85
+CALL[], 102, 91, 93, 85
+CALL[], 103, 91, 95, 85
+CALL[], 104, 91, 91, 85
+CALL[], 113, 126, 112, 85
+CALL[], 114, 126, 111, 85
+SVTCA[X]
+CALL[], 115, 1, 19, 31
+DLTC2[(115 @1 -8)(115 @2 -8)(115 @12 -8)]
+DLTC3[(115 @6 -8)(115 @7 -8)]
+CALL[], 116, 1, 5, 31
+CALL[], 117, 1, 125, 31
+CALL[], 118, 115, 100, 31
+CALL[], 119, 117, 126, 31
+CALL[], 120, 116, 25, 31
+SVTCA[Y]
+CALL[], 121, 2, 18, 31
+DLTC2[(121 @5 8)(121 @6 8)]
+CALL[], 122, 2, 2, 31
+CALL[], 123, 2, 45, 31
+CALL[], 124, 121, 100, 31
+CALL[], 125, 123, 55, 31
+CALL[], 126, 121, 51, 31
+SVTCA[X]
+CALL[], 127, 1, 19, 31
+DLTC2[(127 @2 -8)]
+CALL[], 128, 1, 3, 31
+CALL[], 129, 1, 200, 31
+CALL[], 130, 127, 166, 31
+CALL[], 131, 129, 201, 31
+CALL[], 132, 128, 25, 31
+SVTCA[Y]
+CALL[], 133, 2, 1, 31
+DLTC1[(133 @10 8)(133 @11 8)(133 @12 8)]
+CALL[], 134, 2, 3, 31
+CALL[], 135, 2, 19, 31
+CALL[], -64, 135, 54, 57, 70
+DLTC2[(135 @5 -8)(135 @6 -8)]
+DLTC3[(135 @1 -8)(135 @2 -8)(135 @3 -8)]
+CALL[], 136, 135, 100, 31
+CALL[], 137, 135, 34, 31
+CALL[], 138, 133, 62, 31
+SVTCA[X]
+CALL[], 139, 1, 19, 31
+CALL[], 140, 139, 125, 31
+CALL[], 141, 139, 22, 31
+SVTCA[Y]
+CALL[], 142, 2, 2, 31
+CALL[], 64, 142, 56, 59, 70
+DLTC1[(142 @10 8)]
+DLTC2[(142 @6 8)(142 @7 8)]
+DLTC3[(142 @4 8)]
+CALL[], 143, 142, 100, 31
+CALL[], 144, 142, 72, 31
+SVTCA[X]
+CALL[], 145, 1, 25, 31
+CALL[], 146, 1, 26, 31
+CALL[], 147, 1, 1, 31
+CALL[], 148, 147, 166, 31
+CALL[], 149, 145, 125, 31
+CALL[], 150, 145, 26, 31
+SVTCA[Y]
+CALL[], 151, 2, 50, 31
+CALL[], 152, 2, 71, 31
+CALL[], 153, 2, 7, 31
+CALL[], 154, 152, 125, 31
+CALL[], 155, 153, 21, 31
+CALL[], 156, 153, 200, 31
+SVTCA[X]
+CALL[], 157, 1, 4, 31
+CALL[], 158, 1, 5, 31
+CALL[], 159, 1, 2, 31
+CALL[], 160, 158, 6, 31
+CALL[], 161, 158, 11, 31
+CALL[], 162, 158, 6, 31
+SVTCA[Y]
+CALL[], 163, 2, 3, 31
+CALL[], 164, 2, 7, 31
+CALL[], 165, 164, 21, 31
+CALL[], 166, 164, 8, 31
+CALL[], 167, 164, 8, 31
+DLTC1[(170 @10 -8)]
+DLTC2[(170 @6 -8)]
+DLTC2[(171 @4 -8)(171 @5 -8)(171 @6 -8)]
+DLTC1[(172 @1 -8)(172 @10 -8)]
+CALL[], -64, 173, 8, 12, 70
+DLTC1[(174 @10 8)]
+DLTC1[(176 @4 -8)(176 @9 -8)(176 @10 -8)]
+DLTC1[(178 @10 8)(178 @11 8)]
+DLTC1[(179 @13 8)(179 @14 8)(179 @15 8)]
+CALL[], -64, 255, 16, 24, 70
+CALL[], -64, 255, 26, 40, 70
+DLTC1[(260 @11 8)(260 @13 8)(260 @15 8)]
+DLTC1[(263 @2 8)]
+CALL[], 261, 144, 260, 85
+CALL[], 262, 144, 265, 85
+CALL[], 264, 144, 263, 85
+SVTCA[X]
+CALL[], 256, 1, 19, 31
+DLTC2[(256 @2 -8)]
+CALL[], 257, 256, 166, 31
+SVTCA[Y]
+CALL[], 258, 2, 19, 31
+CALL[], -64, 258, 54, 57, 70
+DLTC2[(258 @5 -8)(258 @6 -8)]
+DLTC3[(258 @1 -8)(258 @2 -8)(258 @3 -8)]
+CALL[], 259, 258, 100, 31
+RTG[]
+
+    </extraProgram>
+
+  </TSI1>
+
+</ttFont>
