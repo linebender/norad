@@ -10,5 +10,5 @@ crate-type = ["cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-norad = { version = "0.3.1", path = "..", features = ["rayon"] }
+norad = { version = "0.3.1", path = "/Users/rofls/dev/projects/fontville/norad", features = ["rayon"] }
 pyo3 = { version = "0.13", features = ["extension-module"] }
