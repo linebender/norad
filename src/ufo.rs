@@ -307,9 +307,9 @@ impl Font {
             return Err(Error::DowngradeUnsupported);
         }
 
-        if self.meta.creator.as_str() != DEFAULT_METAINFO_CREATOR {
-            return Err(Error::NotCreatedHere);
-        }
+        //if self.meta.creator.as_str() != DEFAULT_METAINFO_CREATOR {
+        //return Err(Error::NotCreatedHere);
+        //}
 
         if self.lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
             return Err(Error::PreexistingPublicObjectLibsKey);
@@ -357,7 +357,7 @@ impl Font {
         }
 
         let contents: Vec<(&str, &PathBuf)> =
-            self.layers.iter().map(|l| (&*l.name, &l.path)).collect();
+            self.layers.iter().map(|l| (l.name.as_ref(), &l.path)).collect();
         plist::to_file_xml(path.join(LAYER_CONTENTS_FILE), &contents)?;
 
         for layer in self.layers.iter() {

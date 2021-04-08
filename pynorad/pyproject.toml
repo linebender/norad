@@ -4,3 +4,8 @@ build-backend = "maturin"
 
 [tool.maturin]
 bindings = "pyo3"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+#The test files we're currently interested in running
+python_files = ["test_ufo.py", "test_font.py"]

@@ -1,5 +1,5 @@
-from ufoLib2.objects import Font, Glyph, Guideline
-
+# from ufoLib2.objects import Font, Glyph, Guideline
+from pynorad import Font, Glyph, Guideline
 
 def test_font_equality(datadir):
     font1 = Font.open(datadir / "UbuTestData.ufo")
