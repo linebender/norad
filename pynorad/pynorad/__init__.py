@@ -26,6 +26,9 @@ class Font(object):
             return NotImplemented
         return self._font.py_eq(other._font)
 
+    def __len__(self):
+        return self._font.default_layer().len()
+
     def __deepcopy__(self, memo):
         result = Font(None)
         # result._path = self._path
@@ -35,17 +38,20 @@ class Font(object):
     def __getitem__(self, name):
         return self._font.default_layer().glyph(name)
 
+    def __iter__(self):
+        return self._font.default_layer().iter_glyphs()
+
 
     @classmethod
     def open(cls, path, lazy=True, validate=True):
         if not validate:
             print("Pynorad always validates input")
-        return Font(path)
+        return cls(path)
 
     @classmethod
     def read(cls, reader, **kwargs):
         """API compat with ufoLib2"""
-        return Font(reader._path)
+        return cls.open(reader._path)
 
 
     def save(self, path):
@@ -87,6 +93,9 @@ class LayerSet:
             return NotImplemented
         return self._font.layer_eq(other._font)
 
+    def __getitem__(self, name):
+        Layer(self._font.get_layer(name))
+
     def newLayer(self, name, **kwargs):
         return Layer(self._font.new_layer(name))
 
@@ -112,6 +121,16 @@ class Layer:
             return NotImplemented
         return self._layer.py_eq(other._layer)
 
+    def __len__(self):
+        return self._layer.len()
+
+    def __iter__(self):
+        return self._layer.iter_glyphs()
+
+    def __getitem__(self, name):
+        return self._layer.glyph(name)
+
+
 
 class Glyph:
     def __init__(self, obj):
@@ -125,7 +144,11 @@ class Glyph:
 
     @property
     def contours(self):
-        return self._glyph.contours()
+        return self._glyph.contours
+
+    @property
+    def name(self):
+        return self._glyph.name
 
 class Guideline:
     """I'll do something at some point"""

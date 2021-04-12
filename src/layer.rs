@@ -312,7 +312,7 @@ impl Layer {
         Ok(())
     }
 
-    /// The number of glyphs in this layer.
+    /// The number of [`Glyph`]s in the layer.
     pub fn len(&self) -> usize {
         self.glyphs.len()
     }

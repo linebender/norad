@@ -85,12 +85,16 @@ impl PyFont {
     }
 
     fn default_layer(&self) -> PyResult<LayerProxy> {
+        self.get_layer(DEFAULT_LAYER_NAME)
+            .ok_or_else(|| exceptions::PyRuntimeError::new_err("Missing default layer"))
+    }
+
+    fn get_layer(&self, name: &str) -> Option<LayerProxy> {
         let font = self.inner.read().unwrap();
         font.layers
             .iter()
-            .find(|l| l.name.as_ref() == DEFAULT_LAYER_NAME)
+            .find(|l| l.name.as_ref() == name)
             .map(|l| LayerProxy { name: l.name.clone(), font: self.clone() })
-            .ok_or_else(|| exceptions::PyRuntimeError::new_err("Missing default layer"))
     }
 }
 
@@ -117,10 +121,39 @@ impl PyIterProtocol for LayerIter {
 }
 
 #[pyclass]
-#[derive(Debug, Clone)]
+pub struct GlyphIter {
+    layer: LayerProxy,
+    glyphs: Vec<GlyphName>,
+    ix: usize,
+}
+
+#[pyproto]
+impl PyIterProtocol for GlyphIter {
+    fn __iter__(slf: PyRef<'p, Self>) -> PyRef<'p, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<GlyphProxy> {
+        let index = slf.ix;
+        slf.ix += 1;
+        slf.glyphs.get(index).cloned().map(|glyph| GlyphProxy { layer: slf.layer.clone(), glyph })
+    }
+}
+
+#[pyclass]
+#[derive(Clone)]
 pub struct LayerProxy {
     font: PyFont,
     name: Arc<str>,
+}
+
+impl std::fmt::Debug for LayerProxy {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("LayerProxy")
+            .field("font", &Arc::as_ptr(&self.font.inner))
+            .field("name", &self.name)
+            .finish()
+    }
 }
 
 #[pymethods]
@@ -128,6 +161,10 @@ impl LayerProxy {
     #[getter]
     fn name(&self) -> &str {
         &self.name
+    }
+
+    fn len(&self) -> usize {
+        self.with(|layer| layer.len()).unwrap_or(0)
     }
 
     fn py_eq(&self, other: PyRef<LayerProxy>) -> PyResult<bool> {
@@ -146,15 +183,21 @@ impl LayerProxy {
         Ok(layer_same)
     }
 
-    fn glyph(&self, name: &str) -> Option<GlyphProxy> {
-        let font = self.font.inner.read().unwrap();
-        font.find_layer(|l| l.name == self.name).and_then(|l| l.get_glyph(name)).map(|glyph| {
-            GlyphProxy {
-                //font: self.font.clone(),
-                layer: self.clone(),
-                glyph: glyph.name.clone(),
-            }
+    fn iter_glyphs(&self) -> PyResult<GlyphIter> {
+        self.with(|layer| layer.iter_contents().map(|glyph| glyph.name.clone()).collect::<Vec<_>>())
+            .map_err(Into::into)
+            .map(|glyphs| GlyphIter { glyphs, layer: self.clone(), ix: 0 })
+    }
+
+    fn glyph(&self, name: &str) -> PyResult<Option<GlyphProxy>> {
+        self.with(|layer| {
+            layer
+                .get_glyph(name) //.map(
+                //let font = self.font.inner.read().unwrap();
+                //font.find_layer(|l| l.name == self.name).and_then(|l| l.get_glyph(name))
+                .map(|glyph| GlyphProxy { layer: self.clone(), glyph: glyph.name.clone() })
         })
+        .map_err(Into::into)
     }
 }
 
@@ -200,14 +243,12 @@ impl GlyphProxy {
                 layer: self.layer.name.clone(),
                 glyph: self.glyph.clone()
             })
-            .map(|g| {
-                dbg!(Arc::strong_count(g), Arc::weak_count(g));
-                f(g)
-            })))
+            .map(|g| { f(g) })))
     }
 
     fn with_mut<R>(&self, f: impl FnOnce(&mut Glyph) -> R) -> Result<R, ProxyError> {
-        flatten!(self.layer.with_mut(|l| dbg!(l.get_glyph_mut(&self.glyph))
+        flatten!(self.layer.with_mut(|l| l
+            .get_glyph_mut(&self.glyph)
             .ok_or_else(|| ProxyError::MissingGlyph {
                 layer: self.layer.name.clone(),
                 glyph: self.glyph.clone()
@@ -221,6 +262,11 @@ impl GlyphProxy {
     #[getter]
     fn contours(&self) -> ContoursProxy {
         ContoursProxy { glyph: self.clone() }
+    }
+
+    #[getter]
+    fn name(&self) -> &str {
+        &self.glyph
     }
 }
 
@@ -298,6 +344,20 @@ pub struct PointsProxy {
     contour: ContourProxy,
 }
 
+#[pyclass]
+pub struct PointsIter {
+    contour: ContourProxy,
+    len: usize,
+    ix: usize,
+}
+
+#[pymethods]
+impl PointsProxy {
+    fn iter_points(&self) -> PointsIter {
+        PointsIter { contour: self.contour.clone(), len: self.__len__(), ix: 0 }
+    }
+}
+
 #[pyproto]
 impl PySequenceProtocol for PointsProxy {
     fn __len__(&self) -> usize {
@@ -313,6 +373,30 @@ impl PySequenceProtocol for PointsProxy {
 
         if self.contour.with(|c| c.points.get(idx).is_some()).unwrap_or(false) {
             Some(PointProxy { contour: self.contour.clone(), point: idx })
+        } else {
+            None
+        }
+    }
+}
+
+#[pyproto]
+impl PyIterProtocol for PointsProxy {
+    fn __iter__(slf: PyRef<Self>) -> PointsIter {
+        slf.iter_points()
+    }
+}
+
+#[pyproto]
+impl PyIterProtocol for PointsIter {
+    fn __iter__(slf: PyRef<'p, Self>) -> PyRef<'p, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<PointProxy> {
+        let index = slf.ix;
+        slf.ix += 1;
+        if index < slf.len {
+            Some(PointProxy { contour: slf.contour.clone(), point: index })
         } else {
             None
         }
@@ -363,6 +447,16 @@ impl PointProxy {
     #[setter]
     fn set_x(&self, x: f32) -> PyResult<()> {
         self.with_mut(|p| p.x = x).map_err(Into::into)
+    }
+
+    #[getter]
+    fn get_y(&self) -> PyResult<f32> {
+        self.with(|p| p.y).map_err(Into::into)
+    }
+
+    #[setter]
+    fn set_y(&self, y: f32) -> PyResult<()> {
+        self.with_mut(|p| p.y = y).map_err(Into::into)
     }
 }
 
