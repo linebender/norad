@@ -423,6 +423,11 @@ impl Font {
     pub fn glyph_count(&self) -> usize {
         self.default_layer().len()
     }
+
+    #[cfg(feature = "py")]
+    pub fn deep_clone(&self) -> Self {
+        Font { layers: self.layers.deep_clone(), ..self.clone() }
+    }
 }
 
 /// Validate the contents of the groups.plist file according to the rules in the

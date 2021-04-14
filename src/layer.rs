@@ -144,6 +144,16 @@ impl LayerSet {
             Ok(())
         }
     }
+
+    #[cfg(feature = "py")]
+    pub fn layers(&self) -> &[Layer] {
+        &self.layers
+    }
+
+    #[cfg(feature = "py")]
+    pub fn deep_clone(&self) -> Self {
+        LayerSet { layers: self.iter().map(Layer::deep_clone).collect(), ..self.clone() }
+    }
 }
 
 impl Default for LayerSet {

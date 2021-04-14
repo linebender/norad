@@ -176,3 +176,16 @@ def test_guidelines():
         ufoLib2.objects.Guideline(x=100),
         ufoLib2.objects.Guideline(y=20),
     ]
+
+def test_point_order_change(ufo_UbuTestData):
+    font = ufo_UbuTestData
+    glyph = font["a"]
+    point = glyph.contours[0].points[5]
+    assert point.x == 347.0
+    del glyph.contours[0].points[0]
+    # deleting this earlier point invalidates our previous point; currently
+    # this raises an exception but we'd prefer it to just work
+    assert point.x == 347.0
+    point2 = glyph.contours[0].points[4]
+    assert point == point2
+

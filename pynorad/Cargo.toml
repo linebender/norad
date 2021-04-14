@@ -7,8 +7,6 @@ edition = "2018"
 [lib]
 crate-type = ["cdylib"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-norad = { version = "0.3.1", path = "..", features = ["rayon"] }
+norad = { version = "0.3.1", path = "..", features = ["rayon", "py"] }
 pyo3 = { version = "0.13", features = ["extension-module"] }

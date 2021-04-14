@@ -1,12 +1,14 @@
+use std::cell::Cell;
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 
-use norad::{Contour, ContourPoint, Font, Glyph, GlyphName, Layer, LayerInfo};
+use norad::{Contour, ContourPoint, Font, Glyph, GlyphName, Layer, LayerInfo, PyId};
 use pyo3::{
+    class::basic::CompareOp,
     exceptions,
     prelude::*,
     types::{PyType, PyUnicode},
-    PyErr, PyIterProtocol, PyRef, PySequenceProtocol,
+    PyErr, PyIterProtocol, PyObjectProtocol, PyRef, PySequenceProtocol,
 };
 
 static DEFAULT_LAYER_NAME: &str = "public.default";
@@ -193,8 +195,6 @@ impl LayerProxy {
         self.with(|layer| {
             layer
                 .get_glyph(name) //.map(
-                //let font = self.font.inner.read().unwrap();
-                //font.find_layer(|l| l.name == self.name).and_then(|l| l.get_glyph(name))
                 .map(|glyph| GlyphProxy { layer: self.clone(), glyph: glyph.name.clone() })
         })
         .map_err(Into::into)
@@ -221,7 +221,6 @@ impl LayerProxy {
 #[derive(Debug, Clone)]
 pub struct GlyphProxy {
     layer: LayerProxy,
-    //layer: Arc<str>,
     glyph: GlyphName,
 }
 
@@ -289,11 +288,16 @@ impl PySequenceProtocol for ContoursProxy {
             idx as usize
         };
 
-        if self.glyph.with(|g| g.contours.get(idx).is_some()).unwrap_or(false) {
-            Some(ContourProxy { glyph: self.glyph.clone(), contour: idx })
-        } else {
-            None
-        }
+        self.glyph
+            .with(|g| {
+                g.contours.get(idx).map(|contour| ContourProxy {
+                    glyph: self.glyph.clone(),
+                    idx: Cell::new(idx),
+                    py_id: contour.py_id,
+                })
+            })
+            .ok()
+            .flatten()
     }
 }
 
@@ -301,7 +305,8 @@ impl PySequenceProtocol for ContoursProxy {
 #[derive(Debug, Clone)]
 pub struct ContourProxy {
     glyph: GlyphProxy,
-    contour: usize,
+    idx: Cell<usize>,
+    py_id: PyId,
 }
 
 #[pymethods]
@@ -314,27 +319,43 @@ impl ContourProxy {
 
 impl ContourProxy {
     fn with<R>(&self, f: impl FnOnce(&Contour) -> R) -> Result<R, ProxyError> {
-        flatten!(self.glyph.with(|g| g
-            .contours
-            .get(self.contour)
-            .ok_or_else(|| ProxyError::MissingContour {
-                layer: self.glyph.layer.name.clone(),
-                glyph: self.glyph.glyph.clone(),
-                contour: self.contour,
-            })
-            .map(|g| f(g))))
+        flatten!(self.glyph.with(|g| match g.contours.get(self.idx.get()) {
+            Some(c) if c.py_id == self.py_id => Some(c),
+            //NOTE: if we don't find the item or the id doesn't match, we do
+            // a linear search for the id; if we find it we update our index.
+            _ => match g.contours.iter().enumerate().find(|(_, c)| c.py_id == self.py_id) {
+                Some((i, c)) => {
+                    self.idx.set(i);
+                    Some(c)
+                }
+                None => None,
+            },
+        }
+        .ok_or_else(|| ProxyError::MissingContour {
+            layer: self.glyph.layer.name.clone(),
+            glyph: self.glyph.glyph.clone(),
+            contour: self.idx.get(),
+        })
+        .map(|g| f(g))))
     }
 
     fn with_mut<R>(&self, f: impl FnOnce(&mut Contour) -> R) -> Result<R, ProxyError> {
-        flatten!(self.glyph.with_mut(|g| g
-            .contours
-            .get_mut(self.contour)
-            .ok_or_else(|| ProxyError::MissingContour {
-                layer: self.glyph.layer.name.clone(),
-                glyph: self.glyph.glyph.clone(),
-                contour: self.contour,
-            })
-            .map(|g| f(g))))
+        flatten!(self.glyph.with_mut(|g| match g.contours.get_mut(self.idx.get()) {
+            Some(c) if c.py_id == self.py_id => Some(c),
+            _ => match g.contours.iter_mut().enumerate().find(|(_, c)| c.py_id == self.py_id) {
+                Some((i, c)) => {
+                    self.idx.set(i);
+                    Some(c)
+                }
+                None => None,
+            },
+        }
+        .ok_or_else(|| ProxyError::MissingContour {
+            layer: self.glyph.layer.name.clone(),
+            glyph: self.glyph.glyph.clone(),
+            contour: self.idx.get(),
+        })
+        .map(|g| f(g))))
     }
 }
 
@@ -346,15 +367,15 @@ pub struct PointsProxy {
 
 #[pyclass]
 pub struct PointsIter {
-    contour: ContourProxy,
-    len: usize,
+    points: PointsProxy,
+    //len: usize,
     ix: usize,
 }
 
 #[pymethods]
 impl PointsProxy {
     fn iter_points(&self) -> PointsIter {
-        PointsIter { contour: self.contour.clone(), len: self.__len__(), ix: 0 }
+        PointsIter { points: self.clone(), ix: 0 }
     }
 }
 
@@ -364,18 +385,37 @@ impl PySequenceProtocol for PointsProxy {
         self.contour.with(|c| c.points.len()).unwrap_or(0)
     }
 
-    fn __getitem__(&'p self, idx: isize) -> Option<PointProxy> {
-        let idx: usize = if idx.is_negative() {
-            self.__len__().checked_sub(idx.abs() as usize)?
-        } else {
-            idx as usize
-        };
+    fn __getitem__(&'p self, idx: isize) -> PyResult<PointProxy> {
+        let idx = python_idx_to_idx(idx, self.__len__())?;
+        self.contour
+            .with(|c| PointProxy {
+                contour: self.contour.clone(),
+                idx: Cell::new(idx),
+                py_id: c.points[idx].py_id,
+            })
+            .map_err(Into::into)
+    }
 
-        if self.contour.with(|c| c.points.get(idx).is_some()).unwrap_or(false) {
-            Some(PointProxy { contour: self.contour.clone(), point: idx })
-        } else {
-            None
-        }
+    fn __delitem__(&'p mut self, idx: isize) -> PyResult<()> {
+        let idx = python_idx_to_idx(idx, self.__len__())?;
+        self.contour
+            .with_mut(|contour| {
+                contour.points.remove(idx);
+            })
+            .map_err(Into::into)
+    }
+}
+
+fn python_idx_to_idx(idx: isize, len: usize) -> PyResult<usize> {
+    let idx = if idx.is_negative() { len - (idx.abs() as usize % len) } else { idx as usize };
+
+    if idx < len {
+        Ok(idx)
+    } else {
+        Err(exceptions::PyIndexError::new_err(format!(
+            "Index {} out of bounds of collection with length {}",
+            idx, len
+        )))
     }
 }
 
@@ -395,45 +435,56 @@ impl PyIterProtocol for PointsIter {
     fn __next__(mut slf: PyRefMut<Self>) -> Option<PointProxy> {
         let index = slf.ix;
         slf.ix += 1;
-        if index < slf.len {
-            Some(PointProxy { contour: slf.contour.clone(), point: index })
-        } else {
-            None
-        }
+        slf.points.__getitem__(index as isize).ok()
     }
 }
 
 #[pyclass]
 pub struct PointProxy {
     contour: ContourProxy,
-    point: usize,
+    idx: Cell<usize>,
+    py_id: PyId,
 }
 
 impl PointProxy {
     fn with<R>(&self, f: impl FnOnce(&ContourPoint) -> R) -> Result<R, ProxyError> {
-        flatten!(self.contour.with(|c| c
-            .points
-            .get(self.point)
-            .ok_or_else(|| ProxyError::MissingPoint {
-                layer: self.contour.glyph.layer.name.clone(),
-                glyph: self.contour.glyph.glyph.clone(),
-                contour: self.contour.contour,
-                point: self.point
-            })
-            .map(|g| f(g))))
+        flatten!(self.contour.with(|c| match c.points.get(self.idx.get()) {
+            Some(pt) if pt.py_id == self.py_id => Some(pt),
+            _ => match c.points.iter().enumerate().find(|(_, pt)| pt.py_id == self.py_id) {
+                Some((i, pt)) => {
+                    self.idx.set(i);
+                    Some(pt)
+                }
+                None => None,
+            },
+        }
+        .ok_or_else(|| ProxyError::MissingPoint {
+            layer: self.contour.glyph.layer.name.clone(),
+            glyph: self.contour.glyph.glyph.clone(),
+            contour: self.contour.idx.get(),
+            point: self.idx.get()
+        })
+        .map(|g| f(g))))
     }
 
     fn with_mut<R>(&self, f: impl FnOnce(&mut ContourPoint) -> R) -> Result<R, ProxyError> {
-        flatten!(self.contour.with_mut(|c| c
-            .points
-            .get_mut(self.point)
-            .ok_or_else(|| ProxyError::MissingPoint {
-                layer: self.contour.glyph.layer.name.clone(),
-                glyph: self.contour.glyph.glyph.clone(),
-                contour: self.contour.contour,
-                point: self.point
-            })
-            .map(|g| f(g))))
+        flatten!(self.contour.with_mut(|c| match c.points.get_mut(self.idx.get()) {
+            Some(pt) if pt.py_id == self.py_id => Some(pt),
+            _ => match c.points.iter_mut().enumerate().find(|(_, pt)| pt.py_id == self.py_id) {
+                Some((i, pt)) => {
+                    self.idx.set(i);
+                    Some(pt)
+                }
+                None => None,
+            },
+        }
+        .ok_or_else(|| ProxyError::MissingPoint {
+            layer: self.contour.glyph.layer.name.clone(),
+            glyph: self.contour.glyph.glyph.clone(),
+            contour: self.contour.idx.get(),
+            point: self.idx.get()
+        })
+        .map(|g| f(g))))
     }
 }
 
@@ -457,6 +508,23 @@ impl PointProxy {
     #[setter]
     fn set_y(&self, y: f32) -> PyResult<()> {
         self.with_mut(|p| p.y = y).map_err(Into::into)
+    }
+
+    fn py_eq(&self, other: PyRef<PointProxy>) -> PyResult<bool> {
+        let other: &PointProxy = &*other;
+        flatten!(self.with(|p| other.with(|p2| p == p2))).map_err(Into::into)
+    }
+}
+
+#[pyproto]
+impl PyObjectProtocol for PointProxy {
+    fn __richcmp__(&'p self, other: PyRef<PointProxy>, op: CompareOp) -> PyResult<bool> {
+        let other: &PointProxy = &*other;
+        match op {
+            CompareOp::Eq => flatten!(self.with(|p| other.with(|p2| p == p2))).map_err(Into::into),
+            CompareOp::Ne => flatten!(self.with(|p| other.with(|p2| p != p2))).map_err(Into::into),
+            _ => Err(exceptions::PyNotImplementedError::new_err("")),
+        }
     }
 }
 
