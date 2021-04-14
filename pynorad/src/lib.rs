@@ -71,7 +71,7 @@ impl PyFont {
     }
 
     fn deep_copy(&self) -> Self {
-        let inner = Font::clone(&self.inner.read().unwrap());
+        let inner = Font::deep_clone(&self.inner.read().unwrap());
         inner.into()
     }
 

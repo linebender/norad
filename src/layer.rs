@@ -411,6 +411,19 @@ impl Layer {
     pub fn get_path(&self, name: &str) -> Option<&Path> {
         self.contents.get(name).map(PathBuf::as_path)
     }
+
+    #[cfg(feature = "py")]
+    pub fn deep_clone(&self) -> Self {
+        Layer {
+            // clone glyphs, not just arcs
+            glyphs: self
+                .glyphs
+                .iter()
+                .map(|(k, v)| (k.clone(), Arc::new(Glyph::clone(&v))))
+                .collect(),
+            ..self.clone()
+        }
+    }
 }
 
 impl Default for Layer {
