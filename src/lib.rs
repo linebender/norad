@@ -29,6 +29,7 @@ mod names;
 mod shared_types;
 mod ufo;
 mod upconversion;
+pub mod util;
 
 pub use error::Error;
 pub use fontinfo::FontInfo;

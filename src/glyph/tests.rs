@@ -114,39 +114,6 @@ fn notdef_failure() {
     let _ = parse_glyph(bytes).unwrap();
 }
 
-#[test]
-fn path_for_name() {
-    fn trimmed_name(name: &str) -> String {
-        default_file_name_for_glyph_name(name).trim_end_matches(".glif").into()
-    }
-
-    assert_eq!(trimmed_name("newGlyph.1"), "newG_lyph.1".to_string());
-    assert_eq!(trimmed_name("a"), "a".to_string());
-    assert_eq!(trimmed_name("A"), "A_".to_string());
-    assert_eq!(trimmed_name("AE"), "A_E_".to_string());
-    assert_eq!(trimmed_name("Ae"), "A_e".to_string());
-    assert_eq!(trimmed_name("ae"), "ae".to_string());
-    assert_eq!(trimmed_name("aE"), "aE_".to_string());
-    assert_eq!(trimmed_name("a.alt"), "a.alt".to_string());
-    assert_eq!(trimmed_name("A.alt"), "A_.alt".to_string());
-    assert_eq!(trimmed_name("A.Alt"), "A_.A_lt".to_string());
-    assert_eq!(trimmed_name("A.aLt"), "A_.aL_t".to_string());
-    assert_eq!(trimmed_name("A.alT"), "A_.alT_".to_string());
-    assert_eq!(trimmed_name("T_H"), "T__H_".to_string());
-    assert_eq!(trimmed_name("T_h"), "T__h".to_string());
-    assert_eq!(trimmed_name("t_h"), "t_h".to_string());
-    assert_eq!(trimmed_name("F_F_I"), "F__F__I_".to_string());
-    assert_eq!(trimmed_name("f_f_i"), "f_f_i".to_string());
-    assert_eq!(trimmed_name("Aacute_V.swash"), "A_acute_V_.swash".to_string());
-    assert_eq!(trimmed_name(".notdef"), "_notdef".to_string());
-
-    //FIXME: we're ignoring 'reserved filenames' for now
-    //assert_eq!(trimmed_name("con"), "_con".to_string());
-    //assert_eq!(trimmed_name("CON"), "C_O_N_".to_string());
-    //assert_eq!(trimmed_name("con.alt"), "_con.alt".to_string());
-    //assert_eq!(trimmed_name("alt.con"), "alt._con".to_string());
-}
-
 #[cfg(feature = "druid")]
 #[test]
 fn druid_from_color() {
