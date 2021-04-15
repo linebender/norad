@@ -16,34 +16,203 @@ use crate::{Error, Glyph, Plist};
 static CONTENTS_FILE: &str = "contents.plist";
 static LAYER_INFO_FILE: &str = "layerinfo.plist";
 
+pub(crate) static LAYER_CONTENTS_FILE: &str = "layercontents.plist";
+pub(crate) static DEFAULT_LAYER_NAME: &str = "public.default";
+pub(crate) static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
+
+pub type LayerName = Arc<str>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LayerSet {
+    // The first layer is always the 'default layer'.
+    layers: Vec<Layer>,
+}
+
+#[allow(clippy::clippy::len_without_is_empty)] // never empty
+impl LayerSet {
+    /// Load the layers from the provided path.
+    ///
+    /// If a `layercontents.plist` file exists, it will be used, otherwise
+    /// we will assume the pre-UFOv3 behaviour, and expect a single glyphs dir.
+    ///
+    /// The `glyph_names` argument allows norad to reuse glyph name strings,
+    /// reducing memory use.
+    pub fn load(base_dir: &Path, glyph_names: &NameList) -> Result<LayerSet, Error> {
+        let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
+        let to_load: Vec<(LayerName, PathBuf)> = if layer_contents_path.exists() {
+            plist::from_file(layer_contents_path)?
+        } else {
+            vec![(Arc::from(DEFAULT_LAYER_NAME), PathBuf::from(DEFAULT_GLYPHS_DIRNAME))]
+        };
+
+        let mut layers: Vec<_> = to_load
+            .into_iter()
+            .map(|(name, path)| {
+                let layer_path = base_dir.join(&path);
+                Layer::load_impl(&layer_path, name, &glyph_names)
+            })
+            .collect::<Result<_, _>>()?;
+
+        // move the default layer to the front
+        let default_idx = layers
+            .iter()
+            .position(|l| l.path.to_str() == Some(DEFAULT_GLYPHS_DIRNAME))
+            .ok_or(Error::MissingDefaultLayer)?;
+        layers.rotate_left(default_idx);
+
+        Ok(LayerSet { layers })
+    }
+
+    /// The number of layers in the set.
+    ///
+    /// This should be non-zero.
+    pub fn len(&self) -> usize {
+        self.layers.len()
+    }
+
+    /// Get a reference to a layer, by name.
+    pub fn get(&self, name: &str) -> Option<&Layer> {
+        self.layers.iter().find(|l| &*l.name == name)
+    }
+
+    /// Get a mutable reference to a layer, by name.
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut Layer> {
+        self.layers.iter_mut().find(|l| &*l.name == name)
+    }
+
+    /// A reference to the default layer.
+    pub fn default_layer(&self) -> &Layer {
+        debug_assert!(self.layers[0].path() == Path::new(DEFAULT_GLYPHS_DIRNAME));
+        &self.layers[0]
+    }
+
+    /// A mutable reference to the default layer.
+    pub fn default_layer_mut(&mut self) -> &mut Layer {
+        debug_assert!(self.layers[0].path() == Path::new(DEFAULT_GLYPHS_DIRNAME));
+        &mut self.layers[0]
+    }
+
+    /// Iterate over all layers.
+    pub fn iter(&self) -> impl Iterator<Item = &Layer> {
+        self.layers.iter()
+    }
+
+    /// Iterate over the names of all layers.
+    pub fn names(&self) -> impl Iterator<Item = &LayerName> {
+        self.layers.iter().map(|l| &l.name)
+    }
+
+    /// Create a new layer with the given name.
+    pub fn new_layer(&mut self, name: &str) -> Result<(), Error> {
+        if self.layers.iter().any(|l| &*l.name == name) {
+            Err(Error::DuplicateLayer(name.into()))
+        } else {
+            let layer = Layer::new(name.into(), None);
+            self.layers.push(layer);
+            Ok(())
+        }
+    }
+
+    /// Remove a layer.
+    ///
+    /// The default layer cannot be removed.
+    pub fn remove(&mut self, name: &str) -> Option<Layer> {
+        self.layers
+            .iter()
+            .skip(1)
+            .position(|l| l.name.as_ref() == name)
+            .map(|idx| self.layers.remove(idx + 1))
+    }
+
+    /// Rename a layer.
+    ///
+    /// If `overwrite` is true, and a layer with the new name exists, it will
+    /// be replaced.
+    ///
+    /// Returns an error if `overwrite` is false but a layer with the new
+    /// name exists, or if no layer with the old name exists.
+    pub fn rename_layer(&mut self, old: &str, new: &str, overwrite: bool) -> Result<(), Error> {
+        if !overwrite && self.get(new).is_some() {
+            Err(Error::DuplicateLayer(new.into()))
+        } else if self.get(old).is_none() {
+            Err(Error::MissingLayer(old.into()))
+        } else {
+            if overwrite {
+                self.layers.retain(|l| &*l.name != new)
+            }
+            self.get_mut(old).unwrap().name = new.into();
+            Ok(())
+        }
+    }
+}
+
+impl Default for LayerSet {
+    fn default() -> Self {
+        let layer = Layer::new(DEFAULT_LAYER_NAME.into(), None);
+        let layers = vec![layer];
+        LayerSet { layers }
+    }
+}
+
 /// A [layer], corresponding to a 'glyphs' directory. Conceptually, a layer
 /// is just a collection of glyphs.
 ///
 /// [layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Layer {
     pub(crate) glyphs: BTreeMap<GlyphName, Arc<Glyph>>,
+    pub(crate) name: LayerName,
+    pub(crate) path: PathBuf,
     contents: BTreeMap<GlyphName, PathBuf>,
     pub color: Option<Color>,
     pub lib: Plist,
 }
 
 impl Layer {
+    /// Create a new layer with the provided name and path.
+    ///
+    /// The `path` argument, if provided, will be the directory within the UFO
+    /// that the layer is saved. If it is not provided, it will be derived from
+    /// the layer name.
+    pub fn new(name: LayerName, path: Option<PathBuf>) -> Self {
+        let path = match path {
+            Some(path) => path,
+            None if &*name == DEFAULT_LAYER_NAME => DEFAULT_GLYPHS_DIRNAME.into(),
+            _ => crate::util::default_file_name_for_layer_name(&name).into(),
+        };
+        Layer {
+            glyphs: BTreeMap::new(),
+            name,
+            path,
+            contents: BTreeMap::new(),
+            color: None,
+            lib: Default::default(),
+        }
+    }
+
     /// Load the layer at this path.
     ///
     /// Internal callers should use `load_impl` directly, so that glyph names
     /// can be reused between layers.
-    pub fn load(path: impl AsRef<Path>) -> Result<Layer, Error> {
+    ///
+    ///
+    /// You generally shouldn't need this; instead prefer to load all layers
+    /// with [`LayerSet::load`] and then get the layer you need from there.
+    pub fn load(path: impl AsRef<Path>, name: LayerName) -> Result<Layer, Error> {
         let path = path.as_ref();
         let names = NameList::default();
-        Layer::load_impl(path, &names)
+        Layer::load_impl(path, name, &names)
     }
 
     /// the actual loading logic.
     ///
     /// `names` is a map of glyphnames; we pass it throughout parsing
     /// so that we reuse the same Arc<str> for identical names.
-    pub(crate) fn load_impl(path: &Path, names: &NameList) -> Result<Layer, Error> {
+    pub(crate) fn load_impl(
+        path: &Path,
+        name: LayerName,
+        names: &NameList,
+    ) -> Result<Layer, Error> {
         let contents_path = path.join(CONTENTS_FILE);
         // these keys are never used; a future optimization would be to skip the
         // names and deserialize to a vec; that would not be a one-liner, though.
@@ -73,8 +242,10 @@ impl Layer {
         } else {
             (None, Plist::new())
         };
+        // for us to get this far, this mut have a file name
+        let path = path.file_name().unwrap().into();
 
-        Ok(Layer { contents, glyphs, color, lib })
+        Ok(Layer { contents, name, glyphs, color, path, lib })
     }
 
     // Problem: layerinfo.plist contains a nested plist dictionary and the plist crate
@@ -139,6 +310,32 @@ impl Layer {
         }
 
         Ok(())
+    }
+
+    /// The number of glyphs in this layer.
+    pub fn len(&self) -> usize {
+        self.glyphs.len()
+    }
+
+    /// Returns `true` if this layer contains no glyphs.
+    pub fn is_empty(&self) -> bool {
+        self.glyphs.is_empty()
+    }
+
+    /// The name of the layer.
+    ///
+    /// This can only be mutated through the [`LayerSet`].
+    pub fn name(&self) -> &LayerName {
+        &self.name
+    }
+
+    /// The directory name of this layer.
+    ///
+    /// This cannot be mutated; it is either provided when the layer
+    /// is loaded, or we will create it for you. Maybe this is bad? We can talk
+    /// about it, if you like.
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 
     /// Returns a reference the glyph with the given name, if it exists.
@@ -206,6 +403,12 @@ impl Layer {
     }
 }
 
+impl Default for Layer {
+    fn default() -> Self {
+        Layer::new(DEFAULT_LAYER_NAME.into(), None)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -215,7 +418,7 @@ mod tests {
     fn load_layer() {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
-        let layer = Layer::load(layer_path).unwrap();
+        let layer = Layer::load(layer_path, DEFAULT_LAYER_NAME.into()).unwrap();
         assert_eq!(
             layer.color.as_ref().unwrap(),
             &Color { red: 1.0, green: 0.75, blue: 0.0, alpha: 0.7 }
@@ -234,7 +437,7 @@ mod tests {
     fn load_write_layerinfo() {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
-        let mut layer = Layer::load(layer_path).unwrap();
+        let mut layer = Layer::load(layer_path, DEFAULT_LAYER_NAME.into()).unwrap();
 
         layer.color.replace(Color { red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5 });
         layer.lib.insert(
@@ -245,7 +448,7 @@ mod tests {
         let temp_dir = tempdir::TempDir::new("test.ufo").unwrap();
         let dir = temp_dir.path().join("glyphs");
         layer.save(&dir).unwrap();
-        let layer2 = Layer::load(&dir).unwrap();
+        let layer2 = Layer::load(&dir, DEFAULT_LAYER_NAME.into()).unwrap();
 
         assert_eq!(
             layer2.color.as_ref().unwrap(),
@@ -275,7 +478,7 @@ mod tests {
     #[test]
     fn delete() {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
-        let mut layer = Layer::load(layer_path).unwrap();
+        let mut layer = Layer::load(layer_path, DEFAULT_LAYER_NAME.into()).unwrap();
         layer.remove_glyph("A");
         if let Some(glyph) = layer.get_glyph("A") {
             panic!("{:?}", glyph);
@@ -289,7 +492,7 @@ mod tests {
     #[test]
     fn set_glyph() {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
-        let mut layer = Layer::load(layer_path).unwrap();
+        let mut layer = Layer::load(layer_path, DEFAULT_LAYER_NAME.into()).unwrap();
         let mut glyph = Glyph::new_named("A");
         glyph.width = 69.;
         layer.insert_glyph(glyph);

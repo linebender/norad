@@ -5,11 +5,11 @@
 //! # Basic usage:
 //!
 //! ```no_run
-//! use norad::Ufo;
+//! use norad::Font;
 //!
-//! let path = "RoflsSansLight.ufo";
-//! let mut font_obj = Ufo::load(path).expect("failed to load font");
-//! let layer = font_obj.find_layer(|layer| layer.name == "glyphs").unwrap();
+//! let path = "RoflsExtraDim.ufo";
+//! let mut font_obj = Font::load(path).expect("failed to load font");
+//! let layer = font_obj.default_layer();
 //! let glyph_a = layer.get_glyph("A").expect("missing glyph");
 //! assert_eq!(glyph_a.name.as_ref(), "A");
 //! ```
@@ -39,9 +39,9 @@ pub use glyph::{
 };
 pub use guideline::{Guideline, Line};
 pub use identifier::Identifier;
-pub use layer::Layer;
+pub use layer::{Layer, LayerSet};
 pub use shared_types::{Color, IntegerOrFloat, NonNegativeIntegerOrFloat, Plist};
-pub use ufo::{DataRequest, Font, FormatVersion, LayerInfo, MetaInfo};
+pub use ufo::{DataRequest, Font, FormatVersion, MetaInfo};
 
 #[allow(deprecated)]
 pub use ufo::Ufo;

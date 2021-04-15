@@ -16,10 +16,15 @@ fn main() {
         };
 
         // Prune all non-foreground layers.
-        ufo.layers.retain(|l| l.name == "public.default");
+        let default_layer_name = ufo.layers.default_layer().name().clone();
+        let to_remove: Vec<_> =
+            ufo.layers.names().filter(|l| *l != &default_layer_name).cloned().collect();
+        for layer_name in to_remove {
+            ufo.layers.remove(&layer_name);
+        }
 
         // Prune the foreground layer's lib.
-        let default_layer = ufo.get_default_layer_mut().unwrap();
+        let default_layer = ufo.default_layer_mut();
         default_layer.lib.retain(|k, &mut _| {
             k.starts_with("public.") || k.starts_with("com.schriftgestaltung.layerId")
         });

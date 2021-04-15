@@ -16,7 +16,7 @@ fn save_default() {
     let loaded = Font::load(dir).unwrap();
     assert!(loaded.meta.format_version == FormatVersion::V3);
     assert!(loaded.meta.creator == "org.linebender.norad");
-    assert!(loaded.get_default_layer().is_some());
+    assert_eq!(loaded.layers.len(), 1);
 }
 
 #[test]
@@ -28,7 +28,7 @@ fn save_new_file() {
     let mut plist = Plist::new();
     plist.insert("my-cool-key".into(), plist::Value::Integer(420_u32.into()));
     my_glyph.lib = plist;
-    my_ufo.get_default_layer_mut().unwrap().insert_glyph(my_glyph);
+    my_ufo.default_layer_mut().insert_glyph(my_glyph);
 
     let dir = tempdir::TempDir::new("Test.ufo").unwrap();
     my_ufo.save(&dir).unwrap();
@@ -39,8 +39,8 @@ fn save_new_file() {
     assert!(dir.path().join("glyphs/A_.glif").exists());
 
     let loaded = Font::load(dir).unwrap();
-    assert!(loaded.get_default_layer().unwrap().get_glyph("A").is_some());
-    let glyph = loaded.get_default_layer().unwrap().get_glyph("A").unwrap();
+    assert!(loaded.default_layer().get_glyph("A").is_some());
+    let glyph = loaded.default_layer().get_glyph("A").unwrap();
     assert_eq!(glyph.codepoints, vec!['A']);
     let lib_val = glyph.lib.get("my-cool-key").and_then(|val| val.as_unsigned_integer());
     assert_eq!(lib_val, Some(420));
@@ -50,15 +50,15 @@ fn save_new_file() {
 fn save_fancy() {
     let mut my_ufo = Font::new();
     let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
-    let layer = Layer::load(layer_path).unwrap();
-    *my_ufo.get_default_layer_mut().unwrap() = layer;
+    let layer = Layer::load(layer_path, "foreground".into()).unwrap();
+    *my_ufo.default_layer_mut() = layer;
 
     let dir = tempdir::TempDir::new("Fancy.ufo").unwrap();
     my_ufo.save(&dir).unwrap();
 
     let loaded = Font::load(dir).unwrap();
-    let pre_layer = my_ufo.get_default_layer().unwrap();
-    let post_layer = loaded.get_default_layer().unwrap();
+    let pre_layer = my_ufo.default_layer();
+    let post_layer = loaded.default_layer();
     assert_eq!(pre_layer.iter_contents().count(), post_layer.iter_contents().count());
 
     for glyph in pre_layer.iter_contents() {
@@ -209,6 +209,6 @@ fn object_libs_reject_existing_key() {
         components: vec![],
         contours: vec![],
     };
-    ufo.get_default_layer_mut().unwrap().insert_glyph(glyph);
+    ufo.default_layer_mut().insert_glyph(glyph);
     assert!(ufo.save(&dir).is_err());
 }

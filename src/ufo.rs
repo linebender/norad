@@ -3,9 +3,7 @@
 #![deny(broken_intra_doc_links)]
 
 use std::borrow::Borrow;
-use std::collections::BTreeMap;
-use std::collections::HashSet;
-use std::ffi::OsStr;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -16,21 +14,18 @@ use serde::Serialize;
 use crate::error::GroupsValidationError;
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
-use crate::layer::Layer;
+use crate::layer::{Layer, LayerSet, LAYER_CONTENTS_FILE};
 use crate::names::NameList;
 use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
 use crate::upconversion;
 use crate::Error;
 
-static LAYER_CONTENTS_FILE: &str = "layercontents.plist";
 static METAINFO_FILE: &str = "metainfo.plist";
 static FONTINFO_FILE: &str = "fontinfo.plist";
 static LIB_FILE: &str = "lib.plist";
 static GROUPS_FILE: &str = "groups.plist";
 static KERNING_FILE: &str = "kerning.plist";
 static FEATURES_FILE: &str = "features.fea";
-static DEFAULT_LAYER_NAME: &str = "public.default";
-static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
 
 /// Groups is a map of group name to a list of glyph names. It's a BTreeMap because we need sorting
@@ -42,12 +37,12 @@ pub type Groups = BTreeMap<String, Vec<GlyphName>>;
 pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
 
 /// A Unified Font Object.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 #[non_exhaustive]
 pub struct Font {
     pub meta: MetaInfo,
     pub font_info: Option<FontInfo>,
-    pub layers: Vec<LayerInfo>,
+    pub layers: LayerSet,
     pub lib: Plist,
     pub groups: Option<Groups>,
     pub kerning: Option<Kerning>,
@@ -58,27 +53,6 @@ pub struct Font {
 #[doc(hidden)]
 #[deprecated(since = "0.4.0", note = "Renamed to Font")]
 pub type Ufo = Font;
-
-impl Default for Font {
-    fn default() -> Self {
-        let main_layer = LayerInfo {
-            name: DEFAULT_LAYER_NAME.into(),
-            path: PathBuf::from(DEFAULT_GLYPHS_DIRNAME),
-            layer: Layer::default(),
-        };
-
-        Font {
-            meta: MetaInfo::default(),
-            font_info: None,
-            layers: vec![main_layer],
-            lib: Plist::new(),
-            groups: None,
-            kerning: None,
-            features: None,
-            data_request: Default::default(),
-        }
-    }
-}
 
 /// A type that describes which components of a UFO should be loaded.
 ///
@@ -149,18 +123,6 @@ impl Default for DataRequest {
     fn default() -> Self {
         DataRequest::from_bool(true)
     }
-}
-
-/// A [font layer], along with its name and path.
-///
-/// This corresponds to a 'glyphs' directory on disk.
-///
-/// [font layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
-#[derive(Debug, Clone, PartialEq)]
-pub struct LayerInfo {
-    pub name: String,
-    pub path: PathBuf,
-    pub layer: Layer,
 }
 
 /// A version of the [UFO spec].
@@ -271,27 +233,15 @@ impl Font {
             };
 
             let glyph_names = NameList::default();
-            let layers: Vec<LayerInfo> = if self.data_request.layers {
-                let mut contents = match meta.format_version {
-                    FormatVersion::V3 => {
-                        let contents_path = path.join(LAYER_CONTENTS_FILE);
-                        let contents: Vec<(String, PathBuf)> = plist::from_file(contents_path)?;
-                        contents
-                    }
-                    _older => vec![(DEFAULT_LAYER_NAME.into(), DEFAULT_GLYPHS_DIRNAME.into())],
-                };
-
-                let layers_r: Result<Vec<LayerInfo>, Error> = contents
-                    .drain(..)
-                    .map(|(name, p)| {
-                        let layer_path = path.join(&p);
-                        let layer = Layer::load_impl(&layer_path, &glyph_names)?;
-                        Ok(LayerInfo { name, path: p, layer })
-                    })
-                    .collect();
-                layers_r?
+            let layers = if self.data_request.layers {
+                if meta.format_version == FormatVersion::V3
+                    && !path.join(LAYER_CONTENTS_FILE).exists()
+                {
+                    return Err(Error::MissingLayerContents);
+                }
+                LayerSet::load(path, &glyph_names)?
             } else {
-                Vec::new()
+                LayerSet::default()
             };
 
             // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
@@ -406,77 +356,57 @@ impl Font {
             fs::write(path.join(FEATURES_FILE), features)?;
         }
 
-        let contents: Vec<(&String, &PathBuf)> =
-            self.layers.iter().map(|l| (&l.name, &l.path)).collect();
+        let contents: Vec<(&str, &PathBuf)> =
+            self.layers.iter().map(|l| (&*l.name, &l.path)).collect();
         plist::to_file_xml(path.join(LAYER_CONTENTS_FILE), &contents)?;
 
         for layer in self.layers.iter() {
             let layer_path = path.join(&layer.path);
-            layer.layer.save(layer_path)?;
+            layer.save(layer_path)?;
         }
 
         Ok(())
     }
 
-    /// Returns a reference to the first layer matching a predicate.
-    /// The predicate takes a `LayerInfo` struct, which includes the layer's
-    /// name and path as well as the layer itself.
-    pub fn find_layer<P>(&self, mut predicate: P) -> Option<&Layer>
-    where
-        P: FnMut(&LayerInfo) -> bool,
-    {
-        self.layers.iter().find(|l| predicate(l)).map(|l| &l.layer)
+    /// Returns a reference to the default layer.
+    pub fn default_layer(&self) -> &Layer {
+        self.layers.default_layer()
     }
 
-    /// Returns a mutable reference to the first layer matching a predicate.
-    /// The predicate takes a `LayerInfo` struct, which includes the layer's
-    /// name and path as well as the layer itself.
-    pub fn find_layer_mut<P>(&mut self, mut predicate: P) -> Option<&mut Layer>
-    where
-        P: FnMut(&LayerInfo) -> bool,
-    {
-        self.layers.iter_mut().find(|l| predicate(l)).map(|l| &mut l.layer)
-    }
-
-    /// Returns a reference to the default layer, if it exists.
+    #[deprecated(since = "0.4.0", note = "use default_layer instead")]
+    #[doc(hidden)]
     pub fn get_default_layer(&self) -> Option<&Layer> {
-        self.layers
-            .iter()
-            .find(|l| l.path.file_name() == Some(OsStr::new(DEFAULT_GLYPHS_DIRNAME)))
-            .map(|l| &l.layer)
+        Some(self.default_layer())
     }
 
-    /// Returns a mutable reference to the default layer, if it exists.
+    /// Returns a mutable reference to the default layer.
+    pub fn default_layer_mut(&mut self) -> &mut Layer {
+        self.layers.default_layer_mut()
+    }
+
+    #[deprecated(since = "0.4.0", note = "use default_layer instead")]
+    #[doc(hidden)]
     pub fn get_default_layer_mut(&mut self) -> Option<&mut Layer> {
-        self.layers
-            .iter_mut()
-            .find(|l| l.path.file_name() == Some(OsStr::new(DEFAULT_GLYPHS_DIRNAME)))
-            .map(|l| &mut l.layer)
+        Some(self.default_layer_mut())
     }
 
     /// Returns an iterator over all layers in this font object.
-    pub fn iter_layers(&self) -> impl Iterator<Item = &LayerInfo> {
+    pub fn iter_layers(&self) -> impl Iterator<Item = &Layer> {
         self.layers.iter()
     }
 
     /// Returns an iterator over all the glyphs in the default layer.
     pub fn iter_names(&self) -> impl Iterator<Item = GlyphName> + '_ {
-        // this is overly complicated for opaque lifetime reasons, aka 'trust me'
-        self.layers
-            .iter()
-            .filter(|l| l.path.file_name() == Some(OsStr::new(DEFAULT_GLYPHS_DIRNAME)))
-            .flat_map(|l| l.layer.glyphs.keys().cloned())
+        self.layers.default_layer().glyphs.keys().cloned()
     }
 
-    //FIXME: support for multiple layers.
-    /// Returns a reference to the glyph with the given name,
-    /// IN THE DEFAULT LAYER, if it exists.
+    /// Returns a reference to the glyph with the given name (in the default layer).
     pub fn get_glyph<K>(&self, key: &K) -> Option<&Arc<Glyph>>
     where
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
     {
-        self.get_default_layer().and_then(|l| l.get_glyph(key))
+        self.default_layer().get_glyph(key)
     }
 
     /// Returns a mutable reference to the glyph with the given name,
@@ -486,12 +416,12 @@ impl Font {
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
     {
-        self.get_default_layer_mut().and_then(|l| l.get_glyph_mut(key))
+        self.default_layer_mut().get_glyph_mut(key)
     }
 
     /// Returns the total number of glyphs in the default layer.
     pub fn glyph_count(&self) -> usize {
-        self.get_default_layer().map(|l| l.glyphs.len()).unwrap_or(0)
+        self.default_layer().len()
     }
 }
 
@@ -610,9 +540,7 @@ mod tests {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
         let font_obj = Font::load(path).unwrap();
         assert_eq!(font_obj.iter_layers().count(), 2);
-        font_obj
-            .find_layer(|l| l.path.to_str() == Some("glyphs.background"))
-            .expect("missing layer");
+        font_obj.layers.get("background").expect("missing layer");
 
         assert_eq!(
             font_obj.lib.get("com.typemytype.robofont.compileSettings.autohint"),
@@ -627,7 +555,8 @@ mod tests {
     fn data_request() {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
         let font_obj = Font::with_fields(DataRequest::none()).load_ufo(path).unwrap();
-        assert_eq!(font_obj.iter_layers().count(), 0);
+        assert_eq!(font_obj.iter_layers().count(), 1);
+        assert!(font_obj.layers.default_layer().is_empty());
         assert_eq!(font_obj.lib, Plist::new());
         assert_eq!(font_obj.groups, None);
         assert_eq!(font_obj.kerning, None);

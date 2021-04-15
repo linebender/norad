@@ -7,12 +7,13 @@ use crate::shared_types::IntegerOrFloat;
 use crate::ufo::{Groups, Kerning};
 use crate::Error;
 
-/// Convert kerning groups and pairs from v1 and v2 informal conventions to v3 formal conventions.
-/// Converted groups are added (duplicated) rather than replacing the old ones to preserve all data
-/// that external entities might rely on. Kerning pairs are updated to reflect the new group names.
+/// Convert kerning groups and pairs from v1 and v2 informal conventions to
+/// v3 formal conventions. Converted groups are added (duplicated) rather than
+/// replacing the old ones to preserve all data that external entities might
+/// rely on. Kerning pairs are updated to reflect the new group names.
 ///
-/// This is an adaptation from the fontTools.ufoLib reference implementation. It will not check if
-/// the upgraded groups pass validation.
+/// This is an adaptation from the fontTools.ufoLib reference implementation.
+/// It will not check if the upgraded groups pass validation.
 pub(crate) fn upconvert_kerning(
     groups: &Groups,
     kerning: &Kerning,
