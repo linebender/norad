@@ -19,6 +19,10 @@ pub enum Error {
     /// An error returned when trying to save a Glyph that contains a `public.objectLibs`
     /// lib key already (the key is automatically managed by Norad).
     PreexistingPublicObjectLibsKey,
+    MissingDefaultLayer,
+    MissingLayer(String),
+    DuplicateLayer(String),
+    MissingLayerContents,
     IoError(IoError),
     ParseError(XmlError),
     Glif(GlifError),
@@ -134,6 +138,12 @@ impl std::fmt::Display for Error {
                 f,
                 "The `public.objectLibs` lib key is managed by Norad and must not be set manually."
             ),
+            Error::MissingDefaultLayer => write!(f, "Missing default ('glyphs') layer."),
+            Error::DuplicateLayer(name) => write!(f, "Layer name '{}' already exists.", name),
+            Error::MissingLayer(name) => write!(f, "Layer name '{}' does not exist.", name),
+            Error::MissingLayerContents => {
+                write!(f, "Missing required 'layercontents.plist' file.")
+            }
             Error::IoError(e) => e.fmt(f),
             Error::ParseError(e) => e.fmt(f),
             Error::Glif(GlifError { path, position, kind }) => {
