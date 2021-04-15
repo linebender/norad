@@ -539,47 +539,6 @@ impl AffineTransform {
     }
 }
 
-//NOTE: this is hacky, and intended mostly as a placeholder. It was adapted from
-// https://github.com/unified-font-object/ufoLib/blob/master/Lib/ufoLib/filenames.py
-/// given a glyph name, compute an appropriate file name.
-pub(crate) fn default_file_name_for_glyph_name(name: impl AsRef<str>) -> String {
-    fn fn_impl(name: &str) -> String {
-        static SPECIAL_ILLEGAL: &[char] = &['\\', '*', '+', '/', ':', '<', '>', '?', '[', ']', '|'];
-        static SUFFIX: &str = ".glif";
-        const MAX_LEN: usize = 255;
-
-        let mut result = String::with_capacity(name.len());
-
-        for c in name.chars() {
-            match c {
-                '.' if result.is_empty() => result.push('_'),
-                c if (c as u32) < 32 || (c as u32) == 0x7f || SPECIAL_ILLEGAL.contains(&c) => {
-                    result.push('_')
-                }
-                c if c.is_ascii_uppercase() => {
-                    result.push(c);
-                    result.push('_');
-                }
-                c => result.push(c),
-            }
-        }
-
-        //TODO: check for illegal names?
-        if result.len() + SUFFIX.len() > MAX_LEN {
-            let mut boundary = 255 - SUFFIX.len();
-            while !result.is_char_boundary(boundary) {
-                boundary -= 1;
-            }
-            result.truncate(boundary);
-        }
-        result.push_str(SUFFIX);
-        result
-    }
-
-    let name = name.as_ref();
-    fn_impl(name)
-}
-
 impl std::default::Default for AffineTransform {
     fn default() -> Self {
         Self::identity()

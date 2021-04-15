@@ -1,3 +1,11 @@
+//! String interning
+//!
+//! Because glyph names can occur in many places (multiple layers, groups,
+//! kern lists) we use an interning strategy to reuse them.
+//!
+//! This module includes parallel and non-parallel implementations of a
+//! type for managing this interning.
+
 #[cfg(not(feature = "rayon"))]
 use std::cell::RefCell;
 use std::collections::HashSet;

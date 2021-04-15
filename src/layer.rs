@@ -171,7 +171,7 @@ impl Layer {
     pub fn insert_glyph(&mut self, glyph: impl Into<Arc<Glyph>>) {
         let glyph = glyph.into();
         if !self.contents.contains_key(&glyph.name) {
-            let path = crate::glyph::default_file_name_for_glyph_name(&glyph.name);
+            let path = crate::util::default_file_name_for_glyph_name(&glyph.name);
             self.contents.insert(glyph.name.clone(), path.into());
         }
         self.glyphs.insert(glyph.name.clone(), glyph);
