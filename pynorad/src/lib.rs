@@ -4,17 +4,19 @@ use std::sync::Arc;
 mod font;
 mod glyph;
 mod layer;
+#[macro_use]
+mod util;
 
 pub use font::PyFont;
 pub use glyph::{GlyphProxy, PointProxy, PointsIter, PointsProxy};
-pub use layer::{GlyphIter, LayerIter, LayerProxy};
+pub use layer::{GlyphIter, LayerIter, PyLayer};
 
 pub(crate) static DEFAULT_LAYER_NAME: &str = "public.default";
 
 #[pymodule]
 fn pynorad(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyFont>()?;
-    m.add_class::<LayerProxy>()?;
+    m.add_class::<PyLayer>()?;
     m.add_class::<GlyphProxy>()?;
     Ok(())
 }

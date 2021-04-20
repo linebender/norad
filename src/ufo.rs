@@ -289,6 +289,15 @@ impl Font {
         load_impl(&self, path)
     }
 
+    /// Create a new font with the provided layers.
+    ///
+    /// `layers` must not be empty; the first layer is the default.
+    #[cfg(feature = "py")]
+    pub fn from_layers(layers: Vec<Layer>) -> Self {
+        let layers = LayerSet::new(layers);
+        Self { layers, ..Default::default() }
+    }
+
     /// Attempt to save this UFO to the given path, overriding any existing contents.
     ///
     /// This may fail; instead of saving directly to the target path, it is a good

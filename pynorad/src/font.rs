@@ -10,7 +10,7 @@ use pyo3::{
     PyRef,
 };
 
-use super::{LayerIter, LayerProxy, DEFAULT_LAYER_NAME};
+use super::{LayerIter, PyLayer, DEFAULT_LAYER_NAME};
 
 #[pyclass]
 #[derive(Clone)]
@@ -44,6 +44,15 @@ impl PyFont {
     #[new]
     fn new() -> Self {
         Font::default().into()
+    }
+
+    #[classmethod]
+    fn from_layers(_cls: &PyType, layers: Vec<PyLayer>) -> PyResult<Self> {
+        let layers = layers
+            .into_iter()
+            .map(|l| l.with(|layer| layer.to_owned()))
+            .collect::<Result<_, _>>()?;
+        Ok(Font::from_layers(layers).into())
     }
 
     #[classmethod]
@@ -87,26 +96,31 @@ impl PyFont {
         inner.into()
     }
 
-    fn new_layer(&mut self, layer_name: &PyUnicode) -> PyResult<LayerProxy> {
+    fn new_layer(&mut self, layer_name: &PyUnicode) -> PyResult<PyLayer> {
         let layer_name: Arc<str> = layer_name.extract::<String>()?.into();
         self.write().layers.new_layer(&layer_name).map_err(super::error_to_py)?;
-        Ok(LayerProxy { font: self.clone(), name: layer_name })
+        Ok(PyLayer::proxy(self.clone(), layer_name))
+    }
+
+    fn rename_layer(&mut self, old: &str, new: &str, overwrite: bool) -> PyResult<()> {
+        self.write().layers.rename_layer(old, new, overwrite).map_err(super::error_to_py)
     }
 
     fn iter_layers(&self) -> LayerIter {
         LayerIter { font: self.clone(), ix: 0 }
     }
 
-    fn default_layer(&self) -> PyResult<LayerProxy> {
-        self.get_layer(DEFAULT_LAYER_NAME)
-            .ok_or_else(|| exceptions::PyRuntimeError::new_err("Missing default layer"))
+    fn default_layer(&self) -> PyLayer {
+        let layer_name = self.read().default_layer().name().clone();
+        PyLayer::proxy(self.clone(), layer_name)
     }
 
-    fn get_layer(&self, name: &str) -> Option<LayerProxy> {
-        self.read()
-            .layers
-            .get(name)
-            .map(|l| LayerProxy { name: l.name().clone(), font: self.clone() })
+    fn get_layer(&self, name: &str) -> Option<PyLayer> {
+        self.read().layers.get(name).map(|l| PyLayer::proxy(self.clone(), l.name().clone()))
+    }
+
+    fn contains(&self, layer_name: &str) -> bool {
+        self.read().layers.get(layer_name).is_some()
     }
 }
 

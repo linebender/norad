@@ -5,7 +5,7 @@ import pytest
 from fontTools import ufoLib
 
 import pynorad as ufoLib2
-from pynorad import _NOT_LOADED, LayerSet
+from pynorad import _NOT_LOADED, LayerSet, Layer
 # import pynorad.objects
 # from pynorad.objects import Layer, LayerSet
 # from pynorad.objects.misc import _NOT_LOADED
@@ -142,13 +142,13 @@ def test_default_layerset():
 def test_custom_layerset():
     default = Layer()
     ls1 = LayerSet.from_iterable([default])
-    assert next(iter(ls1)) is ls1.defaultLayer
+    assert next(iter(ls1)) == ls1.defaultLayer
 
     with pytest.raises(ValueError):
         ls1 = LayerSet.from_iterable([Layer(name="abc")])
 
     ls2 = LayerSet.from_iterable([Layer(name="abc")], defaultLayerName="abc")
-    assert ls2["abc"] is ls2.defaultLayer
+    assert ls2["abc"] == ls2.defaultLayer
 
     layers2 = OrderedDict()
     layers2["public.default"] = default

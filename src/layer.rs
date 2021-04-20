@@ -63,6 +63,15 @@ impl LayerSet {
         Ok(LayerSet { layers })
     }
 
+    /// Create a new `LayerSet`.
+    ///
+    /// Will panic if `layers` is empty.
+    pub fn new(mut layers: Vec<Layer>) -> Self {
+        assert!(!layers.is_empty());
+        layers.first_mut().unwrap().path = DEFAULT_GLYPHS_DIRNAME.into();
+        LayerSet { layers }
+    }
+
     /// The number of layers in the set.
     ///
     /// This should be non-zero.

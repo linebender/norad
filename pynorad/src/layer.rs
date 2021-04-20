@@ -2,52 +2,66 @@ use crate::font::PyFont;
 use crate::glyph::GlyphProxy;
 use crate::ProxyError;
 
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use norad::{GlyphName, Layer};
-use pyo3::{prelude::*, PyIterProtocol, PyRef};
+use pyo3::{prelude::*, types::PyType, PyIterProtocol, PyRef};
 
 #[pyclass]
+#[derive(Clone, Debug)]
+pub struct PyLayer {
+    inner: LayerProxy,
+}
+
 #[derive(Clone)]
-pub struct LayerProxy {
-    pub font: PyFont,
-    pub name: Arc<str>,
+enum LayerProxy {
+    Font { font: PyFont, layer_name: Arc<str> },
+    Concrete { layer: Arc<RwLock<Layer>>, layer_name: Arc<str> },
 }
 
 impl std::fmt::Debug for LayerProxy {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("LayerProxy")
-            .field("font", &Arc::as_ptr(&self.font.inner))
-            .field("name", &self.name)
-            .finish()
+        match self {
+            LayerProxy::Font { font, layer_name } => f
+                .debug_struct("LayerProxy::Font")
+                .field("font", &Arc::as_ptr(&font.inner))
+                .field("name", &layer_name)
+                .finish(),
+            LayerProxy::Concrete { layer_name, .. } => {
+                f.debug_struct("LayerProxy::Concrete").field("layer", &layer_name).finish()
+            }
+        }
     }
 }
 
-//class ufoLib2.objects.Layer(name: str = 'public.default', glyphs=NOTHING, color: Optional[str] = None, lib: Dict[str, Any] = NOTHING)[source]
-
 #[pymethods]
-impl LayerProxy {
+impl PyLayer {
+    #[classmethod]
+    fn concrete(_cls: &PyType, name: &str) -> PyResult<Self> {
+        let layer_name: Arc<str> = name.into();
+        let layer = Arc::new(RwLock::new(Layer::new(layer_name.clone(), None)));
+        Ok(PyLayer { inner: LayerProxy::Concrete { layer, layer_name } })
+    }
+
     #[getter]
-    fn name(&self) -> &str {
-        &self.name
+    pub fn name(&self) -> &str {
+        match &self.inner {
+            LayerProxy::Font { layer_name, .. } => &layer_name,
+            LayerProxy::Concrete { layer_name, .. } => &layer_name,
+        }
     }
 
     fn len(&self) -> usize {
         self.with(|layer| layer.len()).unwrap_or(0)
     }
 
-    fn py_eq(&self, other: PyRef<LayerProxy>) -> PyResult<bool> {
-        let other: &LayerProxy = &*other;
-        if Arc::ptr_eq(&self.font.inner, &other.font.inner) && Arc::ptr_eq(&self.name, &other.name)
-        {
-            return Ok(true);
-        } else if other.name != self.name {
-            return Ok(false);
+    fn py_eq(&self, other: PyRef<PyLayer>) -> PyResult<bool> {
+        let other: &PyLayer = &*other;
+        if let Some(eq) = self.inner.ptr_eq(&other.inner) {
+            return Ok(eq);
         }
-        let layer_same =
-            self.font.read().layers.get(&self.name) == other.font.read().layers.get(&other.name);
 
-        Ok(layer_same)
+        super::flatten!(self.with(|l1| other.with(|l2| l1 == l2))).map_err(Into::into)
     }
 
     fn iter_glyphs(&self) -> PyResult<GlyphIter> {
@@ -59,30 +73,67 @@ impl LayerProxy {
     fn glyph(&self, name: &str) -> PyResult<Option<GlyphProxy>> {
         self.with(|layer| {
             layer
-                .get_glyph(name) //.map(
+                .get_glyph(name)
                 .map(|glyph| GlyphProxy { layer: self.clone(), glyph: glyph.name.clone() })
         })
         .map_err(Into::into)
     }
 }
 
-impl LayerProxy {
+impl PyLayer {
+    pub fn proxy(font: PyFont, layer_name: Arc<str>) -> Self {
+        PyLayer { inner: LayerProxy::Font { font, layer_name } }
+    }
+
     pub fn with<R>(&self, f: impl FnOnce(&Layer) -> R) -> Result<R, ProxyError> {
-        self.font
-            .read()
-            .layers
-            .get(&self.name)
-            .map(f)
-            .ok_or_else(|| ProxyError::MissingLayer(self.name.clone()))
+        match &self.inner {
+            LayerProxy::Font { font, layer_name } => font
+                .read()
+                .layers
+                .get(&layer_name)
+                .map(f)
+                .ok_or_else(|| ProxyError::MissingLayer(layer_name.clone())),
+            LayerProxy::Concrete { layer, .. } => Ok(f(&layer.read().unwrap())),
+        }
     }
 
     pub fn with_mut<R>(&self, f: impl FnOnce(&mut Layer) -> R) -> Result<R, ProxyError> {
-        self.font
-            .write()
-            .layers
-            .get_mut(&self.name)
-            .map(f)
-            .ok_or_else(|| ProxyError::MissingLayer(self.name.clone()))
+        match &self.inner {
+            LayerProxy::Font { font, layer_name } => font
+                .write()
+                .layers
+                .get_mut(&layer_name)
+                .map(f)
+                .ok_or_else(|| ProxyError::MissingLayer(layer_name.clone())),
+            LayerProxy::Concrete { layer, .. } => Ok(f(&mut layer.write().unwrap())),
+        }
+    }
+}
+
+impl LayerProxy {
+    fn ptr_eq(&self, other: &LayerProxy) -> Option<bool> {
+        match (self, other) {
+            (
+                LayerProxy::Concrete { layer: layer1, .. },
+                LayerProxy::Concrete { layer: layer2, .. },
+            ) => {
+                if Arc::ptr_eq(layer1, layer2) {
+                    return Some(true);
+                }
+            }
+            (
+                LayerProxy::Font { font: font1, layer_name: name1 },
+                LayerProxy::Font { font: font2, layer_name: name2 },
+            ) => {
+                if Arc::ptr_eq(&font1.inner, &font2.inner) && Arc::ptr_eq(&name1, &name2) {
+                    return Some(true);
+                } else if name1 != name2 {
+                    return Some(false);
+                }
+            }
+            _ => (),
+        };
+        None
     }
 }
 
@@ -98,11 +149,13 @@ impl PyIterProtocol for LayerIter {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<LayerProxy> {
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<PyLayer> {
         let index = slf.ix;
         slf.ix += 1;
         match slf.font.read().layers.layers().get(index).map(|l| l.name().clone()) {
-            Some(layer_name) => Some(LayerProxy { font: slf.font.clone(), name: layer_name }),
+            Some(layer_name) => {
+                Some(PyLayer { inner: LayerProxy::Font { font: slf.font.clone(), layer_name } })
+            }
             None => None,
         }
     }
@@ -110,7 +163,7 @@ impl PyIterProtocol for LayerIter {
 
 #[pyclass]
 pub struct GlyphIter {
-    layer: LayerProxy,
+    layer: PyLayer,
     glyphs: Vec<GlyphName>,
     ix: usize,
 }

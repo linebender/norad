@@ -6,23 +6,13 @@ use pyo3::{
     PySequenceProtocol,
 };
 
-use super::{LayerProxy, ProxyError};
+use super::{flatten, ProxyError, PyLayer};
 
 #[pyclass]
 #[derive(Debug, Clone)]
 pub struct GlyphProxy {
-    pub(crate) layer: LayerProxy,
+    pub(crate) layer: PyLayer,
     pub(crate) glyph: GlyphName,
-}
-
-macro_rules! flatten {
-    ($expr:expr $(,)?) => {
-        match $expr {
-            Err(e) => Err(e),
-            Ok(Err(e)) => Err(e),
-            Ok(Ok(fine)) => Ok(fine),
-        }
-    };
 }
 
 impl GlyphProxy {
@@ -30,7 +20,7 @@ impl GlyphProxy {
         flatten!(self.layer.with(|l| l
             .get_glyph(&self.glyph)
             .ok_or_else(|| ProxyError::MissingGlyph {
-                layer: self.layer.name.clone(),
+                layer: self.layer.name().into(),
                 glyph: self.glyph.clone()
             })
             .map(|g| { f(g) })))
@@ -40,7 +30,7 @@ impl GlyphProxy {
         flatten!(self.layer.with_mut(|l| l
             .get_glyph_mut(&self.glyph)
             .ok_or_else(|| ProxyError::MissingGlyph {
-                layer: self.layer.name.clone(),
+                layer: self.layer.name().into(),
                 glyph: self.glyph.clone()
             })
             .map(|g| f(g))))
@@ -123,7 +113,7 @@ impl ContourProxy {
             },
         }
         .ok_or_else(|| ProxyError::MissingContour {
-            layer: self.glyph.layer.name.clone(),
+            layer: self.glyph.layer.name().into(),
             glyph: self.glyph.glyph.clone(),
             contour: self.idx.get(),
         })
@@ -142,7 +132,7 @@ impl ContourProxy {
             },
         }
         .ok_or_else(|| ProxyError::MissingContour {
-            layer: self.glyph.layer.name.clone(),
+            layer: self.glyph.layer.name().into(),
             glyph: self.glyph.glyph.clone(),
             contour: self.idx.get(),
         })
@@ -250,7 +240,7 @@ impl PointProxy {
             },
         }
         .ok_or_else(|| ProxyError::MissingPoint {
-            layer: self.contour.glyph.layer.name.clone(),
+            layer: self.contour.glyph.layer.name().into(),
             glyph: self.contour.glyph.glyph.clone(),
             contour: self.contour.idx.get(),
             point: self.idx.get()
@@ -270,7 +260,7 @@ impl PointProxy {
             },
         }
         .ok_or_else(|| ProxyError::MissingPoint {
-            layer: self.contour.glyph.layer.name.clone(),
+            layer: self.contour.glyph.layer.name().into(),
             glyph: self.contour.glyph.glyph.clone(),
             contour: self.contour.idx.get(),
             point: self.idx.get()

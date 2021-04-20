@@ -69,7 +69,7 @@ def test_nondefault_layer_name(ufo_UbuTestData, tmp_path):
     font2 = Font.open(tmp_path / "abc.ufo")
 
     assert font2.layers.defaultLayer.name == "abc"
-    assert font2.layers.defaultLayer is font2.layers["abc"]
+    assert font2.layers.defaultLayer == font2.layers["abc"]
 
 
 def test_bounds(ufo_UbuTestData, tmp_path):
