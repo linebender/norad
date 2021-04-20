@@ -1,5 +1,5 @@
 from typing import Iterable, OrderedDict
-from .pynorad import PyFont, PyLayer, GlyphProxy
+from .pynorad import PyFont, PyLayer, PyGlyph
 
 DEFAULT_LAYER_NAME = "public.default"
 # this is something that exists in ufoLib2; we bring it across so that we
@@ -38,10 +38,17 @@ class Font(object):
         return result
 
     def __getitem__(self, name):
-        return self._font.default_layer().glyph(name)
+        return Glyph.proxy(self._font.default_layer().glyph(name))
+
+    def __setitem__(self, name: str, glyph):
+        self._font.default_layer().set_glyph(glyph._glyph)
+
+    def __delitem__(self, name: str):
+        self._font.default_layer().remove_glyph(name)
+
 
     def __iter__(self):
-        return self._font.default_layer().iter_glyphs()
+        return IterWrapper(Glyph, self._font.default_layer().iter_glyphs())
 
 
     @classmethod
@@ -106,10 +113,10 @@ class Layer:
         return self._layer.len()
 
     def __iter__(self):
-        return self._layer.iter_glyphs()
+        return IterWrapper(Glyph, self._layer.iter_glyphs())
 
     def __getitem__(self, name):
-        return self._layer.glyph(name)
+        return Glyph.proxy(self._layer.glyph(name))
 
 
 
@@ -168,7 +175,7 @@ class LayerSet:
         return this
 
     def __iter__(self):
-        return LayerIter(self._font.iter_layers())
+        return IterWrapper(Layer, self._font.iter_layers())
 
     def __len__(self):
         return self._font.layer_count()
@@ -203,9 +210,10 @@ class LayerSet:
     def layerOrder(self):
         return self._font.layer_order()
 
-class LayerIter:
-    def __init__(self, inner):
+class IterWrapper:
+    def __init__(self, typ, inner):
         self.inner = inner
+        self.typ = typ
 
     def __iter__(self):
         return self
@@ -213,14 +221,22 @@ class LayerIter:
     def __next__(self):
         nxt = next(self.inner)
         if nxt is not None:
-            return Layer.proxy(nxt)
+            return self.typ.proxy(nxt)
         else:
             return None
 
+# class ufoLib2.objects.Glyph(name: Optional[str] = None, width: float = 0, height: float = 0, unicodes: List[int] = NOTHING, image: ufoLib2.objects.image.Image = NOTHING, lib: Dict[str, Any] = NOTHING, note: Optional[str] = None, anchors: List[ufoLib2.objects.anchor.Anchor] = NOTHING, components: List[ufoLib2.objects.component.Component] = NOTHING, contours: List[ufoLib2.objects.contour.Contour] = NOTHING, guidelines: List[ufoLib2.objects.guideline.Guideline] = NOTHING)[source]
 class Glyph:
-    def __init__(self, obj):
-        assert obj.__class__ == GlyphProxy
-        self._glyph = obj
+    def __init__(self, name = None, proxy: PyGlyph = None, **kwargs):
+        if proxy is not None:
+            self._glyph = proxy
+        else:
+            self._glyph = PyGlyph.concrete(name)
+        # self._glyph = obj
+
+    @classmethod
+    def proxy(cls, obj: PyGlyph):
+        return cls(proxy = obj)
 
     # def __eq__(self, other):
         # if other.__class__ is not self.__class__:

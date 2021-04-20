@@ -8,7 +8,7 @@ mod layer;
 mod util;
 
 pub use font::PyFont;
-pub use glyph::{GlyphProxy, PointProxy, PointsIter, PointsProxy};
+pub use glyph::{PointProxy, PointsIter, PointsProxy, PyGlyph};
 pub use layer::{GlyphIter, LayerIter, PyLayer};
 
 pub(crate) static DEFAULT_LAYER_NAME: &str = "public.default";
@@ -17,7 +17,7 @@ pub(crate) static DEFAULT_LAYER_NAME: &str = "public.default";
 fn pynorad(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyFont>()?;
     m.add_class::<PyLayer>()?;
-    m.add_class::<GlyphProxy>()?;
+    m.add_class::<PyGlyph>()?;
     Ok(())
 }
 

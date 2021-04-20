@@ -1,5 +1,5 @@
 use crate::font::PyFont;
-use crate::glyph::GlyphProxy;
+use crate::glyph::PyGlyph;
 use crate::ProxyError;
 
 use std::sync::{Arc, RwLock};
@@ -64,17 +64,26 @@ impl PyLayer {
         super::flatten!(self.with(|l1| other.with(|l2| l1 == l2))).map_err(Into::into)
     }
 
+    fn set_glyph(&mut self, glyph: PyRef<PyGlyph>) -> PyResult<()> {
+        let glyph = (&*glyph).with(|g| g.to_owned())?;
+        self.with_mut(|l| l.insert_glyph(glyph))?;
+        Ok(())
+    }
+
+    fn remove_glyph(&mut self, name: &str) -> PyResult<()> {
+        self.with_mut(|l| l.remove_glyph(name))?;
+        Ok(())
+    }
+
     fn iter_glyphs(&self) -> PyResult<GlyphIter> {
         self.with(|layer| layer.iter_contents().map(|glyph| glyph.name.clone()).collect::<Vec<_>>())
             .map_err(Into::into)
             .map(|glyphs| GlyphIter { glyphs, layer: self.clone(), ix: 0 })
     }
 
-    fn glyph(&self, name: &str) -> PyResult<Option<GlyphProxy>> {
+    fn glyph(&self, name: &str) -> PyResult<Option<PyGlyph>> {
         self.with(|layer| {
-            layer
-                .get_glyph(name)
-                .map(|glyph| GlyphProxy { layer: self.clone(), glyph: glyph.name.clone() })
+            layer.get_glyph(name).map(|glyph| PyGlyph::proxy(glyph.name.clone(), self.clone()))
         })
         .map_err(Into::into)
     }
@@ -174,9 +183,9 @@ impl PyIterProtocol for GlyphIter {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<GlyphProxy> {
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<PyGlyph> {
         let index = slf.ix;
         slf.ix += 1;
-        slf.glyphs.get(index).cloned().map(|glyph| GlyphProxy { layer: slf.layer.clone(), glyph })
+        slf.glyphs.get(index).cloned().map(|glyph| PyGlyph::proxy(glyph, slf.layer.clone()))
     }
 }

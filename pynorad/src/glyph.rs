@@ -1,44 +1,75 @@
 use std::cell::Cell;
+use std::sync::{Arc, RwLock};
 
 use norad::{Contour, ContourPoint, Glyph, GlyphName, PyId};
 use pyo3::{
-    class::basic::CompareOp, exceptions, prelude::*, PyIterProtocol, PyObjectProtocol, PyRef,
-    PySequenceProtocol,
+    class::basic::CompareOp, exceptions, prelude::*, types::PyType, PyIterProtocol,
+    PyObjectProtocol, PyRef, PySequenceProtocol,
 };
 
 use super::{flatten, ProxyError, PyLayer};
 
 #[pyclass]
 #[derive(Debug, Clone)]
-pub struct GlyphProxy {
-    pub(crate) layer: PyLayer,
-    pub(crate) glyph: GlyphName,
+pub struct PyGlyph {
+    inner: GlyphProxy,
+    pub(crate) name: GlyphName,
 }
 
-impl GlyphProxy {
-    fn with<R>(&self, f: impl FnOnce(&Glyph) -> R) -> Result<R, ProxyError> {
-        flatten!(self.layer.with(|l| l
-            .get_glyph(&self.glyph)
-            .ok_or_else(|| ProxyError::MissingGlyph {
-                layer: self.layer.name().into(),
-                glyph: self.glyph.clone()
-            })
-            .map(|g| { f(g) })))
+#[derive(Debug, Clone)]
+enum GlyphProxy {
+    Layer(PyLayer),
+    Concrete(Arc<RwLock<Glyph>>),
+}
+
+impl PyGlyph {
+    pub(crate) fn proxy(name: GlyphName, layer: PyLayer) -> Self {
+        PyGlyph { inner: GlyphProxy::Layer(layer), name }
     }
 
-    fn with_mut<R>(&self, f: impl FnOnce(&mut Glyph) -> R) -> Result<R, ProxyError> {
-        flatten!(self.layer.with_mut(|l| l
-            .get_glyph_mut(&self.glyph)
-            .ok_or_else(|| ProxyError::MissingGlyph {
-                layer: self.layer.name().into(),
-                glyph: self.glyph.clone()
-            })
-            .map(|g| f(g))))
+    fn layer_name(&self) -> Option<&str> {
+        match &self.inner {
+            GlyphProxy::Layer(l) => Some(l.name()),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn with<R>(&self, f: impl FnOnce(&Glyph) -> R) -> Result<R, ProxyError> {
+        match &self.inner {
+            GlyphProxy::Layer(layer) => flatten!(layer.with(|l| l
+                .get_glyph(&self.name)
+                .ok_or_else(|| ProxyError::MissingGlyph {
+                    layer: layer.name().into(),
+                    glyph: self.name.clone()
+                })
+                .map(|g| { f(g) }))),
+            GlyphProxy::Concrete(glyph) => Ok(f(&glyph.read().unwrap())),
+        }
+    }
+
+    pub(crate) fn with_mut<R>(&self, f: impl FnOnce(&mut Glyph) -> R) -> Result<R, ProxyError> {
+        match &self.inner {
+            GlyphProxy::Layer(layer) => flatten!(layer.with_mut(|l| l
+                .get_glyph_mut(&self.name)
+                .ok_or_else(|| ProxyError::MissingGlyph {
+                    layer: layer.name().into(),
+                    glyph: self.name.clone()
+                })
+                .map(|g| { f(g) }))),
+            GlyphProxy::Concrete(glyph) => Ok(f(&mut glyph.write().unwrap())),
+        }
     }
 }
 
 #[pymethods]
-impl GlyphProxy {
+impl PyGlyph {
+    #[classmethod]
+    fn concrete(_cls: &PyType, name: &str) -> Self {
+        let name: GlyphName = name.into();
+        let glyph = Arc::new(RwLock::new(Glyph::new_named(name.clone())));
+        PyGlyph { name, inner: GlyphProxy::Concrete(glyph) }
+    }
+
     #[getter]
     fn contours(&self) -> ContoursProxy {
         ContoursProxy { glyph: self.clone() }
@@ -46,14 +77,14 @@ impl GlyphProxy {
 
     #[getter]
     fn name(&self) -> &str {
-        &self.glyph
+        &self.name
     }
 }
 
 #[pyclass]
 #[derive(Debug, Clone)]
 pub struct ContoursProxy {
-    glyph: GlyphProxy,
+    glyph: PyGlyph,
 }
 
 #[pyproto]
@@ -85,7 +116,7 @@ impl PySequenceProtocol for ContoursProxy {
 #[pyclass]
 #[derive(Debug, Clone)]
 pub struct ContourProxy {
-    glyph: GlyphProxy,
+    glyph: PyGlyph,
     idx: Cell<usize>,
     py_id: PyId,
 }
@@ -113,8 +144,8 @@ impl ContourProxy {
             },
         }
         .ok_or_else(|| ProxyError::MissingContour {
-            layer: self.glyph.layer.name().into(),
-            glyph: self.glyph.glyph.clone(),
+            layer: self.glyph.layer_name().unwrap_or("None").into(),
+            glyph: self.glyph.name.clone(),
             contour: self.idx.get(),
         })
         .map(|g| f(g))))
@@ -132,8 +163,8 @@ impl ContourProxy {
             },
         }
         .ok_or_else(|| ProxyError::MissingContour {
-            layer: self.glyph.layer.name().into(),
-            glyph: self.glyph.glyph.clone(),
+            layer: self.glyph.layer_name().unwrap_or("None").into(),
+            glyph: self.glyph.name.clone(),
             contour: self.idx.get(),
         })
         .map(|g| f(g))))
@@ -240,8 +271,8 @@ impl PointProxy {
             },
         }
         .ok_or_else(|| ProxyError::MissingPoint {
-            layer: self.contour.glyph.layer.name().into(),
-            glyph: self.contour.glyph.glyph.clone(),
+            layer: self.contour.glyph.layer_name().unwrap_or("None").into(),
+            glyph: self.contour.glyph.name.clone(),
             contour: self.contour.idx.get(),
             point: self.idx.get()
         })
@@ -260,8 +291,8 @@ impl PointProxy {
             },
         }
         .ok_or_else(|| ProxyError::MissingPoint {
-            layer: self.contour.glyph.layer.name().into(),
-            glyph: self.contour.glyph.glyph.clone(),
+            layer: self.contour.glyph.layer_name().unwrap_or("None").into(),
+            glyph: self.contour.glyph.name.clone(),
             contour: self.contour.idx.get(),
             point: self.idx.get()
         })
