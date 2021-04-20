@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock};
 
-use norad::{Font, LayerInfo};
+use norad::Font;
 use pyo3::{
     exceptions,
     prelude::*,
@@ -33,7 +33,7 @@ impl std::fmt::Debug for PyFont {
         write!(f, "PyFont({:?})", &Arc::as_ptr(&self.inner))?;
         let font = self.read();
         for layer in font.iter_layers() {
-            write!(f, "    {}: {} items", &layer.name, layer.layer.len())?;
+            write!(f, "    {}: {} items", layer.name(), layer.len())?;
         }
         Ok(())
     }
@@ -75,11 +75,11 @@ impl PyFont {
     }
 
     fn layer_names(&self) -> HashSet<String> {
-        self.read().layers.iter().map(|l| l.name.to_string()).collect()
+        self.read().layers.iter().map(|l| l.name().to_string()).collect()
     }
 
     fn layer_order(&self) -> Vec<String> {
-        self.read().layers.iter().map(|l| l.name.to_string()).collect()
+        self.read().layers.iter().map(|l| l.name().to_string()).collect()
     }
 
     fn deep_copy(&self) -> Self {
@@ -89,8 +89,7 @@ impl PyFont {
 
     fn new_layer(&mut self, layer_name: &PyUnicode) -> PyResult<LayerProxy> {
         let layer_name: Arc<str> = layer_name.extract::<String>()?.into();
-        let info = LayerInfo::new(layer_name.clone());
-        self.write().layers.push(info);
+        self.write().layers.new_layer(&layer_name).map_err(super::error_to_py)?;
         Ok(LayerProxy { font: self.clone(), name: layer_name })
     }
 
@@ -106,9 +105,8 @@ impl PyFont {
     fn get_layer(&self, name: &str) -> Option<LayerProxy> {
         self.read()
             .layers
-            .iter()
-            .find(|l| l.name.as_ref() == name)
-            .map(|l| LayerProxy { name: l.name.clone(), font: self.clone() })
+            .get(name)
+            .map(|l| LayerProxy { name: l.name().clone(), font: self.clone() })
     }
 }
 

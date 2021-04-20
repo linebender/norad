@@ -8,48 +8,6 @@ use norad::{GlyphName, Layer};
 use pyo3::{prelude::*, PyIterProtocol, PyRef};
 
 #[pyclass]
-pub struct LayerIter {
-    pub(crate) font: PyFont,
-    pub(crate) ix: usize,
-}
-
-#[pyproto]
-impl PyIterProtocol for LayerIter {
-    fn __iter__(slf: PyRef<'p, Self>) -> PyRef<'p, Self> {
-        slf
-    }
-
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<LayerProxy> {
-        let index = slf.ix;
-        slf.ix += 1;
-        match slf.font.read().layers.get(index).map(|l| l.name.clone()) {
-            Some(layer_name) => Some(LayerProxy { font: slf.font.clone(), name: layer_name }),
-            None => None,
-        }
-    }
-}
-
-#[pyclass]
-pub struct GlyphIter {
-    layer: LayerProxy,
-    glyphs: Vec<GlyphName>,
-    ix: usize,
-}
-
-#[pyproto]
-impl PyIterProtocol for GlyphIter {
-    fn __iter__(slf: PyRef<'p, Self>) -> PyRef<'p, Self> {
-        slf
-    }
-
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<GlyphProxy> {
-        let index = slf.ix;
-        slf.ix += 1;
-        slf.glyphs.get(index).cloned().map(|glyph| GlyphProxy { layer: slf.layer.clone(), glyph })
-    }
-}
-
-#[pyclass]
 #[derive(Clone)]
 pub struct LayerProxy {
     pub font: PyFont,
@@ -64,6 +22,8 @@ impl std::fmt::Debug for LayerProxy {
             .finish()
     }
 }
+
+//class ufoLib2.objects.Layer(name: str = 'public.default', glyphs=NOTHING, color: Optional[str] = None, lib: Dict[str, Any] = NOTHING)[source]
 
 #[pymethods]
 impl LayerProxy {
@@ -84,8 +44,8 @@ impl LayerProxy {
         } else if other.name != self.name {
             return Ok(false);
         }
-        let layer_same = self.font.read().find_layer(|info| info.name == self.name)
-            == other.font.read().find_layer(|info| info.name == other.name);
+        let layer_same =
+            self.font.read().layers.get(&self.name) == other.font.read().layers.get(&other.name);
 
         Ok(layer_same)
     }
@@ -110,7 +70,8 @@ impl LayerProxy {
     pub fn with<R>(&self, f: impl FnOnce(&Layer) -> R) -> Result<R, ProxyError> {
         self.font
             .read()
-            .find_layer(|l| l.name == self.name)
+            .layers
+            .get(&self.name)
             .map(f)
             .ok_or_else(|| ProxyError::MissingLayer(self.name.clone()))
     }
@@ -118,8 +79,51 @@ impl LayerProxy {
     pub fn with_mut<R>(&self, f: impl FnOnce(&mut Layer) -> R) -> Result<R, ProxyError> {
         self.font
             .write()
-            .find_layer_mut(|l| l.name == self.name)
+            .layers
+            .get_mut(&self.name)
             .map(f)
             .ok_or_else(|| ProxyError::MissingLayer(self.name.clone()))
+    }
+}
+
+#[pyclass]
+pub struct LayerIter {
+    pub(crate) font: PyFont,
+    pub(crate) ix: usize,
+}
+
+#[pyproto]
+impl PyIterProtocol for LayerIter {
+    fn __iter__(slf: PyRef<'p, Self>) -> PyRef<'p, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<LayerProxy> {
+        let index = slf.ix;
+        slf.ix += 1;
+        match slf.font.read().layers.layers().get(index).map(|l| l.name().clone()) {
+            Some(layer_name) => Some(LayerProxy { font: slf.font.clone(), name: layer_name }),
+            None => None,
+        }
+    }
+}
+
+#[pyclass]
+pub struct GlyphIter {
+    layer: LayerProxy,
+    glyphs: Vec<GlyphName>,
+    ix: usize,
+}
+
+#[pyproto]
+impl PyIterProtocol for GlyphIter {
+    fn __iter__(slf: PyRef<'p, Self>) -> PyRef<'p, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<GlyphProxy> {
+        let index = slf.ix;
+        slf.ix += 1;
+        slf.glyphs.get(index).cloned().map(|glyph| GlyphProxy { layer: slf.layer.clone(), glyph })
     }
 }
