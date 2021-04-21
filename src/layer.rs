@@ -406,6 +406,26 @@ impl Layer {
         self.glyphs.remove(name)
     }
 
+    /// Rename a glyph.
+    ///
+    /// If `overwrite` is true, and a glyph with the new name exists, it will
+    /// be replaced.
+    ///
+    /// Returns an error if `overwrite` is false but a glyph with the new
+    /// name exists, or if no glyph with the old name exists.
+    pub fn rename_glyph(&mut self, old: &str, new: &str, overwrite: bool) -> Result<(), Error> {
+        if !overwrite && self.glyphs.contains_key(new) {
+            Err(Error::DuplicateGlyph { glyph: new.into(), layer: self.name.to_string() })
+        } else if !self.glyphs.contains_key(old) {
+            Err(Error::MissingGlyph { glyph: old.into(), layer: self.name.to_string() })
+        } else {
+            let mut g = self.remove_glyph(old).unwrap();
+            Arc::make_mut(&mut g).name = new.into();
+            self.insert_glyph(g);
+            Ok(())
+        }
+    }
+
     /// Iterate over the glyphs in this layer.
     pub fn iter_contents(&self) -> impl Iterator<Item = Arc<Glyph>> + '_ {
         self.glyphs.values().map(Arc::clone)

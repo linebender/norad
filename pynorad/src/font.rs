@@ -4,13 +4,12 @@ use std::sync::{Arc, RwLock};
 
 use norad::Font;
 use pyo3::{
-    exceptions,
     prelude::*,
     types::{PyType, PyUnicode},
     PyRef,
 };
 
-use super::{LayerIter, PyLayer, DEFAULT_LAYER_NAME};
+use super::{LayerIter, PyLayer};
 
 #[pyclass]
 #[derive(Clone)]

@@ -79,6 +79,11 @@ impl PyGlyph {
     fn name(&self) -> &str {
         &self.name
     }
+
+    fn py_eq(&self, other: PyRef<PyGlyph>) -> PyResult<bool> {
+        let other: &PyGlyph = &*other;
+        flatten!(self.with(|p| other.with(|p2| p == p2))).map_err(Into::into)
+    }
 }
 
 #[pyclass]

@@ -46,6 +46,18 @@ class Font(object):
     def __delitem__(self, name: str):
         self._font.default_layer().remove_glyph(name)
 
+    def __contains__(self, glyphName: str):
+        return self._font.default_layer().contains(glyphName)
+
+    def addGlyph(self, glyph):
+        if self[glyph.name] is None:
+            self._font.default_layer().set_glyph(glyph._glyph)
+
+    def newGlyph(self, name: str):
+        return self._font.default_layer().new_glyph(name)
+
+    def renameGlyph(self, old: str, new: str, overwrite: bool = False):
+        self._font.default_layer().rename_glyph(old, new, overwrite)
 
     def __iter__(self):
         return IterWrapper(Glyph, self._font.default_layer().iter_glyphs())
@@ -97,7 +109,8 @@ class Layer:
 
     @classmethod
     def proxy(cls, obj):
-        return Layer(proxy=obj)
+        if obj is not None:
+            return cls(proxy=obj)
 
     @property
     def name(self):
@@ -117,6 +130,9 @@ class Layer:
 
     def __getitem__(self, name):
         return Glyph.proxy(self._layer.glyph(name))
+
+    def __contains__(self, name: str):
+        return self._layer.contains(name)
 
 
 
@@ -142,7 +158,8 @@ class LayerSet:
 
     @classmethod
     def proxy(cls, font: PyFont):
-        return LayerSet(proxy=font)
+        if font is not None:
+            return LayerSet(proxy=font)
 
     @classmethod
     def from_iterable(
@@ -186,7 +203,6 @@ class LayerSet:
         return self._font.layer_eq(other._font)
 
     def __contains__(self, layer):
-        print("contains", layer)
         return self._font.contains(layer)
 
 
@@ -236,12 +252,13 @@ class Glyph:
 
     @classmethod
     def proxy(cls, obj: PyGlyph):
-        return cls(proxy = obj)
+        if obj is not None:
+            return cls(proxy = obj)
 
-    # def __eq__(self, other):
-        # if other.__class__ is not self.__class__:
-            # return NotImplemented
-        # return self._layer.py_eq(other._layer)
+    def __eq__(self, other):
+        if other.__class__ is not self.__class__:
+            return NotImplemented
+        return self._glyph.py_eq(other._glyph)
 
     @property
     def contours(self):

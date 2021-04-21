@@ -4,8 +4,8 @@ use crate::ProxyError;
 
 use std::sync::{Arc, RwLock};
 
-use norad::{GlyphName, Layer};
-use pyo3::{prelude::*, types::PyType, PyIterProtocol, PyRef};
+use norad::{Glyph, GlyphName, Layer};
+use pyo3::{exceptions, prelude::*, types::PyType, PyIterProtocol, PyRef};
 
 #[pyclass]
 #[derive(Clone, Debug)]
@@ -55,6 +55,10 @@ impl PyLayer {
         self.with(|layer| layer.len()).unwrap_or(0)
     }
 
+    fn contains(&self, name: &str) -> PyResult<bool> {
+        self.with(|layer| layer.contains_glyph(name)).map_err(Into::into)
+    }
+
     fn py_eq(&self, other: PyRef<PyLayer>) -> PyResult<bool> {
         let other: &PyLayer = &*other;
         if let Some(eq) = self.inner.ptr_eq(&other.inner) {
@@ -73,6 +77,28 @@ impl PyLayer {
     fn remove_glyph(&mut self, name: &str) -> PyResult<()> {
         self.with_mut(|l| l.remove_glyph(name))?;
         Ok(())
+    }
+
+    fn new_glyph(&mut self, name: &str) -> PyResult<PyGlyph> {
+        super::flatten!(self
+            .with_mut(|layer| if layer.contains_glyph(name) {
+                Err(exceptions::PyKeyError::new_err(format!(
+                    "glyph name '{}' already exists",
+                    name
+                )))
+            } else {
+                let glyph = Glyph::new_named(name);
+                let name = glyph.name.clone();
+                layer.insert_glyph(glyph);
+                Ok(PyGlyph::proxy(name, self.clone()))
+            })
+            .map_err(Into::into))
+    }
+
+    fn rename_glyph(&mut self, old: &str, new: &str, overwrite: bool) -> PyResult<()> {
+        super::flatten!(self
+            .with_mut(|layer| layer.rename_glyph(old, new, overwrite).map_err(super::error_to_py))
+            .map_err(Into::into))
     }
 
     fn iter_glyphs(&self) -> PyResult<GlyphIter> {

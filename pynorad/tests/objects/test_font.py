@@ -22,6 +22,8 @@ def test_font_mapping_behavior(ufo_UbuTestData):
     assert ("a" in font) == ("a" in font.layers.defaultLayer)
     assert len(font) == len(font.layers.defaultLayer)
 
+    assert font["c"] is None
+
     glyph = Glyph("b")
     font["b"] = glyph
     # assert font["b"] is glyph
@@ -40,10 +42,10 @@ def test_font_defcon_behavior(ufo_UbuTestData):
 
     glyph = Glyph("c")
     font.addGlyph(glyph)
-    assert font["c"] is glyph
+    assert font["c"] == glyph
 
     font.renameGlyph("c", "d")
-    assert font["d"] is glyph
+    assert font["d"] == glyph
     assert font["d"].name == "d"
 
     guideline = Guideline(x=1)

@@ -23,6 +23,14 @@ pub enum Error {
     MissingLayer(String),
     DuplicateLayer(String),
     MissingLayerContents,
+    DuplicateGlyph {
+        layer: String,
+        glyph: String,
+    },
+    MissingGlyph {
+        layer: String,
+        glyph: String,
+    },
     IoError(IoError),
     ParseError(XmlError),
     Glif(GlifError),
@@ -143,6 +151,12 @@ impl std::fmt::Display for Error {
             Error::MissingLayer(name) => write!(f, "Layer name '{}' does not exist.", name),
             Error::MissingLayerContents => {
                 write!(f, "Missing required 'layercontents.plist' file.")
+            }
+            Error::DuplicateGlyph { layer, glyph } => {
+                write!(f, "Glyph '{}' already exists in layer '{}'", glyph, layer)
+            }
+            Error::MissingGlyph { layer, glyph } => {
+                write!(f, "Glyph '{}' missing from layer '{}'", glyph, layer)
             }
             Error::IoError(e) => e.fmt(f),
             Error::ParseError(e) => e.fmt(f),
