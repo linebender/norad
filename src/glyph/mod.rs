@@ -26,7 +26,7 @@ pub type GlyphName = Arc<str>;
 /// A glyph, loaded from a [.glif file][glif].
 ///
 /// [glif]: http://unifiedfontobject.org/versions/ufo3/glyphs/glif/
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 #[cfg_attr(feature = "druid", derive(Lens))]
 pub struct Glyph {
     pub name: GlyphName,
@@ -41,8 +41,47 @@ pub struct Glyph {
     pub contours: Vec<Contour>,
     pub image: Option<Image>,
     pub lib: Plist,
+    #[cfg(feature = "py")]
+    pub py_id: PyId,
 }
 
+impl Clone for Glyph {
+    fn clone(&self) -> Self {
+        Glyph {
+            name: self.name.clone(),
+            format: self.format,
+            height: self.height,
+            width: self.width,
+            codepoints: self.codepoints.clone(),
+            note: self.note.clone(),
+            guidelines: self.guidelines.clone(),
+            anchors: self.anchors.clone(),
+            components: self.components.clone(),
+            contours: self.contours.clone(),
+            image: self.image.clone(),
+            lib: self.lib.clone(),
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
+        }
+    }
+}
+
+impl PartialEq for Glyph {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.format == other.format
+            && self.height == other.height
+            && self.width == other.width
+            && self.codepoints == other.codepoints
+            && self.note == other.note
+            && self.guidelines == other.guidelines
+            && self.anchors == other.anchors
+            && self.components == other.components
+            && self.contours == other.contours
+            && self.image == other.image
+            && self.lib == other.lib
+    }
+}
 impl Glyph {
     /// Load the glyph at this path.
     ///
@@ -97,6 +136,8 @@ impl Glyph {
             contours: Vec::new(),
             image: None,
             lib: Plist::new(),
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
         }
     }
 
@@ -206,7 +247,7 @@ impl Data for Glyph {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub enum GlifVersion {
     V1 = 1,

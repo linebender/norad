@@ -4,7 +4,7 @@ use crate::ProxyError;
 
 use std::sync::{Arc, RwLock};
 
-use norad::{Glyph, GlyphName, Layer};
+use norad::{Glyph, GlyphName, Layer, PyId};
 use pyo3::{exceptions, prelude::*, types::PyType, PyIterProtocol, PyRef};
 
 #[pyclass]
@@ -68,10 +68,16 @@ impl PyLayer {
         super::flatten!(self.with(|l1| other.with(|l2| l1 == l2))).map_err(Into::into)
     }
 
-    fn set_glyph(&mut self, glyph: PyRef<PyGlyph>) -> PyResult<()> {
+    /// Returns the new proxy object; the caller is responsible for updating
+    /// the python wrapper.
+    fn set_glyph(&mut self, glyph: PyRef<PyGlyph>) -> PyResult<PyGlyph> {
         let glyph = (&*glyph).with(|g| g.to_owned())?;
-        self.with_mut(|l| l.insert_glyph(glyph))?;
-        Ok(())
+        let name = glyph.name.clone();
+        let id = glyph.py_id;
+        self.with_mut(|l| {
+            l.insert_glyph(glyph);
+        })?;
+        Ok(PyGlyph::proxy(name, id, self.clone()))
     }
 
     fn remove_glyph(&mut self, name: &str) -> PyResult<()> {
@@ -80,17 +86,20 @@ impl PyLayer {
     }
 
     fn new_glyph(&mut self, name: &str) -> PyResult<PyGlyph> {
+        if self.with(|layer| layer.contains_glyph(name))? {
+            return Err(exceptions::PyKeyError::new_err(format!(
+                "glyph name '{}' already exists",
+                name
+            )));
+        }
+        let self_clone = self.clone();
         super::flatten!(self
-            .with_mut(|layer| if layer.contains_glyph(name) {
-                Err(exceptions::PyKeyError::new_err(format!(
-                    "glyph name '{}' already exists",
-                    name
-                )))
-            } else {
+            .with_mut(|layer| {
                 let glyph = Glyph::new_named(name);
+                let id = glyph.py_id;
                 let name = glyph.name.clone();
                 layer.insert_glyph(glyph);
-                Ok(PyGlyph::proxy(name, self.clone()))
+                Ok(PyGlyph::proxy(name, id, self_clone))
             })
             .map_err(Into::into))
     }
@@ -102,14 +111,18 @@ impl PyLayer {
     }
 
     fn iter_glyphs(&self) -> PyResult<GlyphIter> {
-        self.with(|layer| layer.iter_contents().map(|glyph| glyph.name.clone()).collect::<Vec<_>>())
-            .map_err(Into::into)
-            .map(|glyphs| GlyphIter { glyphs, layer: self.clone(), ix: 0 })
+        self.with(|layer| {
+            layer.iter_contents().map(|glyph| (glyph.name.clone(), glyph.py_id)).collect::<Vec<_>>()
+        })
+        .map_err(Into::into)
+        .map(|glyphs| GlyphIter { glyphs, layer: self.clone(), ix: 0 })
     }
 
     fn glyph(&self, name: &str) -> PyResult<Option<PyGlyph>> {
         self.with(|layer| {
-            layer.get_glyph(name).map(|glyph| PyGlyph::proxy(glyph.name.clone(), self.clone()))
+            layer
+                .get_glyph(name)
+                .map(|glyph| PyGlyph::proxy(glyph.name.clone(), glyph.py_id, self.clone()))
         })
         .map_err(Into::into)
     }
@@ -132,7 +145,7 @@ impl PyLayer {
         }
     }
 
-    pub fn with_mut<R>(&self, f: impl FnOnce(&mut Layer) -> R) -> Result<R, ProxyError> {
+    pub fn with_mut<R>(&mut self, f: impl FnOnce(&mut Layer) -> R) -> Result<R, ProxyError> {
         match &self.inner {
             LayerProxy::Font { font, layer_name } => font
                 .write()
@@ -199,7 +212,7 @@ impl PyIterProtocol for LayerIter {
 #[pyclass]
 pub struct GlyphIter {
     layer: PyLayer,
-    glyphs: Vec<GlyphName>,
+    glyphs: Vec<(GlyphName, PyId)>,
     ix: usize,
 }
 
@@ -212,6 +225,6 @@ impl PyIterProtocol for GlyphIter {
     fn __next__(mut slf: PyRefMut<Self>) -> Option<PyGlyph> {
         let index = slf.ix;
         slf.ix += 1;
-        slf.glyphs.get(index).cloned().map(|glyph| PyGlyph::proxy(glyph, slf.layer.clone()))
+        slf.glyphs.get(index).cloned().map(|(name, id)| PyGlyph::proxy(name, id, slf.layer.clone()))
     }
 }

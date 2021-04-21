@@ -427,8 +427,8 @@ impl Layer {
     }
 
     /// Iterate over the glyphs in this layer.
-    pub fn iter_contents(&self) -> impl Iterator<Item = Arc<Glyph>> + '_ {
-        self.glyphs.values().map(Arc::clone)
+    pub fn iter_contents(&self) -> impl Iterator<Item = &Arc<Glyph>> + '_ {
+        self.glyphs.values()
     }
 
     /// Iterate over the glyphs in this layer, mutably.

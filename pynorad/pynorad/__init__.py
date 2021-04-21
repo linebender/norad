@@ -51,7 +51,8 @@ class Font(object):
 
     def addGlyph(self, glyph):
         if self[glyph.name] is None:
-            self._font.default_layer().set_glyph(glyph._glyph)
+            newProxyGlyph = self._font.default_layer().set_glyph(glyph._glyph)
+            glyph._glyph = newProxyGlyph
 
     def newGlyph(self, name: str):
         return self._font.default_layer().new_glyph(name)
