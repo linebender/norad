@@ -48,6 +48,9 @@ class Font(object):
     def __contains__(self, glyphName: str):
         return self._font.default_layer().contains(glyphName)
 
+    def newLayer(self, layerName: str):
+        return Layer.proxy(self._font.new_layer(layerName))
+
     def addGlyph(self, glyph):
         if self[glyph.name] is None:
             newProxyGlyph = self._font.default_layer().set_glyph(glyph._glyph)
@@ -152,6 +155,12 @@ class Layer:
 
     def __contains__(self, name: str):
         return self._layer.contains(name)
+
+    def get(self, name):
+        return self[name]
+
+    def newGlyph(self, name):
+        return Glyph.proxy(self._layer.new_glyph(name))
 
 
 
@@ -278,6 +287,14 @@ class Glyph:
         if other.__class__ is not self.__class__:
             return NotImplemented
         return self._glyph.py_eq(other._glyph)
+
+    @property
+    def width(self):
+        return self._glyph.width
+
+    @property
+    def height(self):
+        return self._glyph.height
 
     @property
     def contours(self):

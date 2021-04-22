@@ -9,7 +9,7 @@ use pyo3::{
     PyRef,
 };
 
-use super::{LayerIter, PyGuideline, PyLayer};
+use super::{LayerIter, PyFontInfo, PyGuideline, PyLayer};
 
 #[pyclass]
 #[derive(Clone)]
@@ -95,8 +95,8 @@ impl PyFont {
         inner.into()
     }
 
-    fn new_layer(&mut self, layer_name: &PyUnicode) -> PyResult<PyLayer> {
-        let layer_name: Arc<str> = layer_name.extract::<String>()?.into();
+    fn new_layer(&mut self, layer_name: &str) -> PyResult<PyLayer> {
+        let layer_name: Arc<str> = layer_name.into();
         self.write().layers.new_layer(&layer_name).map_err(super::error_to_py)?;
         Ok(PyLayer::proxy(self.clone(), layer_name))
     }

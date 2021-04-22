@@ -93,6 +93,16 @@ impl PyGlyph {
     }
 
     #[getter]
+    fn width(&self) -> PyResult<f32> {
+        self.with(|g| g.width).map_err(Into::into)
+    }
+
+    #[getter]
+    fn height(&self) -> PyResult<f32> {
+        self.with(|g| g.height).map_err(Into::into)
+    }
+
+    #[getter]
     fn name(&self) -> &str {
         &self.name
     }
