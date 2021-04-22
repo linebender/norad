@@ -143,6 +143,10 @@ impl PyFont {
         *self.write().guidelines_mut() = new_guides;
         Ok(())
     }
+
+    fn fontinfo(&self) -> PyFontInfo {
+        PyFontInfo::proxy(self.clone())
+    }
 }
 
 impl From<Font> for PyFont {

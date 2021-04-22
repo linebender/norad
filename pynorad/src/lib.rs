@@ -2,6 +2,7 @@ use pyo3::{exceptions, prelude::*, PyErr};
 use std::sync::Arc;
 
 mod font;
+mod fontinfo;
 mod glyph;
 mod guideline;
 mod layer;
@@ -9,6 +10,7 @@ mod layer;
 mod util;
 
 pub use font::PyFont;
+pub use fontinfo::PyFontInfo;
 pub use glyph::{PointProxy, PointsIter, PointsProxy, PyGlyph};
 pub use guideline::PyGuideline;
 pub use layer::{GlyphIter, LayerIter, PyLayer};
@@ -21,6 +23,7 @@ fn pynorad(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyLayer>()?;
     m.add_class::<PyGlyph>()?;
     m.add_class::<PyGuideline>()?;
+    m.add_class::<PyFontInfo>()?;
     Ok(())
 }
 

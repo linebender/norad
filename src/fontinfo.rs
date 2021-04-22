@@ -1184,6 +1184,17 @@ pub enum StyleMapStyle {
     BoldItalic,
 }
 
+impl std::fmt::Display for StyleMapStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            StyleMapStyle::Bold => write!(f, "bold"),
+            StyleMapStyle::Italic => write!(f, "italic"),
+            StyleMapStyle::BoldItalic => write!(f, "bold italic"),
+            StyleMapStyle::Regular => write!(f, "regular"),
+        }
+    }
+}
+
 impl Serialize for StyleMapStyle {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

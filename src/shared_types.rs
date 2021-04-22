@@ -117,6 +117,12 @@ impl From<f64> for IntegerOrFloat {
     }
 }
 
+impl From<IntegerOrFloat> for f64 {
+    fn from(src: IntegerOrFloat) -> f64 {
+        src.get()
+    }
+}
+
 impl Serialize for IntegerOrFloat {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -177,6 +183,12 @@ impl Deref for NonNegativeIntegerOrFloat {
 
     fn deref(&self) -> &f64 {
         &self.0
+    }
+}
+
+impl From<NonNegativeIntegerOrFloat> for f64 {
+    fn from(src: NonNegativeIntegerOrFloat) -> f64 {
+        src.get()
     }
 }
 

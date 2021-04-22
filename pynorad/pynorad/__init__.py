@@ -1,5 +1,5 @@
 from typing import Iterable, OrderedDict
-from .pynorad import PyFont, PyGuideline, PyLayer, PyGlyph
+from .pynorad import PyFont, PyGuideline, PyLayer, PyGlyph, PyFontInfo
 
 DEFAULT_LAYER_NAME = "public.default"
 # this is something that exists in ufoLib2; we bring it across so that we
@@ -33,7 +33,6 @@ class Font(object):
 
     def __deepcopy__(self, memo):
         result = Font(None)
-        # result._path = self._path
         result._font = self._font.deep_copy()
         return result
 
@@ -88,6 +87,10 @@ class Font(object):
     @property
     def layers(self):
         return LayerSet.proxy(self._font)
+
+    @property
+    def info(self):
+        return FontInfo.proxy(self._font.fontinfo())
 
     @property
     def guidelines(self):
@@ -315,4 +318,33 @@ class Guideline:
     # def proxy(cls, obj):
         # assert obj.__class__ == GlyphProxy
         # self._proxy = obj
+
+class FontInfo(object):
+    """I'll do something at some point"""
+    def __init__(self, proxy=None):
+        if proxy is not None:
+            object.__setattr__(self, "_info", proxy)
+        else:
+            pass
+
+    @classmethod
+    def proxy(cls, obj: PyFontInfo):
+        return cls(proxy=obj)
+
+    def __getattr__(self, item):
+        real = object.__getattribute__(self, "_info")
+        if hasattr(real, item):
+            return getattr(real, item)
+        raise AttributeError(item)
+
+    def __setattr__(self, name, item):
+        real = object.__getattribute__(self, "_info")
+        if hasattr(real, name):
+            return setattr(real, name, item)
+        raise AttributeError(item)
+
+    # def __eq__(self, other):
+        # if other.__class__ is not self.__class__:
+            # return NotImplemented
+        # return self._guideline.py_eq(other._guideline)
 
