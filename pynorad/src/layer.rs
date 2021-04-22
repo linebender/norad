@@ -88,7 +88,7 @@ impl PyLayer {
     fn new_glyph(&mut self, name: &str) -> PyResult<PyGlyph> {
         if self.with(|layer| layer.contains_glyph(name))? {
             return Err(exceptions::PyKeyError::new_err(format!(
-                "glyph name '{}' already exists",
+                "glyph named '{}' already exists",
                 name
             )));
         }

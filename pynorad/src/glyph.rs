@@ -103,8 +103,20 @@ impl PyGlyph {
     }
 
     #[getter]
-    fn name(&self) -> &str {
-        &self.name
+    fn name(&self) -> Option<&str> {
+        if self.name.is_empty() {
+            None
+        } else {
+            Some(&self.name)
+        }
+    }
+
+    #[setter]
+    fn _name(&mut self, new_name: &str) -> PyResult<()> {
+        let new_name: GlyphName = new_name.into();
+        self.with_mut(|g| g.name = new_name.clone())?;
+        self.name = new_name;
+        Ok(())
     }
 
     fn py_eq(&self, other: PyRef<PyGlyph>) -> PyResult<bool> {

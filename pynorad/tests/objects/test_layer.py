@@ -1,6 +1,6 @@
 import pytest
 
-from ufoLib2.objects import Glyph, Layer
+from pynorad import Glyph, Layer
 
 
 def test_init_layer_with_glyphs_dict():
@@ -11,10 +11,10 @@ def test_init_layer_with_glyphs_dict():
 
     assert layer.name == "My Layer"
     assert "a" in layer
-    assert layer["a"] is a
+    assert layer["a"] == a
     assert a.name == "a"
     assert "b" in layer
-    assert layer["b"] is b
+    assert layer["b"] == b
     assert b.name == "b"
 
     with pytest.raises(
@@ -22,8 +22,8 @@ def test_init_layer_with_glyphs_dict():
     ):
         Layer(glyphs={"a": b})
 
-    with pytest.raises(KeyError, match=".*Glyph .* can't be added twice"):
-        Layer(glyphs={"a": a, "b": a})
+    # with pytest.raises(KeyError, match=".*Glyph .* can't be added twice"):
+        # Layer(glyphs={"a": a, "b": a})
 
     with pytest.raises(TypeError, match="Expected Glyph, found int"):
         Layer(glyphs={"a": 1})
@@ -34,11 +34,13 @@ def test_init_layer_with_glyphs_list():
     b = Glyph("b")
     layer = Layer(glyphs=[a, b])
 
-    assert layer["a"] is a
-    assert layer["b"] is b
+    assert layer["a"] == a
+    assert layer["b"] == b
 
-    with pytest.raises(KeyError, match=".*Glyph .* can't be added twice"):
-        Layer(glyphs=[a, a])
+    with pytest.raises(KeyError, match="glyph named 'a' already exists"):
+    # pynorad doesn't care about object identity, we just dedupe
+        layer = Layer(glyphs=[a, a])
+        assert len(layer) == 1
 
     c = Glyph()
     with pytest.raises(ValueError, match=".*Glyph .* has no name"):
@@ -59,7 +61,7 @@ def test_addGlyph():
     layer.addGlyph(a)
 
     assert "a" in layer
-    assert layer["a"] is a
+    assert layer["a"] == a
 
     with pytest.raises(KeyError, match="glyph named 'a' already exists"):
         layer.addGlyph(a)
@@ -102,7 +104,7 @@ def test_newGlyph():
     a = layer.newGlyph("a")
 
     assert "a" in layer
-    assert layer["a"] is a
+    assert layer["a"] == a
 
     with pytest.raises(KeyError, match="glyph named 'a' already exists"):
         layer.newGlyph("a")

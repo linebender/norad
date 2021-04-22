@@ -1,5 +1,8 @@
-from typing import Iterable, OrderedDict
+from typing import Iterable, OrderedDict, Optional
 from .pynorad import PyFont, PyGuideline, PyLayer, PyGlyph, PyFontInfo
+
+# I acknowledge that this is not the right way to do this
+__version__ = '0.1'
 
 DEFAULT_LAYER_NAME = "public.default"
 # this is something that exists in ufoLib2; we bring it across so that we
@@ -52,9 +55,7 @@ class Font(object):
         return Layer.proxy(self._font.new_layer(layerName))
 
     def addGlyph(self, glyph):
-        if self[glyph.name] is None:
-            newProxyGlyph = self._font.default_layer().set_glyph(glyph._glyph)
-            glyph._glyph = newProxyGlyph
+        Layer.proxy(self._font.default_layer()).addGlyph(glyph)
 
     def appendGuideline(self, guideline):
         if guideline.__class__ is not Guideline:
@@ -66,7 +67,7 @@ class Font(object):
         return self._font.default_layer().new_glyph(name)
 
     def renameGlyph(self, old: str, new: str, overwrite: bool = False):
-        self._font.default_layer().rename_glyph(old, new, overwrite)
+        Layer.proxy(self._font.default_layer()).rename_glyph(old, new, overwrite=overwrite)
 
     def __iter__(self):
         return IterWrapper(Glyph, self._font.default_layer().iter_glyphs())
@@ -128,6 +129,36 @@ class Layer:
             self._layer = proxy
         else:
             self._layer = PyLayer.concrete(name)
+            if glyphs is not None:
+                if not isinstance(glyphs, dict):
+                    # check for dupe names
+                    names = set()
+                    for glyph in glyphs:
+                        if not isinstance(glyph, Glyph):
+                            raise TypeError(f"Expected Glyph, found {type(glyph).__name__}")
+                        name = glyph.name
+                        if name in names:
+                            raise KeyError(f"glyph named '{name}' already exists")
+                        names.add(name)
+
+                    # convert to a dict
+                    glyphs = { g.name: g for g in glyphs }
+                for name, glyph in glyphs.items():
+                    if not isinstance(glyph, Glyph):
+                        raise TypeError(f"Expected Glyph, found {type(glyph).__name__}")
+                    currentName = glyph.name
+                    if currentName is None or currentName == "":
+                        glyph._name = name or ""
+                    elif currentName != name:
+                        raise ValueError(
+                            "glyph has incorrect name: "
+                            f"expected '{name}', found '{glyph.name}'"
+                        )
+                    self.addGlyph(glyph)
+
+    def renameGlyph(self, old: str, new: str, overwrite: bool = False):
+        if old != new:
+            self._layer.rename_glyph(old, new, overwrite=overwrite)
 
     @classmethod
     def proxy(cls, obj):
@@ -162,7 +193,28 @@ class Layer:
     def newGlyph(self, name):
         return Glyph.proxy(self._layer.new_glyph(name))
 
+    def addGlyph(self, glyph):
+        print(glyph.name)
+        self.insertGlyph(glyph, overwrite=False, copy=False)
 
+    def insertGlyph(
+        self,
+        glyph,
+        name: Optional[str] = None,
+        overwrite: bool = True,
+        copy: bool = True,
+    ) -> None:
+        if copy:
+            glyph = glyph.copy()
+        if name is not None:
+            print("pynorad insertGlyph doesn't respect provided names yet")
+        if glyph.name is None:
+            raise ValueError(f"{glyph!r} has no name; can't add it to Layer")
+        if not overwrite and glyph.name in self:
+            raise KeyError(f"glyph named '{glyph.name}' already exists")
+
+        newProxyGlyph = self._layer.set_glyph(glyph._glyph)
+        glyph._glyph = newProxyGlyph
 
 class LayerSet:
     def __init__(self, layers = None, defaultLayer = None, proxy: PyFont = None):
@@ -271,7 +323,8 @@ class IterWrapper:
 
 # class ufoLib2.objects.Glyph(name: Optional[str] = None, width: float = 0, height: float = 0, unicodes: List[int] = NOTHING, image: ufoLib2.objects.image.Image = NOTHING, lib: Dict[str, Any] = NOTHING, note: Optional[str] = None, anchors: List[ufoLib2.objects.anchor.Anchor] = NOTHING, components: List[ufoLib2.objects.component.Component] = NOTHING, contours: List[ufoLib2.objects.contour.Contour] = NOTHING, guidelines: List[ufoLib2.objects.guideline.Guideline] = NOTHING)[source]
 class Glyph:
-    def __init__(self, name = None, proxy: PyGlyph = None, **kwargs):
+    def __init__(self, name: str = "", proxy: PyGlyph = None, **kwargs):
+        self.lib = {}
         if proxy is not None:
             self._glyph = proxy
         else:
@@ -301,8 +354,23 @@ class Glyph:
         return self._glyph.contours
 
     @property
+    def components(self):
+        return []
+
+    @property
     def name(self):
         return self._glyph.name
+
+    # FIXME: delete these two, use a proxy object ancestor or something
+    @property
+    def _name(self):
+        return self._glyph.name
+
+    @_name.setter
+    def _name(self, value: str):
+        self._glyph._name = value
+
+
 
 class Guideline:
     """I'll do something at some point"""
