@@ -5,7 +5,7 @@ import pytest
 from fontTools import ufoLib
 
 import pynorad as ufoLib2
-from pynorad import _NOT_LOADED, LayerSet, Layer
+from pynorad import _NOT_LOADED, LayerSet, Layer, Guideline
 # import pynorad.objects
 # from pynorad.objects import Layer, LayerSet
 # from pynorad.objects.misc import _NOT_LOADED
@@ -160,21 +160,21 @@ def test_guidelines():
 
     # accept either a mapping or a Guideline object
     font.appendGuideline({"x": 100, "y": 50, "angle": 315})
-    font.appendGuideline(ufoLib2.objects.Guideline(x=30))
+    font.appendGuideline(Guideline(x=30))
 
     assert len(font.guidelines) == 2
     assert font.guidelines == [
-        ufoLib2.objects.Guideline(x=100, y=50, angle=315),
-        ufoLib2.objects.Guideline(x=30),
+        Guideline(x=100, y=50, angle=315),
+        Guideline(x=30),
     ]
 
     # setter should clear existing guidelines
-    font.guidelines = [{"x": 100}, ufoLib2.objects.Guideline(y=20)]
+    font.guidelines = [{"x": 100}, Guideline(y=20)]
 
     assert len(font.guidelines) == 2
     assert font.guidelines == [
-        ufoLib2.objects.Guideline(x=100),
-        ufoLib2.objects.Guideline(y=20),
+        Guideline(x=100),
+        Guideline(y=20),
     ]
 
 def test_point_order_change(ufo_UbuTestData):

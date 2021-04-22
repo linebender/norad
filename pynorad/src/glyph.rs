@@ -7,7 +7,7 @@ use pyo3::{
     PyObjectProtocol, PyRef, PySequenceProtocol,
 };
 
-use super::{flatten, ProxyError, PyLayer};
+use super::{flatten, util, ProxyError, PyLayer};
 
 #[pyclass]
 #[derive(Debug, Clone)]
@@ -224,7 +224,7 @@ impl PySequenceProtocol for PointsProxy {
     }
 
     fn __getitem__(&'p self, idx: isize) -> PyResult<PointProxy> {
-        let idx = python_idx_to_idx(idx, self.__len__())?;
+        let idx = util::python_idx_to_idx(idx, self.__len__())?;
         self.contour
             .with(|c| PointProxy {
                 contour: self.contour.clone(),
@@ -235,25 +235,12 @@ impl PySequenceProtocol for PointsProxy {
     }
 
     fn __delitem__(&'p mut self, idx: isize) -> PyResult<()> {
-        let idx = python_idx_to_idx(idx, self.__len__())?;
+        let idx = util::python_idx_to_idx(idx, self.__len__())?;
         self.contour
             .with_mut(|contour| {
                 contour.points.remove(idx);
             })
             .map_err(Into::into)
-    }
-}
-
-fn python_idx_to_idx(idx: isize, len: usize) -> PyResult<usize> {
-    let idx = if idx.is_negative() { len - (idx.abs() as usize % len) } else { idx as usize };
-
-    if idx < len {
-        Ok(idx)
-    } else {
-        Err(exceptions::PyIndexError::new_err(format!(
-            "Index {} out of bounds of collection with length {}",
-            idx, len
-        )))
     }
 }
 

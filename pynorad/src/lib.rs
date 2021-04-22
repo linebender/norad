@@ -3,12 +3,14 @@ use std::sync::Arc;
 
 mod font;
 mod glyph;
+mod guideline;
 mod layer;
 #[macro_use]
 mod util;
 
 pub use font::PyFont;
 pub use glyph::{PointProxy, PointsIter, PointsProxy, PyGlyph};
+pub use guideline::PyGuideline;
 pub use layer::{GlyphIter, LayerIter, PyLayer};
 
 pub(crate) static DEFAULT_LAYER_NAME: &str = "public.default";
@@ -18,6 +20,7 @@ fn pynorad(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyFont>()?;
     m.add_class::<PyLayer>()?;
     m.add_class::<PyGlyph>()?;
+    m.add_class::<PyGuideline>()?;
     Ok(())
 }
 
@@ -32,6 +35,8 @@ pub enum ProxyError {
     MissingGlyph { layer: Arc<str>, glyph: Arc<str> },
     MissingContour { layer: Arc<str>, glyph: Arc<str>, contour: usize },
     MissingPoint { layer: Arc<str>, glyph: Arc<str>, contour: usize, point: usize },
+    MissingGlobalGuideline,
+    MissingLayerGuideline(Arc<str>),
 }
 
 impl std::fmt::Display for ProxyError {
@@ -49,6 +54,10 @@ impl std::fmt::Display for ProxyError {
                 "No point {} in contour {}, glyph '{}', layer '{}'",
                 point, contour, glyph, layer
             ),
+            ProxyError::MissingGlobalGuideline => write!(f, "Missing global Guideline"),
+            ProxyError::MissingLayerGuideline(layer) => {
+                write!(f, "Missing Guideline in layer '{}'", layer)
+            }
         }
     }
 }

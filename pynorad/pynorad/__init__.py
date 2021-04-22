@@ -1,5 +1,5 @@
 from typing import Iterable, OrderedDict
-from .pynorad import PyFont, PyLayer, PyGlyph
+from .pynorad import PyFont, PyGuideline, PyLayer, PyGlyph
 
 DEFAULT_LAYER_NAME = "public.default"
 # this is something that exists in ufoLib2; we bring it across so that we
@@ -54,6 +54,12 @@ class Font(object):
             newProxyGlyph = self._font.default_layer().set_glyph(glyph._glyph)
             glyph._glyph = newProxyGlyph
 
+    def appendGuideline(self, guideline):
+        if guideline.__class__ is not Guideline:
+            guideline = Guideline(**guideline)
+        self._font.append_guideline(guideline._guideline)
+
+
     def newGlyph(self, name: str):
         return self._font.default_layer().new_glyph(name)
 
@@ -82,6 +88,15 @@ class Font(object):
     @property
     def layers(self):
         return LayerSet.proxy(self._font)
+
+    @property
+    def guidelines(self):
+        return [Guideline.proxy(g) for g in self._font.guidelines()]
+
+    @guidelines.setter
+    def guidelines(self, value):
+        self._font.replace_guidelines([Guideline.normalize(g)._guideline for g in value])
+
 
     #FIXME: norad doesn't impl data yet
     @property
@@ -271,6 +286,29 @@ class Glyph:
 
 class Guideline:
     """I'll do something at some point"""
+    def __init__(self, x=None, y=None, angle=None, name=None, color=None, identifier=None, proxy=None):
+        if proxy is not None:
+            self._guideline = proxy
+        else:
+            self._guideline = PyGuideline.concrete(x, y, angle, name, color, identifier)
+
+    @classmethod
+    def proxy(cls, obj: PyGuideline):
+        return cls(proxy=obj)
+
+    @classmethod
+    def normalize(cls, obj):
+        """Given a Guideline or a dict that looks like a Guideline,
+        return a Guideline."""
+        if obj.__class__ is Guideline:
+            return obj
+        else:
+            return Guideline(**obj)
+
+    def __eq__(self, other):
+        if other.__class__ is not self.__class__:
+            return NotImplemented
+        return self._guideline.py_eq(other._guideline)
 
 # class Contours:
     # @classmethod

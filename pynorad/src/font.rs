@@ -2,14 +2,14 @@ use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock};
 
-use norad::Font;
+use norad::{Font, Guideline};
 use pyo3::{
     prelude::*,
     types::{PyType, PyUnicode},
     PyRef,
 };
 
-use super::{LayerIter, PyLayer};
+use super::{LayerIter, PyGuideline, PyLayer};
 
 #[pyclass]
 #[derive(Clone)]
@@ -120,6 +120,28 @@ impl PyFont {
 
     fn contains(&self, layer_name: &str) -> bool {
         self.read().layers.get(layer_name).is_some()
+    }
+
+    fn append_guideline(&mut self, guideline: PyRef<PyGuideline>) -> PyResult<()> {
+        let guideline = (&*guideline).with(|g| g.to_owned())?;
+        self.write().guidelines_mut().push(guideline);
+        Ok(())
+    }
+
+    fn guidelines(&self) -> Vec<PyGuideline> {
+        self.read().guidelines().iter().map(|g| PyGuideline::proxy(self.clone(), g.py_id)).collect()
+    }
+
+    fn replace_guidelines(&mut self, mut guidelines: Vec<PyRefMut<PyGuideline>>) -> PyResult<()> {
+        let mut new_guides = Vec::with_capacity(guidelines.len());
+        for py_guide in &mut guidelines {
+            let guide = (&*py_guide).with(Guideline::to_owned)?;
+            let py_id = guide.py_id;
+            new_guides.push(guide);
+            *py_guide.deref_mut() = PyGuideline::proxy(self.clone(), py_id);
+        }
+        *self.write().guidelines_mut() = new_guides;
+        Ok(())
     }
 }
 
