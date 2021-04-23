@@ -1,8 +1,7 @@
-use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 
 use super::{util, ProxyError, PyFont};
-use norad::{Color, Guideline, Identifier, Line, PyId};
+use norad::{Guideline, Line, PyId};
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyType, PySequenceProtocol};
 
 #[pyclass]
@@ -32,7 +31,7 @@ impl PyGuideline {
         angle: Option<f32>,
         name: Option<String>,
         color: Option<&str>,
-        identifier: Option<String>,
+        identifier: Option<&str>,
     ) -> PyResult<Self> {
         let line = match (x, y, angle) {
             (Some(x), None, None) => Line::Vertical(x),
@@ -55,15 +54,8 @@ impl PyGuideline {
                 return Err(PyValueError::new_err("angle must be between 0 and 360"))
             }
         };
-        let identifier = identifier.map(Identifier::new).transpose().map_err(|_| {
-            PyValueError::new_err(
-                "Identifier must be between 0 and 100 characters, each in the range 0x20..=0x7E",
-            )
-        })?;
-        let color = color
-            .map(Color::from_str)
-            .transpose()
-            .map_err(|_| PyValueError::new_err("Invalid color string"))?;
+        let identifier = util::to_identifier(identifier)?;
+        let color = util::to_color(color)?;
         let guide = Guideline::new(line, name, color, identifier, None);
         Ok(PyGuideline {
             inner: GuidelineProxy::Concrete { guideline: Arc::new(RwLock::new(guide)) },

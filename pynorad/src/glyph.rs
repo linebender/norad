@@ -1,10 +1,13 @@
 use std::cell::Cell;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
-use norad::{Contour, ContourPoint, Glyph, GlyphName, PyId};
+use norad::{Component, Contour, ContourPoint, Glyph, GlyphName, PointType, PyId};
 use pyo3::{
-    class::basic::CompareOp, exceptions, prelude::*, types::PyType, PyIterProtocol,
-    PyObjectProtocol, PyRef, PySequenceProtocol,
+    class::basic::CompareOp,
+    exceptions,
+    prelude::*,
+    types::{PyDict, PyType},
+    PyIterProtocol, PyObjectProtocol, PyRef, PySequenceProtocol,
 };
 
 use super::{flatten, util, ProxyError, PyLayer};
@@ -122,6 +125,120 @@ impl PyGlyph {
     fn py_eq(&self, other: PyRef<PyGlyph>) -> PyResult<bool> {
         let other: &PyGlyph = &*other;
         flatten!(self.with(|p| other.with(|p2| p == p2))).map_err(Into::into)
+    }
+
+    #[allow(non_snake_case)]
+    fn drawPoints(&self, pen: PyObject) -> PyResult<()> {
+        self.with(|glyph| {
+            let gil = Python::acquire_gil();
+            let py = gil.python();
+
+            for c in &glyph.contours {
+                if let Err(e) = pen.call_method0(py, "beginPath") {
+                    e.restore(py);
+                    return;
+                }
+                for p in &c.points {
+                    let coord = (p.x, p.y).to_object(py);
+                    let d = PyDict::new(py);
+                    d.set_item("segmentType", point_to_str(p.typ)).unwrap();
+                    d.set_item("smooth", Some(p.smooth)).unwrap();
+                    d.set_item("name", p.name.as_ref()).unwrap();
+                    d.set_item("identifier", p.identifier().as_ref().map(|id| id.as_str())).unwrap();
+                    pen.call_method(py, "addPoint", (coord,), Some(d)).unwrap();
+                }
+                pen.call_method0(py, "endPath").unwrap();
+            }
+            for c in &glyph.components {
+                let transform: kurbo::Affine = c.transform.into();
+                let transform = transform.as_coeffs();
+                pen.call_method1(
+                    py,
+                    "addComponent",
+                    (c.base.to_object(py), transform.to_object(py)),
+                )
+                .unwrap();
+            }
+        })
+        .map_err(Into::into)
+    }
+
+    fn point_pen(&self) -> PyPointPen {
+        PyPointPen { glyph: self.clone(), contour: None }
+    }
+}
+
+#[pyclass]
+pub struct PyPointPen {
+    glyph: PyGlyph,
+    contour: Option<Arc<Mutex<Contour>>>,
+}
+
+#[pymethods]
+impl PyPointPen {
+    fn begin_path(&mut self, identifier: Option<&str>) -> PyResult<()> {
+        let identifier = util::to_identifier(identifier)?;
+        self.contour = Some(Arc::new(Mutex::new(Contour::new(Vec::new(), identifier, None))));
+
+        Ok(())
+    }
+
+    fn end_path(&mut self) -> PyResult<()> {
+        let contour = match self.contour.take().map(Arc::try_unwrap) {
+            Some(Ok(contour)) => contour.into_inner().unwrap(),
+            Some(Err(arc)) => arc.lock().unwrap().clone(),
+            None => return Err(exceptions::PyValueError::new_err("Call beginPath first.")),
+        };
+        self.glyph.with_mut(|g| g.contours.push(contour)).map_err(Into::into)
+    }
+
+    fn add_point(
+        &mut self,
+        pt: (f32, f32),
+        typ: u8,
+        smooth: bool,
+        name: Option<String>,
+        identifier: Option<&str>,
+    ) -> PyResult<()> {
+        if self.contour.is_none() {
+            return Err(exceptions::PyValueError::new_err("Call beginPath first."));
+        }
+        let identifier = util::to_identifier(identifier)?;
+        let typ = match typ {
+            0 => PointType::Move,
+            1 => PointType::Line,
+            2 => PointType::OffCurve,
+            3 => PointType::Curve,
+            4 => PointType::QCurve,
+            _ => unreachable!("values in the range 0..=4 only please"),
+        };
+
+        let point = ContourPoint::new(pt.0, pt.1, typ, smooth, name, identifier, None);
+        self.contour.as_mut().unwrap().lock().unwrap().points.push(point);
+        Ok(())
+    }
+
+    fn add_component(
+        &mut self,
+        name: &str,
+        xform: (f64, f64, f64, f64, f64, f64),
+        identifier: Option<&str>,
+    ) -> PyResult<()> {
+        let identifier = util::to_identifier(identifier)?;
+        let transform = kurbo::Affine::new([xform.0, xform.1, xform.2, xform.3, xform.4, xform.5]);
+
+        let component = Component::new(name.into(), transform.into(), identifier, None);
+        self.glyph.with_mut(|g| g.components.push(component)).map_err(Into::into)
+    }
+}
+
+fn point_to_str(p: PointType) -> Option<&'static str> {
+    match p {
+        PointType::Move => Some("move"),
+        PointType::Line => Some("line"),
+        PointType::OffCurve => None,
+        PointType::Curve => Some("curve"),
+        PointType::QCurve => Some("qcurve"),
     }
 }
 

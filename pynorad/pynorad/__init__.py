@@ -1,5 +1,7 @@
-from typing import Iterable, OrderedDict, Optional
-from .pynorad import PyFont, PyGuideline, PyLayer, PyGlyph, PyFontInfo
+from typing import Iterable, OrderedDict, Optional, Any, Tuple
+from fontTools.pens.pointPen import PointToSegmentPen, SegmentToPointPen
+from fontTools.misc.transform import Transform
+from .pynorad import PyFont, PyGuideline, PyPointPen, PyLayer, PyGlyph, PyFontInfo
 
 # I acknowledge that this is not the right way to do this
 __version__ = '0.1'
@@ -67,7 +69,7 @@ class Font(object):
         return self._font.default_layer().new_glyph(name)
 
     def renameGlyph(self, old: str, new: str, overwrite: bool = False):
-        Layer.proxy(self._font.default_layer()).rename_glyph(old, new, overwrite=overwrite)
+        Layer.proxy(self._font.default_layer()).renameGlyph(old, new, overwrite=overwrite)
 
     def __iter__(self):
         return IterWrapper(Glyph, self._font.default_layer().iter_glyphs())
@@ -205,9 +207,10 @@ class Layer:
         copy: bool = True,
     ) -> None:
         if copy:
-            glyph = glyph.copy()
+            pass
         if name is not None:
-            print("pynorad insertGlyph doesn't respect provided names yet")
+            glyph._name = name
+            # print("pynorad insertGlyph doesn't respect provided names yet")
         if glyph.name is None:
             raise ValueError(f"{glyph!r} has no name; can't add it to Layer")
         if not overwrite and glyph.name in self:
@@ -370,7 +373,73 @@ class Glyph:
     def _name(self, value: str):
         self._glyph._name = value
 
+    def draw(self, pen):
+        pointPen = PointToSegmentPen(pen)
+        self._glyph.drawPoints(pointPen)
 
+    def getPointPen(self):
+        """Returns a point pen for others to draw points into self."""
+        pointPen = GlyphPointPen(self._glyph.point_pen())
+        return pointPen
+
+    def getPen(self):
+        pen = SegmentToPointPen(self.getPointPen())
+        return pen
+
+
+class GlyphPointPen:
+    def __init__(self, proxy: PyPointPen):
+        self._obj = proxy
+
+    def beginPath(self, identifier: Optional[str] = None, **kwargs: Any) -> None:
+        self._obj.begin_path(identifier)
+
+
+    def endPath(self) -> None:
+        self._obj.end_path()
+
+
+    def addPoint(
+        self,
+        pt: Tuple[float, float],
+        segmentType: Optional[str] = None,
+        smooth: bool = False,
+        name: Optional[str] = None,
+        identifier: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        segmentType = encodeSegmentType(segmentType)
+        self._obj.add_point(pt, segmentType, smooth, name, identifier)
+
+
+    def addComponent(
+        self,
+        baseGlyph: str,
+        transformation: Transform,
+        identifier: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        tx = transformation
+        transform = (tx.xx, tx.xy, tx.yx, tx.yy, tx.dx, tx.dy)
+        self._obj.add_component(baseGlyph, transform, identifier)
+
+
+def encodeSegmentType(segmentType: Optional[str]) -> int:
+    """
+    Jumping through hoops to avoid sending a string across the FFI
+    boundary. The ordering of points is the ordering in the spec.
+    """
+    if segmentType == "move":
+        return 0
+    if segmentType == "line":
+        return 1
+    if segmentType is None:
+        return 2
+    if segmentType == "curve":
+        return 3
+    if segmentType == "qcurve":
+        return 4
+    raise ValueError(f"Unknown segment type {segmentType}")
 
 class Guideline:
     """I'll do something at some point"""

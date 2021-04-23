@@ -11,7 +11,7 @@ mod util;
 
 pub use font::PyFont;
 pub use fontinfo::PyFontInfo;
-pub use glyph::{PointProxy, PointsIter, PointsProxy, PyGlyph};
+pub use glyph::{PointProxy, PointsIter, PointsProxy, PyGlyph, PyPointPen};
 pub use guideline::PyGuideline;
 pub use layer::{GlyphIter, LayerIter, PyLayer};
 
@@ -22,6 +22,7 @@ fn pynorad(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyFont>()?;
     m.add_class::<PyLayer>()?;
     m.add_class::<PyGlyph>()?;
+    m.add_class::<PyPointPen>()?;
     m.add_class::<PyGuideline>()?;
     m.add_class::<PyFontInfo>()?;
     Ok(())
