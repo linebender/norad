@@ -6,10 +6,10 @@ use pyo3::{
     exceptions,
     prelude::*,
     types::{PyDict, PyType},
-    PyIterProtocol, PyRef, PySequenceProtocol,
+    PyRef, PySequenceProtocol,
 };
 
-use super::{flatten, seq_proxy, proxy_eq, util, ProxyError, PyLayer};
+use super::{flatten, proxy_eq, seq_proxy, seq_proxy_iter, util, ProxyError, PyLayer};
 
 #[pyclass]
 #[derive(Debug, Clone)]
@@ -238,6 +238,7 @@ fn point_to_str(p: PointType) -> Option<&'static str> {
 
 seq_proxy!(ContoursProxy, PyGlyph, ContourProxy, contours, Contour);
 proxy_eq!(ContoursProxy);
+seq_proxy_iter!(ContoursIter, ContoursProxy, ContourProxy);
 
 #[pyclass]
 #[derive(Debug, Clone)]
@@ -298,40 +299,8 @@ impl ContourProxy {
 }
 
 seq_proxy!(PointsProxy, ContourProxy, PointProxy, points, ContourPoint);
+seq_proxy_iter!(PointsIter, PointsProxy, PointProxy);
 proxy_eq!(PointsProxy);
-
-#[pyclass]
-pub struct PointsIter {
-    points: PointsProxy,
-    ix: usize,
-}
-
-#[pymethods]
-impl PointsProxy {
-    fn iter_points(&self) -> PointsIter {
-        PointsIter { points: self.clone(), ix: 0 }
-    }
-}
-
-#[pyproto]
-impl PyIterProtocol for PointsProxy {
-    fn __iter__(slf: PyRef<Self>) -> PointsIter {
-        slf.iter_points()
-    }
-}
-
-#[pyproto]
-impl PyIterProtocol for PointsIter {
-    fn __iter__(slf: PyRef<'p, Self>) -> PyRef<'p, Self> {
-        slf
-    }
-
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<PointProxy> {
-        let index = slf.ix;
-        slf.ix += 1;
-        slf.points.__getitem__(index as isize).ok()
-    }
-}
 
 #[pyclass]
 #[derive(Debug, Clone)]
