@@ -11,7 +11,7 @@ mod util;
 
 pub use font::PyFont;
 pub use fontinfo::PyFontInfo;
-pub use glyph::{PointProxy, PointsIter, PointsProxy, PyGlyph, PyPointPen};
+pub use glyph::{ContourProxy, PointProxy, PointsIter, PointsProxy, PyGlyph, PyPointPen};
 pub use guideline::PyGuideline;
 pub use layer::{GlyphIter, LayerIter, PyLayer};
 
@@ -36,9 +36,9 @@ pub(crate) fn error_to_py(error: norad::Error) -> PyErr {
 #[derive(Debug, Clone)]
 pub enum ProxyError {
     MissingLayer(Arc<str>),
-    MissingGlyph { layer: Arc<str>, glyph: Arc<str> },
-    MissingContour { layer: Arc<str>, glyph: Arc<str>, contour: usize },
-    MissingPoint { layer: Arc<str>, glyph: Arc<str>, contour: usize, point: usize },
+    MissingGlyph(PyGlyph),
+    MissingContour(ContourProxy),
+    MissingPoint(PointProxy),
     MissingGlobalGuideline,
     MissingLayerGuideline(Arc<str>),
 }
@@ -47,16 +47,25 @@ impl std::fmt::Display for ProxyError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             ProxyError::MissingLayer(layer) => write!(f, "Layer '{}' no longer exists.", layer),
-            ProxyError::MissingGlyph { layer, glyph } => {
-                write!(f, "No glyph '{}' in layer '{}'", glyph, layer)
+            ProxyError::MissingGlyph(glyph) => {
+                write!(f, "No glyph '{}' in layer '{}'", glyph.name, glyph.layer_name())
             }
-            ProxyError::MissingContour { layer, glyph, contour } => {
-                write!(f, "No contour {} in glyph '{}', layer '{}'", contour, glyph, layer)
+            ProxyError::MissingContour(contour) => {
+                write!(
+                    f,
+                    "No contour {} in glyph '{}', layer '{}'",
+                    contour.idx.get(),
+                    contour.inner.inner.name,
+                    contour.inner.inner.layer_name()
+                )
             }
-            ProxyError::MissingPoint { layer, glyph, contour, point } => write!(
+            ProxyError::MissingPoint(point) => write!(
                 f,
                 "No point {} in contour {}, glyph '{}', layer '{}'",
-                point, contour, glyph, layer
+                point.idx.get(),
+                point.inner.idx.get(),
+                point.inner.inner.inner.name,
+                point.inner.inner.inner.layer_name(),
             ),
             ProxyError::MissingGlobalGuideline => write!(f, "Missing global Guideline"),
             ProxyError::MissingLayerGuideline(layer) => {

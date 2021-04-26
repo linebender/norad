@@ -45,10 +45,7 @@ impl PyLayer {
 
     #[getter]
     pub fn name(&self) -> &str {
-        match &self.inner {
-            LayerProxy::Font { layer_name, .. } => &layer_name,
-            LayerProxy::Concrete { layer_name, .. } => &layer_name,
-        }
+        &self.raw_name()
     }
 
     fn len(&self) -> usize {
@@ -131,6 +128,13 @@ impl PyLayer {
 impl PyLayer {
     pub fn proxy(font: PyFont, layer_name: Arc<str>) -> Self {
         PyLayer { inner: LayerProxy::Font { font, layer_name } }
+    }
+
+    pub(crate) fn raw_name(&self) -> &Arc<str> {
+        match &self.inner {
+            LayerProxy::Font { layer_name, .. } => &layer_name,
+            LayerProxy::Concrete { layer_name, .. } => &layer_name,
+        }
     }
 
     pub fn with<R>(&self, f: impl FnOnce(&Layer) -> R) -> Result<R, ProxyError> {

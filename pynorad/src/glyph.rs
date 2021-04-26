@@ -10,7 +10,7 @@ use pyo3::{
     PyIterProtocol, PyObjectProtocol, PyRef, PySequenceProtocol,
 };
 
-use super::{flatten, util, ProxyError, PyLayer};
+use super::{flatten, seq_proxy, util, ProxyError, PyLayer};
 
 #[pyclass]
 #[derive(Debug, Clone)]
@@ -30,10 +30,10 @@ impl PyGlyph {
         PyGlyph { inner: GlyphProxy::Layer { layer, py_id }, name }
     }
 
-    fn layer_name(&self) -> Option<&str> {
+    pub(crate) fn layer_name(&self) -> &str {
         match &self.inner {
-            GlyphProxy::Layer { layer, .. } => Some(layer.name()),
-            _ => None,
+            GlyphProxy::Layer { layer, .. } => layer.name(),
+            _ => "None",
         }
     }
 
@@ -44,10 +44,7 @@ impl PyGlyph {
                     Some(g) if g.py_id == *py_id => Some(g),
                     _ => l.iter_contents().find(|g| g.py_id == *py_id),
                 }
-                .ok_or_else(|| ProxyError::MissingGlyph {
-                    layer: layer.name().into(),
-                    glyph: self.name.clone()
-                })
+                .ok_or_else(|| ProxyError::MissingGlyph(self.clone()))
                 .map(|g| { f(g) })))
             }
             GlyphProxy::Concrete(glyph) => Ok(f(&glyph.read().unwrap())),
@@ -70,10 +67,7 @@ impl PyGlyph {
                 })?;
                 match result {
                     Some(thing) => Ok(thing),
-                    None => Err(ProxyError::MissingGlyph {
-                        layer: layer.name().into(),
-                        glyph: self.name.clone(),
-                    }),
+                    None => Err(ProxyError::MissingGlyph(self.clone())),
                 }
             }
             GlyphProxy::Concrete(glyph) => Ok(f(&mut glyph.write().unwrap())),
@@ -92,7 +86,7 @@ impl PyGlyph {
 
     #[getter]
     fn contours(&self) -> ContoursProxy {
-        ContoursProxy { glyph: self.clone() }
+        ContoursProxy { inner: self.clone() }
     }
 
     #[getter]
@@ -144,7 +138,8 @@ impl PyGlyph {
                     d.set_item("segmentType", point_to_str(p.typ)).unwrap();
                     d.set_item("smooth", Some(p.smooth)).unwrap();
                     d.set_item("name", p.name.as_ref()).unwrap();
-                    d.set_item("identifier", p.identifier().as_ref().map(|id| id.as_str())).unwrap();
+                    d.set_item("identifier", p.identifier().as_ref().map(|id| id.as_str()))
+                        .unwrap();
                     pen.call_method(py, "addPoint", (coord,), Some(d)).unwrap();
                 }
                 pen.call_method0(py, "endPath").unwrap();
@@ -242,43 +237,13 @@ fn point_to_str(p: PointType) -> Option<&'static str> {
     }
 }
 
-#[pyclass]
-#[derive(Debug, Clone)]
-pub struct ContoursProxy {
-    glyph: PyGlyph,
-}
-
-#[pyproto]
-impl PySequenceProtocol for ContoursProxy {
-    fn __len__(&self) -> usize {
-        self.glyph.with(|g| g.contours.len()).unwrap_or(0)
-    }
-
-    fn __getitem__(&'p self, idx: isize) -> Option<ContourProxy> {
-        let idx: usize = if idx.is_negative() {
-            self.__len__().checked_sub(idx.abs() as usize)?
-        } else {
-            idx as usize
-        };
-
-        self.glyph
-            .with(|g| {
-                g.contours.get(idx).map(|contour| ContourProxy {
-                    glyph: self.glyph.clone(),
-                    idx: Cell::new(idx),
-                    py_id: contour.py_id,
-                })
-            })
-            .ok()
-            .flatten()
-    }
-}
+seq_proxy!(ContoursProxy, PyGlyph, ContourProxy, contours, Contour);
 
 #[pyclass]
 #[derive(Debug, Clone)]
 pub struct ContourProxy {
-    glyph: PyGlyph,
-    idx: Cell<usize>,
+    pub(crate) inner: ContoursProxy,
+    pub(crate) idx: Cell<usize>,
     py_id: PyId,
 }
 
@@ -286,17 +251,21 @@ pub struct ContourProxy {
 impl ContourProxy {
     #[getter]
     fn points(&self) -> PointsProxy {
-        PointsProxy { contour: self.clone() }
+        PointsProxy { inner: self.clone() }
     }
 }
 
 impl ContourProxy {
+    fn new(inner: ContoursProxy, idx: usize, py_id: PyId) -> Self {
+        ContourProxy { inner, idx: Cell::new(idx), py_id }
+    }
+
     fn with<R>(&self, f: impl FnOnce(&Contour) -> R) -> Result<R, ProxyError> {
-        flatten!(self.glyph.with(|g| match g.contours.get(self.idx.get()) {
+        flatten!(self.inner.with(|contours| match contours.get(self.idx.get()) {
             Some(c) if c.py_id == self.py_id => Some(c),
             //NOTE: if we don't find the item or the id doesn't match, we do
             // a linear search for the id; if we find it we update our index.
-            _ => match g.contours.iter().enumerate().find(|(_, c)| c.py_id == self.py_id) {
+            _ => match contours.iter().enumerate().find(|(_, c)| c.py_id == self.py_id) {
                 Some((i, c)) => {
                     self.idx.set(i);
                     Some(c)
@@ -304,19 +273,15 @@ impl ContourProxy {
                 None => None,
             },
         }
-        .ok_or_else(|| ProxyError::MissingContour {
-            layer: self.glyph.layer_name().unwrap_or("None").into(),
-            glyph: self.glyph.name.clone(),
-            contour: self.idx.get(),
-        })
+        .ok_or_else(|| ProxyError::MissingContour(self.clone()))
         .map(|g| f(g))))
     }
 
     fn with_mut<R>(&mut self, f: impl FnOnce(&mut Contour) -> R) -> Result<R, ProxyError> {
-        let ContourProxy { glyph, idx, py_id } = self;
-        let result = glyph.with_mut(|g| match g.contours.get_mut(idx.get()) {
+        let ContourProxy { inner, idx, py_id } = self;
+        let result = inner.with_mut(|contours| match contours.get_mut(idx.get()) {
             Some(c) if c.py_id == *py_id => Some(f(c)),
-            _ => match g.contours.iter_mut().enumerate().find(|(_, c)| c.py_id == *py_id) {
+            _ => match contours.iter_mut().enumerate().find(|(_, c)| c.py_id == *py_id) {
                 Some((i, c)) => {
                     idx.set(i);
                     Some(f(c))
@@ -327,25 +292,16 @@ impl ContourProxy {
 
         match result {
             Some(thing) => Ok(thing),
-            None => Err(ProxyError::MissingContour {
-                layer: self.glyph.layer_name().unwrap_or("None").into(),
-                glyph: self.glyph.name.clone(),
-                contour: self.idx.get(),
-            }),
+            None => Err(ProxyError::MissingContour(self.clone())),
         }
     }
 }
 
-#[pyclass]
-#[derive(Debug, Clone)]
-pub struct PointsProxy {
-    contour: ContourProxy,
-}
+seq_proxy!(PointsProxy, ContourProxy, PointProxy, points, ContourPoint);
 
 #[pyclass]
 pub struct PointsIter {
     points: PointsProxy,
-    //len: usize,
     ix: usize,
 }
 
@@ -353,33 +309,6 @@ pub struct PointsIter {
 impl PointsProxy {
     fn iter_points(&self) -> PointsIter {
         PointsIter { points: self.clone(), ix: 0 }
-    }
-}
-
-#[pyproto]
-impl PySequenceProtocol for PointsProxy {
-    fn __len__(&self) -> usize {
-        self.contour.with(|c| c.points.len()).unwrap_or(0)
-    }
-
-    fn __getitem__(&'p self, idx: isize) -> PyResult<PointProxy> {
-        let idx = util::python_idx_to_idx(idx, self.__len__())?;
-        self.contour
-            .with(|c| PointProxy {
-                contour: self.contour.clone(),
-                idx: Cell::new(idx),
-                py_id: c.points[idx].py_id,
-            })
-            .map_err(Into::into)
-    }
-
-    fn __delitem__(&'p mut self, idx: isize) -> PyResult<()> {
-        let idx = util::python_idx_to_idx(idx, self.__len__())?;
-        self.contour
-            .with_mut(|contour| {
-                contour.points.remove(idx);
-            })
-            .map_err(Into::into)
     }
 }
 
@@ -404,15 +333,20 @@ impl PyIterProtocol for PointsIter {
 }
 
 #[pyclass]
+#[derive(Debug, Clone)]
 pub struct PointProxy {
-    contour: ContourProxy,
-    idx: Cell<usize>,
+    pub(crate) inner: ContourProxy,
+    pub(crate) idx: Cell<usize>,
     py_id: PyId,
 }
 
 impl PointProxy {
+    fn new(inner: PointsProxy, idx: usize, py_id: PyId) -> Self {
+        PointProxy { inner: inner.inner, idx: Cell::new(idx), py_id }
+    }
+
     fn with<R>(&self, f: impl FnOnce(&ContourPoint) -> R) -> Result<R, ProxyError> {
-        flatten!(self.contour.with(|c| match c.points.get(self.idx.get()) {
+        flatten!(self.inner.with(|c| match c.points.get(self.idx.get()) {
             Some(pt) if pt.py_id == self.py_id => Some(pt),
             _ => match c.points.iter().enumerate().find(|(_, pt)| pt.py_id == self.py_id) {
                 Some((i, pt)) => {
@@ -422,17 +356,12 @@ impl PointProxy {
                 None => None,
             },
         }
-        .ok_or_else(|| ProxyError::MissingPoint {
-            layer: self.contour.glyph.layer_name().unwrap_or("None").into(),
-            glyph: self.contour.glyph.name.clone(),
-            contour: self.contour.idx.get(),
-            point: self.idx.get()
-        })
+        .ok_or_else(|| ProxyError::MissingPoint(self.clone()))
         .map(|g| f(g))))
     }
 
     fn with_mut<R>(&mut self, f: impl FnOnce(&mut ContourPoint) -> R) -> Result<R, ProxyError> {
-        let PointProxy { contour, py_id, idx } = self;
+        let PointProxy { inner: contour, py_id, idx } = self;
         let result = contour.with_mut(|c| match c.points.get_mut(idx.get()) {
             Some(pt) if pt.py_id == *py_id => Some(f(pt)),
             _ => match c.points.iter_mut().enumerate().find(|(_, pt)| pt.py_id == *py_id) {
@@ -446,12 +375,7 @@ impl PointProxy {
 
         match result {
             Some(thing) => Ok(thing),
-            None => Err(ProxyError::MissingPoint {
-                layer: contour.glyph.layer_name().unwrap_or("None").into(),
-                glyph: contour.glyph.name.clone(),
-                contour: self.contour.idx.get(),
-                point: self.idx.get(),
-            }),
+            None => Err(ProxyError::MissingPoint(self.clone())),
         }
     }
 }
