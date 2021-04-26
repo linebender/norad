@@ -64,6 +64,32 @@ macro_rules! seq_proxy {
     };
 }
 
+/// A helper macro that implements the python == and != ops
+#[macro_export]
+macro_rules! proxy_eq {
+    ($name:ident) => {
+        #[pyproto]
+        impl pyo3::PyObjectProtocol for $name {
+            fn __richcmp__(
+                &'p self,
+                other: PyRef<$name>,
+                op: pyo3::class::basic::CompareOp,
+            ) -> pyo3::PyResult<bool> {
+                let other: &$name = &*other;
+                match op {
+                    pyo3::class::basic::CompareOp::Eq => {
+                        flatten!(self.with(|x| other.with(|y| x == y))).map_err(Into::into)
+                    }
+                    pyo3::class::basic::CompareOp::Ne => {
+                        flatten!(self.with(|x| other.with(|y| x != y))).map_err(Into::into)
+                    }
+                    _ => Err(pyo3::exceptions::PyNotImplementedError::new_err("")),
+                }
+            }
+        }
+    };
+}
+
 pub(crate) fn python_idx_to_idx(idx: isize, len: usize) -> PyResult<usize> {
     let idx = if idx.is_negative() { len - (idx.abs() as usize % len) } else { idx as usize };
 

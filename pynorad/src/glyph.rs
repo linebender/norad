@@ -3,14 +3,13 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use norad::{Component, Contour, ContourPoint, Glyph, GlyphName, PointType, PyId};
 use pyo3::{
-    class::basic::CompareOp,
     exceptions,
     prelude::*,
     types::{PyDict, PyType},
-    PyIterProtocol, PyObjectProtocol, PyRef, PySequenceProtocol,
+    PyIterProtocol, PyRef, PySequenceProtocol,
 };
 
-use super::{flatten, seq_proxy, util, ProxyError, PyLayer};
+use super::{flatten, seq_proxy, proxy_eq, util, ProxyError, PyLayer};
 
 #[pyclass]
 #[derive(Debug, Clone)]
@@ -238,6 +237,7 @@ fn point_to_str(p: PointType) -> Option<&'static str> {
 }
 
 seq_proxy!(ContoursProxy, PyGlyph, ContourProxy, contours, Contour);
+proxy_eq!(ContoursProxy);
 
 #[pyclass]
 #[derive(Debug, Clone)]
@@ -298,6 +298,7 @@ impl ContourProxy {
 }
 
 seq_proxy!(PointsProxy, ContourProxy, PointProxy, points, ContourPoint);
+proxy_eq!(PointsProxy);
 
 #[pyclass]
 pub struct PointsIter {
@@ -408,14 +409,4 @@ impl PointProxy {
     }
 }
 
-#[pyproto]
-impl PyObjectProtocol for PointProxy {
-    fn __richcmp__(&'p self, other: PyRef<PointProxy>, op: CompareOp) -> PyResult<bool> {
-        let other: &PointProxy = &*other;
-        match op {
-            CompareOp::Eq => flatten!(self.with(|p| other.with(|p2| p == p2))).map_err(Into::into),
-            CompareOp::Ne => flatten!(self.with(|p| other.with(|p2| p != p2))).map_err(Into::into),
-            _ => Err(exceptions::PyNotImplementedError::new_err("")),
-        }
-    }
-}
+proxy_eq!(PointProxy);
