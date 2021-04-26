@@ -63,9 +63,9 @@ impl std::fmt::Display for ProxyError {
                 f,
                 "No point {} in contour {}, glyph '{}', layer '{}'",
                 point.idx.get(),
-                point.inner.idx.get(),
-                point.inner.inner.inner.name,
-                point.inner.inner.inner.layer_name(),
+                point.inner.inner.idx.get(),
+                point.inner.inner.inner.inner.name,
+                point.inner.inner.inner.inner.layer_name(),
             ),
             ProxyError::MissingGlobalGuideline => write!(f, "Missing global Guideline"),
             ProxyError::MissingLayerGuideline(layer) => {

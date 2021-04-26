@@ -9,7 +9,9 @@ use pyo3::{
     PyRef, PySequenceProtocol,
 };
 
-use super::{flatten, proxy_eq, seq_proxy, seq_proxy_iter, util, ProxyError, PyLayer};
+use super::{
+    flatten, proxy_eq, seq_proxy, seq_proxy_iter, seq_proxy_member, util, ProxyError, PyLayer,
+};
 
 #[pyclass]
 #[derive(Debug, Clone)]
@@ -237,16 +239,9 @@ fn point_to_str(p: PointType) -> Option<&'static str> {
 }
 
 seq_proxy!(ContoursProxy, PyGlyph, ContourProxy, contours, Contour);
-proxy_eq!(ContoursProxy);
+seq_proxy_member!(ContourProxy, ContoursProxy, Contour, MissingContour);
 seq_proxy_iter!(ContoursIter, ContoursProxy, ContourProxy);
-
-#[pyclass]
-#[derive(Debug, Clone)]
-pub struct ContourProxy {
-    pub(crate) inner: ContoursProxy,
-    pub(crate) idx: Cell<usize>,
-    py_id: PyId,
-}
+proxy_eq!(ContoursProxy);
 
 #[pymethods]
 impl ContourProxy {
@@ -256,99 +251,10 @@ impl ContourProxy {
     }
 }
 
-impl ContourProxy {
-    fn new(inner: ContoursProxy, idx: usize, py_id: PyId) -> Self {
-        ContourProxy { inner, idx: Cell::new(idx), py_id }
-    }
-
-    fn with<R>(&self, f: impl FnOnce(&Contour) -> R) -> Result<R, ProxyError> {
-        flatten!(self.inner.with(|contours| match contours.get(self.idx.get()) {
-            Some(c) if c.py_id == self.py_id => Some(c),
-            //NOTE: if we don't find the item or the id doesn't match, we do
-            // a linear search for the id; if we find it we update our index.
-            _ => match contours.iter().enumerate().find(|(_, c)| c.py_id == self.py_id) {
-                Some((i, c)) => {
-                    self.idx.set(i);
-                    Some(c)
-                }
-                None => None,
-            },
-        }
-        .ok_or_else(|| ProxyError::MissingContour(self.clone()))
-        .map(|g| f(g))))
-    }
-
-    fn with_mut<R>(&mut self, f: impl FnOnce(&mut Contour) -> R) -> Result<R, ProxyError> {
-        let ContourProxy { inner, idx, py_id } = self;
-        let result = inner.with_mut(|contours| match contours.get_mut(idx.get()) {
-            Some(c) if c.py_id == *py_id => Some(f(c)),
-            _ => match contours.iter_mut().enumerate().find(|(_, c)| c.py_id == *py_id) {
-                Some((i, c)) => {
-                    idx.set(i);
-                    Some(f(c))
-                }
-                None => None,
-            },
-        })?;
-
-        match result {
-            Some(thing) => Ok(thing),
-            None => Err(ProxyError::MissingContour(self.clone())),
-        }
-    }
-}
-
 seq_proxy!(PointsProxy, ContourProxy, PointProxy, points, ContourPoint);
+seq_proxy_member!(PointProxy, PointsProxy, ContourPoint, MissingPoint);
 seq_proxy_iter!(PointsIter, PointsProxy, PointProxy);
 proxy_eq!(PointsProxy);
-
-#[pyclass]
-#[derive(Debug, Clone)]
-pub struct PointProxy {
-    pub(crate) inner: ContourProxy,
-    pub(crate) idx: Cell<usize>,
-    py_id: PyId,
-}
-
-impl PointProxy {
-    fn new(inner: PointsProxy, idx: usize, py_id: PyId) -> Self {
-        PointProxy { inner: inner.inner, idx: Cell::new(idx), py_id }
-    }
-
-    fn with<R>(&self, f: impl FnOnce(&ContourPoint) -> R) -> Result<R, ProxyError> {
-        flatten!(self.inner.with(|c| match c.points.get(self.idx.get()) {
-            Some(pt) if pt.py_id == self.py_id => Some(pt),
-            _ => match c.points.iter().enumerate().find(|(_, pt)| pt.py_id == self.py_id) {
-                Some((i, pt)) => {
-                    self.idx.set(i);
-                    Some(pt)
-                }
-                None => None,
-            },
-        }
-        .ok_or_else(|| ProxyError::MissingPoint(self.clone()))
-        .map(|g| f(g))))
-    }
-
-    fn with_mut<R>(&mut self, f: impl FnOnce(&mut ContourPoint) -> R) -> Result<R, ProxyError> {
-        let PointProxy { inner: contour, py_id, idx } = self;
-        let result = contour.with_mut(|c| match c.points.get_mut(idx.get()) {
-            Some(pt) if pt.py_id == *py_id => Some(f(pt)),
-            _ => match c.points.iter_mut().enumerate().find(|(_, pt)| pt.py_id == *py_id) {
-                Some((i, pt)) => {
-                    idx.set(i);
-                    Some(f(pt))
-                }
-                None => None,
-            },
-        })?;
-
-        match result {
-            Some(thing) => Ok(thing),
-            None => Err(ProxyError::MissingPoint(self.clone())),
-        }
-    }
-}
 
 #[pymethods]
 impl PointProxy {
