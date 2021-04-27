@@ -1,4 +1,3 @@
-use std::cell::Cell;
 use std::sync::{Arc, Mutex, RwLock};
 
 use norad::{Component, Contour, ContourPoint, Glyph, GlyphName, PointType, PyId};
@@ -10,7 +9,8 @@ use pyo3::{
 };
 
 use super::{
-    flatten, proxy_eq, seq_proxy, seq_proxy_iter, seq_proxy_member, util, ProxyError, PyLayer,
+    flatten, proxy_eq, proxy_or_concrete, seq_proxy, seq_proxy_iter, seq_proxy_member, util,
+    ProxyError, PyLayer,
 };
 
 #[pyclass]
@@ -200,15 +200,7 @@ impl PyPointPen {
             return Err(exceptions::PyValueError::new_err("Call beginPath first."));
         }
         let identifier = util::to_identifier(identifier)?;
-        let typ = match typ {
-            0 => PointType::Move,
-            1 => PointType::Line,
-            2 => PointType::OffCurve,
-            3 => PointType::Curve,
-            4 => PointType::QCurve,
-            _ => unreachable!("values in the range 0..=4 only please"),
-        };
-
+        let typ = util::decode_point_type(typ);
         let point = ContourPoint::new(pt.0, pt.1, typ, smooth, name, identifier, None);
         self.contour.as_mut().unwrap().lock().unwrap().points.push(point);
         Ok(())
@@ -238,26 +230,46 @@ fn point_to_str(p: PointType) -> Option<&'static str> {
     }
 }
 
-seq_proxy!(ContoursProxy, PyGlyph, ContourProxy, contours, Contour);
-seq_proxy_member!(ContourProxy, ContoursProxy, Contour, MissingContour);
-seq_proxy_iter!(ContoursIter, ContoursProxy, ContourProxy);
+seq_proxy!(PyGlyph, components, ComponentsProxy, PyComponent, Component);
+seq_proxy_member!(ComponentsProxy, PyComponent, ComponentProxy, Component, MissingComponent);
+seq_proxy_iter!(ComponentsIter, ComponentsProxy, PyComponent);
+proxy_eq!(ComponentsProxy);
+
+seq_proxy!(PyGlyph, contours, ContoursProxy, PyContour, Contour);
+seq_proxy_member!(ContoursProxy, PyContour, ContourProxy, Contour, MissingContour);
+seq_proxy_iter!(ContoursIter, ContoursProxy, PyContour);
 proxy_eq!(ContoursProxy);
 
 #[pymethods]
-impl ContourProxy {
+impl PyContour {
     #[getter]
     fn points(&self) -> PointsProxy {
         PointsProxy { inner: self.clone() }
     }
 }
 
-seq_proxy!(PointsProxy, ContourProxy, PointProxy, points, ContourPoint);
-seq_proxy_member!(PointProxy, PointsProxy, ContourPoint, MissingPoint);
-seq_proxy_iter!(PointsIter, PointsProxy, PointProxy);
+seq_proxy!(PyContour, points, PointsProxy, PyPoint, ContourPoint);
+seq_proxy_member!(PointsProxy, PyPoint, PointProxy, ContourPoint, MissingPoint);
+seq_proxy_iter!(PointsIter, PointsProxy, PyPoint);
 proxy_eq!(PointsProxy);
 
 #[pymethods]
-impl PointProxy {
+impl PyPoint {
+    #[classmethod]
+    fn concrete(
+        _cls: &PyType,
+        x: f32,
+        y: f32,
+        typ: u8,
+        smooth: bool,
+        name: Option<String>,
+        identifier: Option<&str>,
+    ) -> PyResult<Self> {
+        let identifier = util::to_identifier(identifier)?;
+        let typ = util::decode_point_type(typ);
+        let point = ContourPoint::new(x, y, typ, smooth, name, identifier, None);
+        Ok(point.into())
+    }
     #[getter]
     fn get_x(&self) -> PyResult<f32> {
         self.with(|p| p.x).map_err(Into::into)
@@ -278,10 +290,10 @@ impl PointProxy {
         self.with_mut(|p| p.y = y).map_err(Into::into)
     }
 
-    fn py_eq(&self, other: PyRef<PointProxy>) -> PyResult<bool> {
-        let other: &PointProxy = &*other;
+    fn py_eq(&self, other: PyRef<PyPoint>) -> PyResult<bool> {
+        let other: &PyPoint = &*other;
         flatten!(self.with(|p| other.with(|p2| p == p2))).map_err(Into::into)
     }
 }
 
-proxy_eq!(PointProxy);
+proxy_eq!(PyPoint);

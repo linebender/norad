@@ -1,7 +1,7 @@
 from typing import Iterable, OrderedDict, Optional, Any, Tuple
 from fontTools.pens.pointPen import PointToSegmentPen, SegmentToPointPen
 from fontTools.misc.transform import Transform
-from .pynorad import PyFont, PyGuideline, PyPointPen, PyLayer, PyGlyph, PyFontInfo
+from .pynorad import PyFont, PyGuideline, PyPointPen, PyLayer, PyGlyph, PyPoint, PyContour, PyComponent, PyFontInfo
 
 # I acknowledge that this is not the right way to do this
 __version__ = '0.1'
@@ -324,6 +324,27 @@ class IterWrapper:
         else:
             return None
 
+class ProxySequence:
+    def __init__(self, typ, inner):
+        self.inner = inner
+        self.typ = typ
+
+    def __getitem__(self, idx):
+        return self.typ.proxy(self.inner.__getitem__(idx))
+
+    def __delitem__(self, idx):
+        self.inner.__delitem__(idx)
+
+    def __len__(self):
+        return len(self.inner)
+
+    def __iter__(self):
+        return IterWrapper(self.typ, iter(self.inner))
+
+    def __eq__(self, other):
+        return self.inner == other.inner
+
+
 # class ufoLib2.objects.Glyph(name: Optional[str] = None, width: float = 0, height: float = 0, unicodes: List[int] = NOTHING, image: ufoLib2.objects.image.Image = NOTHING, lib: Dict[str, Any] = NOTHING, note: Optional[str] = None, anchors: List[ufoLib2.objects.anchor.Anchor] = NOTHING, components: List[ufoLib2.objects.component.Component] = NOTHING, contours: List[ufoLib2.objects.contour.Contour] = NOTHING, guidelines: List[ufoLib2.objects.guideline.Guideline] = NOTHING)[source]
 class Glyph:
     def __init__(self, name: str = "", proxy: PyGlyph = None, **kwargs):
@@ -354,11 +375,11 @@ class Glyph:
 
     @property
     def contours(self):
-        return self._glyph.contours
+        return ProxySequence(Contour, self._glyph.contours)
 
     @property
     def components(self):
-        return []
+        return ProxySequence(Component, self._glyph.components)
 
     @property
     def name(self):
@@ -424,23 +445,6 @@ class GlyphPointPen:
         self._obj.add_component(baseGlyph, transform, identifier)
 
 
-def encodeSegmentType(segmentType: Optional[str]) -> int:
-    """
-    Jumping through hoops to avoid sending a string across the FFI
-    boundary. The ordering of points is the ordering in the spec.
-    """
-    if segmentType == "move":
-        return 0
-    if segmentType == "line":
-        return 1
-    if segmentType is None:
-        return 2
-    if segmentType == "curve":
-        return 3
-    if segmentType == "qcurve":
-        return 4
-    raise ValueError(f"Unknown segment type {segmentType}")
-
 class Guideline:
     """I'll do something at some point"""
     def __init__(self, x=None, y=None, angle=None, name=None, color=None, identifier=None, proxy=None):
@@ -501,4 +505,87 @@ class FontInfo(object):
         # if other.__class__ is not self.__class__:
             # return NotImplemented
         # return self._guideline.py_eq(other._guideline)
+
+class Anchor:
+    pass
+
+class Image:
+    pass
+
+class Component:
+    def __init__(self, baseGlyph: str, transformation=None, identifier=None, proxy=None):
+        if proxy is not None:
+            self._obj = proxy
+        else:
+            tx = transformation or Transform.identity()
+            transform = (tx.xx, tx.xy, tx.yx, tx.yy, tx.dx, tx.dy)
+            self._obj = PyComponent.concrete(baseGlyph, transform, identifier)
+            # self._obj = PyGuideline.concrete(x, y, angle, name, color, identifier)
+
+    @classmethod
+    def proxy(cls, obj: PyComponent):
+        return cls(proxy=obj)
+
+class Contour:
+    def __init__(self, points=None, identifier=None, proxy=None):
+        if proxy is not None:
+            self._obj = proxy
+        else:
+            self._obj = PyContour.concrete(points, identifier)
+
+    @classmethod
+    def proxy(cls, obj: PyGuideline):
+        return cls(proxy=obj)
+
+    @property
+    def points(self):
+        return  ProxySequence(Point, self._obj.points)
+
+# Point(x: float, y: float, type: Optional[str] = None, smooth: bool = False, name: Optional[str] = None, identifier: Optional[str] = None)[source]
+
+class Point(object):
+    def __init__(self, x: float, y: float, segmentType: Optional[str] = None, smooth: bool = False, name: Optional[str] = None, identifier: Optional[str] = None, proxy = None):
+        if proxy is not None:
+            object.__setattr__(self, "_obj", proxy)
+        else:
+            typ = encodeSegmentType(segmentType)
+            proxy = PyPoint.concrete((x, y), typ, smooth, name, identifier)
+            object.__setattr__(self, "_obj", proxy)
+
+    @classmethod
+    def proxy(cls, obj: PyPoint):
+        return cls(0, 0, proxy=obj)
+
+    def __getattr__(self, item):
+        real = object.__getattribute__(self, "_obj")
+        if hasattr(real, item):
+            return getattr(real, item)
+        raise AttributeError(item)
+
+    def __setattr__(self, name, item):
+        real = object.__getattribute__(self, "_obj")
+        if hasattr(real, name):
+            return setattr(real, name, item)
+        raise AttributeError(item)
+
+    def __eq__(self, other):
+        return self._obj == other
+
+
+def encodeSegmentType(segmentType: Optional[str]) -> int:
+    """
+    Jumping through hoops to avoid sending a string across the FFI
+    boundary. The ordering of points is the ordering in the spec.
+    """
+    if segmentType == "move":
+        return 0
+    if segmentType == "line":
+        return 1
+    if segmentType is None:
+        return 2
+    if segmentType == "curve":
+        return 3
+    if segmentType == "qcurve":
+        return 4
+    raise ValueError(f"Unknown segment type {segmentType}")
 

@@ -11,7 +11,9 @@ mod util;
 
 pub use font::PyFont;
 pub use fontinfo::PyFontInfo;
-pub use glyph::{ContourProxy, PointProxy, PointsIter, PointsProxy, PyGlyph, PyPointPen};
+pub use glyph::{
+    ContourProxy, ComponentProxy, PointProxy, PointsIter, PointsProxy, PyContour, PyGlyph, PyComponent, PyPoint, PyPointPen,
+};
 pub use guideline::PyGuideline;
 pub use layer::{GlyphIter, LayerIter, PyLayer};
 
@@ -22,6 +24,9 @@ fn pynorad(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyFont>()?;
     m.add_class::<PyLayer>()?;
     m.add_class::<PyGlyph>()?;
+    m.add_class::<PyPoint>()?;
+    m.add_class::<PyContour>()?;
+    m.add_class::<PyComponent>()?;
     m.add_class::<PyPointPen>()?;
     m.add_class::<PyGuideline>()?;
     m.add_class::<PyFontInfo>()?;
@@ -38,6 +43,7 @@ pub enum ProxyError {
     MissingLayer(Arc<str>),
     MissingGlyph(PyGlyph),
     MissingContour(ContourProxy),
+    MissingComponent(ComponentProxy),
     MissingPoint(PointProxy),
     MissingGlobalGuideline,
     MissingLayerGuideline(Arc<str>),
@@ -59,13 +65,16 @@ impl std::fmt::Display for ProxyError {
                     contour.inner.inner.layer_name()
                 )
             }
+            ProxyError::MissingComponent(_) => write!(f, "Missing component"),
+            //FIXME: figure out these errors again
             ProxyError::MissingPoint(point) => write!(
                 f,
-                "No point {} in contour {}, glyph '{}', layer '{}'",
-                point.idx.get(),
-                point.inner.inner.idx.get(),
-                point.inner.inner.inner.inner.name,
-                point.inner.inner.inner.inner.layer_name(),
+                "Missing point",
+                //"No point {} in contour {}, glyph '{}', layer '{}'",
+                //point.idx.get(),
+                //point.inner.inner.idx.get(),
+                //point.inner.inner.inner.inner.name,
+                //point.inner.inner.inner.inner.layer_name(),
             ),
             ProxyError::MissingGlobalGuideline => write!(f, "Missing global Guideline"),
             ProxyError::MissingLayerGuideline(layer) => {

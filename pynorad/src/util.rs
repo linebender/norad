@@ -1,4 +1,4 @@
-use norad::{Color, Identifier};
+use norad::{Color, Identifier, PointType};
 use std::str::FromStr;
 
 use pyo3::{
@@ -21,7 +21,7 @@ macro_rules! flatten {
 /// another proxy object.
 #[macro_export]
 macro_rules! seq_proxy {
-    ($name:ident, $inner:ty, $member:ty, $field:ident, $concrete:ty) => {
+    ($inner:ty, $field:ident, $name:ident, $member:ty, $concrete:ty) => {
         #[pyclass]
         #[derive(Debug, Clone)]
         pub struct $name {
@@ -52,7 +52,7 @@ macro_rules! seq_proxy {
 
             fn __getitem__(&'p self, idx: isize) -> pyo3::PyResult<$member> {
                 let idx = $crate::util::python_idx_to_idx(idx, self.__len__())?;
-                self.with(|x| <$member>::new(self.clone(), idx, x[idx].py_id)).map_err(Into::into)
+                self.with(|x| <$member>::proxy(self.clone(), idx, x[idx].py_id)).map_err(Into::into)
             }
 
             fn __delitem__(&'p mut self, idx: isize) -> pyo3::PyResult<()> {
@@ -66,20 +66,25 @@ macro_rules! seq_proxy {
 
 #[macro_export]
 macro_rules! seq_proxy_member {
-    ($name:ident, $parent:ident, $concrete:ty, $err:ident) => {
+    ($parent:ident, $name:ident, $proxy:ident, $concrete:ty, $err:ident) => {
         #[pyclass]
         #[derive(Debug, Clone)]
-        pub struct $name {
+        pub struct $proxy {
             pub(crate) inner: $parent,
             pub(crate) idx: std::cell::Cell<usize>,
             py_id: norad::PyId,
         }
 
-        impl $name {
-            fn new(inner: $parent, idx: usize, py_id: norad::PyId) -> Self {
-                $name { inner, idx: Cell::new(idx), py_id }
-            }
+        proxy_or_concrete!($name, $proxy, $concrete);
 
+        impl $name {
+            fn proxy(inner: $parent, idx: usize, py_id: norad::PyId) -> Self {
+                let proxy = $proxy { inner, idx: std::cell::Cell::new(idx), py_id };
+                proxy.into()
+            }
+        }
+
+        impl $proxy {
             fn with<R>(&self, f: impl FnOnce(&$concrete) -> R) -> Result<R, $crate::ProxyError> {
                 $crate::flatten!(self.inner.with(|x| match x.get(self.idx.get()) {
                     Some(pt) if pt.py_id == self.py_id => Some(pt),
@@ -99,7 +104,7 @@ macro_rules! seq_proxy_member {
                 &mut self,
                 f: impl FnOnce(&mut $concrete) -> R,
             ) -> Result<R, $crate::ProxyError> {
-                let $name { inner, py_id, idx } = self;
+                let $proxy { inner, py_id, idx } = self;
                 let result = inner.with_mut(|x| match x.get_mut(idx.get()) {
                     Some(pt) if pt.py_id == *py_id => Some(f(pt)),
                     _ => match x.iter_mut().enumerate().find(|(_, pt)| pt.py_id == *py_id) {
@@ -180,6 +185,59 @@ macro_rules! proxy_eq {
     };
 }
 
+#[derive(Debug, Clone)]
+pub(crate) enum ProxyOrConcrete<T, U> {
+    Proxy(T),
+    Concrete(std::sync::Arc<std::sync::Mutex<U>>),
+}
+
+/// A macro for generating a type that is either a proxy or a concrete instance.
+#[macro_export]
+macro_rules! proxy_or_concrete {
+    ($name:ident, $proxy:ty, $concrete:ty) => {
+        #[pyclass]
+        #[derive(Debug, Clone)]
+        pub struct $name {
+            inner: $crate::util::ProxyOrConcrete<$proxy, $concrete>,
+        }
+
+        impl From<$proxy> for $name {
+            fn from(src: $proxy) -> $name {
+                $name { inner: $crate::util::ProxyOrConcrete::Proxy(src) }
+            }
+        }
+
+        impl From<$concrete> for $name {
+            fn from(src: $concrete) -> $name {
+                $name {
+                    inner: $crate::util::ProxyOrConcrete::Concrete(std::sync::Arc::new(
+                        std::sync::Mutex::new(src),
+                    )),
+                }
+            }
+        }
+
+        impl $name {
+            fn with<R>(&self, f: impl FnOnce(&$concrete) -> R) -> Result<R, $crate::ProxyError> {
+                match &self.inner {
+                    $crate::util::ProxyOrConcrete::Proxy(proxy) => proxy.with(f),
+                    $crate::util::ProxyOrConcrete::Concrete(obj) => Ok(f(&obj.lock().unwrap())),
+                }
+            }
+
+            fn with_mut<R>(
+                &mut self,
+                f: impl FnOnce(&mut $concrete) -> R,
+            ) -> Result<R, $crate::ProxyError> {
+                match &mut self.inner {
+                    $crate::util::ProxyOrConcrete::Proxy(proxy) => proxy.with_mut(f),
+                    $crate::util::ProxyOrConcrete::Concrete(obj) => Ok(f(&mut obj.lock().unwrap())),
+                }
+            }
+        }
+    };
+}
+
 pub(crate) fn python_idx_to_idx(idx: isize, len: usize) -> PyResult<usize> {
     let idx = if idx.is_negative() { len - (idx.abs() as usize % len) } else { idx as usize };
 
@@ -203,4 +261,15 @@ pub(crate) fn to_identifier(s: Option<&str>) -> PyResult<Option<Identifier>> {
 
 pub(crate) fn to_color(s: Option<&str>) -> PyResult<Option<Color>> {
     s.map(Color::from_str).transpose().map_err(|_| PyValueError::new_err("Invalid color string"))
+}
+
+pub(crate) fn decode_point_type(typ: u8) -> PointType {
+    match typ {
+        0 => PointType::Move,
+        1 => PointType::Line,
+        2 => PointType::OffCurve,
+        3 => PointType::Curve,
+        4 => PointType::QCurve,
+        _ => unreachable!("values in the range 0..=4 only please"),
+    }
 }
