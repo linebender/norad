@@ -66,26 +66,20 @@ macro_rules! seq_proxy {
 
 #[macro_export]
 macro_rules! seq_proxy_member {
-    ($parent:ident, $name:ident, $proxy:ident, $concrete:ty, $err:ident) => {
+    ($parent:ident, $proxy:ident, $concrete:ty, $err:ident) => {
         #[pyclass]
         #[derive(Debug, Clone)]
         pub struct $proxy {
             pub(crate) inner: $parent,
             pub(crate) idx: std::cell::Cell<usize>,
-            py_id: norad::PyId,
-        }
-
-        proxy_or_concrete!($name, $proxy, $concrete);
-
-        impl $name {
-            fn proxy(inner: $parent, idx: usize, py_id: norad::PyId) -> Self {
-                let proxy = $proxy { inner, idx: std::cell::Cell::new(idx), py_id };
-                proxy.into()
-            }
+            pub(crate) py_id: norad::PyId,
         }
 
         impl $proxy {
-            fn with<R>(&self, f: impl FnOnce(&$concrete) -> R) -> Result<R, $crate::ProxyError> {
+            pub(crate) fn with<R>(
+                &self,
+                f: impl FnOnce(&$concrete) -> R,
+            ) -> Result<R, $crate::ProxyError> {
                 $crate::flatten!(self.inner.with(|x| match x.get(self.idx.get()) {
                     Some(pt) if pt.py_id == self.py_id => Some(pt),
                     _ => match x.iter().enumerate().find(|(_, pt)| pt.py_id == self.py_id) {
@@ -100,7 +94,7 @@ macro_rules! seq_proxy_member {
                 .map(|g| f(g))))
             }
 
-            fn with_mut<R>(
+            pub(crate) fn with_mut<R>(
                 &mut self,
                 f: impl FnOnce(&mut $concrete) -> R,
             ) -> Result<R, $crate::ProxyError> {
@@ -122,6 +116,20 @@ macro_rules! seq_proxy_member {
                 }
             }
         }
+    };
+
+    // if passed five arguments, we generate the wrapper type; otherwise
+    // assume that it's been generated.
+    ($parent:ident, $name:ident, $proxy:ident, $concrete:ty, $err:ident) => {
+        proxy_or_concrete!($name, $proxy, $concrete);
+
+        impl $name {
+            fn proxy(inner: $parent, idx: usize, py_id: norad::PyId) -> Self {
+                let proxy = $proxy { inner, idx: std::cell::Cell::new(idx), py_id };
+                proxy.into()
+            }
+        }
+        seq_proxy_member!($parent, $proxy, $concrete, $err);
     };
 }
 

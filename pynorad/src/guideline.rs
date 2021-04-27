@@ -1,5 +1,7 @@
+use std::cell::Cell;
 use std::sync::{Arc, RwLock};
 
+use super::glyph::{GlyphGuidelineProxy, GlyphGuidelinesProxy};
 use super::{util, ProxyError, PyFont};
 use norad::{Guideline, Line, PyId};
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyType, PySequenceProtocol};
@@ -13,6 +15,7 @@ pub struct PyGuideline {
 #[derive(Clone, Debug)]
 enum GuidelineProxy {
     Font { font: PyFont, py_id: PyId },
+    Glyph(GlyphGuidelineProxy),
     Concrete { guideline: Arc<RwLock<Guideline>> },
 }
 
@@ -69,8 +72,14 @@ impl PyGuideline {
 }
 
 impl PyGuideline {
-    pub(crate) fn proxy(font: PyFont, py_id: PyId) -> Self {
+    pub(crate) fn font_proxy(font: PyFont, py_id: PyId) -> Self {
         PyGuideline { inner: GuidelineProxy::Font { font, py_id } }
+    }
+
+    pub(crate) fn proxy(inner: GlyphGuidelinesProxy, idx: usize, py_id: PyId) -> Self {
+        let idx = Cell::new(idx);
+        let proxy = GlyphGuidelineProxy { inner, idx, py_id };
+        PyGuideline { inner: GuidelineProxy::Glyph(proxy) }
     }
 
     pub fn with<R>(&self, f: impl FnOnce(&Guideline) -> R) -> Result<R, ProxyError> {
@@ -82,12 +91,13 @@ impl PyGuideline {
                 .find(|guide| guide.py_id == *py_id)
                 .map(f)
                 .ok_or(ProxyError::MissingGlobalGuideline),
+            GuidelineProxy::Glyph(proxy) => proxy.with(f),
             GuidelineProxy::Concrete { guideline, .. } => Ok(f(&guideline.read().unwrap())),
         }
     }
 
     pub fn with_mut<R>(&mut self, f: impl FnOnce(&mut Guideline) -> R) -> Result<R, ProxyError> {
-        match &self.inner {
+        match &mut self.inner {
             GuidelineProxy::Font { font, py_id } => font
                 .write()
                 .guidelines_mut()
@@ -95,6 +105,7 @@ impl PyGuideline {
                 .find(|guide| guide.py_id == *py_id)
                 .map(f)
                 .ok_or(ProxyError::MissingGlobalGuideline),
+            GuidelineProxy::Glyph(proxy) => proxy.with_mut(f),
             GuidelineProxy::Concrete { guideline, .. } => Ok(f(&mut guideline.write().unwrap())),
         }
     }

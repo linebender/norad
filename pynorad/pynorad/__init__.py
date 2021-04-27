@@ -1,7 +1,7 @@
-from typing import Iterable, OrderedDict, Optional, Any, Tuple
+from typing import Iterable, OrderedDict, Optional, Any, Tuple, Mapping
 from fontTools.pens.pointPen import PointToSegmentPen, SegmentToPointPen
 from fontTools.misc.transform import Transform
-from .pynorad import PyFont, PyGuideline, PyPointPen, PyLayer, PyGlyph, PyPoint, PyContour, PyComponent, PyFontInfo
+from .pynorad import PyFont, PyGuideline, PyPointPen, PyLayer, PyGlyph, PyPoint, PyContour, PyComponent, PyFontInfo, PyAnchor
 
 # I acknowledge that this is not the right way to do this
 __version__ = '0.1'
@@ -62,7 +62,7 @@ class Font(object):
     def appendGuideline(self, guideline):
         if guideline.__class__ is not Guideline:
             guideline = Guideline(**guideline)
-        self._font.append_guideline(guideline._guideline)
+        self._font.append_guideline(guideline._obj)
 
 
     def newGlyph(self, name: str):
@@ -196,7 +196,6 @@ class Layer:
         return Glyph.proxy(self._layer.new_glyph(name))
 
     def addGlyph(self, glyph):
-        print(glyph.name)
         self.insertGlyph(glyph, overwrite=False, copy=False)
 
     def insertGlyph(
@@ -210,7 +209,6 @@ class Layer:
             pass
         if name is not None:
             glyph._name = name
-            # print("pynorad insertGlyph doesn't respect provided names yet")
         if glyph.name is None:
             raise ValueError(f"{glyph!r} has no name; can't add it to Layer")
         if not overwrite and glyph.name in self:
@@ -342,7 +340,7 @@ class ProxySequence:
         return IterWrapper(self.typ, iter(self.inner))
 
     def __eq__(self, other):
-        return self.inner == other.inner
+        return len(self) == len(other) and all(x == y for x, y in zip(self, other))
 
 
 # class ufoLib2.objects.Glyph(name: Optional[str] = None, width: float = 0, height: float = 0, unicodes: List[int] = NOTHING, image: ufoLib2.objects.image.Image = NOTHING, lib: Dict[str, Any] = NOTHING, note: Optional[str] = None, anchors: List[ufoLib2.objects.anchor.Anchor] = NOTHING, components: List[ufoLib2.objects.component.Component] = NOTHING, contours: List[ufoLib2.objects.contour.Contour] = NOTHING, guidelines: List[ufoLib2.objects.guideline.Guideline] = NOTHING)[source]
@@ -369,9 +367,17 @@ class Glyph:
     def width(self):
         return self._glyph.width
 
+    @width.setter
+    def width(self, value):
+        self._glyph.width = value
+
     @property
     def height(self):
         return self._glyph.height
+
+    @height.setter
+    def height(self, value):
+        self._glyph.height = value
 
     @property
     def contours(self):
@@ -380,6 +386,14 @@ class Glyph:
     @property
     def components(self):
         return ProxySequence(Component, self._glyph.components)
+
+    @property
+    def anchors(self):
+        return ProxySequence(Anchor, self._glyph.anchors)
+
+    @property
+    def guidelines(self):
+        return ProxySequence(Guideline, self._glyph.guidelines)
 
     @property
     def name(self):
@@ -393,6 +407,33 @@ class Glyph:
     @_name.setter
     def _name(self, value: str):
         self._glyph._name = value
+
+    def appendAnchor(self, anchor):
+        if not isinstance(anchor, Anchor):
+            if not isinstance(anchor, Mapping):
+                raise TypeError(
+                    "Expected Anchor object or a Mapping for the ",
+                    f"Anchor constructor, found {type(anchor).__name__}",
+                )
+            anchor = Anchor(**anchor)
+        self._glyph.append_anchor(anchor._obj)
+
+    def appendContour(self, contour):
+        if not isinstance(contour, Contour):
+            raise TypeError(f"Expected Contour, found {type(contour).__name__}")
+        self._glyph.append_contour(contour._obj)
+
+
+    def appendGuideline(self, guideline):
+        if not isinstance(guideline, Guideline):
+            if not isinstance(guideline, Mapping):
+                raise TypeError(
+                    "Expected Guideline object or a Mapping for the ",
+                    f"Guideline constructor, found {type(guideline).__name__}",
+                )
+            guideline = Guideline(**guideline)
+        self._glyph.append_guideline(guideline._obj)
+
 
     def draw(self, pen):
         pointPen = PointToSegmentPen(pen)
@@ -448,10 +489,9 @@ class GlyphPointPen:
 class Guideline:
     """I'll do something at some point"""
     def __init__(self, x=None, y=None, angle=None, name=None, color=None, identifier=None, proxy=None):
-        if proxy is not None:
-            self._guideline = proxy
-        else:
-            self._guideline = PyGuideline.concrete(x, y, angle, name, color, identifier)
+        if proxy is None:
+            proxy = PyGuideline.concrete(x, y, angle, name, color, identifier)
+        self._obj = proxy
 
     @classmethod
     def proxy(cls, obj: PyGuideline):
@@ -469,13 +509,7 @@ class Guideline:
     def __eq__(self, other):
         if other.__class__ is not self.__class__:
             return NotImplemented
-        return self._guideline.py_eq(other._guideline)
-
-# class Contours:
-    # @classmethod
-    # def proxy(cls, obj):
-        # assert obj.__class__ == GlyphProxy
-        # self._proxy = obj
+        return self._obj.py_eq(other._obj)
 
 class FontInfo(object):
     """I'll do something at some point"""
@@ -506,8 +540,31 @@ class FontInfo(object):
             # return NotImplemented
         # return self._guideline.py_eq(other._guideline)
 
-class Anchor:
-    pass
+class Anchor(object):
+    def __init__(self, x: float, y: float, name: Optional[str] = None, color: Optional[str] = None, identifier: Optional[str] = None, proxy=None):
+        if proxy is None:
+            proxy = PyAnchor.concrete(x, y, name, color, identifier)
+        object.__setattr__(self, "_obj", proxy)
+
+    @classmethod
+    def proxy(cls, obj: PyAnchor):
+        return cls(0, 0, proxy=obj)
+
+    def __getattr__(self, item):
+        real = object.__getattribute__(self, "_obj")
+        if hasattr(real, item):
+            return getattr(real, item)
+        raise AttributeError(item)
+
+    def __setattr__(self, name, item):
+        real = object.__getattribute__(self, "_obj")
+        if hasattr(real, name):
+            return setattr(real, name, item)
+        raise AttributeError(item)
+
+    def __eq__(self, other):
+        return self._obj == other._obj
+
 
 class Image:
     pass
@@ -517,10 +574,7 @@ class Component:
         if proxy is not None:
             self._obj = proxy
         else:
-            tx = transformation or Transform.identity()
-            transform = (tx.xx, tx.xy, tx.yx, tx.yy, tx.dx, tx.dy)
-            self._obj = PyComponent.concrete(baseGlyph, transform, identifier)
-            # self._obj = PyGuideline.concrete(x, y, angle, name, color, identifier)
+            self._obj = PyComponent.concrete(baseGlyph, transformation, identifier)
 
     @classmethod
     def proxy(cls, obj: PyComponent):
@@ -531,7 +585,10 @@ class Contour:
         if proxy is not None:
             self._obj = proxy
         else:
-            self._obj = PyContour.concrete(points, identifier)
+            self._obj = PyContour.concrete([p._obj for p in points], identifier)
+
+    def __eq__(self, other):
+        return self._obj == other
 
     @classmethod
     def proxy(cls, obj: PyGuideline):
@@ -541,15 +598,13 @@ class Contour:
     def points(self):
         return  ProxySequence(Point, self._obj.points)
 
-# Point(x: float, y: float, type: Optional[str] = None, smooth: bool = False, name: Optional[str] = None, identifier: Optional[str] = None)[source]
-
 class Point(object):
     def __init__(self, x: float, y: float, segmentType: Optional[str] = None, smooth: bool = False, name: Optional[str] = None, identifier: Optional[str] = None, proxy = None):
         if proxy is not None:
             object.__setattr__(self, "_obj", proxy)
         else:
             typ = encodeSegmentType(segmentType)
-            proxy = PyPoint.concrete((x, y), typ, smooth, name, identifier)
+            proxy = PyPoint.concrete(x, y, typ, smooth, name, identifier)
             object.__setattr__(self, "_obj", proxy)
 
     @classmethod

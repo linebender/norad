@@ -129,7 +129,11 @@ impl PyFont {
     }
 
     fn guidelines(&self) -> Vec<PyGuideline> {
-        self.read().guidelines().iter().map(|g| PyGuideline::proxy(self.clone(), g.py_id)).collect()
+        self.read()
+            .guidelines()
+            .iter()
+            .map(|g| PyGuideline::font_proxy(self.clone(), g.py_id))
+            .collect()
     }
 
     fn replace_guidelines(&mut self, mut guidelines: Vec<PyRefMut<PyGuideline>>) -> PyResult<()> {
@@ -138,7 +142,7 @@ impl PyFont {
             let guide = (&*py_guide).with(Guideline::to_owned)?;
             let py_id = guide.py_id;
             new_guides.push(guide);
-            *py_guide.deref_mut() = PyGuideline::proxy(self.clone(), py_id);
+            *py_guide.deref_mut() = PyGuideline::font_proxy(self.clone(), py_id);
         }
         *self.write().guidelines_mut() = new_guides;
         Ok(())

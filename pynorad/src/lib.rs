@@ -12,7 +12,8 @@ mod util;
 pub use font::PyFont;
 pub use fontinfo::PyFontInfo;
 pub use glyph::{
-    ContourProxy, ComponentProxy, PointProxy, PointsIter, PointsProxy, PyContour, PyGlyph, PyComponent, PyPoint, PyPointPen,
+    AnchorProxy, ComponentProxy, ContourProxy, GlyphGuidelineProxy, PointProxy, PointsIter,
+    PointsProxy, PyAnchor, PyComponent, PyContour, PyGlyph, PyPoint, PyPointPen,
 };
 pub use guideline::PyGuideline;
 pub use layer::{GlyphIter, LayerIter, PyLayer};
@@ -24,6 +25,7 @@ fn pynorad(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyFont>()?;
     m.add_class::<PyLayer>()?;
     m.add_class::<PyGlyph>()?;
+    m.add_class::<PyAnchor>()?;
     m.add_class::<PyPoint>()?;
     m.add_class::<PyContour>()?;
     m.add_class::<PyComponent>()?;
@@ -45,7 +47,9 @@ pub enum ProxyError {
     MissingContour(ContourProxy),
     MissingComponent(ComponentProxy),
     MissingPoint(PointProxy),
+    MissingAnchor(AnchorProxy),
     MissingGlobalGuideline,
+    MissingGlyphGuideline(GlyphGuidelineProxy),
     MissingLayerGuideline(Arc<str>),
 }
 
@@ -66,6 +70,7 @@ impl std::fmt::Display for ProxyError {
                 )
             }
             ProxyError::MissingComponent(_) => write!(f, "Missing component"),
+            ProxyError::MissingAnchor(_) => write!(f, "Missing anchor"),
             //FIXME: figure out these errors again
             ProxyError::MissingPoint(point) => write!(
                 f,
@@ -77,6 +82,7 @@ impl std::fmt::Display for ProxyError {
                 //point.inner.inner.inner.inner.layer_name(),
             ),
             ProxyError::MissingGlobalGuideline => write!(f, "Missing global Guideline"),
+            ProxyError::MissingGlyphGuideline(_) => write!(f, "Missing glyph Guideline"),
             ProxyError::MissingLayerGuideline(layer) => {
                 write!(f, "Missing Guideline in layer '{}'", layer)
             }

@@ -1,6 +1,8 @@
 use std::sync::{Arc, Mutex, RwLock};
 
-use norad::{Component, Contour, ContourPoint, Glyph, GlyphName, PointType, PyId};
+use norad::{
+    Anchor, Component, Contour, ContourPoint, Glyph, GlyphName, Guideline, PointType, PyId,
+};
 use pyo3::{
     exceptions,
     prelude::*,
@@ -10,8 +12,10 @@ use pyo3::{
 
 use super::{
     flatten, proxy_eq, proxy_or_concrete, seq_proxy, seq_proxy_iter, seq_proxy_member, util,
-    ProxyError, PyLayer,
+    ProxyError, PyGuideline, PyLayer,
 };
+
+type AffineTuple = (f64, f64, f64, f64, f64, f64);
 
 #[pyclass]
 #[derive(Debug, Clone)]
@@ -91,13 +95,38 @@ impl PyGlyph {
     }
 
     #[getter]
+    fn components(&self) -> ComponentsProxy {
+        ComponentsProxy { inner: self.clone() }
+    }
+
+    #[getter]
+    fn anchors(&self) -> AnchorsProxy {
+        AnchorsProxy { inner: self.clone() }
+    }
+
+    #[getter]
+    fn guidelines(&self) -> GlyphGuidelinesProxy {
+        GlyphGuidelinesProxy { inner: self.clone() }
+    }
+
+    #[getter]
     fn width(&self) -> PyResult<f32> {
         self.with(|g| g.width).map_err(Into::into)
+    }
+
+    #[setter]
+    fn set_width(&mut self, width: f32) -> PyResult<()> {
+        self.with_mut(|g| g.width = width).map_err(Into::into)
     }
 
     #[getter]
     fn height(&self) -> PyResult<f32> {
         self.with(|g| g.height).map_err(Into::into)
+    }
+
+    #[setter]
+    fn set_height(&mut self, height: f32) -> PyResult<()> {
+        self.with_mut(|g| g.height = height).map_err(Into::into)
     }
 
     #[getter]
@@ -115,6 +144,26 @@ impl PyGlyph {
         self.with_mut(|g| g.name = new_name.clone())?;
         self.name = new_name;
         Ok(())
+    }
+
+    fn append_anchor(&mut self, anchor: PyRef<PyAnchor>) -> PyResult<()> {
+        let anchor = anchor.with(|a| a.to_owned())?;
+        self.with_mut(|g| g.anchors.push(anchor)).map_err(Into::into)
+    }
+
+    fn append_contour(&mut self, contour: PyRef<PyContour>) -> PyResult<()> {
+        let contour = contour.with(|a| a.to_owned())?;
+        self.with_mut(|g| g.contours.push(contour)).map_err(Into::into)
+    }
+
+    fn append_component(&mut self, component: PyRef<PyComponent>) -> PyResult<()> {
+        let component = component.with(|a| a.to_owned())?;
+        self.with_mut(|g| g.components.push(component)).map_err(Into::into)
+    }
+
+    fn append_guideline(&mut self, guideline: PyRef<PyGuideline>) -> PyResult<()> {
+        let guideline = guideline.with(|a| a.to_owned())?;
+        self.with_mut(|g| g.guidelines.push(guideline)).map_err(Into::into)
     }
 
     fn py_eq(&self, other: PyRef<PyGlyph>) -> PyResult<bool> {
@@ -209,7 +258,7 @@ impl PyPointPen {
     fn add_component(
         &mut self,
         name: &str,
-        xform: (f64, f64, f64, f64, f64, f64),
+        xform: AffineTuple,
         identifier: Option<&str>,
     ) -> PyResult<()> {
         let identifier = util::to_identifier(identifier)?;
@@ -233,18 +282,75 @@ fn point_to_str(p: PointType) -> Option<&'static str> {
 seq_proxy!(PyGlyph, components, ComponentsProxy, PyComponent, Component);
 seq_proxy_member!(ComponentsProxy, PyComponent, ComponentProxy, Component, MissingComponent);
 seq_proxy_iter!(ComponentsIter, ComponentsProxy, PyComponent);
-proxy_eq!(ComponentsProxy);
+proxy_eq!(PyComponent);
 
 seq_proxy!(PyGlyph, contours, ContoursProxy, PyContour, Contour);
 seq_proxy_member!(ContoursProxy, PyContour, ContourProxy, Contour, MissingContour);
 seq_proxy_iter!(ContoursIter, ContoursProxy, PyContour);
-proxy_eq!(ContoursProxy);
+proxy_eq!(PyContour);
+
+seq_proxy!(PyGlyph, anchors, AnchorsProxy, PyAnchor, Anchor);
+seq_proxy_member!(AnchorsProxy, PyAnchor, AnchorProxy, Anchor, MissingAnchor);
+seq_proxy_iter!(AnchorsIter, AnchorsProxy, PyAnchor);
+proxy_eq!(PyAnchor);
+
+// guidelines exist in multiple places so the code is a bit different.
+seq_proxy!(PyGlyph, guidelines, GlyphGuidelinesProxy, PyGuideline, Guideline);
+seq_proxy_member!(GlyphGuidelinesProxy, GlyphGuidelineProxy, Guideline, MissingGlyphGuideline);
+seq_proxy_iter!(GuidelinesIter, GlyphGuidelinesProxy, PyGuideline);
 
 #[pymethods]
 impl PyContour {
+    #[classmethod]
+    fn concrete(
+        _cls: &PyType,
+        points: Vec<PyRef<PyPoint>>,
+        identifier: Option<&str>,
+    ) -> PyResult<Self> {
+        let identifier = util::to_identifier(identifier)?;
+        let points: Vec<_> =
+            points.iter().map(|p| p.with(|pt| pt.to_owned())).collect::<Result<_, _>>()?;
+        let contour = Contour::new(points, identifier, None);
+        Ok(contour.into())
+    }
+
     #[getter]
     fn points(&self) -> PointsProxy {
         PointsProxy { inner: self.clone() }
+    }
+}
+
+#[pymethods]
+impl PyComponent {
+    #[classmethod]
+    fn concrete(
+        _cls: &PyType,
+        base: &str,
+        xform: AffineTuple,
+        identifier: Option<&str>,
+    ) -> PyResult<Self> {
+        let identifier = util::to_identifier(identifier)?;
+        let transform = kurbo::Affine::new([xform.0, xform.1, xform.2, xform.3, xform.4, xform.5]);
+        let component = Component::new(base.into(), transform.into(), identifier, None);
+        Ok(component.into())
+    }
+}
+
+#[pymethods]
+impl PyAnchor {
+    #[classmethod]
+    fn concrete(
+        _cls: &PyType,
+        x: f32,
+        y: f32,
+        name: Option<String>,
+        color: Option<&str>,
+        identifier: Option<&str>,
+    ) -> PyResult<Self> {
+        let identifier = util::to_identifier(identifier)?;
+        let color = util::to_color(color)?;
+        let anchor = Anchor::new(x, y, name, color, identifier, None);
+        Ok(anchor.into())
     }
 }
 
@@ -252,6 +358,7 @@ seq_proxy!(PyContour, points, PointsProxy, PyPoint, ContourPoint);
 seq_proxy_member!(PointsProxy, PyPoint, PointProxy, ContourPoint, MissingPoint);
 seq_proxy_iter!(PointsIter, PointsProxy, PyPoint);
 proxy_eq!(PointsProxy);
+proxy_eq!(PyPoint);
 
 #[pymethods]
 impl PyPoint {
@@ -295,5 +402,3 @@ impl PyPoint {
         flatten!(self.with(|p| other.with(|p2| p == p2))).map_err(Into::into)
     }
 }
-
-proxy_eq!(PyPoint);
