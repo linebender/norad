@@ -246,6 +246,25 @@ macro_rules! proxy_or_concrete {
     };
 }
 
+/// A helper macro for generating python getter/setters
+#[macro_export]
+macro_rules! proxy_property {
+    ($typ:ty, $field:ident, $field_ty:ty, $get:ident, $set:ident) => {
+        #[pymethods]
+        impl $typ {
+            #[getter]
+            fn $get(&self) -> PyResult<$field_ty> {
+                self.with(|t| t.$field.into()).map_err(Into::into)
+            }
+
+            #[setter]
+            fn $set(&mut self, new_val: $field_ty) -> PyResult<()> {
+                self.with_mut(|t| t.$field = new_val.into()).map_err(Into::into)
+            }
+        }
+    };
+}
+
 pub(crate) fn python_idx_to_idx(idx: isize, len: usize) -> PyResult<usize> {
     let idx = if idx.is_negative() { len - (idx.abs() as usize % len) } else { idx as usize };
 

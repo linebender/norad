@@ -1,5 +1,6 @@
-from typing import Iterable, OrderedDict, Optional, Any, Tuple, Mapping
+from typing import Iterable, OrderedDict, Optional, Any, Tuple, Mapping, NamedTuple, List
 from fontTools.pens.pointPen import PointToSegmentPen, SegmentToPointPen
+from fontTools.pens.boundsPen import BoundsPen, ControlBoundsPen
 from fontTools.misc.transform import Transform
 from .pynorad import PyFont, PyGuideline, PyPointPen, PyLayer, PyGlyph, PyPoint, PyContour, PyComponent, PyFontInfo, PyAnchor
 
@@ -13,6 +14,14 @@ class Placeholder:
     """Represents a sentinel value to signal a "lazy" object hasn't been loaded yet."""
 
 _NOT_LOADED = Placeholder()
+
+class BoundingBox(NamedTuple):
+    """Represents a bounding box as a tuple of (xMin, yMin, xMax, yMax)."""
+
+    xMin: float
+    yMin: float
+    xMax: float
+    yMax: float
 
 class Proxy(object):
     __slots__ = ["_obj", "__weakref__"]
@@ -31,10 +40,99 @@ class Proxy(object):
 
 class ProxySetter(Proxy):
     def __setattr__(self, name, item):
+        if name == "_obj":
+            object.__setattr__(self, name, item)
+            return
+
         real = object.__getattribute__(self, "_obj")
         if hasattr(real, name):
             return setattr(real, name, item)
         raise AttributeError(item)
+
+class Anchor(ProxySetter):
+    def __init__(self, x: float, y: float, name: Optional[str] = None, color: Optional[str] = None, identifier: Optional[str] = None, proxy=None):
+        if proxy is None:
+            proxy = PyAnchor.concrete(x, y, name, color, identifier)
+        super().__init__(proxy)
+
+    @classmethod
+    def proxy(cls, obj: PyAnchor):
+        return cls(0, 0, proxy=obj)
+
+    def __eq__(self, other):
+        return self._obj == other._obj
+
+
+class Image:
+    pass
+
+class Component(Proxy):
+    def __init__(self, baseGlyph: str, transformation=None, identifier=None, proxy=None):
+        if proxy is None:
+            proxy = PyComponent.concrete(baseGlyph, transformation, identifier)
+        super().__init__(proxy)
+
+    @classmethod
+    def proxy(cls, obj: PyComponent):
+        return cls("", proxy=obj)
+
+class Contour:
+    def __init__(self, points=None, identifier=None, proxy=None):
+        if proxy is not None:
+            self._obj = proxy
+        else:
+            self._obj = PyContour.concrete([p._obj for p in points], identifier)
+
+    def __eq__(self, other):
+        return self._obj == other
+
+    @classmethod
+    def proxy(cls, obj: PyGuideline):
+        return cls(proxy=obj)
+
+    @property
+    def points(self):
+        return  ProxySequence(Point, self._obj.points)
+
+class Point(ProxySetter):
+    def __init__(self, x: float, y: float, segmentType: Optional[str] = None, smooth: bool = False, name: Optional[str] = None, identifier: Optional[str] = None, proxy = None):
+        if proxy is None:
+            typ = encodeSegmentType(segmentType)
+            proxy = PyPoint.concrete(x, y, typ, smooth, name, identifier)
+
+        super().__init__(proxy)
+
+    @classmethod
+    def proxy(cls, obj: PyPoint):
+        return cls(0, 0, proxy=obj)
+
+    def __eq__(self, other):
+        return self._obj == other
+
+class Guideline(Proxy):
+    """I'll do something at some point"""
+    def __init__(self, x=None, y=None, angle=None, name=None, color=None, identifier=None, proxy=None):
+        if proxy is None:
+            proxy = PyGuideline.concrete(x, y, angle, name, color, identifier)
+        super().__init__(proxy)
+
+    @classmethod
+    def proxy(cls, obj: PyGuideline):
+        return cls(proxy=obj)
+
+    @classmethod
+    def normalize(cls, obj):
+        """Given a Guideline or a dict that looks like a Guideline,
+        return a Guideline."""
+        if obj.__class__ is Guideline:
+            return obj
+        else:
+            return Guideline(**obj)
+
+    def __eq__(self, other):
+        if other.__class__ is not self.__class__:
+            return NotImplemented
+        return self._obj.py_eq(other._obj)
 
 class Font(Proxy):
     """A fontfile"""
@@ -124,7 +222,6 @@ class Font(Proxy):
     def guidelines(self, value):
         self.replace_guidelines([Guideline.normalize(g)._obj for g in value])
 
-
     #FIXME: norad doesn't impl data yet
     @property
     def data(self):
@@ -168,7 +265,7 @@ class Layer(Proxy):
                         raise TypeError(f"Expected Glyph, found {type(glyph).__name__}")
                     currentName = glyph.name
                     if currentName is None or currentName == "":
-                        glyph._name = name or ""
+                        glyph.set_name(name or "")
                     elif currentName != name:
                         raise ValueError(
                             "glyph has incorrect name: "
@@ -218,7 +315,7 @@ class Layer(Proxy):
         if copy:
             pass
         if name is not None:
-            glyph._name = name
+            glyph.set_name(name)
         if glyph.name is None:
             raise ValueError(f"{glyph!r} has no name; can't add it to Layer")
         if not overwrite and glyph.name in self:
@@ -352,14 +449,15 @@ class ProxySequence:
     def __eq__(self, other):
         return len(self) == len(other) and all(x == y for x, y in zip(self, other))
 
-
-# class ufoLib2.objects.Glyph(name: Optional[str] = None, width: float = 0, height: float = 0, unicodes: List[int] = NOTHING, image: ufoLib2.objects.image.Image = NOTHING, lib: Dict[str, Any] = NOTHING, note: Optional[str] = None, anchors: List[ufoLib2.objects.anchor.Anchor] = NOTHING, components: List[ufoLib2.objects.component.Component] = NOTHING, contours: List[ufoLib2.objects.contour.Contour] = NOTHING, guidelines: List[ufoLib2.objects.guideline.Guideline] = NOTHING)[source]
 class Glyph(Proxy):
-    def __init__(self, name: str = "", proxy: PyGlyph = None, **kwargs):
+    def __init__(self, name: str = "", width: float = 0, height: float = 0, unicodes: List[int] = [], contours: List[Contour] = [], components: List[Component] = [], anchors: List[Anchor] = [], guidelines: List[Guideline] = [],  proxy: PyGlyph = None, **kwargs):
         if proxy is None:
-            proxy = PyGlyph.concrete(name)
+            contours = [c._obj for c in contours]
+            components = [c._obj for c in components]
+            anchors = [c._obj for c in anchors]
+            guides = [c._obj for c in guidelines]
+            proxy = PyGlyph.concrete(name, width, height, unicodes, contours, components, anchors, guides)
         super().__init__(proxy)
-        self.lib = {}
 
     @classmethod
     def proxy(cls, obj: PyGlyph):
@@ -387,14 +485,21 @@ class Glyph(Proxy):
     def guidelines(self):
         return ProxySequence(Guideline, self._obj.guidelines)
 
-    # these two are here to mimic ufoLib2 behaviour
     @property
-    def _name(self):
-        return self.name
+    def width(self):
+        return self._obj.width
 
-    @_name.setter
-    def _name(self, value: str):
-        self._obj._name = value
+    @width.setter
+    def width(self, val):
+        self._obj.width = val
+
+    @property
+    def height(self):
+        return self._obj.height
+
+    @height.setter
+    def height(self, val):
+        self._obj.height = val
 
     def appendAnchor(self, anchor):
         if not isinstance(anchor, Anchor):
@@ -434,6 +539,103 @@ class Glyph(Proxy):
         pen = SegmentToPointPen(self.getPointPen())
         return pen
 
+    @property
+    def verticalOrigin(self) -> Optional[float]:
+        return self._obj.verticalOrigin
+
+    @verticalOrigin.setter
+    def verticalOrigin(self, value: Optional[float]) -> None:
+        self._obj.verticalOrigin = value
+
+    def getBounds(self, layer: Optional[Layer] = None) -> Optional[BoundingBox]:
+        if layer is None and self.components:
+            raise TypeError("layer is required to compute bounds of components")
+
+        return getBounds(self, layer)
+
+
+    def getControlBounds(
+        self, layer: Optional[Layer] = None
+    ) -> Optional[BoundingBox]:
+        if layer is None and self.components:
+            raise TypeError("layer is required to compute bounds of components")
+
+        return getControlBounds(self, layer)
+
+
+    def getLeftMargin(self, layer: Optional[Layer] = None) -> Optional[float]:
+        bounds = self.getBounds(layer)
+        print(bounds)
+        if bounds is None:
+            return None
+        return bounds.xMin
+
+    def setLeftMargin(self, value: float, layer: Optional[Layer] = None) -> None:
+        bounds = self.getBounds(layer)
+        if bounds is None:
+            return None
+        diff = value - bounds.xMin
+        if diff:
+            self.width += diff
+            self.move((diff, 0))
+
+    def getRightMargin(self, layer: Optional[Layer] = None) -> Optional[float]:
+        bounds = self.getBounds(layer)
+        if bounds is None:
+            return None
+        return self.width - bounds.xMax
+
+    def setRightMargin(self, value: float, layer: Optional[Layer] = None) -> None:
+        bounds = self.getBounds(layer)
+        if bounds is None:
+            return None
+        self.width = bounds.xMax + value
+
+    def getBottomMargin(self, layer: Optional[Layer] = None) -> Optional[float]:
+        bounds = self.getBounds(layer)
+        if bounds is None:
+            return None
+        if self.verticalOrigin is None:
+            return bounds.yMin
+        else:
+            return bounds.yMin - (self.verticalOrigin - self.height)
+
+    def setBottomMargin(self, value: float, layer: Optional[Layer] = None) -> None:
+        bounds = self.getBounds(layer)
+        if bounds is None:
+            return None
+        # blindly copied from defcon Glyph._set_bottomMargin; not sure it's correct
+        if self.verticalOrigin is None:
+            oldValue = bounds.yMin
+            self.verticalOrigin = self.height
+        else:
+            oldValue = bounds.yMin - (self.verticalOrigin - self.height)
+        diff = value - oldValue
+        if diff:
+            self.height += diff
+
+    def getTopMargin(self, layer: Optional[Layer] = None) -> Optional[float]:
+        bounds = self.getBounds(layer)
+        if bounds is None:
+            return None
+        if self.verticalOrigin is None:
+            return self.height - bounds.yMax
+        else:
+            return self.verticalOrigin - bounds.yMax
+
+    def setTopMargin(self, value: float, layer: Optional[Layer] = None) -> None:
+        bounds = self.getBounds(layer)
+        if bounds is None:
+            return
+        if self.verticalOrigin is None:
+            oldValue = self.height - bounds.yMax
+        else:
+            oldValue = self.verticalOrigin - bounds.yMax
+        diff = value - oldValue
+        if oldValue != value:
+            # Is this still correct when verticalOrigin was not previously set?
+            self.verticalOrigin = bounds.yMax + value
+            self.height += diff
 
 class GlyphPointPen:
     def __init__(self, proxy: PyPointPen):
@@ -468,32 +670,6 @@ class GlyphPointPen:
         transform = (tx.xx, tx.xy, tx.yx, tx.yy, tx.dx, tx.dy)
         self._obj.add_component(baseGlyph, transform, identifier)
 
-
-class Guideline(Proxy):
-    """I'll do something at some point"""
-    def __init__(self, x=None, y=None, angle=None, name=None, color=None, identifier=None, proxy=None):
-        if proxy is None:
-            proxy = PyGuideline.concrete(x, y, angle, name, color, identifier)
-        super().__init__(proxy)
-
-    @classmethod
-    def proxy(cls, obj: PyGuideline):
-        return cls(proxy=obj)
-
-    @classmethod
-    def normalize(cls, obj):
-        """Given a Guideline or a dict that looks like a Guideline,
-        return a Guideline."""
-        if obj.__class__ is Guideline:
-            return obj
-        else:
-            return Guideline(**obj)
-
-    def __eq__(self, other):
-        if other.__class__ is not self.__class__:
-            return NotImplemented
-        return self._obj.py_eq(other._obj)
-
 class FontInfo(ProxySetter):
     """I'll do something at some point"""
     def __init__(self, proxy=None):
@@ -504,67 +680,6 @@ class FontInfo(ProxySetter):
     @classmethod
     def proxy(cls, obj: PyFontInfo):
         return cls(proxy=obj)
-
-class Anchor(ProxySetter):
-    def __init__(self, x: float, y: float, name: Optional[str] = None, color: Optional[str] = None, identifier: Optional[str] = None, proxy=None):
-        if proxy is None:
-            proxy = PyAnchor.concrete(x, y, name, color, identifier)
-        super().__init__(proxy)
-
-    @classmethod
-    def proxy(cls, obj: PyAnchor):
-        return cls(0, 0, proxy=obj)
-
-    def __eq__(self, other):
-        return self._obj == other._obj
-
-
-class Image:
-    pass
-
-class Component(Proxy):
-    def __init__(self, baseGlyph: str, transformation=None, identifier=None, proxy=None):
-        if proxy is None:
-            proxy = PyComponent.concrete(baseGlyph, transformation, identifier)
-        super().__init__(proxy)
-
-    @classmethod
-    def proxy(cls, obj: PyComponent):
-        return cls("", proxy=obj)
-
-class Contour:
-    def __init__(self, points=None, identifier=None, proxy=None):
-        if proxy is not None:
-            self._obj = proxy
-        else:
-            self._obj = PyContour.concrete([p._obj for p in points], identifier)
-
-    def __eq__(self, other):
-        return self._obj == other
-
-    @classmethod
-    def proxy(cls, obj: PyGuideline):
-        return cls(proxy=obj)
-
-    @property
-    def points(self):
-        return  ProxySequence(Point, self._obj.points)
-
-class Point(ProxySetter):
-    def __init__(self, x: float, y: float, segmentType: Optional[str] = None, smooth: bool = False, name: Optional[str] = None, identifier: Optional[str] = None, proxy = None):
-        if proxy is None:
-            typ = encodeSegmentType(segmentType)
-            proxy = PyPoint.concrete(x, y, typ, smooth, name, identifier)
-
-        super().__init__(proxy)
-
-    @classmethod
-    def proxy(cls, obj: PyPoint):
-        return cls(0, 0, proxy=obj)
-
-    def __eq__(self, other):
-        return self._obj == other
-
 
 def encodeSegmentType(segmentType: Optional[str]) -> int:
     """
@@ -582,4 +697,21 @@ def encodeSegmentType(segmentType: Optional[str]) -> int:
     if segmentType == "qcurve":
         return 4
     raise ValueError(f"Unknown segment type {segmentType}")
+
+def getBounds(drawable, layer: Optional[Layer]) -> Optional[BoundingBox]:
+    pen = BoundsPen(layer)
+    # raise 'KeyError' when a referenced component is missing from glyph set
+    pen.skipMissingComponents = False
+    drawable.draw(pen)
+    return None if pen.bounds is None else BoundingBox(*pen.bounds)
+
+def getControlBounds(
+    drawable, layer: Optional[Layer]
+) -> Optional[BoundingBox]:
+    pen = ControlBoundsPen(layer)
+    # raise 'KeyError' when a referenced component is missing from glyph set
+    pen.skipMissingComponents = False
+    drawable.draw(pen)
+    return None if pen.bounds is None else BoundingBox(*pen.bounds)
+
 

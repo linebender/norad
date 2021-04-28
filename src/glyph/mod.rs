@@ -717,6 +717,27 @@ impl AffineTransform {
     }
 }
 
+#[cfg(feature = "py")]
+impl From<(f32, f32, f32, f32, f32, f32)> for AffineTransform {
+    fn from(src: (f32, f32, f32, f32, f32, f32)) -> AffineTransform {
+        AffineTransform {
+            x_scale: src.0,
+            xy_scale: src.1,
+            yx_scale: src.2,
+            y_scale: src.3,
+            x_offset: src.4,
+            y_offset: src.5,
+        }
+    }
+}
+
+#[cfg(feature = "py")]
+impl From<AffineTransform> for (f32, f32, f32, f32, f32, f32) {
+    fn from(src: AffineTransform) -> (f32, f32, f32, f32, f32, f32) {
+        (src.x_scale, src.xy_scale, src.yx_scale, src.y_scale, src.x_offset, src.y_offset)
+    }
+}
+
 impl std::default::Default for AffineTransform {
     fn default() -> Self {
         Self::identity()
