@@ -14,8 +14,29 @@ class Placeholder:
 
 _NOT_LOADED = Placeholder()
 
+class Proxy(object):
+    __slots__ = ["_obj", "__weakref__"]
+    def __init__(self, obj):
+        object.__setattr__(self, "_obj", obj)
 
-class Font(object):
+    def __getattr__(self, item):
+        real = object.__getattribute__(self, "_obj")
+        if hasattr(real, item):
+            return getattr(real, item)
+        raise AttributeError(item)
+
+    # I'm not sure why I need this to be explicit but apparently I do?
+    def __len__(self):
+        return len(self._obj)
+
+class ProxySetter(Proxy):
+    def __setattr__(self, name, item):
+        real = object.__getattribute__(self, "_obj")
+        if hasattr(real, name):
+            return setattr(real, name, item)
+        raise AttributeError(item)
+
+class Font(Proxy):
     """A fontfile"""
     def __init__(self, path = None, **kwargs):
         self._path = path
@@ -24,56 +45,54 @@ class Font(object):
         self._validate = True
 
         if path is None:
-            self._font = PyFont()
+            super().__init__(PyFont())
         else:
-            self._font = PyFont.load(str(path))
+            super().__init__(PyFont.load(str(path)))
 
     def __eq__(self, other):
         if other.__class__ is not self.__class__:
             return NotImplemented
-        return self._font.py_eq(other._font)
+        return self._obj.py_eq(other._obj)
 
     def __len__(self):
-        return self._font.default_layer().len()
+        return len(self._obj.default_layer())
 
     def __deepcopy__(self, memo):
         result = Font(None)
-        result._font = self._font.deep_copy()
+        object.__setattr__(result, "_obj", self._obj.deep_copy())
         return result
 
     def __getitem__(self, name):
-        return Glyph.proxy(self._font.default_layer().glyph(name))
+        return Glyph.proxy(self._obj.default_layer().glyph(name))
 
     def __setitem__(self, name: str, glyph):
-        self._font.default_layer().set_glyph(glyph._glyph)
+        self.default_layer().set_glyph(glyph._obj)
 
     def __delitem__(self, name: str):
-        self._font.default_layer().remove_glyph(name)
+        self.default_layer().remove_glyph(name)
 
     def __contains__(self, glyphName: str):
-        return self._font.default_layer().contains(glyphName)
+        return self.default_layer().contains(glyphName)
 
     def newLayer(self, layerName: str):
-        return Layer.proxy(self._font.new_layer(layerName))
+        return Layer.proxy(self._obj.new_layer(layerName))
 
     def addGlyph(self, glyph):
-        Layer.proxy(self._font.default_layer()).addGlyph(glyph)
+        Layer.proxy(self._obj.default_layer()).addGlyph(glyph)
 
     def appendGuideline(self, guideline):
         if guideline.__class__ is not Guideline:
             guideline = Guideline(**guideline)
-        self._font.append_guideline(guideline._obj)
-
+        self._obj.append_guideline(guideline._obj)
 
     def newGlyph(self, name: str):
-        return self._font.default_layer().new_glyph(name)
+        return self._obj.default_layer().new_glyph(name)
 
     def renameGlyph(self, old: str, new: str, overwrite: bool = False):
-        Layer.proxy(self._font.default_layer()).renameGlyph(old, new, overwrite=overwrite)
+        Layer.proxy(self._obj.default_layer()).renameGlyph(old, new, overwrite=overwrite)
 
     def __iter__(self):
-        return IterWrapper(Glyph, self._font.default_layer().iter_glyphs())
-
+        return IterWrapper(Glyph, self._obj.default_layer().iter_glyphs())
 
     @classmethod
     def open(cls, path, lazy=True, validate=True):
@@ -86,25 +105,24 @@ class Font(object):
         """API compat with ufoLib2"""
         return cls.open(reader._path)
 
-
     def save(self, path):
-        self._font.save(str(path))
+        self._obj.save(str(path))
 
     @property
     def layers(self):
-        return LayerSet.proxy(self._font)
+        return LayerSet.proxy(self._obj)
 
     @property
     def info(self):
-        return FontInfo.proxy(self._font.fontinfo())
+        return FontInfo.proxy(self._obj.fontinfo())
 
     @property
     def guidelines(self):
-        return [Guideline.proxy(g) for g in self._font.guidelines()]
+        return ProxySequence(Guideline, self._obj.guidelines())
 
     @guidelines.setter
     def guidelines(self, value):
-        self._font.replace_guidelines([Guideline.normalize(g)._guideline for g in value])
+        self.replace_guidelines([Guideline.normalize(g)._obj for g in value])
 
 
     #FIXME: norad doesn't impl data yet
@@ -124,13 +142,13 @@ class Font(object):
     def unlazify(self):
         pass
 
-class Layer:
+class Layer(Proxy):
     def __init__(self, name: str = 'public.default', glyphs = None, color = None, lib = None, proxy = None):
         if proxy is not None:
             assert proxy.__class__ == PyLayer
-            self._layer = proxy
+            super().__init__(proxy)
         else:
-            self._layer = PyLayer.concrete(name)
+            super().__init__(PyLayer.concrete(name))
             if glyphs is not None:
                 if not isinstance(glyphs, dict):
                     # check for dupe names
@@ -160,40 +178,32 @@ class Layer:
 
     def renameGlyph(self, old: str, new: str, overwrite: bool = False):
         if old != new:
-            self._layer.rename_glyph(old, new, overwrite=overwrite)
+            self.rename_glyph(old, new, overwrite=overwrite)
 
     @classmethod
     def proxy(cls, obj):
         if obj is not None:
             return cls(proxy=obj)
 
-    @property
-    def name(self):
-        return self._layer.name
-
-
     def __eq__(self, other):
         if other.__class__ is not self.__class__:
             return NotImplemented
-        return self._layer.py_eq(other._layer)
-
-    def __len__(self):
-        return self._layer.len()
+        return self._obj.py_eq(other._obj)
 
     def __iter__(self):
-        return IterWrapper(Glyph, self._layer.iter_glyphs())
+        return IterWrapper(Glyph, self.iter_glyphs())
 
     def __getitem__(self, name):
-        return Glyph.proxy(self._layer.glyph(name))
+        return Glyph.proxy(self._obj.glyph(name))
 
     def __contains__(self, name: str):
-        return self._layer.contains(name)
+        return self._obj.contains(name)
 
     def get(self, name):
         return self[name]
 
     def newGlyph(self, name):
-        return Glyph.proxy(self._layer.new_glyph(name))
+        return Glyph.proxy(self.new_glyph(name))
 
     def addGlyph(self, glyph):
         self.insertGlyph(glyph, overwrite=False, copy=False)
@@ -214,8 +224,8 @@ class Layer:
         if not overwrite and glyph.name in self:
             raise KeyError(f"glyph named '{glyph.name}' already exists")
 
-        newProxyGlyph = self._layer.set_glyph(glyph._glyph)
-        glyph._glyph = newProxyGlyph
+        newProxyGlyph = self._obj.set_glyph(glyph._obj)
+        glyph._obj = newProxyGlyph
 
 class LayerSet:
     def __init__(self, layers = None, defaultLayer = None, proxy: PyFont = None):
@@ -229,9 +239,8 @@ class LayerSet:
                     f"Default layer {repr(defaultLayer)} must be in layer set."
                 )
             del layers[defaultLayer.name]
-            layers = [defaultLayer._layer] + [layer._layer for (name, layer) in layers]
+            layers = [defaultLayer._obj] + [layer._obj for (name, layer) in layers]
             self._font = PyFont.from_layers(layers)
-
 
     @classmethod
     def default(cls):
@@ -286,9 +295,10 @@ class LayerSet:
     def __contains__(self, layer):
         return self._font.contains(layer)
 
-
     def __getitem__(self, name):
-        return Layer.proxy(self._font.get_layer(name))
+        layer = self._font.get_layer(name)
+        print(layer)
+        return Layer.proxy(layer)
 
     def newLayer(self, name, **kwargs):
         return Layer.proxy(self._font.new_layer(name))
@@ -344,14 +354,12 @@ class ProxySequence:
 
 
 # class ufoLib2.objects.Glyph(name: Optional[str] = None, width: float = 0, height: float = 0, unicodes: List[int] = NOTHING, image: ufoLib2.objects.image.Image = NOTHING, lib: Dict[str, Any] = NOTHING, note: Optional[str] = None, anchors: List[ufoLib2.objects.anchor.Anchor] = NOTHING, components: List[ufoLib2.objects.component.Component] = NOTHING, contours: List[ufoLib2.objects.contour.Contour] = NOTHING, guidelines: List[ufoLib2.objects.guideline.Guideline] = NOTHING)[source]
-class Glyph:
+class Glyph(Proxy):
     def __init__(self, name: str = "", proxy: PyGlyph = None, **kwargs):
+        if proxy is None:
+            proxy = PyGlyph.concrete(name)
+        super().__init__(proxy)
         self.lib = {}
-        if proxy is not None:
-            self._glyph = proxy
-        else:
-            self._glyph = PyGlyph.concrete(name)
-        # self._glyph = obj
 
     @classmethod
     def proxy(cls, obj: PyGlyph):
@@ -361,52 +369,32 @@ class Glyph:
     def __eq__(self, other):
         if other.__class__ is not self.__class__:
             return NotImplemented
-        return self._glyph.py_eq(other._glyph)
-
-    @property
-    def width(self):
-        return self._glyph.width
-
-    @width.setter
-    def width(self, value):
-        self._glyph.width = value
-
-    @property
-    def height(self):
-        return self._glyph.height
-
-    @height.setter
-    def height(self, value):
-        self._glyph.height = value
+        return self._obj.py_eq(other._obj)
 
     @property
     def contours(self):
-        return ProxySequence(Contour, self._glyph.contours)
+        return ProxySequence(Contour, self._obj.contours)
 
     @property
     def components(self):
-        return ProxySequence(Component, self._glyph.components)
+        return ProxySequence(Component, self._obj.components)
 
     @property
     def anchors(self):
-        return ProxySequence(Anchor, self._glyph.anchors)
+        return ProxySequence(Anchor, self._obj.anchors)
 
     @property
     def guidelines(self):
-        return ProxySequence(Guideline, self._glyph.guidelines)
+        return ProxySequence(Guideline, self._obj.guidelines)
 
-    @property
-    def name(self):
-        return self._glyph.name
-
-    # FIXME: delete these two, use a proxy object ancestor or something
+    # these two are here to mimic ufoLib2 behaviour
     @property
     def _name(self):
-        return self._glyph.name
+        return self.name
 
     @_name.setter
     def _name(self, value: str):
-        self._glyph._name = value
+        self._obj._name = value
 
     def appendAnchor(self, anchor):
         if not isinstance(anchor, Anchor):
@@ -416,13 +404,12 @@ class Glyph:
                     f"Anchor constructor, found {type(anchor).__name__}",
                 )
             anchor = Anchor(**anchor)
-        self._glyph.append_anchor(anchor._obj)
+        self._obj.append_anchor(anchor._obj)
 
     def appendContour(self, contour):
         if not isinstance(contour, Contour):
             raise TypeError(f"Expected Contour, found {type(contour).__name__}")
-        self._glyph.append_contour(contour._obj)
-
+        self._obj.append_contour(contour._obj)
 
     def appendGuideline(self, guideline):
         if not isinstance(guideline, Guideline):
@@ -432,16 +419,15 @@ class Glyph:
                     f"Guideline constructor, found {type(guideline).__name__}",
                 )
             guideline = Guideline(**guideline)
-        self._glyph.append_guideline(guideline._obj)
-
+        self._obj.append_guideline(guideline._obj)
 
     def draw(self, pen):
         pointPen = PointToSegmentPen(pen)
-        self._glyph.drawPoints(pointPen)
+        self._obj.drawPoints(pointPen)
 
     def getPointPen(self):
         """Returns a point pen for others to draw points into self."""
-        pointPen = GlyphPointPen(self._glyph.point_pen())
+        pointPen = GlyphPointPen(self._obj.point_pen())
         return pointPen
 
     def getPen(self):
@@ -456,10 +442,8 @@ class GlyphPointPen:
     def beginPath(self, identifier: Optional[str] = None, **kwargs: Any) -> None:
         self._obj.begin_path(identifier)
 
-
     def endPath(self) -> None:
         self._obj.end_path()
-
 
     def addPoint(
         self,
@@ -473,7 +457,6 @@ class GlyphPointPen:
         segmentType = encodeSegmentType(segmentType)
         self._obj.add_point(pt, segmentType, smooth, name, identifier)
 
-
     def addComponent(
         self,
         baseGlyph: str,
@@ -486,12 +469,12 @@ class GlyphPointPen:
         self._obj.add_component(baseGlyph, transform, identifier)
 
 
-class Guideline:
+class Guideline(Proxy):
     """I'll do something at some point"""
     def __init__(self, x=None, y=None, angle=None, name=None, color=None, identifier=None, proxy=None):
         if proxy is None:
             proxy = PyGuideline.concrete(x, y, angle, name, color, identifier)
-        self._obj = proxy
+        super().__init__(proxy)
 
     @classmethod
     def proxy(cls, obj: PyGuideline):
@@ -511,56 +494,26 @@ class Guideline:
             return NotImplemented
         return self._obj.py_eq(other._obj)
 
-class FontInfo(object):
+class FontInfo(ProxySetter):
     """I'll do something at some point"""
     def __init__(self, proxy=None):
-        if proxy is not None:
-            object.__setattr__(self, "_info", proxy)
-        else:
-            pass
+        if proxy is None:
+            proxy = PyFontInfo.concrete()
+        super().__init__(proxy)
 
     @classmethod
     def proxy(cls, obj: PyFontInfo):
         return cls(proxy=obj)
 
-    def __getattr__(self, item):
-        real = object.__getattribute__(self, "_info")
-        if hasattr(real, item):
-            return getattr(real, item)
-        raise AttributeError(item)
-
-    def __setattr__(self, name, item):
-        real = object.__getattribute__(self, "_info")
-        if hasattr(real, name):
-            return setattr(real, name, item)
-        raise AttributeError(item)
-
-    # def __eq__(self, other):
-        # if other.__class__ is not self.__class__:
-            # return NotImplemented
-        # return self._guideline.py_eq(other._guideline)
-
-class Anchor(object):
+class Anchor(ProxySetter):
     def __init__(self, x: float, y: float, name: Optional[str] = None, color: Optional[str] = None, identifier: Optional[str] = None, proxy=None):
         if proxy is None:
             proxy = PyAnchor.concrete(x, y, name, color, identifier)
-        object.__setattr__(self, "_obj", proxy)
+        super().__init__(proxy)
 
     @classmethod
     def proxy(cls, obj: PyAnchor):
         return cls(0, 0, proxy=obj)
-
-    def __getattr__(self, item):
-        real = object.__getattribute__(self, "_obj")
-        if hasattr(real, item):
-            return getattr(real, item)
-        raise AttributeError(item)
-
-    def __setattr__(self, name, item):
-        real = object.__getattribute__(self, "_obj")
-        if hasattr(real, name):
-            return setattr(real, name, item)
-        raise AttributeError(item)
 
     def __eq__(self, other):
         return self._obj == other._obj
@@ -569,16 +522,15 @@ class Anchor(object):
 class Image:
     pass
 
-class Component:
+class Component(Proxy):
     def __init__(self, baseGlyph: str, transformation=None, identifier=None, proxy=None):
-        if proxy is not None:
-            self._obj = proxy
-        else:
-            self._obj = PyComponent.concrete(baseGlyph, transformation, identifier)
+        if proxy is None:
+            proxy = PyComponent.concrete(baseGlyph, transformation, identifier)
+        super().__init__(proxy)
 
     @classmethod
     def proxy(cls, obj: PyComponent):
-        return cls(proxy=obj)
+        return cls("", proxy=obj)
 
 class Contour:
     def __init__(self, points=None, identifier=None, proxy=None):
@@ -598,30 +550,17 @@ class Contour:
     def points(self):
         return  ProxySequence(Point, self._obj.points)
 
-class Point(object):
+class Point(ProxySetter):
     def __init__(self, x: float, y: float, segmentType: Optional[str] = None, smooth: bool = False, name: Optional[str] = None, identifier: Optional[str] = None, proxy = None):
-        if proxy is not None:
-            object.__setattr__(self, "_obj", proxy)
-        else:
+        if proxy is None:
             typ = encodeSegmentType(segmentType)
             proxy = PyPoint.concrete(x, y, typ, smooth, name, identifier)
-            object.__setattr__(self, "_obj", proxy)
+
+        super().__init__(proxy)
 
     @classmethod
     def proxy(cls, obj: PyPoint):
         return cls(0, 0, proxy=obj)
-
-    def __getattr__(self, item):
-        real = object.__getattribute__(self, "_obj")
-        if hasattr(real, item):
-            return getattr(real, item)
-        raise AttributeError(item)
-
-    def __setattr__(self, name, item):
-        real = object.__getattribute__(self, "_obj")
-        if hasattr(real, name):
-            return setattr(real, name, item)
-        raise AttributeError(item)
 
     def __eq__(self, other):
         return self._obj == other

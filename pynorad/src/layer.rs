@@ -34,6 +34,21 @@ impl std::fmt::Debug for LayerProxy {
     }
 }
 
+#[pyproto]
+impl pyo3::PyMappingProtocol for PyLayer {
+    fn __len__(&self) -> usize {
+        self.with(|layer| layer.len()).unwrap_or(0)
+    }
+
+    fn __getitem__(&'p self, name: &str) -> pyo3::PyResult<Option<PyGlyph>> {
+        self.glyph(name)
+    }
+
+    fn __delitem__(&'p mut self, name: &str) -> pyo3::PyResult<()> {
+        self.remove_glyph(name)
+    }
+}
+
 #[pymethods]
 impl PyLayer {
     #[classmethod]
@@ -46,10 +61,6 @@ impl PyLayer {
     #[getter]
     pub fn name(&self) -> &str {
         &self.raw_name()
-    }
-
-    fn len(&self) -> usize {
-        self.with(|layer| layer.len()).unwrap_or(0)
     }
 
     fn contains(&self, name: &str) -> PyResult<bool> {

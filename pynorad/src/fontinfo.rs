@@ -3,12 +3,20 @@ use std::sync::{Arc, RwLock};
 
 use super::PyFont;
 use norad::{fontinfo::StyleMapStyle, FontInfo};
-use pyo3::{exceptions::PyValueError, prelude::*};
+use pyo3::{exceptions::PyValueError, prelude::*, types::PyType};
 
 #[pyclass]
 #[derive(Debug, Clone)]
 pub struct PyFontInfo {
     inner: FontInfoProxy,
+}
+
+#[pymethods]
+impl PyFontInfo {
+    #[classmethod]
+    fn concrete(_cls: &PyType) -> Self {
+        PyFontInfo { inner: FontInfoProxy::Concrete(Arc::new(RwLock::new(FontInfo::default()))) }
+    }
 }
 
 #[derive(Debug, Clone)]
