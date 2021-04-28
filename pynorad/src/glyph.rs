@@ -217,41 +217,38 @@ impl PyGlyph {
         flatten!(self.with(|p| other.with(|p2| p == p2))).map_err(Into::into)
     }
 
-    #[allow(non_snake_case)]
-    fn drawPoints(&self, pen: PyObject) -> PyResult<()> {
-        self.with(|glyph| {
-            let gil = Python::acquire_gil();
-            let py = gil.python();
+    #[name = "drawPoints"]
+    fn draw_points(&self, pen: PyObject) -> PyResult<()> {
+        flatten!(self
+            .with(|glyph| {
+                let gil = Python::acquire_gil();
+                let py = gil.python();
 
-            for c in &glyph.contours {
-                if let Err(e) = pen.call_method0(py, "beginPath") {
-                    e.restore(py);
-                    return;
+                for c in &glyph.contours {
+                    pen.call_method0(py, "beginPath")?;
+                    for p in &c.points {
+                        let coord = (p.x, p.y).to_object(py);
+                        let d = PyDict::new(py);
+                        d.set_item("segmentType", point_to_str(p.typ))?;
+                        d.set_item("smooth", Some(p.smooth))?;
+                        d.set_item("name", p.name.as_ref())?;
+                        d.set_item("identifier", p.identifier().as_ref().map(|id| id.as_str()))?;
+                        pen.call_method(py, "addPoint", (coord,), Some(d))?;
+                    }
+                    pen.call_method0(py, "endPath")?;
                 }
-                for p in &c.points {
-                    let coord = (p.x, p.y).to_object(py);
-                    let d = PyDict::new(py);
-                    d.set_item("segmentType", point_to_str(p.typ)).unwrap();
-                    d.set_item("smooth", Some(p.smooth)).unwrap();
-                    d.set_item("name", p.name.as_ref()).unwrap();
-                    d.set_item("identifier", p.identifier().as_ref().map(|id| id.as_str()))
-                        .unwrap();
-                    pen.call_method(py, "addPoint", (coord,), Some(d)).unwrap();
+                for c in &glyph.components {
+                    let transform: kurbo::Affine = c.transform.into();
+                    let transform = transform.as_coeffs();
+                    pen.call_method1(
+                        py,
+                        "addComponent",
+                        (c.base.to_object(py), transform.to_object(py)),
+                    )?;
                 }
-                pen.call_method0(py, "endPath").unwrap();
-            }
-            for c in &glyph.components {
-                let transform: kurbo::Affine = c.transform.into();
-                let transform = transform.as_coeffs();
-                pen.call_method1(
-                    py,
-                    "addComponent",
-                    (c.base.to_object(py), transform.to_object(py)),
-                )
-                .unwrap();
-            }
-        })
-        .map_err(Into::into)
+                Ok(())
+            })
+            .map_err(Into::into))
     }
 
     fn point_pen(&self) -> PyPointPen {
@@ -324,23 +321,10 @@ fn point_to_str(p: PointType) -> Option<&'static str> {
     }
 }
 
-seq_proxy!(PyGlyph, components, ComponentsProxy, PyComponent, Component);
-seq_proxy_member!(ComponentsProxy, PyComponent, ComponentProxy, Component, MissingComponent);
-seq_proxy_iter!(ComponentsIter, ComponentsProxy, PyComponent);
-proxy_eq!(PyComponent);
-proxy_property!(PyComponent, transform, AffineTuple, get_transformation, set_transformation);
-
 seq_proxy!(PyGlyph, contours, ContoursProxy, PyContour, Contour);
 seq_proxy_member!(ContoursProxy, PyContour, ContourProxy, Contour, MissingContour);
 seq_proxy_iter!(ContoursIter, ContoursProxy, PyContour);
 proxy_eq!(PyContour);
-
-seq_proxy!(PyGlyph, anchors, AnchorsProxy, PyAnchor, Anchor);
-seq_proxy_member!(AnchorsProxy, PyAnchor, AnchorProxy, Anchor, MissingAnchor);
-seq_proxy_iter!(AnchorsIter, AnchorsProxy, PyAnchor);
-proxy_eq!(PyAnchor);
-proxy_property!(PyAnchor, x, f32, get_x, set_x);
-proxy_property!(PyAnchor, y, f32, get_y, set_y);
 
 // guidelines exist in multiple places so the code is a bit different.
 seq_proxy!(PyGlyph, guidelines, GlyphGuidelinesProxy, PyGuideline, Guideline);
@@ -377,7 +361,36 @@ impl PyContour {
         })
         .map_err(Into::into)
     }
+
+    #[name = "drawPoints"]
+    fn draw_points(&self, pen: PyObject) -> PyResult<()> {
+        flatten!(self
+            .with(|c| {
+                let gil = Python::acquire_gil();
+                let py = gil.python();
+                pen.call_method0(py, "beginPath")?;
+                for p in &c.points {
+                    let coord = (p.x, p.y).to_object(py);
+                    let d = PyDict::new(py);
+                    d.set_item("segmentType", point_to_str(p.typ))?;
+                    d.set_item("smooth", Some(p.smooth))?;
+                    d.set_item("name", p.name.as_ref())?;
+                    d.set_item("identifier", p.identifier().as_ref().map(|id| id.as_str()))?;
+                    pen.call_method(py, "addPoint", (coord,), Some(d))?;
+                }
+                pen.call_method0(py, "endPath")?;
+                Ok(())
+            })
+            .map_err(Into::into))
+    }
 }
+
+seq_proxy!(PyGlyph, components, ComponentsProxy, PyComponent, Component);
+seq_proxy_member!(ComponentsProxy, PyComponent, ComponentProxy, Component, MissingComponent);
+seq_proxy_iter!(ComponentsIter, ComponentsProxy, PyComponent);
+proxy_eq!(PyComponent);
+proxy_property!(PyComponent, transform, AffineTuple, get_transformation, set_transformation);
+//proxy_property!(PyComponent, base, &str, get_baseGlyph, set_baseGlyph);
 
 #[pymethods]
 impl PyComponent {
@@ -402,7 +415,28 @@ impl PyComponent {
         })
         .map_err(Into::into)
     }
+
+    #[getter]
+    fn get_base(&self) -> PyResult<String> {
+        self.with(|c| c.base.to_string()).map_err(Into::into)
+    }
+
+    fn set_base(&mut self, name: &str) -> PyResult<()> {
+        self.with_mut(|c| c.base = name.into()).map_err(Into::into)
+    }
+
+    #[getter]
+    fn identifier(&self) -> PyResult<Option<String>> {
+        self.with(|c| c.identifier().map(|id| id.as_str().to_owned())).map_err(Into::into)
+    }
 }
+
+seq_proxy!(PyGlyph, anchors, AnchorsProxy, PyAnchor, Anchor);
+seq_proxy_member!(AnchorsProxy, PyAnchor, AnchorProxy, Anchor, MissingAnchor);
+seq_proxy_iter!(AnchorsIter, AnchorsProxy, PyAnchor);
+proxy_eq!(PyAnchor);
+proxy_property!(PyAnchor, x, f32, get_x, set_x);
+proxy_property!(PyAnchor, y, f32, get_y, set_y);
 
 #[pymethods]
 impl PyAnchor {

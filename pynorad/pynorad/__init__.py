@@ -2,6 +2,7 @@ from typing import Iterable, OrderedDict, Optional, Any, Tuple, Mapping, NamedTu
 from fontTools.pens.pointPen import PointToSegmentPen, SegmentToPointPen
 from fontTools.pens.boundsPen import BoundsPen, ControlBoundsPen
 from fontTools.misc.transform import Transform
+from fontTools.misc.arrayTools import unionRect
 from .pynorad import PyFont, PyGuideline, PyPointPen, PyLayer, PyGlyph, PyPoint, PyContour, PyComponent, PyFontInfo, PyAnchor
 
 # I acknowledge that this is not the right way to do this
@@ -22,6 +23,35 @@ class BoundingBox(NamedTuple):
     yMin: float
     xMax: float
     yMax: float
+
+def unionBounds(bounds1, bounds2):
+    if bounds1 is None:
+        return bounds2
+    if bounds2 is None:
+        return bounds1
+    return BoundingBox(*unionRect(bounds1, bounds2))
+
+class Bounded:
+    def getBounds(self, layer=None):
+        pen = BoundsPen(layer)
+        pen.skipMissingComponents = False
+        self.draw(pen)
+        return None if pen.bounds is None else BoundingBox(*pen.bounds)
+
+    def getControlBounds(self, layer=None):
+        pen = ControlBoundsPen(layer)
+        # raise 'KeyError' when a referenced component is missing from glyph set
+        pen.skipMissingComponents = False
+        self.draw(pen)
+        return None if pen.bounds is None else BoundingBox(*pen.bounds)
+
+    @property
+    def bounds(self):
+        return self.getBounds()
+
+    @property
+    def controlPointBounds(self):
+        return self.getControlBounds()
 
 class Proxy(object):
     __slots__ = ["_obj", "__weakref__"]
@@ -62,11 +92,10 @@ class Anchor(ProxySetter):
     def __eq__(self, other):
         return self._obj == other._obj
 
-
 class Image:
     pass
 
-class Component(Proxy):
+class Component(Proxy, Bounded):
     def __init__(self, baseGlyph: str, transformation=None, identifier=None, proxy=None):
         if proxy is None:
             proxy = PyComponent.concrete(baseGlyph, transformation, identifier)
@@ -76,7 +105,39 @@ class Component(Proxy):
     def proxy(cls, obj: PyComponent):
         return cls("", proxy=obj)
 
-class Contour:
+    @property
+    def baseGlyph(self):
+        return self._obj.base
+
+    @baseGlyph.setter
+    def baseGlyph(self, name: str):
+        self._obj.set_base(name)
+
+    def getBounds(self, layer=None):
+        if layer is None:
+            raise TypeError("layer is required to compute bounds of components")
+        return super().getBounds(layer)
+
+    def getControlBounds(self, layer=None):
+        if layer is None:
+            raise TypeError("layer is required to compute bounds of components")
+        return super().getControlBounds(layer)
+
+    def draw(self, pen) -> None:
+        """Draws component with given pen."""
+        pointPen = PointToSegmentPen(pen)
+        self.drawPoints(pointPen)
+
+    def drawPoints(self, pointPen) -> None:
+        """Draws points of component with given point pen."""
+        try:
+            pointPen.addComponent(
+                self.baseGlyph, self.transformation, identifier=self.identifier
+            )
+        except TypeError:
+            pointPen.addComponent(self.baseGlyph, self.transformation)
+
+class Contour(Bounded):
     def __init__(self, points=None, identifier=None, proxy=None):
         if proxy is not None:
             self._obj = proxy
@@ -93,6 +154,10 @@ class Contour:
     @property
     def points(self):
         return  ProxySequence(Point, self._obj.points)
+
+    def draw(self, pen):
+        pointPen = PointToSegmentPen(pen)
+        self._obj.drawPoints(pointPen)
 
 class Point(ProxySetter):
     def __init__(self, x: float, y: float, segmentType: Optional[str] = None, smooth: bool = False, name: Optional[str] = None, identifier: Optional[str] = None, proxy = None):
@@ -291,7 +356,10 @@ class Layer(Proxy):
         return IterWrapper(Glyph, self.iter_glyphs())
 
     def __getitem__(self, name):
-        return Glyph.proxy(self._obj.glyph(name))
+        rawGlyph = self._obj.glyph(name)
+        if rawGlyph is None:
+            raise KeyError(f"No glyph named '{name}' in layer.")
+        return Glyph.proxy(rawGlyph)
 
     def __contains__(self, name: str):
         return self._obj.contains(name)
@@ -394,7 +462,6 @@ class LayerSet:
 
     def __getitem__(self, name):
         layer = self._font.get_layer(name)
-        print(layer)
         return Layer.proxy(layer)
 
     def newLayer(self, name, **kwargs):
@@ -449,7 +516,7 @@ class ProxySequence:
     def __eq__(self, other):
         return len(self) == len(other) and all(x == y for x, y in zip(self, other))
 
-class Glyph(Proxy):
+class Glyph(Proxy, Bounded):
     def __init__(self, name: str = "", width: float = 0, height: float = 0, unicodes: List[int] = [], contours: List[Contour] = [], components: List[Component] = [], anchors: List[Anchor] = [], guidelines: List[Guideline] = [],  proxy: PyGlyph = None, **kwargs):
         if proxy is None:
             contours = [c._obj for c in contours]
@@ -551,8 +618,7 @@ class Glyph(Proxy):
         if layer is None and self.components:
             raise TypeError("layer is required to compute bounds of components")
 
-        return getBounds(self, layer)
-
+        return super().getBounds(layer)
 
     def getControlBounds(
         self, layer: Optional[Layer] = None
@@ -560,12 +626,10 @@ class Glyph(Proxy):
         if layer is None and self.components:
             raise TypeError("layer is required to compute bounds of components")
 
-        return getControlBounds(self, layer)
-
+        return super().getControlBounds(layer)
 
     def getLeftMargin(self, layer: Optional[Layer] = None) -> Optional[float]:
         bounds = self.getBounds(layer)
-        print(bounds)
         if bounds is None:
             return None
         return bounds.xMin
@@ -713,5 +777,3 @@ def getControlBounds(
     pen.skipMissingComponents = False
     drawable.draw(pen)
     return None if pen.bounds is None else BoundingBox(*pen.bounds)
-
-

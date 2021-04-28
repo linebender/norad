@@ -1,6 +1,6 @@
 import pytest
 
-from ufoLib2.objects import Component, Glyph, Layer
+from pynorad import Component, Glyph, Layer
 
 
 @pytest.fixture
