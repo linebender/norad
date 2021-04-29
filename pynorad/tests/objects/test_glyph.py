@@ -4,6 +4,7 @@ import pytest
 
 from pynorad import (
     Anchor,
+    BoundingBox,
     Component,
     Contour,
     Font,
@@ -13,8 +14,6 @@ from pynorad import (
     Layer,
     Point,
 )
-# from ufoLib2.objects.misc import BoundingBox
-
 
 def test_glyph_defcon_behavior():
     glyph = Glyph()
@@ -132,32 +131,32 @@ def test_glyph_repr():
     assert repr(g) == f"<pynorad.Glyph 'a' at {hex(id(g))}>"
 
 
-# def test_glyph_get_bounds():
-    # a = Glyph("a")
-    # pen = a.getPen()
-    # pen.moveTo((0, 0))
-    # pen.curveTo((10, 10), (10, 20), (0, 20))
-    # pen.closePath()
+def test_glyph_get_bounds():
+    a = Glyph("a")
+    pen = a.getPen()
+    pen.moveTo((0, 0))
+    pen.curveTo((10, 10), (10, 20), (0, 20))
+    pen.closePath()
 
-    # b = Glyph("b", components=[Component("a", (1, 0, 0, 1, -50, 100))])
+    b = Glyph("b", components=[Component("a", (1, 0, 0, 1, -50, 100))])
 
-    # layer = Layer(glyphs=[a, b])
+    layer = Layer(glyphs=[a, b])
 
-    # assert a.getBounds(layer) == BoundingBox(xMin=0, yMin=0, xMax=7.5, yMax=20)
+    assert a.getBounds(layer) == BoundingBox(xMin=0, yMin=0, xMax=7.5, yMax=20)
 
-    # assert a.getControlBounds(layer) == BoundingBox(xMin=0, yMin=0, xMax=10, yMax=20)
+    assert a.getControlBounds(layer) == BoundingBox(xMin=0, yMin=0, xMax=10, yMax=20)
 
-    # with pytest.raises(
-        # TypeError, match="layer is required to compute bounds of components"
-    # ):
-        # b.getBounds()
-    # with pytest.raises(
-        # TypeError, match="layer is required to compute bounds of components"
-    # ):
-        # b.getControlBounds()
+    with pytest.raises(
+        TypeError, match="layer is required to compute bounds of components"
+    ):
+        b.getBounds()
+    with pytest.raises(
+        TypeError, match="layer is required to compute bounds of components"
+    ):
+        b.getControlBounds()
 
-    # assert b.getBounds(layer) == (-50, 100, -42.5, 120)  # namedtuple is a tuple
-    # assert b.getControlBounds(layer) == (-50, 100, -40, 120)
+    assert b.getBounds(layer) == (-50, 100, -42.5, 120)  # namedtuple is a tuple
+    assert b.getControlBounds(layer) == (-50, 100, -40, 120)
 
 
 def test_glyph_get_bounds_empty():
