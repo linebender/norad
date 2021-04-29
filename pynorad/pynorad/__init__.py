@@ -611,6 +611,10 @@ class Glyph(Proxy, Bounded):
         return ProxySequence(Guideline, self._obj.guidelines)
 
     @property
+    def lib(self):
+        return self._obj.lib
+
+    @property
     def width(self):
         return self._obj.width
 

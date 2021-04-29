@@ -11,3 +11,4 @@ crate-type = ["cdylib"]
 norad = { version = "0.3.1", path = "..", features = ["rayon",  "kurbo", "py"] }
 pyo3 = { version = "0.13", features = ["extension-module"] }
 kurbo = { version = "0.8.0"}
+plist = "1.0.1"

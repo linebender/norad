@@ -3,6 +3,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock};
 
 use super::guideline::GuidelinesProxy;
+use super::LibProxy;
 use norad::Font;
 use pyo3::{
     prelude::*,
@@ -131,6 +132,10 @@ impl PyFont {
 
     fn guidelines(&self) -> GuidelinesProxy {
         self.fontinfo().get_guidelines()
+    }
+
+    fn lib(&self) -> LibProxy {
+        LibProxy { font: self.clone() }
     }
 
     fn replace_guidelines(&mut self, guidelines: Vec<PyRefMut<PyGuideline>>) -> PyResult<()> {

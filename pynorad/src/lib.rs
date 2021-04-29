@@ -8,6 +8,7 @@ mod guideline;
 mod layer;
 #[macro_use]
 mod util;
+mod lib_object;
 
 pub use font::PyFont;
 pub use fontinfo::PyFontInfo;
@@ -17,6 +18,7 @@ pub use glyph::{
 };
 pub use guideline::PyGuideline;
 pub use layer::{GlyphIter, LayerIter, PyLayer};
+pub use lib_object::LibProxy;
 
 pub(crate) static DEFAULT_LAYER_NAME: &str = "public.default";
 
