@@ -22,8 +22,6 @@ def test_font_mapping_behavior(ufo_UbuTestData):
     assert ("a" in font) == ("a" in font.layers.defaultLayer)
     assert len(font) == len(font.layers.defaultLayer)
 
-    assert font["c"] is None
-
     glyph = Glyph("b")
     font["b"] = glyph
     # assert font["b"] is glyph

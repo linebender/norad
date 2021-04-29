@@ -76,16 +76,33 @@ impl PyLayer {
         super::flatten!(self.with(|l1| other.with(|l2| l1 == l2))).map_err(Into::into)
     }
 
-    /// Returns the new proxy object; the caller is responsible for updating
-    /// the python wrapper.
-    fn set_glyph(&mut self, glyph: PyRef<PyGlyph>) -> PyResult<PyGlyph> {
-        let glyph = (&*glyph).with(|g| g.to_owned())?;
-        let name = glyph.name.clone();
-        let id = glyph.py_id;
-        self.with_mut(|l| {
-            l.insert_glyph(glyph);
-        })?;
-        Ok(PyGlyph::proxy(name, id, self.clone()))
+    fn insert_glyph(
+        &mut self,
+        mut glyph: PyRefMut<PyGlyph>,
+        name: Option<&str>,
+        overwrite: bool,
+        copy: bool,
+    ) -> PyResult<()> {
+        let mut concrete = glyph.with(Glyph::clone)?;
+        if let Some(new_name) = name {
+            concrete.name = new_name.into();
+        }
+        if concrete.name.is_empty() {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "Glyph ({}) has no name; can't add it to Layer",
+                concrete.py_id.raw(),
+            )));
+        } else if !overwrite && self.contains(&concrete.name)? {
+            return Err(exceptions::PyKeyError::new_err(format!(
+                "glyph named '{}' already exists",
+                &concrete.name
+            )));
+        }
+        if !copy {
+            *glyph = PyGlyph::proxy(concrete.name.clone(), concrete.py_id, self.clone());
+        }
+        self.with_mut(|l| l.insert_glyph(concrete))?;
+        Ok(())
     }
 
     fn remove_glyph(&mut self, name: &str) -> PyResult<()> {

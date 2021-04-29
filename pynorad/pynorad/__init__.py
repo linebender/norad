@@ -226,16 +226,16 @@ class Font(Proxy):
         return result
 
     def __getitem__(self, name):
-        return Glyph.proxy(self._obj.default_layer().glyph(name))
+        return Layer.proxy(self.default_layer()).__getitem__(name)
 
     def __setitem__(self, name: str, glyph):
-        self.default_layer().set_glyph(glyph._obj)
+       Layer.proxy(self.default_layer()).__setitem__(name, glyph)
 
     def __delitem__(self, name: str):
-        self.default_layer().remove_glyph(name)
+        Layer.proxy(self.default_layer()).__delitem__(name)
 
-    def __contains__(self, glyphName: str):
-        return self.default_layer().contains(glyphName)
+    def __contains__(self, name: str):
+        return Layer.proxy(self.default_layer()).__contains__(name)
 
     def newLayer(self, layerName: str):
         return Layer.proxy(self._obj.new_layer(layerName))
@@ -364,6 +364,11 @@ class Layer(Proxy):
     def __contains__(self, name: str):
         return self._obj.contains(name)
 
+    def __setitem__(self, name: str, glyph) -> None:
+        if not isinstance(glyph, Glyph):
+            raise TypeError(f"Expected Glyph, found {type(glyph).__name__}")
+        self.insertGlyph(glyph, name, True, False)
+
     def get(self, name):
         return self[name]
 
@@ -380,17 +385,7 @@ class Layer(Proxy):
         overwrite: bool = True,
         copy: bool = True,
     ) -> None:
-        if copy:
-            pass
-        if name is not None:
-            glyph.set_name(name)
-        if glyph.name is None:
-            raise ValueError(f"{glyph!r} has no name; can't add it to Layer")
-        if not overwrite and glyph.name in self:
-            raise KeyError(f"glyph named '{glyph.name}' already exists")
-
-        newProxyGlyph = self._obj.set_glyph(glyph._obj)
-        glyph._obj = newProxyGlyph
+        self._obj.insert_glyph(glyph._obj, name, overwrite, copy)
 
 class LayerSet:
     def __init__(self, layers = None, defaultLayer = None, proxy: PyFont = None):

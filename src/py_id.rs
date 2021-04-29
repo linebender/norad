@@ -25,6 +25,10 @@ impl PyId {
     pub fn duplicate(&self) -> Self {
         PyId(self.0)
     }
+
+    pub fn raw(&self) -> u64 {
+        self.0
+    }
 }
 
 impl Default for PyId {
