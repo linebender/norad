@@ -37,7 +37,10 @@ fn pynorad(_py: Python, m: &PyModule) -> PyResult<()> {
 
 //FIXME: more nuanced error mapping
 pub(crate) fn error_to_py(error: norad::Error) -> PyErr {
-    exceptions::PyRuntimeError::new_err(error.to_string())
+    match error {
+        norad::Error::DuplicateGlyph { .. } => exceptions::PyKeyError::new_err(error.to_string()),
+        _ => exceptions::PyRuntimeError::new_err(error.to_string()),
+    }
 }
 
 #[derive(Debug, Clone)]

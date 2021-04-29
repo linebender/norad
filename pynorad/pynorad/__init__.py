@@ -226,16 +226,35 @@ class Font(Proxy):
         return result
 
     def __getitem__(self, name):
-        return Layer.proxy(self.default_layer()).__getitem__(name)
+        return self.layers.defaultLayer.__getitem__(name)
 
     def __setitem__(self, name: str, glyph):
-       Layer.proxy(self.default_layer()).__setitem__(name, glyph)
+       self.layers.defaultLayer.__setitem__(name, glyph)
 
     def __delitem__(self, name: str):
-        Layer.proxy(self.default_layer()).__delitem__(name)
+        self.layers.defaultLayer.__delitem__(name)
 
     def __contains__(self, name: str):
-        return Layer.proxy(self.default_layer()).__contains__(name)
+        return self.layers.defaultLayer.__contains__(name)
+
+
+    @property
+    def bounds(self) -> Optional[BoundingBox]:
+        """Returns the (xMin, yMin, xMax, yMax) bounding box of the default
+        layer, taking the actual contours into account.
+
+        |defcon_compat|
+        """
+        return self.layers.defaultLayer.bounds
+
+    @property
+    def controlPointBounds(self) -> Optional[BoundingBox]:
+        """Returns the (xMin, yMin, xMax, yMax) bounding box of the layer,
+        taking only the control points into account.
+
+        |defcon_compat|
+        """
+        return self.layers.defaultLayer.controlPointBounds
 
     def newLayer(self, layerName: str):
         return Layer.proxy(self._obj.new_layer(layerName))
@@ -252,7 +271,7 @@ class Font(Proxy):
         return self._obj.default_layer().new_glyph(name)
 
     def renameGlyph(self, old: str, new: str, overwrite: bool = False):
-        Layer.proxy(self._obj.default_layer()).renameGlyph(old, new, overwrite=overwrite)
+        self.layers.defaultLayer.renameGlyph(old, new, overwrite=overwrite)
 
     def __iter__(self):
         return IterWrapper(Glyph, self._obj.default_layer().iter_glyphs())
@@ -303,6 +322,7 @@ class Font(Proxy):
 
     def unlazify(self):
         pass
+
 
 class Layer(Proxy):
     def __init__(self, name: str = 'public.default', glyphs = None, color = None, lib = None, proxy = None):
@@ -371,6 +391,30 @@ class Layer(Proxy):
 
     def get(self, name):
         return self[name]
+
+    @property
+    def bounds(self) -> Optional[BoundingBox]:
+        """Returns the (xMin, yMin, xMax, yMax) bounding box of the layer,
+        taking the actual contours into account.
+
+        |defcon_compat|
+        """
+        bounds = None
+        for glyph in self:
+            bounds = unionBounds(bounds, glyph.getBounds(self))
+        return bounds
+
+    @property
+    def controlPointBounds(self) -> Optional[BoundingBox]:
+        """Returns the (xMin, yMin, xMax, yMax) bounding box of the layer,
+        taking only the control points into account.
+
+        |defcon_compat|
+        """
+        bounds = None
+        for glyph in self:
+            bounds = unionBounds(bounds, glyph.getControlBounds(self))
+        return bounds
 
     def newGlyph(self, name):
         return Glyph.proxy(self.new_glyph(name))

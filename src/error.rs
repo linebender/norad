@@ -153,7 +153,7 @@ impl std::fmt::Display for Error {
                 write!(f, "Missing required 'layercontents.plist' file.")
             }
             Error::DuplicateGlyph { layer, glyph } => {
-                write!(f, "Glyph '{}' already exists in layer '{}'", glyph, layer)
+                write!(f, "Glyph named '{}' already exists in layer '{}'", glyph, layer)
             }
             Error::MissingGlyph { layer, glyph } => {
                 write!(f, "Glyph '{}' missing from layer '{}'", glyph, layer)

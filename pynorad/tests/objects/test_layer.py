@@ -124,5 +124,5 @@ def test_renameGlyph():
 
     layer.insertGlyph(g, "a")
 
-    with pytest.raises(KeyError, match="target glyph named 'a' already exists"):
+    with pytest.raises(KeyError, match="Glyph named 'a' already exists.*"):
         layer.renameGlyph("b", "a")

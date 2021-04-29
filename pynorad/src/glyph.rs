@@ -139,12 +139,9 @@ impl PyGlyph {
     }
 
     #[getter]
-    fn name(&self) -> Option<&str> {
-        if self.name.is_empty() {
-            None
-        } else {
-            Some(&self.name)
-        }
+    fn name(&self) -> PyResult<Option<String>> {
+        self.with(|g| if g.name.is_empty() { None } else { Some(g.name.to_string()) })
+            .map_err(Into::into)
     }
 
     fn set_name(&mut self, new_name: &str) -> PyResult<()> {
