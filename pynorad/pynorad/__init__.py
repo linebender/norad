@@ -69,10 +69,18 @@ class Proxy(object):
         return len(self._obj)
 
 class ProxySetter(Proxy):
+    def __init__(self, obj, ignoreItems={}):
+        super().__init__(obj)
+        object.__setattr__(self, "_ignore", ignoreItems)
+
     def __setattr__(self, name, item):
         if name == "_obj":
             object.__setattr__(self, name, item)
             return
+
+        ignore = object.__getattribute__(self, "_ignore")
+        if name in ignore:
+            return super().__setattr__(name, item)
 
         real = object.__getattribute__(self, "_obj")
         if hasattr(real, name):
@@ -789,7 +797,7 @@ class FontInfo(ProxySetter):
     def __init__(self, proxy=None):
         if proxy is None:
             proxy = PyFontInfo.concrete()
-        super().__init__(proxy)
+        super().__init__(proxy, {"guidelines"})
 
     @classmethod
     def proxy(cls, obj: PyFontInfo):
