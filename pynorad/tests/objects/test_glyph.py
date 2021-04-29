@@ -126,10 +126,10 @@ def test_glyph_without_name():
 
 def test_glyph_repr():
     g = Glyph()
-    assert repr(g) == f"<ufoLib2.objects.glyph.Glyph at {hex(id(g))}>"
+    assert repr(g) == f"<pynorad.Glyph at {hex(id(g))}>"
 
     g = Glyph("a")
-    assert repr(g) == f"<ufoLib2.objects.glyph.Glyph 'a' at {hex(id(g))}>"
+    assert repr(g) == f"<pynorad.Glyph 'a' at {hex(id(g))}>"
 
 
 # def test_glyph_get_bounds():

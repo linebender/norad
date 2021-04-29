@@ -536,6 +536,14 @@ class Glyph(Proxy, Bounded):
             return NotImplemented
         return self._obj.py_eq(other._obj)
 
+    def __repr__(self) -> str:
+        return "<{}.{} {}at {}>".format(
+            self.__class__.__module__,
+            self.__class__.__name__,
+            f"'{self.name}' " if self.name is not None else "",
+            hex(id(self)),
+        )
+
     @property
     def contours(self):
         return ProxySequence(Contour, self._obj.contours)
