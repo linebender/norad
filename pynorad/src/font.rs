@@ -2,7 +2,8 @@ use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock};
 
-use norad::{Font, Guideline};
+use super::guideline::GuidelinesProxy;
+use norad::Font;
 use pyo3::{
     prelude::*,
     types::{PyType, PyUnicode},
@@ -128,24 +129,12 @@ impl PyFont {
         Ok(())
     }
 
-    fn guidelines(&self) -> Vec<PyGuideline> {
-        self.read()
-            .guidelines()
-            .iter()
-            .map(|g| PyGuideline::font_proxy(self.clone(), g.py_id))
-            .collect()
+    fn guidelines(&self) -> GuidelinesProxy {
+        self.fontinfo().get_guidelines()
     }
 
-    fn replace_guidelines(&mut self, mut guidelines: Vec<PyRefMut<PyGuideline>>) -> PyResult<()> {
-        let mut new_guides = Vec::with_capacity(guidelines.len());
-        for py_guide in &mut guidelines {
-            let guide = (&*py_guide).with(Guideline::to_owned)?;
-            let py_id = guide.py_id;
-            new_guides.push(guide);
-            *py_guide.deref_mut() = PyGuideline::font_proxy(self.clone(), py_id);
-        }
-        *self.write().guidelines_mut() = new_guides;
-        Ok(())
+    fn replace_guidelines(&mut self, guidelines: Vec<PyRefMut<PyGuideline>>) -> PyResult<()> {
+        self.fontinfo().set_guidelines(guidelines)
     }
 
     fn fontinfo(&self) -> PyFontInfo {

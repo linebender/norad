@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::sync::{Arc, RwLock};
 
 use super::glyph::{GlyphGuidelineProxy, GlyphGuidelinesProxy};
-use super::{util, ProxyError, PyFont};
+use super::{util, ProxyError, PyFontInfo};
 use norad::{Guideline, Line, PyId};
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyType, PySequenceProtocol};
 
@@ -14,14 +14,14 @@ pub struct PyGuideline {
 
 #[derive(Clone, Debug)]
 enum GuidelineProxy {
-    Font { font: PyFont, py_id: PyId },
+    Font { font: PyFontInfo, py_id: PyId },
     Glyph(GlyphGuidelineProxy),
     Concrete { guideline: Arc<RwLock<Guideline>> },
 }
 
 #[pyclass]
 pub struct GuidelinesProxy {
-    font: PyFont,
+    pub(crate) info: PyFontInfo,
 }
 
 #[pymethods]
@@ -72,7 +72,7 @@ impl PyGuideline {
 }
 
 impl PyGuideline {
-    pub(crate) fn font_proxy(font: PyFont, py_id: PyId) -> Self {
+    pub(crate) fn font_proxy(font: PyFontInfo, py_id: PyId) -> Self {
         PyGuideline { inner: GuidelineProxy::Font { font, py_id } }
     }
 
@@ -85,11 +85,11 @@ impl PyGuideline {
     pub fn with<R>(&self, f: impl FnOnce(&Guideline) -> R) -> Result<R, ProxyError> {
         match &self.inner {
             GuidelineProxy::Font { font, py_id } => font
-                .read()
-                .guidelines()
-                .iter()
-                .find(|guide| guide.py_id == *py_id)
-                .map(f)
+                .with(|info| {
+                    info.guidelines.as_ref().map(|gs| gs.iter().find(|g| g.py_id == *py_id).map(f))
+                })
+                .flatten()
+                .flatten()
                 .ok_or(ProxyError::MissingGlobalGuideline),
             GuidelineProxy::Glyph(proxy) => proxy.with(f),
             GuidelineProxy::Concrete { guideline, .. } => Ok(f(&guideline.read().unwrap())),
@@ -99,11 +99,14 @@ impl PyGuideline {
     pub fn with_mut<R>(&mut self, f: impl FnOnce(&mut Guideline) -> R) -> Result<R, ProxyError> {
         match &mut self.inner {
             GuidelineProxy::Font { font, py_id } => font
-                .write()
-                .guidelines_mut()
-                .iter_mut()
-                .find(|guide| guide.py_id == *py_id)
-                .map(f)
+                .with_mut(|info| {
+                    info.guidelines
+                        .get_or_insert_with(Default::default)
+                        .iter_mut()
+                        .find(|g| g.py_id == *py_id)
+                        .map(f)
+                })
+                .flatten()
                 .ok_or(ProxyError::MissingGlobalGuideline),
             GuidelineProxy::Glyph(proxy) => proxy.with_mut(f),
             GuidelineProxy::Concrete { guideline, .. } => Ok(f(&mut guideline.write().unwrap())),
@@ -112,28 +115,31 @@ impl PyGuideline {
 }
 
 impl GuidelinesProxy {
-    pub fn with<R>(&self, f: impl FnOnce(&[Guideline]) -> R) -> Result<R, ProxyError> {
-        Ok(f(self.font.read().guidelines()))
+    pub fn with<R>(&self, f: impl FnOnce(&[Guideline]) -> R) -> Result<Option<R>, ProxyError> {
+        Ok(self.info.with(|info| match info.guidelines.as_ref() {
+            Some(g) => f(g),
+            None => f(&[]),
+        }))
     }
 
     pub fn with_mut<R>(
         &mut self,
         f: impl FnOnce(&mut Vec<Guideline>) -> R,
-    ) -> Result<R, ProxyError> {
-        Ok(f(self.font.write().guidelines_mut()))
+    ) -> Result<Option<R>, ProxyError> {
+        Ok(self.info.with_mut(|info| f(info.guidelines.get_or_insert_with(Default::default))))
     }
 }
 
 #[pyproto]
 impl PySequenceProtocol for GuidelinesProxy {
     fn __len__(&self) -> PyResult<usize> {
-        self.with(|guides| guides.len()).map_err(Into::into)
+        self.with(|guides| guides.len()).map(|i| i.unwrap_or(0)).map_err(Into::into)
     }
 
-    fn __getitem__(&'p self, idx: isize) -> PyResult<PyGuideline> {
+    fn __getitem__(&'p self, idx: isize) -> PyResult<Option<PyGuideline>> {
         let idx = util::python_idx_to_idx(idx, self.__len__()?)?;
         self.with(|guides| PyGuideline {
-            inner: GuidelineProxy::Font { font: self.font.clone(), py_id: guides[idx].py_id },
+            inner: GuidelineProxy::Font { font: self.info.clone(), py_id: guides[idx].py_id },
         })
         .map_err(Into::into)
     }

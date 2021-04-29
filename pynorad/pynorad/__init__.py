@@ -259,6 +259,9 @@ class Font(Proxy):
     def newLayer(self, layerName: str):
         return Layer.proxy(self._obj.new_layer(layerName))
 
+    def renameLayer(self, old, new, overwrite = False):
+        self.layers.renameLayer(old, new, overwrite)
+
     def addGlyph(self, glyph):
         Layer.proxy(self._obj.default_layer()).addGlyph(glyph)
 
@@ -791,6 +794,15 @@ class FontInfo(ProxySetter):
     @classmethod
     def proxy(cls, obj: PyFontInfo):
         return cls(proxy=obj)
+
+    @property
+    def guidelines(self):
+        return ProxySequence(Guideline, self._obj.guidelines)
+
+    @guidelines.setter
+    def guidelines(self, value):
+        self._obj.guidelines = [Guideline.normalize(g)._obj for g in value]
+
 
 def encodeSegmentType(segmentType: Optional[str]) -> int:
     """

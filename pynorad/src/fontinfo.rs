@@ -1,8 +1,10 @@
 use std::convert::TryInto;
+use std::ops::DerefMut;
 use std::sync::{Arc, RwLock};
 
+use super::guideline::{GuidelinesProxy, PyGuideline};
 use super::PyFont;
-use norad::{fontinfo::StyleMapStyle, FontInfo};
+use norad::{fontinfo::StyleMapStyle, FontInfo, Guideline};
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyType};
 
 #[pyclass]
@@ -111,3 +113,34 @@ gettersetter!(
     style_from_string,
     from_style
 );
+
+#[pymethods]
+impl PyFontInfo {
+    #[getter]
+    pub(crate) fn get_guidelines(&self) -> GuidelinesProxy {
+        GuidelinesProxy { info: self.clone() }
+    }
+
+    #[setter]
+    pub(crate) fn set_guidelines(
+        &mut self,
+        mut guidelines: Vec<PyRefMut<PyGuideline>>,
+    ) -> PyResult<()> {
+        let self_clone = self.clone();
+        let r: Result<_, PyErr> = self
+            .with_mut(|info| {
+                let mut new_guides = Vec::with_capacity(guidelines.len());
+                for py_guide in &mut guidelines {
+                    let guide = (&*py_guide).with(Guideline::to_owned)?;
+                    let py_id = guide.py_id;
+                    new_guides.push(guide);
+                    *py_guide.deref_mut() = PyGuideline::font_proxy(self_clone.clone(), py_id);
+                }
+                info.guidelines = Some(new_guides);
+                Ok(())
+            })
+            .transpose();
+        r?;
+        Ok(())
+    }
+}

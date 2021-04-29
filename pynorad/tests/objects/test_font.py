@@ -51,7 +51,7 @@ def test_font_defcon_behavior(ufo_UbuTestData):
     assert font.info.ascender == 776
     font.info.ascender = 69
     assert font.info.ascender == 69
-    assert font.info.guidelines[-1] is guideline
+    assert font.info.guidelines[-1] == guideline
 
     font.appendGuideline({"y": 1, "name": "asdf"})
     assert font.info.guidelines[-1].name == "asdf"

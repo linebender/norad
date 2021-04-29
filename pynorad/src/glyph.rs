@@ -323,11 +323,6 @@ seq_proxy_member!(ContoursProxy, PyContour, ContourProxy, Contour, MissingContou
 seq_proxy_iter!(ContoursIter, ContoursProxy, PyContour);
 proxy_eq!(PyContour);
 
-// guidelines exist in multiple places so the code is a bit different.
-seq_proxy!(PyGlyph, guidelines, GlyphGuidelinesProxy, PyGuideline, Guideline);
-seq_proxy_member!(GlyphGuidelinesProxy, GlyphGuidelineProxy, Guideline, MissingGlyphGuideline);
-seq_proxy_iter!(GuidelinesIter, GlyphGuidelinesProxy, PyGuideline);
-
 #[pymethods]
 impl PyContour {
     #[classmethod]
@@ -379,6 +374,24 @@ impl PyContour {
                 Ok(())
             })
             .map_err(Into::into))
+    }
+}
+
+// guidelines exist in multiple places so the code is a bit different.
+seq_proxy!(PyGlyph, guidelines, GlyphGuidelinesProxy, PyGuideline, Guideline);
+seq_proxy_member!(GlyphGuidelinesProxy, GlyphGuidelineProxy, Guideline, MissingGlyphGuideline);
+seq_proxy_iter!(GuidelinesIter, GlyphGuidelinesProxy, PyGuideline);
+
+#[pymethods]
+impl PyGuideline {
+    #[getter]
+    fn get_name(&self) -> PyResult<Option<String>> {
+        self.with(|g| g.name.clone()).map_err(Into::into)
+    }
+
+    #[setter]
+    fn set_name(&mut self, name: Option<String>) -> PyResult<()> {
+        self.with_mut(|g| g.name = name).map_err(Into::into)
     }
 }
 
