@@ -211,7 +211,7 @@ fn to_python(obj: &Value) -> PyResult<PyObject> {
     })
 }
 
-fn from_python(value: RawValue) -> PyResult<Value> {
+pub(crate) fn from_python(value: RawValue) -> PyResult<Value> {
     match value {
         RawValue::Int(int) => Ok(int.into()),
         RawValue::Float(float) => Ok(float.into()),

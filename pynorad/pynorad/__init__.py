@@ -3,7 +3,7 @@ from fontTools.pens.pointPen import PointToSegmentPen, SegmentToPointPen
 from fontTools.pens.boundsPen import BoundsPen, ControlBoundsPen
 from fontTools.misc.transform import Transform
 from fontTools.misc.arrayTools import unionRect
-from .pynorad import PyFont, PyGuideline, PyPointPen, PyLayer, PyGlyph, PyPoint, PyContour, PyComponent, PyFontInfo, PyAnchor
+from .pynorad import PyFont, PyGuideline, PyPointPen, PyLayer, PyGlyph, PyPoint, PyContour, PyComponent, PyFontInfo, PyAnchor, PyImage
 
 # I acknowledge that this is not the right way to do this
 __version__ = '0.1'
@@ -100,8 +100,17 @@ class Anchor(ProxySetter):
     def __eq__(self, other):
         return self._obj == other._obj
 
-class Image:
-    pass
+class Image(Proxy):
+    def __init__(self, fileName: Optional[str] = None, transformation=None, color: Optional[str] = None, proxy=None):
+        if proxy is None:
+            proxy = PyImage.concrete(fileName, transformation, color)
+        super().__init__(proxy)
+
+    @classmethod
+    def proxy(cls, obj):
+        if obj is not None:
+            return cls(proxy=obj)
+
 
 class Component(Proxy, Bounded):
     def __init__(self, baseGlyph: str, transformation=None, identifier=None, proxy=None):
@@ -633,10 +642,6 @@ class Glyph(Proxy, Bounded):
         return self._obj.objectLib(obj._obj)
 
     @property
-    def lib(self):
-        return self._obj.lib
-
-    @property
     def width(self):
         return self._obj.width
 
@@ -651,6 +656,17 @@ class Glyph(Proxy, Bounded):
     @height.setter
     def height(self, val):
         self._obj.height = val
+
+    @property
+    def image(self):
+        return Image.proxy(self._obj.image)
+
+    @image.setter
+    def image(self, image):
+        if image is not None:
+            image = image._obj
+        self._obj.image = image
+
 
     def appendAnchor(self, anchor):
         if not isinstance(anchor, Anchor):

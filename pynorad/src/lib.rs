@@ -14,7 +14,7 @@ pub use font::PyFont;
 pub use fontinfo::PyFontInfo;
 pub use glyph::{
     AnchorProxy, ComponentProxy, ContourProxy, GlyphGuidelineProxy, PointProxy, PointsIter,
-    PointsProxy, PyAnchor, PyComponent, PyContour, PyGlyph, PyPoint, PyPointPen,
+    PointsProxy, PyAnchor, PyComponent, PyContour, PyGlyph, PyImage, PyPoint, PyPointPen,
 };
 pub use guideline::PyGuideline;
 pub use layer::{GlyphIter, LayerIter, PyLayer};
@@ -32,6 +32,7 @@ fn pynorad(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyContour>()?;
     m.add_class::<PyComponent>()?;
     m.add_class::<PyPointPen>()?;
+    m.add_class::<PyImage>()?;
     m.add_class::<PyGuideline>()?;
     m.add_class::<PyFontInfo>()?;
     Ok(())

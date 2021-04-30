@@ -2,7 +2,8 @@ use std::convert::TryFrom;
 use std::sync::{Arc, Mutex, RwLock};
 
 use norad::{
-    Anchor, Component, Contour, ContourPoint, Glyph, GlyphName, Guideline, PointType, PyId,
+    AffineTransform, Anchor, Component, Contour, ContourPoint, Glyph, GlyphName, Guideline, Image,
+    Plist, PointType, PyId,
 };
 use pyo3::{
     exceptions,
@@ -168,6 +169,21 @@ impl PyGlyph {
     }
 
     #[getter]
+    fn unicodes(&self) -> PyResult<Vec<u32>> {
+        self.with(|g| g.codepoints.iter().map(|c| *c as u32).collect()).map_err(Into::into)
+    }
+
+    #[setter]
+    fn set_unicodes(&mut self, vals: Vec<u32>) -> PyResult<()> {
+        let codepoints = vals
+            .into_iter()
+            .map(char::try_from)
+            .collect::<Result<_, _>>()
+            .map_err(|e| exceptions::PyValueError::new_err(e.to_string()))?;
+        self.with_mut(|g| g.codepoints = codepoints).map_err(Into::into)
+    }
+
+    #[getter]
     fn name(&self) -> PyResult<Option<String>> {
         self.with(|g| if g.name.is_empty() { None } else { Some(g.name.to_string()) })
             .map_err(Into::into)
@@ -178,6 +194,22 @@ impl PyGlyph {
         self.with_mut(|g| g.name = new_name.clone())?;
         self.name = new_name;
         Ok(())
+    }
+
+    #[getter]
+    fn image(&self) -> PyResult<Option<PyImage>> {
+        if self.with(|g| g.image.is_some())? {
+            Ok(Some(PyImage::proxy(self.clone())))
+        } else {
+            Ok(None)
+        }
+    }
+
+    #[setter]
+    fn set_image(&mut self, image: Option<PyRef<PyImage>>) -> PyResult<()> {
+        let image: Option<Image> =
+            image.map(|img| img.with(|img| img.clone())).transpose()?.flatten();
+        self.with_mut(|g| g.image = image).map_err(Into::into)
     }
 
     #[getter(verticalOrigin)]
@@ -195,6 +227,19 @@ impl PyGlyph {
             None => self.with_mut(|g| g.lib.remove("public.verticalOrigin")),
         }?;
         Ok(())
+    }
+
+    #[getter]
+    fn lib(&self) -> PyLib {
+        self.clone().into()
+    }
+
+    #[setter]
+    fn set_lib(&mut self, lib: crate::lib_object::RawValue) -> PyResult<()> {
+        let lib: Plist = crate::lib_object::from_python(lib)?
+            .into_dictionary()
+            .ok_or_else(|| exceptions::PyValueError::new_err("lib must be a dictionary"))?;
+        self.with_mut(|g| g.lib = lib).map_err(Into::into)
     }
 
     #[name = "objectLib"]
@@ -448,11 +493,11 @@ impl PyComponent {
     fn concrete(
         _cls: &PyType,
         base: &str,
-        xform: AffineTuple,
+        xform: Option<AffineTuple>,
         identifier: Option<&str>,
     ) -> PyResult<Self> {
         let identifier = util::to_identifier(identifier)?;
-        let transform = norad::AffineTransform::from(xform);
+        let transform = xform.map(AffineTransform::from).unwrap_or_default();
         let component = Component::new(base.into(), transform, identifier, None);
         Ok(component.into())
     }
@@ -544,5 +589,59 @@ impl PyPoint {
     fn py_eq(&self, other: PyRef<PyPoint>) -> PyResult<bool> {
         let other: &PyPoint = &*other;
         flatten!(self.with(|p| other.with(|p2| p == p2))).map_err(Into::into)
+    }
+}
+
+#[pyclass]
+#[derive(Debug, Clone)]
+pub struct PyImage {
+    inner: ImageProxy,
+}
+
+#[derive(Debug, Clone)]
+enum ImageProxy {
+    Glyph(PyGlyph),
+    Concrete(Arc<Mutex<Image>>),
+}
+
+#[pymethods]
+impl PyImage {
+    #[classmethod]
+    fn concrete(
+        _cls: &PyType,
+        file_name: Option<String>,
+        color: Option<&str>,
+        transform: Option<AffineTuple>,
+    ) -> PyResult<Self> {
+        let image = Image {
+            file_name: file_name.unwrap_or_default().into(),
+            color: util::to_color(color)?,
+            transform: transform.map(AffineTransform::from).unwrap_or_default(),
+        };
+
+        Ok(PyImage { inner: ImageProxy::Concrete(Arc::new(Mutex::new(image))) })
+    }
+}
+
+impl PyImage {
+    pub(crate) fn proxy(glyph: PyGlyph) -> Self {
+        PyImage { inner: ImageProxy::Glyph(glyph) }
+    }
+
+    pub(crate) fn with<R>(&self, f: impl FnOnce(&Image) -> R) -> Result<Option<R>, ProxyError> {
+        match &self.inner {
+            ImageProxy::Glyph(g) => g.with(|g| g.image.as_ref().map(f)).map_err(Into::into),
+            ImageProxy::Concrete(img) => Ok(Some(f(&img.lock().unwrap()))),
+        }
+    }
+
+    pub(crate) fn with_mut<R>(
+        &mut self,
+        f: impl FnOnce(&mut Image) -> R,
+    ) -> Result<Option<R>, ProxyError> {
+        match &mut self.inner {
+            ImageProxy::Glyph(g) => g.with_mut(|g| g.image.as_mut().map(f)).map_err(Into::into),
+            ImageProxy::Concrete(img) => Ok(Some(f(&mut img.lock().unwrap()))),
+        }
     }
 }
