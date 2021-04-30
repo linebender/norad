@@ -1,6 +1,4 @@
-use crate::font::PyFont;
-use crate::glyph::PyGlyph;
-use crate::ProxyError;
+use crate::{ProxyError, PyFont, PyGlyph, PyLib};
 
 use std::sync::{Arc, RwLock};
 
@@ -61,6 +59,16 @@ impl PyLayer {
     #[getter]
     pub fn name(&self) -> &str {
         &self.raw_name()
+    }
+
+    #[getter]
+    fn lib(&self) -> PyLib {
+        self.clone().into()
+    }
+
+    fn keys(&self) -> PyResult<Vec<String>> {
+        self.with(|layer| layer.iter_contents().map(|g| g.name.to_string()).collect())
+            .map_err(Into::into)
     }
 
     fn contains(&self, name: &str) -> PyResult<bool> {

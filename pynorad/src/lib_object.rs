@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
 use plist::{Dictionary, Value};
-use pyo3::{exceptions::PyValueError, prelude::*, types::PyDict};
+use pyo3::{exceptions::PyValueError, prelude::*, types::PyDict, PyIterProtocol};
 
-use super::{ProxyError, PyAnchor, PyComponent, PyContour, PyFont, PyGlyph, PyGuideline, PyPoint};
+use super::{
+    ProxyError, PyAnchor, PyComponent, PyContour, PyFont, PyGlyph, PyGuideline, PyLayer, PyPoint,
+};
 
 #[pyclass]
 pub struct PyLib {
@@ -12,6 +14,7 @@ pub struct PyLib {
 
 pub enum LibProxy {
     Font(PyFont),
+    Layer(PyLayer),
     Glyph(PyGlyph),
     Point(PyPoint),
     Contour(PyContour),
@@ -59,10 +62,17 @@ impl From<PyGuideline> for PyLib {
     }
 }
 
+impl From<PyLayer> for PyLib {
+    fn from(src: PyLayer) -> PyLib {
+        PyLib { inner: LibProxy::Layer(src) }
+    }
+}
+
 impl PyLib {
     pub(crate) fn with<R>(&self, f: impl FnOnce(&Dictionary) -> R) -> Result<R, ProxyError> {
         match &self.inner {
             LibProxy::Font(font) => Ok(f(&font.read().lib)),
+            LibProxy::Layer(layer) => layer.with(|l| f(&l.lib)),
             LibProxy::Glyph(glyph) => glyph.with(|g| f(&g.lib)),
             LibProxy::Point(point) => point.with(|p| match p.lib() {
                 Some(lib) => f(lib),
@@ -94,6 +104,7 @@ impl PyLib {
         match &mut self.inner {
             LibProxy::Font(font) => Ok(f(&mut font.write().lib)),
             LibProxy::Glyph(glyph) => glyph.with_mut(|g| f(&mut g.lib)),
+            LibProxy::Layer(layer) => layer.with_mut(|l| f(&mut l.lib)),
             LibProxy::Point(point) => point.with_mut(|p| match p.lib_mut() {
                 Some(lib) => f(lib),
                 None => {
@@ -153,6 +164,10 @@ impl PyLib {
 
     fn get_item(&self, name: &str) -> PyResult<Option<PyObject>> {
         self.with(|lib| lib.get(name).map(to_python))?.transpose()
+    }
+
+    fn get(&self, name: &str, default: Option<PyObject>) -> PyResult<Option<PyObject>> {
+        self.get_item(name).map(|opt| opt.or(default))
     }
 }
 
@@ -242,4 +257,29 @@ pub enum RawValue {
     Float(f64),
     Array(Vec<RawValue>),
     Dict(HashMap<String, RawValue>),
+}
+
+#[pyproto]
+impl PyIterProtocol for PyLib {
+    fn __iter__(slf: PyRef<'p, Self>) -> PyResult<LibIter> {
+        slf.with(|lib| lib.iter().map(|(key, val)| (key.clone(), val.clone())).collect())
+            .map(|items| LibIter { items })
+            .map_err(Into::into)
+    }
+}
+
+#[pyclass]
+pub struct LibIter {
+    pub(crate) items: Vec<(String, Value)>,
+}
+
+#[pyproto]
+impl PyIterProtocol for LibIter {
+    fn __iter__(slf: PyRef<'p, Self>) -> PyRef<'p, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<Self>) -> PyResult<Option<(String, PyObject)>> {
+        slf.items.pop().map(|(key, val)| to_python(&val).map(|val| (key, val))).transpose()
+    }
 }

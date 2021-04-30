@@ -1,4 +1,6 @@
 from typing import Iterable, OrderedDict, Optional, Any, Tuple, Mapping, NamedTuple, List
+from copy import deepcopy
+
 from fontTools.pens.pointPen import PointToSegmentPen, SegmentToPointPen
 from fontTools.pens.boundsPen import BoundsPen, ControlBoundsPen
 from fontTools.misc.transform import Transform
@@ -85,7 +87,7 @@ class ProxySetter(Proxy):
         real = object.__getattribute__(self, "_obj")
         if hasattr(real, name):
             return setattr(real, name, item)
-        raise AttributeError(item)
+        raise AttributeError(name)
 
 class Anchor(ProxySetter):
     def __init__(self, x: float, y: float, name: Optional[str] = None, color: Optional[str] = None, identifier: Optional[str] = None, proxy=None):
@@ -164,6 +166,21 @@ class Contour(Bounded):
     def __eq__(self, other):
         return self._obj == other
 
+    def __len__(self):
+        return len(self.points)
+
+    def __getitem__(self, idx):
+        return self.points[idx]
+
+    def __setitem__(self, idx, value):
+        self.points[idx] = value
+
+    def __delitem__(self, idx):
+        del self.points[idx]
+
+    def __iter__(self):
+        return iter(self.points)
+
     @classmethod
     def proxy(cls, obj: PyGuideline):
         return cls(proxy=obj)
@@ -216,10 +233,62 @@ class Guideline(Proxy):
             return NotImplemented
         return self._obj.py_eq(other._obj)
 
+class FakeDataSet(object):
+    def __init__(self, data = None):
+        self._data = data or dict()
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __getitem__(self, fileName: str) -> bytes:
+        data_object = self._data[fileName]
+        # if isinstance(data_object, Placeholder):
+            # data_object = self._data[fileName] = self.read_data(self._reader, fileName)
+        return data_object
+
+    def __setitem__(self, fileName: str, data: bytes) -> None:
+        # should we forbid overwrite?
+        self._data[fileName] = data
+        # if fileName in self._scheduledForDeletion:
+            # self._scheduledForDeletion.remove(fileName)
+
+    def __delitem__(self, fileName: str) -> None:
+        del self._data[fileName]
+        self._scheduledForDeletion.add(fileName)
+
+    def __eq__(self, other):
+        return self._data == other._data
+
+    @property
+    def fileNames(self) -> List[str]:
+        """Returns a list of filenames in the data store."""
+        return list(self._data.keys())
+
+class Features:
+    """A data class representing UFO features.
+
+    See http://unifiedfontobject.org/versions/ufo3/features.fea/.
+    """
+
+    text: str = ""
+    """Holds the content of the features.fea file."""
+
+    def __bool__(self) -> bool:
+        return bool(self.text)
+
+    def __str__(self) -> str:
+        return self.text
+
+
 class Font(Proxy):
     """A fontfile"""
     def __init__(self, path = None, **kwargs):
         self._path = path
+        self._data = FakeDataSet()
+        self._features = Features()
         self._reader = None
         self._lazy = False
         self._validate = True
@@ -240,6 +309,8 @@ class Font(Proxy):
     def __deepcopy__(self, memo):
         result = Font(None)
         object.__setattr__(result, "_obj", self._obj.deep_copy())
+        result._data = deepcopy(self._data, memo)
+        result._features = deepcopy(self._features, memo)
         return result
 
     def __getitem__(self, name):
@@ -273,6 +344,27 @@ class Font(Proxy):
         """
         return self.layers.defaultLayer.controlPointBounds
 
+    @property
+    def glyphOrder(self):
+        return self._obj.glyph_order()
+
+    @glyphOrder.setter
+    def glyphOrder(self, value: Optional[List[str]]):
+        return self._obj.set_glyph_order(value)
+
+    @property
+    def features(self):
+        return self._features
+
+    #FIXME: stub
+    # @property
+    # def groups(self):
+        # return dict()
+
+    # @property
+    # def kerning(self):
+        # return dict()
+
     def objectLib(self, obj):
         return self._obj.objectLib(obj._obj)
 
@@ -281,6 +373,9 @@ class Font(Proxy):
 
     def renameLayer(self, old, new, overwrite = False):
         self.layers.renameLayer(old, new, overwrite)
+
+    def keys(self):
+        return self.layers.defaultLayer.keys()
 
     def addGlyph(self, glyph):
         Layer.proxy(self._obj.default_layer()).addGlyph(glyph)
@@ -332,7 +427,7 @@ class Font(Proxy):
     #FIXME: norad doesn't impl data yet
     @property
     def data(self):
-        return dict()
+        return self._data
 
     #FIXME: norad doesn't impl images yet
     @property
@@ -606,6 +701,9 @@ class Glyph(Proxy, Bounded):
             hex(id(self)),
         )
 
+    def __iter__(self):
+        return iter(self.contours)
+
     @property
     def contours(self):
         return ProxySequence(Contour, self._obj.contours)
@@ -656,6 +754,14 @@ class Glyph(Proxy, Bounded):
     @height.setter
     def height(self, val):
         self._obj.height = val
+
+    @property
+    def note(self):
+        return self._obj.note
+
+    @note.setter
+    def note(self, val):
+        self._obj.note = val
 
     @property
     def image(self):
@@ -838,6 +944,12 @@ class FontInfo(ProxySetter):
         if proxy is None:
             proxy = PyFontInfo.concrete()
         super().__init__(proxy, {"guidelines"})
+
+    def __getattr__(self, item):
+        real = object.__getattribute__(self, "_obj")
+        if hasattr(real, item):
+            return getattr(real, item)
+        return None# AttributeError(item)
 
     @classmethod
     def proxy(cls, obj: PyFontInfo):

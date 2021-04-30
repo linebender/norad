@@ -86,6 +86,21 @@ impl PyGlyph {
 proxy_property!(PyGlyph, height, f32, get_height, set_height);
 proxy_property!(PyGlyph, width, f32, get_width, set_width);
 
+#[pyproto]
+impl PySequenceProtocol for PyGlyph {
+    fn __len__(&self) -> PyResult<usize> {
+        self.with(|g| g.contours.len()).map_err(Into::into)
+    }
+
+    fn __getitem__(&'p self, idx: isize) -> PyResult<PyContour> {
+        self.contours().__getitem__(idx)
+    }
+
+    fn __delitem__(&'p mut self, idx: isize) -> PyResult<()> {
+        self.contours().__delitem__(idx)
+    }
+}
+
 #[pymethods]
 impl PyGlyph {
     #[classmethod]
@@ -130,6 +145,11 @@ impl PyGlyph {
         let contours: Vec<Contour> =
             new.into_iter().map(|g| g.with(|g| g.clone())).collect::<Result<_, _>>()?;
         self.with_mut(|glyph| glyph.contours = contours).map_err(Into::into)
+    }
+
+    #[name = "clearContours"]
+    fn clear_contours(&mut self) -> PyResult<()> {
+        self.with_mut(|g| g.contours.clear()).map_err(Into::into)
     }
 
     #[getter]
@@ -240,6 +260,16 @@ impl PyGlyph {
             .into_dictionary()
             .ok_or_else(|| exceptions::PyValueError::new_err("lib must be a dictionary"))?;
         self.with_mut(|g| g.lib = lib).map_err(Into::into)
+    }
+
+    #[getter]
+    fn note(&self) -> PyResult<Option<String>> {
+        self.with(|g| g.note.clone()).map_err(Into::into)
+    }
+
+    #[setter]
+    fn set_note(&mut self, note: Option<String>) -> PyResult<()> {
+        self.with_mut(|g| g.note = note).map_err(Into::into)
     }
 
     #[name = "objectLib"]

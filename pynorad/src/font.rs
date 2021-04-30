@@ -1,18 +1,19 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock};
 
-use super::guideline::GuidelinesProxy;
-use super::PyLib;
 use norad::Font;
+use plist::Value;
 use pyo3::{
+    exceptions,
     prelude::*,
     types::{PyType, PyUnicode},
     PyRef,
 };
 
 use super::{
-    LayerIter, PyAnchor, PyComponent, PyContour, PyFontInfo, PyGuideline, PyLayer, PyPoint,
+    guideline::GuidelinesProxy, LayerIter, PyAnchor, PyComponent, PyContour, PyFontInfo,
+    PyGuideline, PyLayer, PyLib, PyPoint,
 };
 
 #[pyclass]
@@ -136,8 +137,44 @@ impl PyFont {
         self.fontinfo().get_guidelines()
     }
 
+    fn replace_guidelines(&mut self, guidelines: Vec<PyRefMut<PyGuideline>>) -> PyResult<()> {
+        self.fontinfo().set_guidelines(guidelines)
+    }
+
+    #[getter]
     fn lib(&self) -> PyLib {
         self.clone().into()
+    }
+
+    #[getter]
+    fn groups(&self) -> HashMap<String, Vec<String>> {
+        self.read()
+            .groups
+            .as_ref()
+            .map(|groups| {
+                groups
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.iter().map(|s| s.to_string()).collect()))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    #[getter]
+    fn kerning(&self) -> HashMap<(String, String), f32> {
+        self.read()
+            .kerning
+            .as_ref()
+            .map(|kerning| {
+                kerning
+                    .iter()
+                    .map(|(k1, vals)| {
+                        vals.iter().map(move |(k2, val)| ((k1.clone(), k2.clone()), *val))
+                    })
+                    .flatten()
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     #[name = "objectLib"]
@@ -151,8 +188,42 @@ impl PyFont {
         }
     }
 
-    fn replace_guidelines(&mut self, guidelines: Vec<PyRefMut<PyGuideline>>) -> PyResult<()> {
-        self.fontinfo().set_guidelines(guidelines)
+    fn glyph_order(&self) -> PyResult<Vec<String>> {
+        self.read()
+            .lib
+            .get("public.glyphOrder")
+            .map(|val| {
+                val.as_array()
+                    .ok_or_else(|| {
+                        exceptions::PyRuntimeError::new_err("'public.glyphOrder' must be an array")
+                    })
+                    .and_then(|array| {
+                        array
+                            .into_iter()
+                            .map(|v| {
+                                v.clone().into_string().ok_or_else(|| {
+                                    exceptions::PyRuntimeError::new_err(
+                                        "All items in 'public.glyphOrder' must be Strings",
+                                    )
+                                })
+                            })
+                            .collect::<Result<Vec<_>, _>>()
+                    })
+            })
+            .transpose()
+            .map(|opt| opt.unwrap_or_default())
+    }
+
+    fn set_glyph_order(&mut self, arg: Option<Vec<String>>) {
+        match arg {
+            Some(order) => {
+                let as_val = order.into_iter().map(Value::from).collect::<Vec<_>>();
+                self.write().lib.insert("public.glyphOrder".into(), as_val.into());
+            }
+            None => {
+                self.write().lib.remove("public.glyphOrder");
+            }
+        }
     }
 
     fn fontinfo(&self) -> PyFontInfo {

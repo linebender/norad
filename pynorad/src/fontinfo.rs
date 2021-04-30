@@ -87,23 +87,49 @@ macro_rules! gettersetter {
             }
 
             #[setter($extname)]
-            fn $setname(&mut self, value: $typ) -> PyResult<()> {
-                let value = $setconv(value)?;
-                self.with_mut(|info| info.$intname = Some(value));
+            fn $setname(&mut self, value: Option<$typ>) -> PyResult<()> {
+                let value = value.map($setconv).transpose()?;
+                self.with_mut(|info| info.$intname = value);
                 Ok(())
             }
         }
     };
 }
 
+gettersetter!(familyName, family_name, set_family_name, String);
+gettersetter!(styleName, style_name, set_style_name, String);
+gettersetter!(year, year, set_year, i32);
 gettersetter!(ascender, ascender, set_ascender, f64);
 gettersetter!(descender, descender, set_descender, f64);
 gettersetter!(italicAngle, italic_angle, set_italic_angle, f64);
 gettersetter!(capHeight, cap_height, set_cap_height, f64);
+gettersetter!(xHeight, x_height, set_x_height, f64);
 gettersetter!(copyright, copyright, set_copyright, String);
 gettersetter!(unitsPerEm, units_per_em, set_units_per_em, f64, conv_try_into, conv_into);
 gettersetter!(versionMajor, version_major, set_version_major, i32);
-gettersetter!(versionMajor, version_minor, set_version_minor, u32);
+gettersetter!(versionMinor, version_minor, set_version_minor, u32);
+gettersetter!(openTypeHeadCreated, open_type_head_created, set_open_type_head_created, String);
+gettersetter!(note, note, set_note, String);
+gettersetter!(openTypeNameDesigner, open_type_name_designer, set_open_type_name_designer, String);
+gettersetter!(
+    openTypeNameDesignerURL,
+    open_type_name_designer_url,
+    set_open_type_name_designer_url,
+    String
+);
+gettersetter!(
+    openTypeNameManufacturer,
+    open_type_name_manufacturer,
+    set_open_type_name_manufacturer,
+    String
+);
+gettersetter!(
+    openTypeNameManufacturerURL,
+    open_type_name_manufacturer_url,
+    set_open_type_name_manufacturer_url,
+    String
+);
+
 gettersetter!(styleMapFamilyName, style_map_family_name, set_style_map_family_name, String);
 gettersetter!(
     styleMapStyleName,
