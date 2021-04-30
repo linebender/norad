@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from ufoLib2 import Font
+from pynorad import Font
 
 
 def test_imageset(tmp_path: Path) -> None:

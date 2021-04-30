@@ -226,14 +226,17 @@ macro_rules! proxy_or_concrete {
         }
 
         impl $name {
-            fn with<R>(&self, f: impl FnOnce(&$concrete) -> R) -> Result<R, $crate::ProxyError> {
+            pub(crate) fn with<R>(
+                &self,
+                f: impl FnOnce(&$concrete) -> R,
+            ) -> Result<R, $crate::ProxyError> {
                 match &self.inner {
                     $crate::util::ProxyOrConcrete::Proxy(proxy) => proxy.with(f),
                     $crate::util::ProxyOrConcrete::Concrete(obj) => Ok(f(&obj.lock().unwrap())),
                 }
             }
 
-            fn with_mut<R>(
+            pub(crate) fn with_mut<R>(
                 &mut self,
                 f: impl FnOnce(&mut $concrete) -> R,
             ) -> Result<R, $crate::ProxyError> {

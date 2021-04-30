@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock};
 
 use super::guideline::GuidelinesProxy;
-use super::LibProxy;
+use super::PyLib;
 use norad::Font;
 use pyo3::{
     prelude::*,
@@ -11,7 +11,9 @@ use pyo3::{
     PyRef,
 };
 
-use super::{LayerIter, PyFontInfo, PyGuideline, PyLayer};
+use super::{
+    LayerIter, PyAnchor, PyComponent, PyContour, PyFontInfo, PyGuideline, PyLayer, PyPoint,
+};
 
 #[pyclass]
 #[derive(Clone)]
@@ -134,8 +136,19 @@ impl PyFont {
         self.fontinfo().get_guidelines()
     }
 
-    fn lib(&self) -> LibProxy {
-        LibProxy { font: self.clone() }
+    fn lib(&self) -> PyLib {
+        self.clone().into()
+    }
+
+    #[name = "objectLib"]
+    fn object_lib(&self, obj: HasObjectLib) -> PyResult<PyLib> {
+        match obj {
+            HasObjectLib::Point(p) => Ok(p.into()),
+            HasObjectLib::Contour(p) => Ok(p.into()),
+            HasObjectLib::Component(p) => Ok(p.into()),
+            HasObjectLib::Anchor(p) => Ok(p.into()),
+            HasObjectLib::Guideline(p) => Ok(p.into()),
+        }
     }
 
     fn replace_guidelines(&mut self, guidelines: Vec<PyRefMut<PyGuideline>>) -> PyResult<()> {
@@ -151,4 +164,13 @@ impl From<Font> for PyFont {
     fn from(src: Font) -> PyFont {
         PyFont { inner: Arc::new(RwLock::new(src)) }
     }
+}
+
+#[derive(FromPyObject)]
+pub enum HasObjectLib {
+    Contour(PyContour),
+    Component(PyComponent),
+    Anchor(PyAnchor),
+    Guideline(PyGuideline),
+    Point(PyPoint),
 }

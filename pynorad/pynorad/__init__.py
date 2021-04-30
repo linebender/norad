@@ -264,6 +264,9 @@ class Font(Proxy):
         """
         return self.layers.defaultLayer.controlPointBounds
 
+    def objectLib(self, obj):
+        return self._obj.objectLib(obj._obj)
+
     def newLayer(self, layerName: str):
         return Layer.proxy(self._obj.new_layer(layerName))
 
@@ -279,7 +282,7 @@ class Font(Proxy):
         self._obj.append_guideline(guideline._obj)
 
     def newGlyph(self, name: str):
-        return self._obj.default_layer().new_glyph(name)
+        return self.layers.defaultLayer.newGlyph(name)
 
     def renameGlyph(self, old: str, new: str, overwrite: bool = False):
         self.layers.defaultLayer.renameGlyph(old, new, overwrite=overwrite)
@@ -598,17 +601,36 @@ class Glyph(Proxy, Bounded):
     def contours(self):
         return ProxySequence(Contour, self._obj.contours)
 
+    @contours.setter
+    def contours(self, contours: List[Contour]):
+        self._obj.contours = [g._obj for g in contours]
+
     @property
     def components(self):
         return ProxySequence(Component, self._obj.components)
+
+    @components.setter
+    def components(self, components: List[Component]):
+        self._obj.components = [g._obj for g in components]
 
     @property
     def anchors(self):
         return ProxySequence(Anchor, self._obj.anchors)
 
+    @anchors.setter
+    def anchors(self, anchors: List[Anchor]):
+        self._obj.anchors = [g._obj for g in anchors]
+
     @property
     def guidelines(self):
         return ProxySequence(Guideline, self._obj.guidelines)
+
+    @guidelines.setter
+    def guidelines(self, guidelines: List[Guideline]):
+        self._obj.guidelines = [g._obj for g in guidelines]
+
+    def objectLib(self, obj):
+        return self._obj.objectLib(obj._obj)
 
     @property
     def lib(self):
@@ -792,9 +814,7 @@ class GlyphPointPen:
         identifier: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-        tx = transformation
-        transform = (tx.xx, tx.xy, tx.yx, tx.yy, tx.dx, tx.dy)
-        self._obj.add_component(baseGlyph, transform, identifier)
+        self._obj.add_component(baseGlyph, transformation, identifier)
 
 class FontInfo(ProxySetter):
     """I'll do something at some point"""

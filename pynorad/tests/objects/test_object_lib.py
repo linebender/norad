@@ -1,4 +1,4 @@
-from ufoLib2.objects import Anchor, Font, Guideline
+from pynorad import Anchor, Font, Guideline
 
 
 def test_object_lib_roundtrip(tmp_path):

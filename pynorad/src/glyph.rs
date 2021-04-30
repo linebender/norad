@@ -11,9 +11,10 @@ use pyo3::{
     PyRef, PySequenceProtocol,
 };
 
+use super::font::HasObjectLib;
 use super::{
     flatten, proxy_eq, proxy_or_concrete, proxy_property, seq_proxy, seq_proxy_iter,
-    seq_proxy_member, util, ProxyError, PyGuideline, PyLayer,
+    seq_proxy_member, util, ProxyError, PyGuideline, PyLayer, PyLib,
 };
 
 type AffineTuple = (f32, f32, f32, f32, f32, f32);
@@ -123,9 +124,23 @@ impl PyGlyph {
         ContoursProxy { inner: self.clone() }
     }
 
+    #[setter]
+    fn set_contours(&mut self, new: Vec<PyRef<PyContour>>) -> PyResult<()> {
+        let contours: Vec<Contour> =
+            new.into_iter().map(|g| g.with(|g| g.clone())).collect::<Result<_, _>>()?;
+        self.with_mut(|glyph| glyph.contours = contours).map_err(Into::into)
+    }
+
     #[getter]
     fn components(&self) -> ComponentsProxy {
         ComponentsProxy { inner: self.clone() }
+    }
+
+    #[setter]
+    fn set_components(&mut self, new: Vec<PyRef<PyComponent>>) -> PyResult<()> {
+        let components: Vec<Component> =
+            new.into_iter().map(|g| g.with(|g| g.clone())).collect::<Result<_, _>>()?;
+        self.with_mut(|glyph| glyph.components = components).map_err(Into::into)
     }
 
     #[getter]
@@ -133,9 +148,23 @@ impl PyGlyph {
         AnchorsProxy { inner: self.clone() }
     }
 
+    #[setter]
+    fn set_anchors(&mut self, new: Vec<PyRef<PyAnchor>>) -> PyResult<()> {
+        let anchors: Vec<Anchor> =
+            new.into_iter().map(|g| g.with(|g| g.clone())).collect::<Result<_, _>>()?;
+        self.with_mut(|glyph| glyph.anchors = anchors).map_err(Into::into)
+    }
+
     #[getter]
     fn guidelines(&self) -> GlyphGuidelinesProxy {
         GlyphGuidelinesProxy { inner: self.clone() }
+    }
+
+    #[setter]
+    fn set_guidelines(&mut self, new: Vec<PyRef<PyGuideline>>) -> PyResult<()> {
+        let guidelines: Vec<Guideline> =
+            new.into_iter().map(|g| g.with(|g| g.clone())).collect::<Result<_, _>>()?;
+        self.with_mut(|glyph| glyph.guidelines = guidelines).map_err(Into::into)
     }
 
     #[getter]
@@ -166,6 +195,17 @@ impl PyGlyph {
             None => self.with_mut(|g| g.lib.remove("public.verticalOrigin")),
         }?;
         Ok(())
+    }
+
+    #[name = "objectLib"]
+    fn object_lib(&self, obj: HasObjectLib) -> PyResult<PyLib> {
+        match obj {
+            HasObjectLib::Point(p) => Ok(p.into()),
+            HasObjectLib::Contour(p) => Ok(p.into()),
+            HasObjectLib::Component(p) => Ok(p.into()),
+            HasObjectLib::Anchor(p) => Ok(p.into()),
+            HasObjectLib::Guideline(p) => Ok(p.into()),
+        }
     }
 
     fn append_anchor(&mut self, anchor: PyRef<PyAnchor>) -> PyResult<()> {
