@@ -81,7 +81,7 @@ impl LayerSet {
     }
 
     /// Get a mutable reference to a layer, by name, or create it if it doesn't exist.
-    pub fn get_or_create_mut(&mut self, name: &str) -> &mut Layer {
+    pub fn get_or_create(&mut self, name: &str) -> &mut Layer {
         if let Some(index) = self.layers.iter().position(|l| &*l.name == name) {
             self.layers.get_mut(index).unwrap()
         } else {
@@ -521,15 +521,15 @@ mod tests {
     fn layer_creation() {
         let mut ufo = crate::Font::load("testdata/mutatorSans/MutatorSansBoldWide.ufo").unwrap();
 
-        let default_layer = ufo.layers.get_or_create_mut("foreground".into());
+        let default_layer = ufo.layers.get_or_create("foreground".into());
         assert!(!default_layer.is_empty());
         default_layer.clear();
 
-        let background_layer = ufo.layers.get_or_create_mut("background".into());
+        let background_layer = ufo.layers.get_or_create("background".into());
         assert!(!background_layer.is_empty());
         background_layer.clear();
 
-        let misc_layer = ufo.layers.get_or_create_mut("misc".into());
+        let misc_layer = ufo.layers.get_or_create("misc".into());
         assert!(misc_layer.is_empty());
         misc_layer.insert_glyph(Glyph::new_named("A"));
 
