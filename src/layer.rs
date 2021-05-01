@@ -80,6 +80,17 @@ impl LayerSet {
         self.layers.iter_mut().find(|l| &*l.name == name)
     }
 
+    /// Get a mutable reference to a layer, by name, or create it if it doesn't exist.
+    pub fn get_or_create(&mut self, name: &str) -> &mut Layer {
+        if let Some(index) = self.layers.iter().position(|l| &*l.name == name) {
+            self.layers.get_mut(index).unwrap()
+        } else {
+            let layer = Layer::new(name.into(), None);
+            self.layers.push(layer);
+            self.layers.last_mut().unwrap()
+        }
+    }
+
     /// A reference to the default layer.
     pub fn default_layer(&self) -> &Layer {
         debug_assert!(self.layers[0].path() == Path::new(DEFAULT_GLYPHS_DIRNAME));
@@ -374,6 +385,12 @@ impl Layer {
         self.glyphs.insert(glyph.name.clone(), glyph);
     }
 
+    /// Remove all glyphs in the layer. Leave color and the lib untouched.
+    pub fn clear(&mut self) {
+        self.contents.clear();
+        self.glyphs.clear()
+    }
+
     /// Remove the named glyph from this layer.
     #[doc(hidden)]
     #[deprecated(since = "0.3.0", note = "use remove_glyph instead")]
@@ -498,5 +515,34 @@ mod tests {
         layer.insert_glyph(glyph);
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
         assert_eq!(glyph.width, 69.);
+    }
+
+    #[test]
+    fn layer_creation() {
+        let mut ufo = crate::Font::load("testdata/mutatorSans/MutatorSansBoldWide.ufo").unwrap();
+
+        let default_layer = ufo.layers.get_or_create("foreground".into());
+        assert!(!default_layer.is_empty());
+        default_layer.clear();
+
+        let background_layer = ufo.layers.get_or_create("background".into());
+        assert!(!background_layer.is_empty());
+        background_layer.clear();
+
+        let misc_layer = ufo.layers.get_or_create("misc".into());
+        assert!(misc_layer.is_empty());
+        misc_layer.insert_glyph(Glyph::new_named("A"));
+
+        assert!(ufo.default_layer().is_empty());
+        assert!(ufo.layers.get("background").unwrap().is_empty());
+        assert_eq!(
+            ufo.layers
+                .get("misc")
+                .unwrap()
+                .iter_contents()
+                .map(|g| g.name.to_string())
+                .collect::<Vec<String>>(),
+            vec!["A".to_string()]
+        );
     }
 }
