@@ -27,6 +27,13 @@ pub struct Color {
     pub alpha: f32,
 }
 
+impl Color {
+    /// Returns a string representation suitable for encoding in a UFO.
+    pub fn to_string(&self) -> String {
+        format!("{},{},{},{}", self.red, self.green, self.blue, self.alpha)
+    }
+}
+
 impl FromStr for Color {
     type Err = ErrorKind;
 
@@ -52,7 +59,7 @@ impl Serialize for Color {
     where
         S: Serializer,
     {
-        let color_string = format!("{},{},{},{}", self.red, self.green, self.blue, self.alpha);
+        let color_string = self.to_string();
         serializer.serialize_str(&color_string)
     }
 }

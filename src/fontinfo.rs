@@ -846,11 +846,32 @@ pub enum Os2WidthClass {
     UltraExpanded = 9,
 }
 
+#[cfg(feature = "py")]
+impl From<Os2WidthClass> for u8 {
+    fn from(src: Os2WidthClass) -> u8 {
+        src as u8
+    }
+}
+
 /// Corresponds to [openTypeOS2FamilyClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Os2FamilyClass {
     class_id: u8,
     subclass_id: u8,
+}
+
+#[cfg(feature = "py")]
+impl From<Os2FamilyClass> for (u8, u8) {
+    fn from(src: Os2FamilyClass) -> (u8, u8) {
+        (src.class_id, src.subclass_id)
+    }
+}
+
+#[cfg(feature = "py")]
+impl From<(u8, u8)> for Os2FamilyClass {
+    fn from(src: (u8, u8)) -> Os2FamilyClass {
+        Os2FamilyClass { class_id: src.0, subclass_id: src.1 }
+    }
 }
 
 impl Os2FamilyClass {
@@ -902,6 +923,24 @@ pub struct Os2Panose {
     letterform: NonNegativeInteger,
     midline: NonNegativeInteger,
     x_height: NonNegativeInteger,
+}
+
+#[cfg(feature = "py")]
+impl From<Os2Panose> for Vec<u32> {
+    fn from(src: Os2Panose) -> Vec<u32> {
+        vec![
+            src.family_type.into(),
+            src.serif_style.into(),
+            src.weight.into(),
+            src.proportion.into(),
+            src.contrast.into(),
+            src.stroke_variation.into(),
+            src.arm_style.into(),
+            src.letterform.into(),
+            src.midline.into(),
+            src.x_height.into(),
+        ]
+    }
 }
 
 impl Serialize for Os2Panose {
@@ -1035,6 +1074,13 @@ pub enum PostscriptWindowsCharacterSet {
     Thai = 18,
     EasternEuropean = 19,
     Oem = 20,
+}
+
+#[cfg(feature = "py")]
+impl From<PostscriptWindowsCharacterSet> for u8 {
+    fn from(src: PostscriptWindowsCharacterSet) -> u8 {
+        src as u8
+    }
 }
 
 /// Corresponds to woffMetadataCopyright in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
