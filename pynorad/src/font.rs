@@ -24,11 +24,11 @@ pub struct PyFont {
 
 impl PyFont {
     pub(crate) fn read<'a>(&'a self) -> impl Deref<Target = Font> + 'a {
-        self.inner.read().unwrap()
+        self.inner.try_read().unwrap()
     }
 
     pub(crate) fn write<'a>(&'a self) -> impl DerefMut<Target = Font> + 'a {
-        self.inner.write().unwrap()
+        self.inner.try_write().unwrap()
     }
 }
 

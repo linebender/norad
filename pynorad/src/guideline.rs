@@ -69,6 +69,50 @@ impl PyGuideline {
         let other: &PyGuideline = &*other;
         super::flatten!(self.with(|p| other.with(|p2| p == p2))).map_err(Into::into)
     }
+
+    #[getter]
+    fn name(&self) -> PyResult<Option<String>> {
+        self.with(|g| g.name.clone()).map_err(Into::into)
+    }
+
+    #[getter]
+    fn identifier(&self) -> PyResult<Option<String>> {
+        self.with(|g| g.identifier().map(|id| id.as_str().to_owned())).map_err(Into::into)
+    }
+
+    #[getter]
+    fn color(&self) -> PyResult<Option<String>> {
+        self.with(|g| g.color.as_ref().map(|c| c.to_string())).map_err(Into::into)
+    }
+
+    #[getter]
+    fn x(&self) -> PyResult<Option<f32>> {
+        self.with(|g| match g.line {
+            Line::Angle { x, .. } => Some(x),
+            Line::Vertical(x) => Some(x),
+            Line::Horizontal(_) => None,
+        })
+        .map_err(Into::into)
+    }
+
+    #[getter]
+    fn y(&self) -> PyResult<Option<f32>> {
+        self.with(|g| match g.line {
+            Line::Angle { y, .. } => Some(y),
+            Line::Horizontal(y) => Some(y),
+            Line::Vertical(_) => None,
+        })
+        .map_err(Into::into)
+    }
+
+    #[getter]
+    fn angle(&self) -> PyResult<Option<f32>> {
+        self.with(|g| match g.line {
+            Line::Angle { degrees, .. } => Some(degrees),
+            _ => None,
+        })
+        .map_err(Into::into)
+    }
 }
 
 impl PyGuideline {

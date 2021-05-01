@@ -102,6 +102,19 @@ class Anchor(ProxySetter):
     def __eq__(self, other):
         return self._obj == other._obj
 
+    def __getitem__(self, key: str):
+        try:
+            return getattr(self, key)
+        except AttributeError:
+            raise KeyError(key)
+
+    def __iter__(self):
+        for key in ["x", "y", "name", "color", "identifier"]:
+            attr = getattr(self, key)
+            if attr is not None:
+                yield (key, attr)
+
+
 class Image(Proxy):
     def __init__(self, fileName: Optional[str] = None, transformation=None, color: Optional[str] = None, proxy=None):
         if proxy is None:
@@ -232,6 +245,19 @@ class Guideline(Proxy):
         if other.__class__ is not self.__class__:
             return NotImplemented
         return self._obj.py_eq(other._obj)
+
+    def __getitem__(self, key: str):
+        try:
+            return getattr(self, key)
+        except AttributeError:
+            raise KeyError(key)
+
+    def __iter__(self):
+        for key in ["x", "y", "angle", "name", "color", "identifier"]:
+            attr = getattr(self, key)
+            if attr is not None:
+                yield (key, attr)
+
 
 class FakeDataSet(object):
     def __init__(self, data = None):

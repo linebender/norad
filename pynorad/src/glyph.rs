@@ -55,7 +55,7 @@ impl PyGlyph {
                 .ok_or_else(|| ProxyError::MissingGlyph(self.clone()))
                 .map(|g| { f(g) })))
             }
-            GlyphProxy::Concrete(glyph) => Ok(f(&glyph.read().unwrap())),
+            GlyphProxy::Concrete(glyph) => Ok(f(&glyph.try_read().unwrap())),
         }
     }
 
@@ -78,7 +78,7 @@ impl PyGlyph {
                     None => Err(ProxyError::MissingGlyph(self.clone())),
                 }
             }
-            GlyphProxy::Concrete(glyph) => Ok(f(&mut glyph.write().unwrap())),
+            GlyphProxy::Concrete(glyph) => Ok(f(&mut glyph.try_write().unwrap())),
         }
     }
 }
@@ -157,6 +157,11 @@ impl PyGlyph {
         ComponentsProxy { inner: self.clone() }
     }
 
+    #[name = "clearComponents"]
+    fn clear_components(&mut self) -> PyResult<()> {
+        self.with_mut(|g| g.components.clear()).map_err(Into::into)
+    }
+
     #[setter]
     fn set_components(&mut self, new: Vec<PyRef<PyComponent>>) -> PyResult<()> {
         let components: Vec<Component> =
@@ -176,6 +181,11 @@ impl PyGlyph {
         self.with_mut(|glyph| glyph.anchors = anchors).map_err(Into::into)
     }
 
+    #[name = "clearAnchors"]
+    fn clear_anchors(&mut self) -> PyResult<()> {
+        self.with_mut(|g| g.anchors.clear()).map_err(Into::into)
+    }
+
     #[getter]
     fn guidelines(&self) -> GlyphGuidelinesProxy {
         GlyphGuidelinesProxy { inner: self.clone() }
@@ -186,6 +196,11 @@ impl PyGlyph {
         let guidelines: Vec<Guideline> =
             new.into_iter().map(|g| g.with(|g| g.clone())).collect::<Result<_, _>>()?;
         self.with_mut(|glyph| glyph.guidelines = guidelines).map_err(Into::into)
+    }
+
+    #[name = "clearGuidelines"]
+    fn clear_guidelines(&mut self) -> PyResult<()> {
+        self.with_mut(|g| g.guidelines.clear()).map_err(Into::into)
     }
 
     #[getter]
@@ -386,7 +401,7 @@ impl PyPointPen {
     fn end_path(&mut self) -> PyResult<()> {
         let contour = match self.contour.take().map(Arc::try_unwrap) {
             Some(Ok(contour)) => contour.into_inner().unwrap(),
-            Some(Err(arc)) => arc.lock().unwrap().clone(),
+            Some(Err(arc)) => arc.try_lock().unwrap().clone(),
             None => return Err(exceptions::PyValueError::new_err("Call beginPath first.")),
         };
         self.glyph.with_mut(|g| g.contours.push(contour)).map_err(Into::into)
@@ -406,7 +421,7 @@ impl PyPointPen {
         let identifier = util::to_identifier(identifier)?;
         let typ = util::decode_point_type(typ);
         let point = ContourPoint::new(pt.0, pt.1, typ, smooth, name, identifier, None);
-        self.contour.as_mut().unwrap().lock().unwrap().points.push(point);
+        self.contour.as_mut().unwrap().try_lock().unwrap().points.push(point);
         Ok(())
     }
 
@@ -471,24 +486,21 @@ impl PyContour {
 
     #[name = "drawPoints"]
     fn draw_points(&self, pen: PyObject) -> PyResult<()> {
-        flatten!(self
-            .with(|c| {
-                let gil = Python::acquire_gil();
-                let py = gil.python();
-                pen.call_method0(py, "beginPath")?;
-                for p in &c.points {
-                    let coord = (p.x, p.y).to_object(py);
-                    let d = PyDict::new(py);
-                    d.set_item("segmentType", point_to_str(p.typ))?;
-                    d.set_item("smooth", Some(p.smooth))?;
-                    d.set_item("name", p.name.as_ref())?;
-                    d.set_item("identifier", p.identifier().as_ref().map(|id| id.as_str()))?;
-                    pen.call_method(py, "addPoint", (coord,), Some(d))?;
-                }
-                pen.call_method0(py, "endPath")?;
-                Ok(())
-            })
-            .map_err(Into::into))
+        let c = self.with(|c| c.clone())?;
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+        pen.call_method0(py, "beginPath")?;
+        for p in &c.points {
+            let coord = (p.x, p.y).to_object(py);
+            let d = PyDict::new(py);
+            d.set_item("segmentType", point_to_str(p.typ))?;
+            d.set_item("smooth", Some(p.smooth))?;
+            d.set_item("name", p.name.as_ref())?;
+            d.set_item("identifier", p.identifier().as_ref().map(|id| id.as_str()))?;
+            pen.call_method(py, "addPoint", (coord,), Some(d))?;
+        }
+        pen.call_method0(py, "endPath")?;
+        Ok(())
     }
 }
 
@@ -588,6 +600,21 @@ impl PyAnchor {
         })
         .map_err(Into::into)
     }
+
+    #[getter]
+    fn name(&self) -> PyResult<Option<String>> {
+        self.with(|g| g.name.clone()).map_err(Into::into)
+    }
+
+    #[getter]
+    fn identifier(&self) -> PyResult<Option<String>> {
+        self.with(|g| g.identifier().map(|id| id.as_str().to_owned())).map_err(Into::into)
+    }
+
+    #[getter]
+    fn color(&self) -> PyResult<Option<String>> {
+        self.with(|g| g.color.as_ref().map(|c| c.to_string())).map_err(Into::into)
+    }
 }
 
 seq_proxy!(PyContour, points, PointsProxy, PyPoint, ContourPoint);
@@ -661,7 +688,7 @@ impl PyImage {
     pub(crate) fn with<R>(&self, f: impl FnOnce(&Image) -> R) -> Result<Option<R>, ProxyError> {
         match &self.inner {
             ImageProxy::Glyph(g) => g.with(|g| g.image.as_ref().map(f)).map_err(Into::into),
-            ImageProxy::Concrete(img) => Ok(Some(f(&img.lock().unwrap()))),
+            ImageProxy::Concrete(img) => Ok(Some(f(&img.try_lock().unwrap()))),
         }
     }
 
@@ -671,7 +698,7 @@ impl PyImage {
     ) -> Result<Option<R>, ProxyError> {
         match &mut self.inner {
             ImageProxy::Glyph(g) => g.with_mut(|g| g.image.as_mut().map(f)).map_err(Into::into),
-            ImageProxy::Concrete(img) => Ok(Some(f(&mut img.lock().unwrap()))),
+            ImageProxy::Concrete(img) => Ok(Some(f(&mut img.try_lock().unwrap()))),
         }
     }
 }
