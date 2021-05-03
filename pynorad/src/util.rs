@@ -90,7 +90,7 @@ macro_rules! seq_proxy_member {
                         None => None,
                     },
                 }
-                .ok_or_else(|| $crate::ProxyError::$err(self.clone()))
+                .ok_or_else(|| $crate::ProxyError::$err)
                 .map(|g| f(g))))
             }
 
@@ -112,7 +112,7 @@ macro_rules! seq_proxy_member {
 
                 match result {
                     Some(thing) => Ok(thing),
-                    None => Err($crate::ProxyError::$err(self.clone())),
+                    None => Err($crate::ProxyError::$err),
                 }
             }
         }

@@ -139,7 +139,9 @@ impl PyLayer {
 
     fn rename_glyph(&mut self, old: &str, new: &str, overwrite: bool) -> PyResult<()> {
         super::flatten!(self
-            .with_mut(|layer| layer.rename_glyph(old, new, overwrite).map_err(super::error_to_py))
+            .with_mut(|layer| layer
+                .rename_glyph(old, new, overwrite)
+                .map_err(crate::error::error_to_py))
             .map_err(Into::into))
     }
 

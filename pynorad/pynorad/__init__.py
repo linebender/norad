@@ -423,7 +423,7 @@ class Font(Proxy):
     @classmethod
     def open(cls, path, lazy=True, validate=True):
         if not validate:
-            print("Pynorad always validates input")
+            pass
         return cls(path)
 
     @classmethod

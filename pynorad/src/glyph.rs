@@ -692,6 +692,7 @@ impl PyImage {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn with_mut<R>(
         &mut self,
         f: impl FnOnce(&mut Image) -> R,

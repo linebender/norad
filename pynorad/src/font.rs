@@ -12,7 +12,7 @@ use pyo3::{
 };
 
 use super::{
-    guideline::GuidelinesProxy, LayerIter, PyAnchor, PyComponent, PyContour, PyFontInfo,
+    error, guideline::GuidelinesProxy, LayerIter, PyAnchor, PyComponent, PyContour, PyFontInfo,
     PyGuideline, PyLayer, PyLib, PyPoint,
 };
 
@@ -63,12 +63,12 @@ impl PyFont {
     fn load(_cls: &PyType, path: &PyUnicode) -> PyResult<Self> {
         let s: String = path.extract()?;
         //FIXME: not the right exception type
-        Font::load(s).map(Into::into).map_err(super::error_to_py)
+        Font::load(s).map(Into::into).map_err(error::error_to_py)
     }
 
     fn save(&self, path: &PyUnicode) -> PyResult<()> {
         let path: String = path.extract()?;
-        self.read().save(&path).map_err(super::error_to_py)
+        self.read().save(&path).map_err(error::error_to_py)
     }
 
     fn py_eq(&self, other: PyRef<PyFont>) -> PyResult<bool> {
@@ -102,12 +102,12 @@ impl PyFont {
 
     fn new_layer(&mut self, layer_name: &str) -> PyResult<PyLayer> {
         let layer_name: Arc<str> = layer_name.into();
-        self.write().layers.new_layer(&layer_name).map_err(super::error_to_py)?;
+        self.write().layers.new_layer(&layer_name).map_err(error::error_to_py)?;
         Ok(PyLayer::proxy(self.clone(), layer_name))
     }
 
     fn rename_layer(&mut self, old: &str, new: &str, overwrite: bool) -> PyResult<()> {
-        self.write().layers.rename_layer(old, new, overwrite).map_err(super::error_to_py)
+        self.write().layers.rename_layer(old, new, overwrite).map_err(error::error_to_py)
     }
 
     fn iter_layers(&self) -> LayerIter {
