@@ -26,6 +26,8 @@ mod guideline;
 mod identifier;
 mod layer;
 mod names;
+#[cfg(feature = "py")]
+mod py_id;
 mod shared_types;
 mod ufo;
 mod upconversion;
@@ -42,6 +44,9 @@ pub use identifier::Identifier;
 pub use layer::{Layer, LayerSet};
 pub use shared_types::{Color, IntegerOrFloat, NonNegativeIntegerOrFloat, Plist};
 pub use ufo::{DataRequest, Font, FormatVersion, MetaInfo};
+
+#[cfg(feature = "py")]
+pub use py_id::PyId;
 
 #[allow(deprecated)]
 pub use ufo::Ufo;

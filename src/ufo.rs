@@ -14,6 +14,7 @@ use serde::Serialize;
 use crate::error::GroupsValidationError;
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
+use crate::guideline::Guideline;
 use crate::layer::{Layer, LayerSet, LAYER_CONTENTS_FILE};
 use crate::names::NameList;
 use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
@@ -289,6 +290,15 @@ impl Font {
         load_impl(&self, path)
     }
 
+    /// Create a new font with the provided layers.
+    ///
+    /// `layers` must not be empty; the first layer is the default.
+    #[cfg(feature = "py")]
+    pub fn from_layers(layers: Vec<Layer>) -> Self {
+        let layers = LayerSet::new(layers);
+        Self { layers, ..Default::default() }
+    }
+
     /// Attempt to save this UFO to the given path, overriding any existing contents.
     ///
     /// This may fail; instead of saving directly to the target path, it is a good
@@ -307,9 +317,9 @@ impl Font {
             return Err(Error::DowngradeUnsupported);
         }
 
-        if self.meta.creator.as_str() != DEFAULT_METAINFO_CREATOR {
-            return Err(Error::NotCreatedHere);
-        }
+        //if self.meta.creator.as_str() != DEFAULT_METAINFO_CREATOR {
+        //return Err(Error::NotCreatedHere);
+        //}
 
         if self.lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
             return Err(Error::PreexistingPublicObjectLibsKey);
@@ -357,7 +367,7 @@ impl Font {
         }
 
         let contents: Vec<(&str, &PathBuf)> =
-            self.layers.iter().map(|l| (&*l.name, &l.path)).collect();
+            self.layers.iter().map(|l| (l.name.as_ref(), &l.path)).collect();
         plist::to_file_xml(path.join(LAYER_CONTENTS_FILE), &contents)?;
 
         for layer in self.layers.iter() {
@@ -422,6 +432,29 @@ impl Font {
     /// Returns the total number of glyphs in the default layer.
     pub fn glyph_count(&self) -> usize {
         self.default_layer().len()
+    }
+
+    /// Return the font's global guidelines, stored in [`FontInfo`].
+    pub fn guidelines(&self) -> &[Guideline] {
+        match self.font_info.as_ref().and_then(|info| info.guidelines.as_ref()) {
+            Some(guides) => guides,
+            None => &[],
+        }
+    }
+
+    /// Returns a mutable reference to the font's global guidelines.
+    ///
+    /// These will be created if they do not already exist.
+    pub fn guidelines_mut(&mut self) -> &mut Vec<Guideline> {
+        self.font_info
+            .get_or_insert_with(Default::default)
+            .guidelines
+            .get_or_insert_with(Default::default)
+    }
+
+    #[cfg(feature = "py")]
+    pub fn deep_clone(&self) -> Self {
+        Font { layers: self.layers.deep_clone(), ..self.clone() }
     }
 }
 

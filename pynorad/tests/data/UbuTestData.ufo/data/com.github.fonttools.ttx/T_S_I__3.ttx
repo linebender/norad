@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ttFont sfntVersion="\x00\x01\x00\x00" ttLibVersion="3.32">
+
+  <TSI3>
+
+    <glyphProgram name="A">
+/* Y direction */
+YAnchor(6,66)
+YAnchor(11,65)
+YAnchor(12,65)
+YAnchor(17,66)
+YIPAnchor(12,21,18,17)
+YDelta(21,1@14..16)
+YShift(18,24)
+YLink(18,4,121)
+YShift(4,3)
+
+/* X direction */
+XDist(25,6,&lt;)
+XDelta(6,1@8..9)
+XDelta(26,1@8,-1@12;15;18;21;24)
+XDist(26,17,&lt;)
+XHalfGrid(21)
+XIPAnchor(17,21,6)
+Diagonal&gt;&lt;(17,0,12,21,115)
+XGDelta(0,-1/4@12)
+DAlign(21,20,19,18,3,2,1,0)
+Diagonal&gt;&lt;(6,5,11,21,115)
+XGDelta(5,1/2@12..18)
+DAlign(21,22,23,24,4,5)
+DAlign(11,10,9,8,7,6)
+DAlign(12,13,14,15,16,17)
+
+Smooth()
+XBDelta(15,-1/8@13)
+
+    </glyphProgram>
+
+    <glyphProgram name="a">
+/* Y direction */
+YAnchor(15,80)
+YShift(15,51)
+YLink(15,47,136,&gt;=)
+YShift(47,50)
+YAnchor(26,81)
+YShift(26,21)
+YLink(26,0,136,&gt;=)
+YShift(0,3)
+YIPAnchor(26,7,15)
+YBDelta(7,-1@8,1@17..18)
+YGDelta(7,-1@8,1@18)
+YShift(7,4)
+YLink(7,36,136,&gt;=)
+YShift(36,41)
+
+/* X direction */
+XDist(54,31,&lt;)
+XBDelta(31,1@8,5/4@9..10,-1/4@17,-3/8@18)
+XGDelta(31,1@8..9)
+XLink(31,12,130,&gt;=)
+XDist(31,51,&lt;)
+XBDelta(51,-1@10..12)
+XShift(51,50)
+XDelta(55,1@10)
+XLink(55,20,170)
+XBDelta(20,7/8@8..9,-1/8@10)
+XGDelta(20,1@8..9)
+XLink(20,41,127)
+XBDelta(41,1/8@18)
+XDist(41,3,&lt;)
+
+Smooth()
+YBDelta(10,1/8@17)
+YBDelta(18,-1/2@8)
+YBDelta(34,-1/2@8)
+YBDelta(44,1/8@17)
+XBDelta(33,1/8@10)
+
+    </glyphProgram>
+
+  </TSI3>
+
+</ttFont>

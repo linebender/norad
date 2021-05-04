@@ -2,10 +2,12 @@ use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use serde::{de, ser};
 
+#[cfg(feature = "py")]
+use crate::py_id::PyId;
 use crate::{Color, Identifier, Plist};
 
 /// A guideline associated with a glyph.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct Guideline {
     /// The line itself.
     pub line: Line,
@@ -18,6 +20,8 @@ pub struct Guideline {
     identifier: Option<Identifier>,
     /// The guideline's lib for arbitary data.
     lib: Option<Plist>,
+    #[cfg(feature = "py")]
+    pub py_id: PyId,
 }
 
 /// An infinite line.
@@ -41,7 +45,15 @@ impl Guideline {
         identifier: Option<Identifier>,
         lib: Option<Plist>,
     ) -> Self {
-        let mut this = Self { line, name, color, identifier: None, lib: None };
+        let mut this = Self {
+            line,
+            name,
+            color,
+            identifier: None,
+            lib: None,
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
+        };
         if let Some(id) = identifier {
             this.replace_identifier(id);
         }
@@ -84,6 +96,30 @@ impl Guideline {
     /// returning the old identifier if present.
     pub fn replace_identifier(&mut self, id: Identifier) -> Option<Identifier> {
         self.identifier.replace(id)
+    }
+}
+
+impl Clone for Guideline {
+    fn clone(&self) -> Self {
+        Guideline {
+            line: self.line.clone(),
+            name: self.name.clone(),
+            color: self.color.clone(),
+            identifier: self.identifier.clone(),
+            lib: self.lib.clone(),
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
+        }
+    }
+}
+
+impl PartialEq for Guideline {
+    fn eq(&self, other: &Self) -> bool {
+        self.line == other.line
+            && self.name == other.name
+            && self.color == other.color
+            && self.identifier == other.identifier
+            && self.lib == other.lib
     }
 }
 

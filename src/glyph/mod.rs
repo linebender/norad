@@ -17,13 +17,16 @@ use crate::names::NameList;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{Color, Guideline, Identifier, Line, Plist};
 
+#[cfg(feature = "py")]
+use crate::py_id::PyId;
+
 /// The name of a glyph.
 pub type GlyphName = Arc<str>;
 
 /// A glyph, loaded from a [.glif file][glif].
 ///
 /// [glif]: http://unifiedfontobject.org/versions/ufo3/glyphs/glif/
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 #[cfg_attr(feature = "druid", derive(Lens))]
 pub struct Glyph {
     pub name: GlyphName,
@@ -38,8 +41,47 @@ pub struct Glyph {
     pub contours: Vec<Contour>,
     pub image: Option<Image>,
     pub lib: Plist,
+    #[cfg(feature = "py")]
+    pub py_id: PyId,
 }
 
+impl Clone for Glyph {
+    fn clone(&self) -> Self {
+        Glyph {
+            name: self.name.clone(),
+            format: self.format,
+            height: self.height,
+            width: self.width,
+            codepoints: self.codepoints.clone(),
+            note: self.note.clone(),
+            guidelines: self.guidelines.clone(),
+            anchors: self.anchors.clone(),
+            components: self.components.clone(),
+            contours: self.contours.clone(),
+            image: self.image.clone(),
+            lib: self.lib.clone(),
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
+        }
+    }
+}
+
+impl PartialEq for Glyph {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.format == other.format
+            && self.height == other.height
+            && self.width == other.width
+            && self.codepoints == other.codepoints
+            && self.note == other.note
+            && self.guidelines == other.guidelines
+            && self.anchors == other.anchors
+            && self.components == other.components
+            && self.contours == other.contours
+            && self.image == other.image
+            && self.lib == other.lib
+    }
+}
 impl Glyph {
     /// Load the glyph at this path.
     ///
@@ -94,6 +136,8 @@ impl Glyph {
             contours: Vec::new(),
             image: None,
             lib: Plist::new(),
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
         }
     }
 
@@ -203,14 +247,14 @@ impl Data for Glyph {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub enum GlifVersion {
     V1 = 1,
     V2 = 2,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct Anchor {
     pub x: f32,
     pub y: f32,
@@ -222,10 +266,38 @@ pub struct Anchor {
     identifier: Option<Identifier>,
     /// The anchor's lib for arbitary data.
     lib: Option<Plist>,
+    #[cfg(feature = "py")]
+    pub py_id: PyId,
+}
+
+impl Clone for Anchor {
+    fn clone(&self) -> Self {
+        Anchor {
+            x: self.x,
+            y: self.y,
+            name: self.name.clone(),
+            color: self.color.clone(),
+            identifier: self.identifier.clone(),
+            lib: self.lib.clone(),
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
+        }
+    }
+}
+
+impl PartialEq for Anchor {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x
+            && self.y == other.y
+            && self.name == other.name
+            && self.color == other.color
+            && self.identifier == other.identifier
+            && self.lib == other.lib
+    }
 }
 
 /// Another glyph inserted as part of the outline.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct Component {
     /// The name of the base glyph.
     pub base: GlyphName,
@@ -235,9 +307,33 @@ pub struct Component {
     identifier: Option<Identifier>,
     /// The component's lib for arbitary data.
     lib: Option<Plist>,
+    #[cfg(feature = "py")]
+    pub py_id: PyId,
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+impl Clone for Component {
+    fn clone(&self) -> Self {
+        Component {
+            base: self.base.clone(),
+            transform: self.transform.clone(),
+            identifier: self.identifier.clone(),
+            lib: self.lib.clone(),
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
+        }
+    }
+}
+
+impl PartialEq for Component {
+    fn eq(&self, other: &Self) -> bool {
+        self.base == other.base
+            && self.transform == other.transform
+            && self.identifier == other.identifier
+            && self.lib == other.lib
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct Contour {
     pub points: Vec<ContourPoint>,
     /// Unique identifier for the contour within the glyph. This attribute is only required
@@ -245,6 +341,8 @@ pub struct Contour {
     identifier: Option<Identifier>,
     /// The contour's lib for arbitary data.
     lib: Option<Plist>,
+    #[cfg(feature = "py")]
+    pub py_id: PyId,
 }
 
 impl Contour {
@@ -253,7 +351,25 @@ impl Contour {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+impl Clone for Contour {
+    fn clone(&self) -> Self {
+        Contour {
+            points: self.points.clone(),
+            identifier: self.identifier.clone(),
+            lib: self.lib.clone(),
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
+        }
+    }
+}
+
+impl PartialEq for Contour {
+    fn eq(&self, other: &Self) -> bool {
+        self.points == other.points && self.identifier == other.identifier && self.lib == other.lib
+    }
+}
+
+#[derive(Debug)]
 pub struct ContourPoint {
     pub x: f32,
     pub y: f32,
@@ -265,9 +381,39 @@ pub struct ContourPoint {
     identifier: Option<Identifier>,
     /// The point's lib for arbitary data.
     lib: Option<Plist>,
+    #[cfg(feature = "py")]
+    pub py_id: PyId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+impl Clone for ContourPoint {
+    fn clone(&self) -> Self {
+        ContourPoint {
+            x: self.x,
+            y: self.y,
+            typ: self.typ,
+            smooth: self.smooth,
+            name: self.name.clone(),
+            identifier: self.identifier.clone(),
+            lib: self.lib.clone(),
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
+        }
+    }
+}
+
+impl PartialEq for ContourPoint {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x
+            && self.y == other.y
+            && self.typ == other.typ
+            && self.smooth == other.smooth
+            && self.name == other.name
+            && self.identifier == other.identifier
+            && self.lib == other.lib
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PointType {
     /// A point of this type must be the first in a contour. The reverse is not true:
     /// a contour does not necessarily start with a move point. When a contour
@@ -318,7 +464,16 @@ impl Anchor {
         identifier: Option<Identifier>,
         lib: Option<Plist>,
     ) -> Self {
-        let mut this = Self { x, y, name, color, identifier: None, lib: None };
+        let mut this = Self {
+            x,
+            y,
+            name,
+            color,
+            identifier: None,
+            lib: None,
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
+        };
         if let Some(id) = identifier {
             this.replace_identifier(id);
         }
@@ -370,7 +525,13 @@ impl Contour {
         identifier: Option<Identifier>,
         lib: Option<Plist>,
     ) -> Self {
-        let mut this = Self { points, identifier: None, lib: None };
+        let mut this = Self {
+            points,
+            identifier: None,
+            lib: None,
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
+        };
         if let Some(id) = identifier {
             this.replace_identifier(id);
         }
@@ -426,7 +587,17 @@ impl ContourPoint {
         identifier: Option<Identifier>,
         lib: Option<Plist>,
     ) -> Self {
-        let mut this = Self { x, y, typ, smooth, name, identifier: None, lib: None };
+        let mut this = Self {
+            x,
+            y,
+            typ,
+            smooth,
+            name,
+            identifier: None,
+            lib: None,
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
+        };
         if let Some(id) = identifier {
             this.replace_identifier(id);
         }
@@ -479,7 +650,14 @@ impl Component {
         identifier: Option<Identifier>,
         lib: Option<Plist>,
     ) -> Self {
-        let mut this = Self { base, transform, identifier: None, lib: None };
+        let mut this = Self {
+            base,
+            transform,
+            identifier: None,
+            lib: None,
+            #[cfg(feature = "py")]
+            py_id: PyId::next(),
+        };
         if let Some(id) = identifier {
             this.replace_identifier(id);
         }
@@ -536,6 +714,27 @@ impl AffineTransform {
             x_offset: 0.,
             y_offset: 0.,
         }
+    }
+}
+
+#[cfg(feature = "py")]
+impl From<(f32, f32, f32, f32, f32, f32)> for AffineTransform {
+    fn from(src: (f32, f32, f32, f32, f32, f32)) -> AffineTransform {
+        AffineTransform {
+            x_scale: src.0,
+            xy_scale: src.1,
+            yx_scale: src.2,
+            y_scale: src.3,
+            x_offset: src.4,
+            y_offset: src.5,
+        }
+    }
+}
+
+#[cfg(feature = "py")]
+impl From<AffineTransform> for (f32, f32, f32, f32, f32, f32) {
+    fn from(src: AffineTransform) -> (f32, f32, f32, f32, f32, f32) {
+        (src.x_scale, src.xy_scale, src.yx_scale, src.y_scale, src.x_offset, src.y_offset)
     }
 }
 

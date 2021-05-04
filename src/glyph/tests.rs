@@ -422,3 +422,24 @@ fn empty_contours() {
     assert_eq!(test2.components, vec![]);
     assert_eq!(test2.contours, vec![]);
 }
+
+/// These types should be assigned new PyIds on clone.
+#[test]
+#[cfg(feature = "py")]
+fn clone() {
+    let contour = Contour::default();
+    let contour2 = contour.clone();
+    assert!(contour.py_id != contour2.py_id);
+
+    let point = ContourPoint::new(0., 5., PointType::Move, false, None, None, None);
+    let point2 = point.clone();
+    assert!(point.py_id != point2.py_id);
+
+    let anchor = Anchor::new(1.0, 2.0, None, None, None, None);
+    let anchor2 = anchor.clone();
+    assert!(anchor.py_id != anchor2.py_id);
+
+    let guide = Guideline::new(Line::Vertical(0.0), None, None, None, None);
+    let guide2 = guide.clone();
+    assert!(guide.py_id != guide2.py_id);
+}
