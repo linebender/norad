@@ -6,6 +6,7 @@ mod serialize;
 #[cfg(test)]
 mod tests;
 
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -250,6 +251,39 @@ pub struct Contour {
 impl Contour {
     fn is_closed(&self) -> bool {
         self.points.first().map_or(true, |v| v.typ != PointType::Move)
+    }
+
+    /// Converts the contour to a kurbo::BezPath
+    #[cfg(feature = "kurbo")]
+    pub fn to_kurbo(&self) -> Result<kurbo::BezPath, ErrorKind> {
+        let mut path = kurbo::BezPath::new();
+        let mut offs: VecDeque<kurbo::Point> = VecDeque::new();
+        for pt in &self.points {
+            let kurbo_point = kurbo::Point::new(pt.x as f64, pt.y as f64);
+            match pt.typ {
+                PointType::Move => path.move_to(kurbo_point),
+                PointType::Line => path.line_to(kurbo_point),
+                PointType::OffCurve => offs.push_back(kurbo_point),
+                PointType::Curve => {
+                    match offs.len() {
+                        0 => return Err(ErrorKind::BadPoint),
+                        1 => path.quad_to(offs[0], kurbo_point),
+                        2 => path.curve_to(offs[0], offs[1], kurbo_point),
+                        _ => return Err(ErrorKind::TooManyOffCurves),
+                    };
+                    offs.truncate(0);
+                }
+                PointType::QCurve => {
+                    while offs.len() > 1 {
+                        let implied_point = offs[0].midpoint(offs[1]);
+                        path.quad_to(offs.pop_front().unwrap(), implied_point);
+                    }
+                    path.quad_to(offs[0], kurbo_point);
+                    offs.truncate(0);
+                }
+            }
+        }
+        Ok(path)
     }
 }
 
