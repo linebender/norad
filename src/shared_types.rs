@@ -52,7 +52,7 @@ impl Serialize for Color {
     where
         S: Serializer,
     {
-        let color_string = format!("{},{},{},{}", self.red, self.green, self.blue, self.alpha);
+        let color_string = self.to_rgba_string();
         serializer.serialize_str(&color_string)
     }
 }
@@ -243,7 +243,7 @@ impl<'de> Deserialize<'de> for NonNegativeIntegerOrFloat {
 mod tests {
     use std::convert::TryFrom;
 
-    use serde_test::{assert_tokens, Token};
+    use serde_test::{assert_de_tokens, assert_ser_tokens, assert_tokens, Token};
 
     use crate::{Color, Guideline, Identifier, IntegerOrFloat, Line, NonNegativeIntegerOrFloat};
 
@@ -254,6 +254,18 @@ mod tests {
 
         let c2 = Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 };
         assert_tokens(&c2, &[Token::Str("0,0.5,0,0.5")]);
+
+        let c3 = Color { red: 0.0, green: 0.0, blue: 0.0, alpha: 0.0 };
+        assert_tokens(&c3, &[Token::Str("0,0,0,0")]);
+
+        let c4 = Color { red: 0.123, green: 0.456, blue: 0.789, alpha: 0.159 };
+        assert_tokens(&c4, &[Token::Str("0.123,0.456,0.789,0.159")]);
+
+        let c5 = Color { red: 0.123456789, green: 0.456789123, blue: 0.789123456, alpha: 0.1 };
+        assert_ser_tokens(&c5, &[Token::Str("0.123,0.457,0.789,0.1")]);
+
+        let c6 = Color { red: 0.123456789, green: 0.456789123, blue: 0.789123456, alpha: 0.1 };
+        assert_de_tokens(&c6, &[Token::Str("0.123456789,0.456789123,0.789123456,0.1")]);
     }
 
     #[test]

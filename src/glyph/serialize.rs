@@ -264,9 +264,20 @@ impl PointType {
 }
 
 impl Color {
+    /// Serializes the color into a string as defined by the [UFO specification][0].
+    /// Precision is limited to three decimal places, which is enough to losslessly
+    /// roundtrip to colors represented by `u8` tuples.
+    ///
+    /// [0]: https://unifiedfontobject.org/versions/ufo3/conventions/#colors
     pub fn to_rgba_string(&self) -> String {
         // TODO: Check that all channels are 0.0..=1.0
-        format!("{},{},{},{}", self.red, self.green, self.blue, self.alpha)
+        format!(
+            "{},{},{},{}",
+            format!("{:.3}", self.red).trim_end_matches('0').trim_end_matches('.'),
+            format!("{:.3}", self.green).trim_end_matches('0').trim_end_matches('.'),
+            format!("{:.3}", self.blue).trim_end_matches('0').trim_end_matches('.'),
+            format!("{:.3}", self.alpha).trim_end_matches('0').trim_end_matches('.')
+        )
     }
 }
 
