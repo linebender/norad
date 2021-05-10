@@ -270,14 +270,23 @@ impl Color {
     ///
     /// [0]: https://unifiedfontobject.org/versions/ufo3/conventions/#colors
     pub fn to_rgba_string(&self) -> String {
+        use std::fmt::Write;
+
         // TODO: Check that all channels are 0.0..=1.0
-        format!(
-            "{},{},{},{}",
-            format!("{:.3}", self.red).trim_end_matches('0').trim_end_matches('.'),
-            format!("{:.3}", self.green).trim_end_matches('0').trim_end_matches('.'),
-            format!("{:.3}", self.blue).trim_end_matches('0').trim_end_matches('.'),
-            format!("{:.3}", self.alpha).trim_end_matches('0').trim_end_matches('.')
-        )
+        let mut result = String::new();
+        let mut scratch = String::new();
+        let Color { red, green, blue, alpha } = self;
+        for channel in &[red, green, blue, alpha] {
+            if !result.is_empty() {
+                result.push(',');
+            }
+
+            scratch.clear();
+            // This can only fail on an allocation error, in which case we have other problems.
+            let _ = write!(&mut scratch, "{:.3}", channel);
+            result.push_str(scratch.trim_end_matches('0').trim_end_matches('.'));
+        }
+        result
     }
 }
 
