@@ -256,7 +256,7 @@ impl Layer {
         // for us to get this far, this mut have a file name
         let path = path.file_name().unwrap().into();
 
-        Ok(Layer { contents, name, glyphs, color, path, lib })
+        Ok(Layer { glyphs, name, path, contents, color, lib })
     }
 
     // Problem: layerinfo.plist contains a nested plist dictionary and the plist crate
