@@ -20,7 +20,7 @@ use crate::{Color, Guideline, Identifier, Line, Plist};
 /// The name of a glyph.
 pub type GlyphName = Arc<str>;
 
-/// A glyph, loaded from a [.glif file][glif].
+/// A glyph, loaded from a [`.glif` file][glif].
 ///
 /// [glif]: http://unifiedfontobject.org/versions/ufo3/glyphs/glif/
 #[derive(Debug, Clone, PartialEq)]
@@ -210,6 +210,11 @@ pub enum GlifVersion {
     V2 = 2,
 }
 
+/// An reference position in a glyph, such as for attaching accents.
+///
+/// See the [Anchor section] of the UFO spec for more information.
+///
+/// [Anchor section]: https://unifiedfontobject.org/versions/ufo3/glyphs/glif/#anchor
 #[derive(Debug, Clone, PartialEq)]
 pub struct Anchor {
     pub x: f32,
@@ -224,7 +229,7 @@ pub struct Anchor {
     lib: Option<Plist>,
 }
 
-/// Another glyph inserted as part of the outline.
+/// A reference to another glyph, to be included in this glyph's outline.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
     /// The name of the base glyph.
@@ -237,6 +242,7 @@ pub struct Component {
     lib: Option<Plist>,
 }
 
+/// A single open or closed bezier path segment.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Contour {
     pub points: Vec<ContourPoint>,
@@ -253,6 +259,7 @@ impl Contour {
     }
 }
 
+/// A single point in a [`Contour`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct ContourPoint {
     pub x: f32,
@@ -267,6 +274,7 @@ pub struct ContourPoint {
     lib: Option<Plist>,
 }
 
+/// Possible types of points that can exist in a [`Contour`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum PointType {
     /// A point of this type must be the first in a contour. The reverse is not true:
@@ -297,7 +305,7 @@ pub enum PointType {
     QCurve,
 }
 
-/// Taken together in order, these fields represent an affine transformation matrix.
+/// A 2D affine transformation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub struct AffineTransform {
@@ -545,6 +553,7 @@ impl std::default::Default for AffineTransform {
     }
 }
 
+/// An image included in a glyph.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Image {
     /// Not an absolute / relative path, but the name of the image file.

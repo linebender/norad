@@ -1,5 +1,7 @@
 //! Utilties for working with [Unified Font Object][ufo] files.
 //!
+//! The types in this crate correspond to types described in the spec.
+//!
 //! [ufo]: http://unifiedfontobject.org/versions/ufo3
 //!
 //! # Basic usage:
