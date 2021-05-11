@@ -67,6 +67,15 @@ impl LayerSet {
         Ok(LayerSet { layers })
     }
 
+    /// Create a new `LayerSet`.
+    ///
+    /// Will panic if `layers` is empty.
+    pub fn new(mut layers: Vec<Layer>) -> Self {
+        assert!(!layers.is_empty());
+        layers.first_mut().unwrap().path = DEFAULT_GLYPHS_DIRNAME.into();
+        LayerSet { layers }
+    }
+
     /// The number of layers in the set.
     ///
     /// This should be non-zero.
@@ -329,7 +338,7 @@ impl Layer {
         Ok(())
     }
 
-    /// The number of glyphs in this layer.
+    /// The number of [`Glyph`]s in the layer.
     pub fn len(&self) -> usize {
         self.glyphs.len()
     }
@@ -370,7 +379,7 @@ impl Layer {
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
     {
-        self.glyphs.get_mut(glyph).and_then(|g| Arc::get_mut(g))
+        self.glyphs.get_mut(glyph).map(|g| Arc::make_mut(g))
     }
 
     /// Returns `true` if this layer contains a glyph with this name.
@@ -397,26 +406,51 @@ impl Layer {
         self.glyphs.clear()
     }
 
-    /// Remove the named glyph from this layer.
-    #[doc(hidden)]
-    #[deprecated(since = "0.3.0", note = "use remove_glyph instead")]
-    pub fn delete_glyph(&mut self, name: &str) {
-        self.remove_glyph(name);
-    }
-
     /// Remove the named glyph from this layer and return it, if it exists.
     pub fn remove_glyph(&mut self, name: &str) -> Option<Arc<Glyph>> {
         self.contents.remove(name);
         self.glyphs.remove(name)
     }
 
+    /// Rename a glyph.
+    ///
+    /// If `overwrite` is true, and a glyph with the new name exists, it will
+    /// be replaced.
+    ///
+    /// Returns an error if `overwrite` is false but a glyph with the new
+    /// name exists, or if no glyph with the old name exists.
+    pub fn rename_glyph(&mut self, old: &str, new: &str, overwrite: bool) -> Result<(), Error> {
+        if !overwrite && self.glyphs.contains_key(new) {
+            Err(Error::DuplicateGlyph { glyph: new.into(), layer: self.name.to_string() })
+        } else if !self.glyphs.contains_key(old) {
+            Err(Error::MissingGlyph { glyph: old.into(), layer: self.name.to_string() })
+        } else {
+            let mut g = self.remove_glyph(old).unwrap();
+            Arc::make_mut(&mut g).name = new.into();
+            self.insert_glyph(g);
+            Ok(())
+        }
+    }
+
+    #[doc(hidden)]
+    #[deprecated(since = "0.4.0", note = "renamed to 'iter'")]
+    pub fn iter_contents(&self) -> impl Iterator<Item = &Arc<Glyph>> + '_ {
+        self.iter()
+    }
+
+    #[doc(hidden)]
+    #[deprecated(since = "0.4.0", note = "renamed to 'iter_mut'")]
+    pub fn iter_contents_mut(&mut self) -> impl Iterator<Item = &mut Glyph> {
+        self.iter_mut()
+    }
+
     /// Iterate over the glyphs in this layer.
-    pub fn iter_contents(&self) -> impl Iterator<Item = Arc<Glyph>> + '_ {
-        self.glyphs.values().map(Arc::clone)
+    pub fn iter(&self) -> impl Iterator<Item = &Arc<Glyph>> + '_ {
+        self.glyphs.values()
     }
 
     /// Iterate over the glyphs in this layer, mutably.
-    pub fn iter_contents_mut(&mut self) -> impl Iterator<Item = &mut Glyph> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Glyph> {
         self.glyphs.values_mut().map(Arc::make_mut)
     }
 
@@ -545,7 +579,7 @@ mod tests {
             ufo.layers
                 .get("misc")
                 .unwrap()
-                .iter_contents()
+                .iter()
                 .map(|g| g.name.to_string())
                 .collect::<Vec<String>>(),
             vec!["A".to_string()]

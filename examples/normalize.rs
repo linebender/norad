@@ -30,7 +30,7 @@ fn main() {
         });
 
         // Prune all glyphs' libs.
-        for glyph in default_layer.iter_contents_mut() {
+        for glyph in default_layer.iter_mut() {
             glyph.lib.retain(|k, &mut _| {
                 (k.starts_with("public.")
                     || k.starts_with("com.schriftgestaltung.")
