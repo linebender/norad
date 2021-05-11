@@ -1,3 +1,7 @@
+//! The contents of [`fontinfo.plist`].
+//!
+//! [`fontinfo.plist`]: https://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
+
 use std::collections::HashSet;
 use std::path::Path;
 

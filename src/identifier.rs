@@ -6,11 +6,15 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::ErrorKind;
 
+/// A [UFO Object Identifier][identifier].
+///
 /// Identifiers are optional attributes of several objects in the UFO.
 /// These identifiers are required to be unique within certain contexts
 /// as defined on a per object basis throughout this specification.
 /// Identifiers are specified as a string between one and 100 characters long.
 /// All characters must be in the printable ASCII range, 0x20 to 0x7E.
+///
+/// [identifier]: https://unifiedfontobject.org/versions/ufo3/conventions/#identifiers
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct Identifier(Arc<str>);
 

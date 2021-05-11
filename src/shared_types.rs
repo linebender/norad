@@ -74,8 +74,9 @@ pub type NonNegativeInteger = u32;
 pub type Float = f64;
 pub type Bitlist = Vec<u8>;
 
-/// IntegerOrFloat represents a number that can be an integer or float. It should
-/// serialize to an integer if it effectively represents one.
+/// A number that may be either an integer or float.
+///
+/// It should serialize to an integer if it effectively represents one.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IntegerOrFloat(f64);
 
@@ -140,7 +141,8 @@ impl<'de> Deserialize<'de> for IntegerOrFloat {
     }
 }
 
-/// NonNegativeIntegerOrFloat represents a number that can be a NonNegative integer or float.
+/// A number that can be a non-negative integer or float.
+///
 /// It should serialize to an integer if it effectively represents one.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NonNegativeIntegerOrFloat(f64);

@@ -22,6 +22,10 @@ pub(crate) static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 
 pub type LayerName = Arc<str>;
 
+/// A collection of [`Layer`] objects.
+///
+/// A layer set always includes a default layer, and may also include additional
+/// layers.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LayerSet {
     // The first layer is always the 'default layer'.
