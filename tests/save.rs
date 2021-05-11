@@ -59,12 +59,12 @@ fn save_fancy() {
     let loaded = Font::load(dir).unwrap();
     let pre_layer = my_ufo.default_layer();
     let post_layer = loaded.default_layer();
-    assert_eq!(pre_layer.iter_contents().count(), post_layer.iter_contents().count());
+    assert_eq!(pre_layer.iter().count(), post_layer.iter().count());
 
-    for glyph in pre_layer.iter_contents() {
+    for glyph in pre_layer.iter() {
         let other = post_layer.get_glyph(&glyph.name);
         assert!(other.is_some(), "missing {}", &glyph.name);
-        assert_eq!(&glyph, other.unwrap());
+        assert_eq!(glyph, other.unwrap());
     }
 }
 
