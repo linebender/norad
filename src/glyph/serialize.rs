@@ -32,14 +32,17 @@ impl Glyph {
             writer.write_event(char_to_event(*codepoint))?;
         }
 
-        let mut start = BytesStart::borrowed_name(b"advance");
-        if self.width != 0. {
-            start.push_attribute(("width", self.width.to_string().as_str()));
+        // Skip serializing advance if both values are zero, infinite, subnormal, or NaN.
+        if self.width.is_normal() || self.height.is_normal() {
+            let mut start = BytesStart::borrowed_name(b"advance");
+            if self.width != 0. {
+                start.push_attribute(("width", self.width.to_string().as_str()));
+            }
+            if self.height != 0. {
+                start.push_attribute(("height", self.height.to_string().as_str()));
+            }
+            writer.write_event(Event::Empty(start))?;
         }
-        if self.height != 0. {
-            start.push_attribute(("height", self.height.to_string().as_str()));
-        }
-        writer.write_event(Event::Empty(start))?;
 
         if let Some(ref note) = self.note {
             writer.write_event(Event::Start(BytesStart::borrowed_name(b"note")))?;
@@ -55,14 +58,16 @@ impl Glyph {
             writer.write_event(guide.to_event())?;
         }
 
-        writer.write_event(Event::Start(BytesStart::borrowed_name(b"outline")))?;
-        for contour in &self.contours {
-            contour.write_xml(&mut writer)?;
+        if !self.contours.is_empty() || !self.components.is_empty() {
+            writer.write_event(Event::Start(BytesStart::borrowed_name(b"outline")))?;
+            for contour in &self.contours {
+                contour.write_xml(&mut writer)?;
+            }
+            for component in &self.components {
+                writer.write_event(component.to_event())?;
+            }
+            writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
         }
-        for component in &self.components {
-            writer.write_event(component.to_event())?;
-        }
-        writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
 
         for anchor in &self.anchors {
             writer.write_event(anchor.to_event())?;
