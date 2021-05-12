@@ -258,15 +258,20 @@ impl Contour {
     pub fn to_kurbo(&self) -> Result<kurbo::BezPath, ErrorKind> {
         let mut path = kurbo::BezPath::new();
         let mut offs: VecDeque<kurbo::Point> = VecDeque::new();
-        // Add end-of-contour offcurves to queue
-        let mut i = self.points.len() - 1;
-        while i > 0 && self.points[i].typ == PointType::OffCurve {
-            let kurbo_point = kurbo::Point::new(self.points[i].x as f64, self.points[i].y as f64);
-            offs.push_front(kurbo_point);
-            i -= 1;
-        }
-        if self.is_closed() {
-            path.move_to(kurbo::Point::new(self.points[i].x as f64, self.points[i].y as f64));
+        let mut points = if self.is_closed() {
+            // Add end-of-contour offcurves to queue
+            let rotate = self
+                .points
+                .iter()
+                .rev()
+                .position(|pt| pt.typ != PointType::OffCurve)
+                .map(|idx| self.points.len() - 1 - idx);
+            self.points.iter().cycle().skip(rotate.unwrap_or(0)).take(self.points.len() + 1)
+        } else {
+            self.points.iter().cycle().skip(0).take(self.points.len())
+        };
+        if let Some(start) = points.next() {
+            path.move_to(start.to_kurbo());
         }
         for pt in &self.points {
             let kurbo_point = pt.to_kurbo();
