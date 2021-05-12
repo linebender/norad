@@ -108,6 +108,22 @@ fn save() {
     assert_eq!(glyph.guidelines, glyph2.guidelines);
 }
 
+// https://github.com/linebender/norad/issues/105
+#[test]
+fn skip_zero_advance() {
+    let glyph = Glyph::new_named("A");
+    let encoded = glyph.encode_xml().unwrap();
+    let as_str = String::from_utf8(encoded).expect("xml is valid utf-8");
+    assert!(!as_str.contains("advance"));
+
+    let mut glyph = Glyph::new_named("B");
+    glyph.width = 500.0;
+
+    let encoded = glyph.encode_xml().unwrap();
+    let as_str = String::from_utf8(encoded).expect("xml is valid utf-8");
+    assert!(as_str.contains("advance"));
+}
+
 #[test]
 fn notdef_failure() {
     let bytes = include_bytes!("../../testdata/noto-cjk-notdef.glif");

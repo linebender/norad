@@ -32,14 +32,17 @@ impl Glyph {
             writer.write_event(char_to_event(*codepoint))?;
         }
 
-        let mut start = BytesStart::borrowed_name(b"advance");
-        if self.width != 0. {
-            start.push_attribute(("width", self.width.to_string().as_str()));
+        // don't serialize advance if 0, nan, etc
+        if self.width.is_normal() || self.height.is_normal() {
+            let mut start = BytesStart::borrowed_name(b"advance");
+            if self.width != 0. {
+                start.push_attribute(("width", self.width.to_string().as_str()));
+            }
+            if self.height != 0. {
+                start.push_attribute(("height", self.height.to_string().as_str()));
+            }
+            writer.write_event(Event::Empty(start))?;
         }
-        if self.height != 0. {
-            start.push_attribute(("height", self.height.to_string().as_str()));
-        }
-        writer.write_event(Event::Empty(start))?;
 
         if let Some(ref note) = self.note {
             writer.write_event(Event::Start(BytesStart::borrowed_name(b"note")))?;
