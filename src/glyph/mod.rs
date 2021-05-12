@@ -257,6 +257,57 @@ impl Contour {
     fn is_closed(&self) -> bool {
         self.points.first().map_or(true, |v| v.typ != PointType::Move)
     }
+
+    /// Converts the `Contour` to a [`kurbo::BezPath`].
+    #[cfg(feature = "kurbo")]
+    pub fn to_kurbo(&self) -> Result<kurbo::BezPath, ErrorKind> {
+        let mut path = kurbo::BezPath::new();
+        let mut offs = std::collections::VecDeque::new();
+        let mut points = if self.is_closed() {
+            // Add end-of-contour offcurves to queue
+            let rotate = self
+                .points
+                .iter()
+                .rev()
+                .position(|pt| pt.typ != PointType::OffCurve)
+                .map(|idx| self.points.len() - 1 - idx);
+            self.points.iter().cycle().skip(rotate.unwrap_or(0)).take(self.points.len() + 1)
+        } else {
+            self.points.iter().cycle().skip(0).take(self.points.len())
+        };
+        if let Some(start) = points.next() {
+            path.move_to(start.to_kurbo());
+        }
+        for pt in points {
+            let kurbo_point = pt.to_kurbo();
+            match pt.typ {
+                PointType::Move => path.move_to(kurbo_point),
+                PointType::Line => path.line_to(kurbo_point),
+                PointType::OffCurve => offs.push_back(kurbo_point),
+                PointType::Curve => {
+                    match offs.make_contiguous() {
+                        &mut [] => return Err(ErrorKind::BadPoint),
+                        &mut [p1] => path.quad_to(p1, kurbo_point),
+                        &mut [p1, p2] => path.curve_to(p1, p2, kurbo_point),
+                        _ => return Err(ErrorKind::TooManyOffCurves),
+                    };
+                    offs.clear();
+                }
+                PointType::QCurve => {
+                    while let Some(pt) = offs.pop_front() {
+                        if let Some(next) = offs.front() {
+                            let implied_point = pt.midpoint(*next);
+                            path.quad_to(pt, implied_point);
+                        } else {
+                            path.quad_to(pt, kurbo_point);
+                        }
+                    }
+                    offs.clear();
+                }
+            }
+        }
+        Ok(path)
+    }
 }
 
 /// A single point in a [`Contour`].
@@ -477,6 +528,12 @@ impl ContourPoint {
     /// returning the old identifier if present.
     pub fn replace_identifier(&mut self, id: Identifier) -> Option<Identifier> {
         self.identifier.replace(id)
+    }
+
+    /// Returns a [`kurbo::Point`] with this `ContourPoint`'s coordinates.
+    #[cfg(feature = "kurbo")]
+    pub fn to_kurbo(&self) -> kurbo::Point {
+        kurbo::Point::new(self.x as f64, self.y as f64)
     }
 }
 
