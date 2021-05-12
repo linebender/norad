@@ -9,6 +9,31 @@ fn transform() {
 }
 
 #[test]
+fn serialize_empty_glyph() {
+    let glyph = Glyph::new_named("a");
+    let glif = glyph.encode_xml().unwrap();
+    let glif = std::str::from_utf8(&glif).unwrap();
+    assert_eq!(
+        glif,
+        r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="a" format="2">
+</glyph>
+"#
+        .trim_start()
+    );
+}
+
+// Fixme: the lib section is written out unordered.
+// #[test]
+// fn serialize_full_glyph() {
+//     let bytes = include_bytes!("../../testdata/sample_period_normalized.glif");
+//     let glyph = parse_glyph(bytes).unwrap();
+//     let glif = glyph.encode_xml().unwrap();
+//     assert_eq!(std::str::from_utf8(&glif).unwrap(), std::str::from_utf8(bytes).unwrap());
+// }
+
+#[test]
 fn parse() {
     let bytes = include_bytes!("../../testdata/sample_period.glif");
     let glyph = parse_glyph(bytes).unwrap();

@@ -16,6 +16,11 @@ use crate::{
 use crate::error::{GlifWriteError, WriteError};
 
 impl Glyph {
+    /// Serialize the glyph into an XML byte stream.
+    ///
+    /// The order of elements and attributes follows [ufonormalizer] where possible.
+    ///
+    /// [ufonormalizer]: https://github.com/unified-font-object/ufoNormalizer/
     pub fn encode_xml(&self) -> Result<Vec<u8>, GlifWriteError> {
         self.encode_xml_impl().map_err(|inner| GlifWriteError { name: self.name.clone(), inner })
     }
@@ -32,40 +37,39 @@ impl Glyph {
             writer.write_event(char_to_event(*codepoint))?;
         }
 
-        let mut start = BytesStart::borrowed_name(b"advance");
-        if self.width != 0. {
-            start.push_attribute(("width", self.width.to_string().as_str()));
-        }
-        if self.height != 0. {
-            start.push_attribute(("height", self.height.to_string().as_str()));
-        }
-        writer.write_event(Event::Empty(start))?;
-
-        if let Some(ref note) = self.note {
-            writer.write_event(Event::Start(BytesStart::borrowed_name(b"note")))?;
-            writer.write_event(Event::Text(BytesText::from_plain_str(note)))?;
-            writer.write_event(Event::End(BytesEnd::borrowed(b"note")))?;
+        // Skip serializing advance if both values are zero, infinite, subnormal, or NaN.
+        if self.width.is_normal() || self.height.is_normal() {
+            let mut start = BytesStart::borrowed_name(b"advance");
+            if self.width != 0. {
+                start.push_attribute(("width", self.width.to_string().as_str()));
+            }
+            if self.height != 0. {
+                start.push_attribute(("height", self.height.to_string().as_str()));
+            }
+            writer.write_event(Event::Empty(start))?;
         }
 
         if let Some(ref image) = self.image {
             writer.write_event(image.to_event())?;
         }
 
-        for guide in &self.guidelines {
-            writer.write_event(guide.to_event())?;
+        if !self.contours.is_empty() || !self.components.is_empty() {
+            writer.write_event(Event::Start(BytesStart::borrowed_name(b"outline")))?;
+            for contour in &self.contours {
+                contour.write_xml(&mut writer)?;
+            }
+            for component in &self.components {
+                writer.write_event(component.to_event())?;
+            }
+            writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
         }
-
-        writer.write_event(Event::Start(BytesStart::borrowed_name(b"outline")))?;
-        for contour in &self.contours {
-            contour.write_xml(&mut writer)?;
-        }
-        for component in &self.components {
-            writer.write_event(component.to_event())?;
-        }
-        writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
 
         for anchor in &self.anchors {
             writer.write_event(anchor.to_event())?;
+        }
+
+        for guide in &self.guidelines {
+            writer.write_event(guide.to_event())?;
         }
 
         // Object libs are treated specially. The UFO v3 format won't allow us
@@ -82,6 +86,12 @@ impl Glyph {
             write_lib_section(&new_lib, &mut writer)?;
         } else if !self.lib.is_empty() {
             write_lib_section(&self.lib, &mut writer)?;
+        }
+
+        if let Some(ref note) = self.note {
+            writer.write_event(Event::Start(BytesStart::borrowed_name(b"note")))?;
+            writer.write_event(Event::Text(BytesText::from_plain_str(note)))?;
+            writer.write_event(Event::End(BytesEnd::borrowed(b"note")))?;
         }
 
         writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;
@@ -106,7 +116,7 @@ fn write_lib_section<T: Write>(lib: &Plist, writer: &mut Writer<T>) -> Result<()
     let as_value: plist::Value = lib.to_owned().into();
     let mut out_buffer = Vec::with_capacity(256); // a reasonable min size?
     as_value.to_writer_xml(&mut out_buffer)?;
-    let lib_xml = String::from_utf8(out_buffer).expect("xml writer writs valid utf8");
+    let lib_xml = String::from_utf8(out_buffer).expect("XML writer wrote invalid UTF-8");
     let header = "<plist version=\"1.0\">\n";
     let footer = "\n</plist>";
     let start_idx = lib_xml
@@ -143,6 +153,10 @@ impl Guideline {
             Line::Angle { x, y, degrees } => (Some(x), Some(y), Some(degrees)),
         };
 
+        if let Some(name) = &self.name {
+            start.push_attribute(("name", name.as_str()));
+        }
+
         if let Some(x) = x {
             start.push_attribute(("x", x.to_string().as_str()))
         }
@@ -153,10 +167,6 @@ impl Guideline {
 
         if let Some(angle) = angle {
             start.push_attribute(("angle", angle.to_string().as_str()))
-        }
-
-        if let Some(name) = &self.name {
-            start.push_attribute(("name", name.as_str()));
         }
 
         if let Some(color) = &self.color {
@@ -181,13 +191,14 @@ impl Anchor {
         start.push_attribute(("x", self.x.to_string().as_str()));
         start.push_attribute(("y", self.y.to_string().as_str()));
 
+        if let Some(color) = &self.color {
+            start.push_attribute(("color", color.to_rgba_string().as_str()));
+        }
+
         if let Some(id) = &self.identifier {
             start.push_attribute(("identifier", id.as_str()));
         }
 
-        if let Some(color) = &self.color {
-            start.push_attribute(("color", color.to_rgba_string().as_str()));
-        }
         Event::Empty(start)
     }
 }
@@ -228,6 +239,10 @@ impl ContourPoint {
     fn to_event(&self) -> Event {
         let mut start = BytesStart::borrowed_name(b"point");
 
+        if let Some(name) = &self.name {
+            start.push_attribute(("name", name.as_str()));
+        }
+
         start.push_attribute(("x", self.x.to_string().as_str()));
         start.push_attribute(("y", self.y.to_string().as_str()));
 
@@ -238,10 +253,6 @@ impl ContourPoint {
 
         if self.smooth {
             start.push_attribute(("smooth", "yes"));
-        }
-
-        if let Some(name) = &self.name {
-            start.push_attribute(("name", name.as_str()));
         }
 
         if let Some(id) = &self.identifier {
