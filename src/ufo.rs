@@ -308,10 +308,6 @@ impl Font {
             return Err(Error::DowngradeUnsupported);
         }
 
-        if self.meta.creator.as_str() != DEFAULT_METAINFO_CREATOR {
-            return Err(Error::NotCreatedHere);
-        }
-
         if self.lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
             return Err(Error::PreexistingPublicObjectLibsKey);
         }

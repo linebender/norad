@@ -11,9 +11,6 @@ use crate::GlyphName;
 /// Errors that occur while working with font objects.
 #[derive(Debug)]
 pub enum Error {
-    /// An error representing our refusal to save a UFO file that was
-    /// not originally created by norad.
-    NotCreatedHere,
     /// An error returned when trying to save an UFO in anything less than the latest version.
     DowngradeUnsupported,
     /// An error returned when trying to save a Glyph that contains a `public.objectLibs`
@@ -143,9 +140,6 @@ pub enum ErrorKind {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Error::NotCreatedHere => {
-                write!(f, "To prevent data loss, norad will not save files created elsewhere.")
-            }
             Error::DowngradeUnsupported => {
                 write!(f, "Downgrading below UFO v3 is not currently supported.")
             }
