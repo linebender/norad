@@ -270,7 +270,7 @@ impl Layer {
         let mut info_content = plist::Value::from_file(path)
             .map_err(Error::PlistError)?
             .into_dictionary()
-            .ok_or(Error::ExpectedPlistDictionaryError)?;
+            .ok_or_else(|| Error::ExpectedPlistDictionary(path.to_string_lossy().into_owned()))?;
 
         let mut color = None;
         let color_str = info_content.remove("color");
@@ -282,7 +282,9 @@ impl Layer {
         };
 
         let lib = match info_content.remove("lib") {
-            Some(v) => v.into_dictionary().ok_or(Error::ExpectedPlistDictionaryError)?,
+            Some(v) => v.into_dictionary().ok_or_else(|| {
+                Error::ExpectedPlistDictionary(format!("{} (lib)", path.to_string_lossy()))
+            })?,
             None => Plist::new(),
         };
 

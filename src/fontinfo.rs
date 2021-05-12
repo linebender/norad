@@ -9,7 +9,6 @@ use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 
-use crate::error::ErrorKind;
 use crate::shared_types::{
     Bitlist, Float, Integer, IntegerOrFloat, NonNegativeInteger, NonNegativeIntegerOrFloat,
     PUBLIC_OBJECT_LIBS_KEY,
@@ -764,7 +763,9 @@ impl FontInfo {
     /// The key will be removed from the font lib.
     fn load_object_libs(&mut self, lib: &mut Plist) -> Result<(), Error> {
         let mut object_libs = match lib.remove(PUBLIC_OBJECT_LIBS_KEY) {
-            Some(lib) => lib.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?,
+            Some(lib) => lib
+                .into_dictionary()
+                .ok_or_else(|| Error::ExpectedPlistDictionary(PUBLIC_OBJECT_LIBS_KEY.into()))?,
             None => return Ok(()),
         };
 
@@ -773,8 +774,13 @@ impl FontInfo {
                 if let Some(lib) =
                     guideline.identifier().and_then(|id| object_libs.remove(id.as_str()))
                 {
-                    let lib =
-                        lib.into_dictionary().ok_or(Error::InvalidDataError(ErrorKind::BadLib))?;
+                    let lib = lib.into_dictionary().ok_or_else(|| {
+                        Error::ExpectedPlistDictionary(format!(
+                            "{}, {}",
+                            PUBLIC_OBJECT_LIBS_KEY,
+                            guideline.identifier().unwrap().as_str(),
+                        ))
+                    })?;
                     guideline.replace_lib(lib);
                 }
             }
