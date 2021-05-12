@@ -276,7 +276,7 @@ impl Layer {
         let color_str = info_content.remove("color");
         if let Some(v) = color_str {
             match v.into_string() {
-                Some(s) => color.replace(Color::from_str(&s).map_err(Error::InvalidDataError)?),
+                Some(s) => color.replace(Color::from_str(&s).map_err(Error::InvalidColor)?),
                 None => return Err(Error::ExpectedPlistStringError),
             };
         };

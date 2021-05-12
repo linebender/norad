@@ -422,7 +422,6 @@ impl<'names> GlifParser<'names> {
             let attr = attr?;
             let value = attr.unescaped_value()?;
             let value = reader.decode(&value)?;
-            let pos = reader.buffer_position();
             match attr.key {
                 b"x" => {
                     x = Some(value.parse().map_err(|_| err!(reader, ErrorKind::BadNumber))?);
@@ -434,7 +433,9 @@ impl<'names> GlifParser<'names> {
                     angle = Some(value.parse().map_err(|_| err!(reader, ErrorKind::BadNumber))?);
                 }
                 b"name" => name = Some(value.to_string()),
-                b"color" => color = Some(value.parse().map_err(|e: ErrorKind| e.to_error(pos))?),
+                b"color" => {
+                    color = Some(value.parse().map_err(|_| err!(reader, ErrorKind::BadColor))?)
+                }
                 b"identifier" => {
                     identifier = Some(value.parse().map_err(|kind| err!(reader, kind))?);
                 }
@@ -482,7 +483,9 @@ impl<'names> GlifParser<'names> {
                 b"yScale" => transform.y_scale = value.parse().map_err(|_| (kind, pos))?,
                 b"xOffset" => transform.x_offset = value.parse().map_err(|_| (kind, pos))?,
                 b"yOffset" => transform.y_offset = value.parse().map_err(|_| (kind, pos))?,
-                b"color" => color = Some(value.parse().map_err(|e: ErrorKind| e.to_error(pos))?),
+                b"color" => {
+                    color = Some(value.parse().map_err(|_| err!(reader, ErrorKind::BadColor))?)
+                }
                 b"fileName" => filename = Some(PathBuf::from(value.to_string())),
                 _other => return Err(err!(reader, ErrorKind::UnexpectedImageField)),
             }
