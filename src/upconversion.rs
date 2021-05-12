@@ -196,7 +196,7 @@ pub(crate) fn upconvert_ufov1_robofab_data(
         fontinfo.postscript_stem_snap_h = ps_hinting_data.h_stems;
         fontinfo.postscript_stem_snap_v = ps_hinting_data.v_stems;
 
-        fontinfo.validate().map_err(|_| Error::FontInfoUpconversionError)?;
+        fontinfo.validate().map_err(|_| Error::FontInfoUpconversion)?;
     }
 
     lib.remove("org.robofab.postScriptHintData");

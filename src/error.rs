@@ -29,13 +29,13 @@ pub enum Error {
     Glif(GlifError),
     GlifWrite(GlifWriteError),
     PlistError(PlistError),
-    FontInfoError,
-    FontInfoUpconversionError,
-    GroupsError(GroupsValidationError),
-    GroupsUpconversionError(GroupsValidationError),
+    InvalidFontInfo,
+    FontInfoUpconversion,
+    InvalidGroups(GroupsValidationError),
+    GroupsUpconversionFailure(GroupsValidationError),
     // the string is the key
     ExpectedPlistDictionary(String),
-    ExpectedPlistStringError,
+    ExpectedPlistString,
     ExpectedPositiveValue,
 }
 
@@ -167,18 +167,18 @@ impl std::fmt::Display for Error {
                 write!(f, "Failed to save glyph {}, error: '{}'", name, inner)
             }
             Error::PlistError(e) => e.fmt(f),
-            Error::FontInfoError => write!(f, "FontInfo contains invalid data"),
-            Error::FontInfoUpconversionError => {
+            Error::InvalidFontInfo => write!(f, "FontInfo contains invalid data"),
+            Error::FontInfoUpconversion => {
                 write!(f, "FontInfo contains invalid data after upconversion")
             }
-            Error::GroupsError(ge) => ge.fmt(f),
-            Error::GroupsUpconversionError(ge) => {
+            Error::InvalidGroups(ge) => ge.fmt(f),
+            Error::GroupsUpconversionFailure(ge) => {
                 write!(f, "Upconverting UFO v1 or v2 kerning data to v3 failed: {}", ge)
             }
             Error::ExpectedPlistDictionary(key) => {
                 write!(f, "Expected a Plist dictionary at '{}'", key)
             }
-            Error::ExpectedPlistStringError => write!(f, "Expected a Plist string."),
+            Error::ExpectedPlistString => write!(f, "Expected a Plist string."),
             Error::ExpectedPositiveValue => {
                 write!(f, "PositiveIntegerOrFloat expects a positive value.")
             }
