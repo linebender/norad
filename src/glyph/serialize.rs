@@ -116,7 +116,7 @@ fn write_lib_section<T: Write>(lib: &Plist, writer: &mut Writer<T>) -> Result<()
     let as_value: plist::Value = lib.to_owned().into();
     let mut out_buffer = Vec::with_capacity(256); // a reasonable min size?
     as_value.to_writer_xml(&mut out_buffer)?;
-    let lib_xml = String::from_utf8(out_buffer).expect("xml writer writs valid utf8");
+    let lib_xml = String::from_utf8(out_buffer).expect("XML writer wrote invalid UTF-8");
     let header = "<plist version=\"1.0\">\n";
     let footer = "\n</plist>";
     let start_idx = lib_xml
