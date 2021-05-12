@@ -6,7 +6,6 @@ mod serialize;
 #[cfg(test)]
 mod tests;
 
-use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -257,7 +256,7 @@ impl Contour {
     #[cfg(feature = "kurbo")]
     pub fn to_kurbo(&self) -> Result<kurbo::BezPath, ErrorKind> {
         let mut path = kurbo::BezPath::new();
-        let mut offs: VecDeque<kurbo::Point> = VecDeque::new();
+        let mut offs = std::collections::VecDeque::new();
         let mut points = if self.is_closed() {
             // Add end-of-contour offcurves to queue
             let rotate = self
