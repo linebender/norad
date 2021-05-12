@@ -273,7 +273,7 @@ impl Contour {
         if let Some(start) = points.next() {
             path.move_to(start.to_kurbo());
         }
-        for pt in &self.points {
+        for pt in points {
             let kurbo_point = pt.to_kurbo();
             match pt.typ {
                 PointType::Move => path.move_to(kurbo_point),
