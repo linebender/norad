@@ -269,7 +269,7 @@ impl Contour {
             path.move_to(kurbo::Point::new(self.points[i].x as f64, self.points[i].y as f64));
         }
         for pt in &self.points {
-            let kurbo_point = kurbo::Point::new(pt.x as f64, pt.y as f64);
+            let kurbo_point = pt.to_kurbo();
             match pt.typ {
                 PointType::Move => path.move_to(kurbo_point),
                 PointType::Line => path.line_to(kurbo_point),
@@ -513,6 +513,12 @@ impl ContourPoint {
     /// returning the old identifier if present.
     pub fn replace_identifier(&mut self, id: Identifier) -> Option<Identifier> {
         self.identifier.replace(id)
+    }
+
+    /// Returns a kurbo::Point with the ContourPoint's coordinates.
+    #[cfg(feature = "kurbo")]
+    pub fn to_kurbo(&self) -> kurbo::Point {
+        kurbo::Point::new(self.x as f64, self.y as f64)
     }
 }
 
