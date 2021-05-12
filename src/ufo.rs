@@ -211,7 +211,7 @@ impl Font {
             let groups_path = path.join(GROUPS_FILE);
             let groups = if groups_path.exists() && self.data_request.groups {
                 let groups: Groups = plist::from_file(groups_path)?;
-                validate_groups(&groups).map_err(Error::GroupsError)?;
+                validate_groups(&groups).map_err(Error::InvalidGroups)?;
                 Some(groups)
             } else {
                 None
@@ -253,7 +253,7 @@ impl Font {
                 (_, Some(g), k) => {
                     let (groups, kerning) =
                         upconversion::upconvert_kerning(&g, &k.unwrap_or_default(), &glyph_names);
-                    validate_groups(&groups).map_err(Error::GroupsUpconversionError)?;
+                    validate_groups(&groups).map_err(Error::GroupsUpconversionFailure)?;
                     (Some(groups), Some(kerning))
                 }
             };
@@ -344,7 +344,7 @@ impl Font {
         }
 
         if let Some(groups) = self.groups.as_ref() {
-            validate_groups(&groups).map_err(Error::GroupsError)?;
+            validate_groups(&groups).map_err(Error::InvalidGroups)?;
             plist::to_file_xml(path.join(GROUPS_FILE), groups)?;
         }
 

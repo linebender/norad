@@ -277,7 +277,7 @@ impl Layer {
         if let Some(v) = color_str {
             match v.into_string() {
                 Some(s) => color.replace(Color::from_str(&s).map_err(Error::InvalidColor)?),
-                None => return Err(Error::ExpectedPlistStringError),
+                None => return Err(Error::ExpectedPlistString),
             };
         };
 

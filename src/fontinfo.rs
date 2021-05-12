@@ -496,7 +496,7 @@ impl FontInfo {
                     year: fontinfo_v2.year,
                     ..FontInfo::default()
                 };
-                fontinfo.validate().map_err(|_| Error::FontInfoUpconversionError)?;
+                fontinfo.validate().map_err(|_| Error::FontInfoUpconversion)?;
                 Ok(fontinfo)
             }
             FormatVersion::V1 => {
@@ -546,7 +546,7 @@ impl FontInfo {
                             "Expanded" => Some(Os2WidthClass::Expanded),
                             "Extra-expanded" => Some(Os2WidthClass::ExtraExpanded),
                             "Ultra-expanded" => Some(Os2WidthClass::UltraExpanded),
-                            _ => return Err(Error::FontInfoError),
+                            _ => return Err(Error::InvalidFontInfo),
                         },
                         None => None,
                     },
@@ -578,7 +578,7 @@ impl FontInfo {
                             222 => Some(PostscriptWindowsCharacterSet::Thai),
                             238 => Some(PostscriptWindowsCharacterSet::EasternEuropean),
                             255 => Some(PostscriptWindowsCharacterSet::Oem),
-                            _ => return Err(Error::FontInfoError),
+                            _ => return Err(Error::InvalidFontInfo),
                         },
                         None => None,
                     },
@@ -589,7 +589,7 @@ impl FontInfo {
                             1 => Some(StyleMapStyle::Italic),
                             32 => Some(StyleMapStyle::Bold),
                             33 => Some(StyleMapStyle::BoldItalic),
-                            _ => return Err(Error::FontInfoError),
+                            _ => return Err(Error::InvalidFontInfo),
                         },
                         None => None,
                     },
@@ -604,7 +604,7 @@ impl FontInfo {
                     year: fontinfo_v1.year,
                     ..FontInfo::default()
                 };
-                fontinfo.validate().map_err(|_| Error::FontInfoUpconversionError)?;
+                fontinfo.validate().map_err(|_| Error::FontInfoUpconversion)?;
                 Ok(fontinfo)
             }
         }
@@ -620,25 +620,25 @@ impl FontInfo {
         if let Some(v) = &self.open_type_head_created {
             const DATE_LENGTH: usize = 19;
             if v.len() != DATE_LENGTH {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
             if !v.chars().all(|b| b.is_ascii_digit() || b == ' ' || b == '/' || b == ':') {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
 
             if !(v[0..4].parse::<u16>().is_ok()
                 && &v[4..5] == "/"
-                && v[5..7].parse::<u8>().map_err(|_| Error::FontInfoError)? <= 12
+                && v[5..7].parse::<u8>().map_err(|_| Error::InvalidFontInfo)? <= 12
                 && &v[7..8] == "/"
-                && v[8..10].parse::<u8>().map_err(|_| Error::FontInfoError)? <= 31
+                && v[8..10].parse::<u8>().map_err(|_| Error::InvalidFontInfo)? <= 31
                 && &v[10..11] == " "
-                && v[11..13].parse::<u8>().map_err(|_| Error::FontInfoError)? < 24
+                && v[11..13].parse::<u8>().map_err(|_| Error::InvalidFontInfo)? < 24
                 && &v[13..14] == ":"
-                && v[14..16].parse::<u8>().map_err(|_| Error::FontInfoError)? < 60
+                && v[14..16].parse::<u8>().map_err(|_| Error::InvalidFontInfo)? < 60
                 && &v[16..17] == ":"
-                && v[17..19].parse::<u8>().map_err(|_| Error::FontInfoError)? < 60)
+                && v[17..19].parse::<u8>().map_err(|_| Error::InvalidFontInfo)? < 60)
             {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
 
@@ -653,7 +653,7 @@ impl FontInfo {
                 let mut last = vs_iter.next().unwrap();
                 for current in vs_iter {
                     if last > current {
-                        return Err(Error::FontInfoError);
+                        return Err(Error::InvalidFontInfo);
                     }
                     last = current;
                 }
@@ -666,7 +666,7 @@ impl FontInfo {
             for guideline in guidelines {
                 if let Some(id) = guideline.identifier() {
                     if !identifiers.insert(id.clone()) {
-                        return Err(Error::FontInfoError);
+                        return Err(Error::InvalidFontInfo);
                     }
                 }
             }
@@ -675,84 +675,84 @@ impl FontInfo {
         // openTypeOS2Selection must not contain bits 0, 5 or 6.
         if let Some(v) = &self.open_type_os2_selection {
             if v.contains(&0) || v.contains(&5) || v.contains(&6) {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
 
         if let Some(v) = &self.open_type_os2_family_class {
             if !v.is_valid() {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
 
         // The Postscript blue zone and stem widths lists have a length limitation.
         if let Some(v) = &self.postscript_blue_values {
             if v.len() > 14 {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
         if let Some(v) = &self.postscript_other_blues {
             if v.len() > 10 {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
         if let Some(v) = &self.postscript_family_blues {
             if v.len() > 14 {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
         if let Some(v) = &self.postscript_family_other_blues {
             if v.len() > 10 {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
         if let Some(v) = &self.postscript_stem_snap_h {
             if v.len() > 12 {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
         if let Some(v) = &self.postscript_stem_snap_v {
             if v.len() > 12 {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
 
         // Certain WOFF attributes must contain at least one item if they are present.
         if let Some(v) = &self.woff_metadata_extensions {
             if v.is_empty() {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
 
             for record in v.iter() {
                 if record.items.is_empty() {
-                    return Err(Error::FontInfoError);
+                    return Err(Error::InvalidFontInfo);
                 }
 
                 for record_item in record.items.iter() {
                     if record_item.names.is_empty() || record_item.values.is_empty() {
-                        return Err(Error::FontInfoError);
+                        return Err(Error::InvalidFontInfo);
                     }
                 }
             }
         }
         if let Some(v) = &self.woff_metadata_credits {
             if v.credits.is_empty() {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
         if let Some(v) = &self.woff_metadata_copyright {
             if v.text.is_empty() {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
         if let Some(v) = &self.woff_metadata_description {
             if v.text.is_empty() {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
         if let Some(v) = &self.woff_metadata_trademark {
             if v.text.is_empty() {
-                return Err(Error::FontInfoError);
+                return Err(Error::InvalidFontInfo);
             }
         }
 
