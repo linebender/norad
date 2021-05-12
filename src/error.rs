@@ -23,6 +23,7 @@ pub enum Error {
     MissingLayer(String),
     DuplicateLayer(String),
     MissingLayerContents,
+    InvalidColor(InvalidColorString),
     IoError(IoError),
     ParseError(XmlError),
     Glif(GlifError),
@@ -43,6 +44,18 @@ pub enum Error {
 pub enum GroupsValidationError {
     InvalidName,
     OverlappingKerningGroups { glyph_name: String, group_name: String },
+}
+
+/// A [`Color`] string was invalid.
+#[derive(Debug)]
+pub struct InvalidColorString {
+    source: String,
+}
+
+impl InvalidColorString {
+    pub(crate) fn new(source: String) -> Self {
+        InvalidColorString { source }
+    }
 }
 
 /// An error that occurs while parsing a .glif file
@@ -146,6 +159,7 @@ impl std::fmt::Display for Error {
             }
             Error::IoError(e) => e.fmt(f),
             Error::ParseError(e) => e.fmt(f),
+            Error::InvalidColor(e) => e.fmt(f),
             Error::Glif(GlifError { path, position, kind }) => {
                 write!(f, "Glif error in {:?} index {}: '{}", path, position, kind)
             }
@@ -281,9 +295,24 @@ impl std::error::Error for Error {
     }
 }
 
+impl std::fmt::Display for InvalidColorString {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Invalid color string '{}'", self.source)
+    }
+}
+
+impl std::error::Error for InvalidColorString {}
+
 impl ErrorKind {
     pub(crate) fn to_error(self, position: usize) -> GlifErrorInternal {
         GlifErrorInternal::Spec { kind: self, position }
+    }
+}
+
+#[doc(hidden)]
+impl From<InvalidColorString> for Error {
+    fn from(src: InvalidColorString) -> Error {
+        Error::InvalidColor(src)
     }
 }
 

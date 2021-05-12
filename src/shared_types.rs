@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "druid")]
 use druid::Data;
 
-use crate::error::ErrorKind;
+use crate::error::InvalidColorString;
 use crate::Error;
 
 pub static PUBLIC_OBJECT_LIBS_KEY: &str = "public.objectLibs";
@@ -28,19 +28,19 @@ pub struct Color {
 }
 
 impl FromStr for Color {
-    type Err = ErrorKind;
+    type Err = InvalidColorString;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut iter = s.split(',').map(|v| match v.parse::<f32>() {
             Ok(val) if (0.0..=1.0).contains(&val) => Ok(val),
-            _ => Err(ErrorKind::BadColor),
+            _ => Err(InvalidColorString::new(s.to_owned())),
         });
-        let red = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
-        let green = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
-        let blue = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
-        let alpha = iter.next().unwrap_or(Err(ErrorKind::BadColor))?;
+        let red = iter.next().unwrap_or_else(|| Err(InvalidColorString::new(s.to_owned())))?;
+        let green = iter.next().unwrap_or_else(|| Err(InvalidColorString::new(s.to_owned())))?;
+        let blue = iter.next().unwrap_or_else(|| Err(InvalidColorString::new(s.to_owned())))?;
+        let alpha = iter.next().unwrap_or_else(|| Err(InvalidColorString::new(s.to_owned())))?;
         if iter.next().is_some() {
-            Err(ErrorKind::BadColor)
+            Err(InvalidColorString::new(s.to_owned()))
         } else {
             Ok(Color { red, green, blue, alpha })
         }
