@@ -16,6 +16,11 @@ use crate::{
 use crate::error::{GlifWriteError, WriteError};
 
 impl Glyph {
+    /// Serialize the glyph into an XML byte stream.
+    ///
+    /// The order of elements and attributes follows [ufonormalizer] where possible.
+    ///
+    /// [ufonormalizer]: https://github.com/unified-font-object/ufoNormalizer/
     pub fn encode_xml(&self) -> Result<Vec<u8>, GlifWriteError> {
         self.encode_xml_impl().map_err(|inner| GlifWriteError { name: self.name.clone(), inner })
     }
@@ -44,18 +49,8 @@ impl Glyph {
             writer.write_event(Event::Empty(start))?;
         }
 
-        if let Some(ref note) = self.note {
-            writer.write_event(Event::Start(BytesStart::borrowed_name(b"note")))?;
-            writer.write_event(Event::Text(BytesText::from_plain_str(note)))?;
-            writer.write_event(Event::End(BytesEnd::borrowed(b"note")))?;
-        }
-
         if let Some(ref image) = self.image {
             writer.write_event(image.to_event())?;
-        }
-
-        for guide in &self.guidelines {
-            writer.write_event(guide.to_event())?;
         }
 
         if !self.contours.is_empty() || !self.components.is_empty() {
@@ -73,6 +68,10 @@ impl Glyph {
             writer.write_event(anchor.to_event())?;
         }
 
+        for guide in &self.guidelines {
+            writer.write_event(guide.to_event())?;
+        }
+
         // Object libs are treated specially. The UFO v3 format won't allow us
         // to store them inline, so they have to be placed into the glyph's lib
         // under the public.objectLibs parent key. To avoid mutation behind the
@@ -87,6 +86,12 @@ impl Glyph {
             write_lib_section(&new_lib, &mut writer)?;
         } else if !self.lib.is_empty() {
             write_lib_section(&self.lib, &mut writer)?;
+        }
+
+        if let Some(ref note) = self.note {
+            writer.write_event(Event::Start(BytesStart::borrowed_name(b"note")))?;
+            writer.write_event(Event::Text(BytesText::from_plain_str(note)))?;
+            writer.write_event(Event::End(BytesEnd::borrowed(b"note")))?;
         }
 
         writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;
@@ -148,6 +153,10 @@ impl Guideline {
             Line::Angle { x, y, degrees } => (Some(x), Some(y), Some(degrees)),
         };
 
+        if let Some(name) = &self.name {
+            start.push_attribute(("name", name.as_str()));
+        }
+
         if let Some(x) = x {
             start.push_attribute(("x", x.to_string().as_str()))
         }
@@ -158,10 +167,6 @@ impl Guideline {
 
         if let Some(angle) = angle {
             start.push_attribute(("angle", angle.to_string().as_str()))
-        }
-
-        if let Some(name) = &self.name {
-            start.push_attribute(("name", name.as_str()));
         }
 
         if let Some(color) = &self.color {
@@ -186,13 +191,14 @@ impl Anchor {
         start.push_attribute(("x", self.x.to_string().as_str()));
         start.push_attribute(("y", self.y.to_string().as_str()));
 
+        if let Some(color) = &self.color {
+            start.push_attribute(("color", color.to_rgba_string().as_str()));
+        }
+
         if let Some(id) = &self.identifier {
             start.push_attribute(("identifier", id.as_str()));
         }
 
-        if let Some(color) = &self.color {
-            start.push_attribute(("color", color.to_rgba_string().as_str()));
-        }
         Event::Empty(start)
     }
 }
@@ -233,6 +239,10 @@ impl ContourPoint {
     fn to_event(&self) -> Event {
         let mut start = BytesStart::borrowed_name(b"point");
 
+        if let Some(name) = &self.name {
+            start.push_attribute(("name", name.as_str()));
+        }
+
         start.push_attribute(("x", self.x.to_string().as_str()));
         start.push_attribute(("y", self.y.to_string().as_str()));
 
@@ -243,10 +253,6 @@ impl ContourPoint {
 
         if self.smooth {
             start.push_attribute(("smooth", "yes"));
-        }
-
-        if let Some(name) = &self.name {
-            start.push_attribute(("name", name.as_str()));
         }
 
         if let Some(id) = &self.identifier {

@@ -24,6 +24,15 @@ fn serialize_empty_glyph() {
     );
 }
 
+// Fixme: the lib section is written out unordered.
+// #[test]
+// fn serialize_full_glyph() {
+//     let bytes = include_bytes!("../../testdata/sample_period_normalized.glif");
+//     let glyph = parse_glyph(bytes).unwrap();
+//     let glif = glyph.encode_xml().unwrap();
+//     assert_eq!(std::str::from_utf8(&glif).unwrap(), std::str::from_utf8(bytes).unwrap());
+// }
+
 #[test]
 fn parse() {
     let bytes = include_bytes!("../../testdata/sample_period.glif");
