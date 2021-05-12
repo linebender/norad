@@ -124,6 +124,22 @@ fn skip_zero_advance() {
     assert!(as_str.contains("advance"));
 }
 
+// https://github.com/linebender/norad/issues/105
+#[test]
+fn skip_empty_outline() {
+    let glyph = Glyph::new_named("A");
+    let encoded = glyph.encode_xml().unwrap();
+    let as_str = String::from_utf8(encoded).expect("xml is valid utf-8");
+    assert!(!as_str.contains("outline"));
+
+    let mut glyph = Glyph::new_named("B");
+    glyph.components = vec![Component::new("A".into(), AffineTransform::default(), None, None)];
+
+    let encoded = glyph.encode_xml().unwrap();
+    let as_str = String::from_utf8(encoded).expect("xml is valid utf-8");
+    assert!(as_str.contains("outline"));
+}
+
 #[test]
 fn notdef_failure() {
     let bytes = include_bytes!("../../testdata/noto-cjk-notdef.glif");

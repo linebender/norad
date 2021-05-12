@@ -58,14 +58,16 @@ impl Glyph {
             writer.write_event(guide.to_event())?;
         }
 
-        writer.write_event(Event::Start(BytesStart::borrowed_name(b"outline")))?;
-        for contour in &self.contours {
-            contour.write_xml(&mut writer)?;
+        if !self.contours.is_empty() || !self.components.is_empty() {
+            writer.write_event(Event::Start(BytesStart::borrowed_name(b"outline")))?;
+            for contour in &self.contours {
+                contour.write_xml(&mut writer)?;
+            }
+            for component in &self.components {
+                writer.write_event(component.to_event())?;
+            }
+            writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
         }
-        for component in &self.components {
-            writer.write_event(component.to_event())?;
-        }
-        writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
 
         for anchor in &self.anchors {
             writer.write_event(anchor.to_event())?;
