@@ -43,7 +43,7 @@ pub enum Error {
     ExpectedPlistString,
     ExpectedPositiveValue,
     #[cfg(feature = "kurbo")]
-    ConvertContour(ErrorKind),
+    ContourDrawing(ErrorKind),
 }
 
 /// An error representing a failure to validate UFO groups.
@@ -193,7 +193,7 @@ impl std::fmt::Display for Error {
                 write!(f, "PositiveIntegerOrFloat expects a positive value.")
             }
             #[cfg(feature = "kurbo")]
-            Error::ConvertContour(cause) => write!(f, "Failed to convert contour: '{}'", cause),
+            Error::ContourDrawing(cause) => write!(f, "Failed to draw contour: '{}'", cause),
         }
     }
 }
