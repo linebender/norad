@@ -253,7 +253,7 @@ impl Contour {
         self.points.first().map_or(true, |v| v.typ != PointType::Move)
     }
 
-    /// Converts the contour to a kurbo::BezPath
+    /// Converts the `Contour` to a [`kurbo::BezPath`].
     #[cfg(feature = "kurbo")]
     pub fn to_kurbo(&self) -> Result<kurbo::BezPath, ErrorKind> {
         let mut path = kurbo::BezPath::new();
@@ -523,7 +523,7 @@ impl ContourPoint {
         self.identifier.replace(id)
     }
 
-    /// Returns a kurbo::Point with the ContourPoint's coordinates.
+    /// Returns a [`kurbo::Point`] with this `ContourPoint`'s coordinates.
     #[cfg(feature = "kurbo")]
     pub fn to_kurbo(&self) -> kurbo::Point {
         kurbo::Point::new(self.x as f64, self.y as f64)
