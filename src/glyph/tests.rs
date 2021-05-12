@@ -85,6 +85,20 @@ fn parse_note() {
     assert_eq!(glyph.note, Some(".notdef".to_string()));
 }
 
+// https://github.com/linebender/norad/issues/125
+#[test]
+fn guides_after_anchors() {
+    let mut glyph = Glyph::new_named("A");
+    glyph.anchors.push(Anchor::new(5., 10., None, None, None, None));
+    glyph.guidelines.push(Guideline::new(Line::Vertical(4.0), None, None, None, None));
+    let encoded = glyph.encode_xml().unwrap();
+    let as_str = String::from_utf8(encoded).expect("xml is valid utf-8");
+
+    let guide_pos = as_str.find("guideline").expect("should serialize guideline");
+    let anchor_pos = as_str.find("anchor").expect("should serialize anchor");
+    assert!(guide_pos > anchor_pos);
+}
+
 #[test]
 fn save() {
     let bytes = include_bytes!("../../testdata/sample_period.glif");
