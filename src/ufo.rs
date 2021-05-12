@@ -192,9 +192,9 @@ impl Font {
 
             let lib_path = path.join(LIB_FILE);
             let mut lib = if lib_path.exists() && self.data_request.lib {
-                plist::Value::from_file(&lib_path)?
-                    .into_dictionary()
-                    .ok_or(Error::ExpectedPlistDictionaryError)?
+                plist::Value::from_file(&lib_path)?.into_dictionary().ok_or_else(|| {
+                    Error::ExpectedPlistDictionary(lib_path.to_string_lossy().into_owned())
+                })?
             } else {
                 Plist::new()
             };

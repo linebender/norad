@@ -1,4 +1,4 @@
-//! Errors, errors, errors
+//! Error types.
 
 use std::io::Error as IoError;
 use std::path::PathBuf;
@@ -33,10 +33,10 @@ pub enum Error {
     FontInfoUpconversionError,
     GroupsError(GroupsValidationError),
     GroupsUpconversionError(GroupsValidationError),
-    ExpectedPlistDictionaryError,
+    // the string is the key
+    ExpectedPlistDictionary(String),
     ExpectedPlistStringError,
     ExpectedPositiveValue,
-    InvalidDataError(ErrorKind),
 }
 
 /// An error representing a failure to validate UFO groups.
@@ -175,13 +175,12 @@ impl std::fmt::Display for Error {
             Error::GroupsUpconversionError(ge) => {
                 write!(f, "Upconverting UFO v1 or v2 kerning data to v3 failed: {}", ge)
             }
-            Error::ExpectedPlistDictionaryError => write!(f, "Expected a Plist dictionary."),
+            Error::ExpectedPlistDictionary(key) => {
+                write!(f, "Expected a Plist dictionary at '{}'", key)
+            }
             Error::ExpectedPlistStringError => write!(f, "Expected a Plist string."),
             Error::ExpectedPositiveValue => {
                 write!(f, "PositiveIntegerOrFloat expects a positive value.")
-            }
-            Error::InvalidDataError(e) => {
-                write!(f, "Type parsing error: '{}", e)
             }
         }
     }
