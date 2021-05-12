@@ -190,8 +190,8 @@ impl Data for Glyph {
     fn same(&self, other: &Glyph) -> bool {
         self.name.same(&other.name)
             && self.format.same(&other.format)
-            && self.height == other.height
-            && self.width == other.width
+            && self.height.same(&other.height)
+            && self.width.same(&other.width)
             && self.codepoints == other.codepoints
             && self.note == other.note
             && self.guidelines == other.guidelines
@@ -286,9 +286,9 @@ impl Contour {
                 PointType::OffCurve => offs.push_back(kurbo_point),
                 PointType::Curve => {
                     match offs.make_contiguous() {
-                        &mut [] => return Err(ErrorKind::BadPoint),
-                        &mut [p1] => path.quad_to(p1, kurbo_point),
-                        &mut [p1, p2] => path.curve_to(p1, p2, kurbo_point),
+                        [] => return Err(ErrorKind::BadPoint),
+                        [p1] => path.quad_to(*p1, kurbo_point),
+                        [p1, p2] => path.curve_to(*p1, *p2, kurbo_point),
                         _ => return Err(ErrorKind::TooManyOffCurves),
                     };
                     offs.clear();
