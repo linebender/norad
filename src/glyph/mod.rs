@@ -286,7 +286,7 @@ impl Contour {
                         &mut [p1, p2] => path.curve_to(p1, p2, kurbo_point),
                         _ => return Err(ErrorKind::TooManyOffCurves),
                     };
-                    offs.truncate(0);
+                    offs.clear();
                 }
                 PointType::QCurve => {
                     while offs.len() > 1 {
@@ -294,7 +294,7 @@ impl Contour {
                         path.quad_to(offs.pop_front().unwrap(), implied_point);
                     }
                     path.quad_to(offs[0], kurbo_point);
-                    offs.truncate(0);
+                    offs.clear();
                 }
             }
         }
