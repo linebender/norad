@@ -289,11 +289,14 @@ impl Contour {
                     offs.clear();
                 }
                 PointType::QCurve => {
-                    while offs.len() > 1 {
-                        let implied_point = offs[0].midpoint(offs[1]);
-                        path.quad_to(offs.pop_front().unwrap(), implied_point);
+                    while let Some(pt) = offs.pop_front() {
+                        if let Some(next) = offs.front() {
+                            let implied_point = pt.midpoint(*next);
+                            path.quad_to(pt, implied_point);
+                        } else {
+                            path.quad_to(pt, kurbo_point);
+                        }
                     }
-                    path.quad_to(offs[0], kurbo_point);
                     offs.clear();
                 }
             }
