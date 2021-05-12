@@ -260,7 +260,7 @@ impl Contour {
 
     /// Converts the `Contour` to a [`kurbo::BezPath`].
     #[cfg(feature = "kurbo")]
-    pub fn to_kurbo(&self) -> Result<kurbo::BezPath, ErrorKind> {
+    pub fn to_kurbo(&self) -> Result<kurbo::BezPath, Error> {
         let mut path = kurbo::BezPath::new();
         let mut offs = std::collections::VecDeque::new();
         let mut points = if self.is_closed() {
@@ -286,10 +286,10 @@ impl Contour {
                 PointType::OffCurve => offs.push_back(kurbo_point),
                 PointType::Curve => {
                     match offs.make_contiguous() {
-                        [] => return Err(ErrorKind::BadPoint),
+                        [] => return Err(Error::ConvertContour(ErrorKind::BadPoint)),
                         [p1] => path.quad_to(*p1, kurbo_point),
                         [p1, p2] => path.curve_to(*p1, *p2, kurbo_point),
-                        _ => return Err(ErrorKind::TooManyOffCurves),
+                        _ => return Err(Error::ConvertContour(ErrorKind::TooManyOffCurves)),
                     };
                     offs.clear();
                 }
