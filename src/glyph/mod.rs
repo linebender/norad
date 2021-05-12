@@ -275,10 +275,10 @@ impl Contour {
                 PointType::Line => path.line_to(kurbo_point),
                 PointType::OffCurve => offs.push_back(kurbo_point),
                 PointType::Curve => {
-                    match offs.len() {
-                        0 => return Err(ErrorKind::BadPoint),
-                        1 => path.quad_to(offs[0], kurbo_point),
-                        2 => path.curve_to(offs[0], offs[1], kurbo_point),
+                    match offs.make_contiguous() {
+                        &mut [] => return Err(ErrorKind::BadPoint),
+                        &mut [p1] => path.quad_to(p1, kurbo_point),
+                        &mut [p1, p2] => path.curve_to(p1, p2, kurbo_point),
                         _ => return Err(ErrorKind::TooManyOffCurves),
                     };
                     offs.truncate(0);
