@@ -316,7 +316,14 @@ impl Font {
             fs::remove_dir_all(path)?;
         }
         fs::create_dir(path)?;
-        plist::to_file_xml(path.join(METAINFO_FILE), &self.meta)?;
+
+        // we want to always set ourselves as the creator when serializing,
+        // but we also don't have mutable access to self.
+        if self.meta.creator == DEFAULT_METAINFO_CREATOR {
+            plist::to_file_xml(path.join(METAINFO_FILE), &self.meta)?;
+        } else {
+            plist::to_file_xml(path.join(METAINFO_FILE), &MetaInfo::default())?;
+        }
 
         if let Some(font_info) = self.font_info.as_ref() {
             plist::to_file_xml(path.join(FONTINFO_FILE), &font_info)?;
