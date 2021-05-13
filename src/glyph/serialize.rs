@@ -40,11 +40,11 @@ impl Glyph {
         // Skip serializing advance if both values are zero, infinite, subnormal, or NaN.
         if self.width.is_normal() || self.height.is_normal() {
             let mut start = BytesStart::borrowed_name(b"advance");
-            if self.width != 0. {
-                start.push_attribute(("width", self.width.to_string().as_str()));
-            }
             if self.height != 0. {
                 start.push_attribute(("height", self.height.to_string().as_str()));
+            }
+            if self.width != 0. {
+                start.push_attribute(("width", self.width.to_string().as_str()));
             }
             writer.write_event(Event::Empty(start))?;
         }
