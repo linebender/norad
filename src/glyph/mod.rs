@@ -535,6 +535,14 @@ impl ContourPoint {
     pub fn to_kurbo(&self) -> kurbo::Point {
         kurbo::Point::new(self.x as f64, self.y as f64)
     }
+
+    /// Applies a transformation matrix to the point's coordinates
+    pub fn transform(&mut self, transform: AffineTransform) {
+        let new_x = transform.x_scale * self.x + transform.yx_scale * self.y + transform.x_offset;
+        let new_y = transform.xy_scale * self.x + transform.y_scale * self.y + transform.y_offset;
+        self.x = new_x;
+        self.y = new_y;
+    }
 }
 
 impl Component {
