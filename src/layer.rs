@@ -454,7 +454,6 @@ impl Layer {
         self.glyphs.values_mut().map(Arc::make_mut)
     }
 
-    #[cfg(test)]
     pub fn get_path(&self, name: &str) -> Option<&Path> {
         self.contents.get(name).map(PathBuf::as_path)
     }
