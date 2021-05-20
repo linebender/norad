@@ -454,6 +454,9 @@ impl Layer {
         self.glyphs.values_mut().map(Arc::make_mut)
     }
 
+    /// Returns the path to the .glif file of a given glyph name.
+    ///
+    /// The returned path is relative to the path of the current layer.
     pub fn get_path(&self, name: &str) -> Option<&Path> {
         self.contents.get(name).map(PathBuf::as_path)
     }
