@@ -27,6 +27,7 @@ pub mod fontinfo;
 mod glyph;
 mod guideline;
 mod identifier;
+pub mod kerning;
 mod layer;
 mod names;
 mod shared_types;
