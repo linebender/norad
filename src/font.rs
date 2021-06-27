@@ -1,4 +1,4 @@
-//! Reading and (maybe) writing Unified Font Object files.
+//! Reading and writing Unified Font Object files.
 
 #![deny(broken_intra_doc_links)]
 
