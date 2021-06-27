@@ -3,14 +3,13 @@
 #![deny(broken_intra_doc_links)]
 
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crate::error::GroupsValidationError;
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
+use crate::groups::{validate_groups, Groups};
 use crate::guideline::Guideline;
 use crate::kerning::Kerning;
 use crate::layer::{Layer, LayerSet, LAYER_CONTENTS_FILE};
@@ -26,10 +25,6 @@ static GROUPS_FILE: &str = "groups.plist";
 static KERNING_FILE: &str = "kerning.plist";
 static FEATURES_FILE: &str = "features.fea";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
-
-/// Groups is a map of group name to a list of glyph names. It's a BTreeMap because we need sorting
-/// for serialization.
-pub type Groups = BTreeMap<String, Vec<GlyphName>>;
 
 /// A Unified Font Object.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -456,48 +451,6 @@ impl Font {
             .guidelines
             .get_or_insert_with(Default::default)
     }
-}
-
-/// Validate the contents of the groups.plist file according to the rules in the
-/// [Unified Font Object v3 specification for groups.plist](http://unifiedfontobject.org/versions/ufo3/groups.plist/#specification).
-fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidationError> {
-    let mut kern1_set = HashSet::new();
-    let mut kern2_set = HashSet::new();
-    for (group_name, group_glyph_names) in groups_map {
-        if group_name.is_empty() {
-            return Err(GroupsValidationError::InvalidName);
-        }
-
-        if group_name.starts_with("public.kern1.") {
-            if group_name.len() == 13 {
-                // Prefix but no actual name.
-                return Err(GroupsValidationError::InvalidName);
-            }
-            for glyph_name in group_glyph_names {
-                if !kern1_set.insert(glyph_name) {
-                    return Err(GroupsValidationError::OverlappingKerningGroups {
-                        glyph_name: glyph_name.to_string(),
-                        group_name: group_name.to_string(),
-                    });
-                }
-            }
-        } else if group_name.starts_with("public.kern2.") {
-            if group_name.len() == 13 {
-                // Prefix but no actual name.
-                return Err(GroupsValidationError::InvalidName);
-            }
-            for glyph_name in group_glyph_names {
-                if !kern2_set.insert(glyph_name) {
-                    return Err(GroupsValidationError::OverlappingKerningGroups {
-                        glyph_name: glyph_name.to_string(),
-                        group_name: group_name.to_string(),
-                    });
-                }
-            }
-        }
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]

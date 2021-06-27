@@ -25,6 +25,7 @@ pub mod error;
 mod font;
 pub mod fontinfo;
 mod glyph;
+pub mod groups;
 mod guideline;
 mod identifier;
 pub mod kerning;
