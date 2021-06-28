@@ -163,35 +163,47 @@ impl Font {
     }
 
     /// Create a new `Font` only with certain fields.
+    #[doc(hidden)]
+    #[deprecated(
+        since = "0.4.1",
+        note = "To load only specific fields, use Font::load_requestd_data"
+    )]
     pub fn with_fields(data_request: DataRequest) -> Self {
         let mut ufo = Self::new();
         ufo.data_request = data_request;
         ufo
     }
 
-    /// Attempt to load a font object from a file. `path` must point to
-    /// a directory with the structure described in [v3 of the Unified Font Object][v3]
-    /// spec.
+    /// Attempt to load a font object from a file.
     ///
-    /// NOTE: This will consume the `public.objectLibs` key in the global lib and in glyph
-    /// libs and assign object libs found therein to global guidelines and glyph objects
-    /// with the matching identifier, respectively.
+    /// `path` must point to a directory with the structure described in
+    /// [v3 of the Unified Font Object][v3] spec.
+    ///
+    /// # Note
+    ///
+    /// This will consume the `public.objectLibs` key in the global lib
+    /// and in glyph libs and assign object libs found therein to global
+    /// guidelines and glyph objects with the matching identifier, respectively.
     ///
     /// [v3]: http://unifiedfontobject.org/versions/ufo3/
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Font, Error> {
-        Self::new().load_ufo(path)
+        Self::load_requested_data(path, DataRequest::default())
     }
 
-    pub fn load_ufo<P: AsRef<Path>>(&self, path: P) -> Result<Font, Error> {
+    /// Attempt to load the requested elements of a font object from a file.
+    pub fn load_requested_data(
+        path: impl AsRef<Path>,
+        request: DataRequest,
+    ) -> Result<Font, Error> {
         let path = path.as_ref();
 
         // minimize monomorphization
-        let load_impl = |ufo: &Font, path: &Path| -> Result<Font, Error> {
+        let load_impl = |path: &Path| -> Result<Font, Error> {
             let meta_path = path.join(METAINFO_FILE);
             let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
             let lib_path = path.join(LIB_FILE);
-            let mut lib = if lib_path.exists() && self.data_request.lib {
+            let mut lib = if lib_path.exists() && request.lib {
                 plist::Value::from_file(&lib_path)?.into_dictionary().ok_or_else(|| {
                     Error::ExpectedPlistDictionary(lib_path.to_string_lossy().into_owned())
                 })?
@@ -209,7 +221,7 @@ impl Font {
             };
 
             let groups_path = path.join(GROUPS_FILE);
-            let groups = if groups_path.exists() && self.data_request.groups {
+            let groups = if groups_path.exists() && request.groups {
                 let groups: Groups = plist::from_file(groups_path)?;
                 validate_groups(&groups).map_err(Error::InvalidGroups)?;
                 Some(groups)
@@ -218,7 +230,7 @@ impl Font {
             };
 
             let kerning_path = path.join(KERNING_FILE);
-            let kerning = if kerning_path.exists() && self.data_request.kerning {
+            let kerning = if kerning_path.exists() && request.kerning {
                 let kerning: Kerning = plist::from_file(kerning_path)?;
                 Some(kerning)
             } else {
@@ -226,7 +238,7 @@ impl Font {
             };
 
             let features_path = path.join(FEATURES_FILE);
-            let mut features = if features_path.exists() && self.data_request.features {
+            let mut features = if features_path.exists() && request.features {
                 let features = fs::read_to_string(features_path)?;
                 Some(features)
             } else {
@@ -234,7 +246,7 @@ impl Font {
             };
 
             let glyph_names = NameList::default();
-            let layers = if self.data_request.layers {
+            let layers = if request.layers {
                 if meta.format_version == FormatVersion::V3
                     && !path.join(LAYER_CONTENTS_FILE).exists()
                 {
@@ -283,11 +295,19 @@ impl Font {
                 groups,
                 kerning,
                 features,
-                data_request: ufo.data_request,
+                data_request: request,
             })
         };
 
-        load_impl(&self, path)
+        load_impl(path)
+    }
+
+    #[deprecated(
+        since = "0.4.1",
+        note = "To load only specific fields, use Font::load_requestd_data"
+    )]
+    pub fn load_ufo<P: AsRef<Path>>(&self, path: P) -> Result<Font, Error> {
+        Font::load_requested_data(path, self.data_request)
     }
 
     /// Attempt to save this UFO to the given path, overriding any existing contents.
@@ -573,7 +593,7 @@ mod tests {
     #[test]
     fn data_request() {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
-        let font_obj = Font::with_fields(DataRequest::none()).load_ufo(path).unwrap();
+        let font_obj = Font::load_requested_data(path, DataRequest::none()).unwrap();
         assert_eq!(font_obj.iter_layers().count(), 1);
         assert!(font_obj.layers.default_layer().is_empty());
         assert_eq!(font_obj.lib, Plist::new());
