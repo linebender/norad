@@ -32,7 +32,7 @@ pub struct LayerSet {
     layers: Vec<Layer>,
 }
 
-#[allow(clippy::clippy::len_without_is_empty)] // never empty
+#[allow(clippy::len_without_is_empty)] // never empty
 impl LayerSet {
     /// Load the layers from the provided path.
     ///
@@ -79,6 +79,7 @@ impl LayerSet {
     /// The number of layers in the set.
     ///
     /// This should be non-zero.
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.layers.len()
     }

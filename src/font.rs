@@ -157,12 +157,12 @@ impl Default for MetaInfo {
 }
 
 impl Font {
-    /// Create a new `Ufo`.
+    /// Create a new, empty `Font` object.
     pub fn new() -> Self {
         Font::default()
     }
 
-    /// Create a new `Ufo` only with certain fields
+    /// Create a new `Font` only with certain fields.
     pub fn with_fields(data_request: DataRequest) -> Self {
         let mut ufo = Self::new();
         ufo.data_request = data_request;
