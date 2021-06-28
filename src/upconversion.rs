@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
+use crate::font::{Groups, Kerning};
 use crate::fontinfo::FontInfo;
 use crate::names::NameList;
 use crate::shared_types::IntegerOrFloat;
-use crate::ufo::{Groups, Kerning};
 use crate::Error;
 
 /// Convert kerning groups and pairs from v1 and v2 informal conventions to
@@ -216,8 +216,8 @@ mod tests {
     extern crate maplit;
 
     use super::*;
+    use crate::font::{Font, FormatVersion};
     use crate::glyph::GlyphName;
-    use crate::ufo::{Font, FormatVersion};
     use maplit::btreemap;
 
     #[test]

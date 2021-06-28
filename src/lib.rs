@@ -22,6 +22,7 @@ extern crate serde_derive;
 extern crate serde_repr;
 
 pub mod error;
+mod font;
 pub mod fontinfo;
 mod glyph;
 mod guideline;
@@ -29,11 +30,11 @@ mod identifier;
 mod layer;
 mod names;
 mod shared_types;
-mod ufo;
 mod upconversion;
 pub mod util;
 
 pub use error::Error;
+pub use font::{DataRequest, Font, FormatVersion, MetaInfo};
 pub use fontinfo::FontInfo;
 pub use glyph::{
     AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, GlyphName,
@@ -43,7 +44,6 @@ pub use guideline::{Guideline, Line};
 pub use identifier::Identifier;
 pub use layer::{Layer, LayerSet};
 pub use shared_types::{Color, IntegerOrFloat, NonNegativeIntegerOrFloat, Plist};
-pub use ufo::{DataRequest, Font, FormatVersion, MetaInfo};
 
 #[allow(deprecated)]
-pub use ufo::Ufo;
+pub use font::Ufo;
