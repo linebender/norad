@@ -192,56 +192,40 @@ impl Font {
             let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
             let lib_path = path.join(LIB_FILE);
-            let mut lib = if lib_path.exists() && request.lib {
-                plist::Value::from_file(&lib_path)?.into_dictionary().ok_or_else(|| {
-                    Error::ExpectedPlistDictionary(lib_path.to_string_lossy().into_owned())
-                })?
-            } else {
-                Plist::new()
-            };
+            let mut lib =
+                if lib_path.exists() && request.lib { load_lib(&lib_path)? } else { Plist::new() };
 
             let fontinfo_path = path.join(FONTINFO_FILE);
             let mut font_info = if fontinfo_path.exists() {
-                let font_info: FontInfo =
-                    FontInfo::from_file(fontinfo_path, meta.format_version, &mut lib)?;
-                Some(font_info)
+                Some(load_fontinfo(&fontinfo_path, &meta, &mut lib)?)
             } else {
                 None
             };
 
             let groups_path = path.join(GROUPS_FILE);
             let groups = if groups_path.exists() && request.groups {
-                let groups: Groups = plist::from_file(groups_path)?;
-                validate_groups(&groups).map_err(Error::InvalidGroups)?;
-                Some(groups)
+                Some(load_groups(&groups_path)?)
             } else {
                 None
             };
 
             let kerning_path = path.join(KERNING_FILE);
             let kerning = if kerning_path.exists() && request.kerning {
-                let kerning: Kerning = plist::from_file(kerning_path)?;
-                Some(kerning)
+                Some(load_kerning(&kerning_path)?)
             } else {
                 None
             };
 
             let features_path = path.join(FEATURES_FILE);
             let mut features = if features_path.exists() && request.features {
-                let features = fs::read_to_string(features_path)?;
-                Some(features)
+                Some(load_features(&features_path)?)
             } else {
                 None
             };
 
             let glyph_names = NameList::default();
             let layers = if request.layers {
-                if meta.format_version == FormatVersion::V3
-                    && !path.join(LAYER_CONTENTS_FILE).exists()
-                {
-                    return Err(Error::MissingLayerContents);
-                }
-                LayerSet::load(path, &glyph_names)?
+                load_layers(path, &meta, &glyph_names)?
             } else {
                 LayerSet::default()
             };
@@ -451,6 +435,49 @@ impl Font {
             .guidelines
             .get_or_insert_with(Default::default)
     }
+}
+
+fn load_lib(lib_path: &Path) -> Result<plist::Dictionary, Error> {
+    plist::Value::from_file(lib_path)?
+        .into_dictionary()
+        .ok_or_else(|| Error::ExpectedPlistDictionary(lib_path.to_string_lossy().into_owned()))
+}
+
+fn load_fontinfo(
+    fontinfo_path: &Path,
+    meta: &MetaInfo,
+    lib: &mut plist::Dictionary,
+) -> Result<FontInfo, Error> {
+    let font_info: FontInfo = FontInfo::from_file(fontinfo_path, meta.format_version, lib)?;
+    Ok(font_info)
+}
+
+fn load_groups(groups_path: &Path) -> Result<Groups, Error> {
+    let groups: Groups = plist::from_file(groups_path)?;
+    validate_groups(&groups).map_err(Error::InvalidGroups)?;
+    Ok(groups)
+}
+
+fn load_kerning(kerning_path: &Path) -> Result<Kerning, Error> {
+    let kerning: Kerning = plist::from_file(kerning_path)?;
+    Ok(kerning)
+}
+
+fn load_features(features_path: &Path) -> Result<String, Error> {
+    let features = fs::read_to_string(features_path)?;
+    Ok(features)
+}
+
+fn load_layers(
+    ufo_path: &Path,
+    meta: &MetaInfo,
+    glyph_names: &NameList,
+) -> Result<LayerSet, Error> {
+    let layercontents_path = ufo_path.join(LAYER_CONTENTS_FILE);
+    if meta.format_version == FormatVersion::V3 && !layercontents_path.exists() {
+        return Err(Error::MissingLayerContents);
+    }
+    LayerSet::load(ufo_path, glyph_names)
 }
 
 #[cfg(test)]
