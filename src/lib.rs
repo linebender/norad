@@ -21,6 +21,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_repr;
 
+pub mod data_request;
 pub mod error;
 mod font;
 pub mod fontinfo;
@@ -35,8 +36,9 @@ mod shared_types;
 mod upconversion;
 pub mod util;
 
+pub use data_request::DataRequest;
 pub use error::Error;
-pub use font::{DataRequest, Font, FormatVersion, MetaInfo};
+pub use font::{Font, FormatVersion, MetaInfo};
 pub use fontinfo::FontInfo;
 pub use glyph::{
     AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, GlyphName,
