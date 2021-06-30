@@ -184,95 +184,83 @@ impl Font {
         path: impl AsRef<Path>,
         request: DataRequest,
     ) -> Result<Font, Error> {
-        let path = path.as_ref();
+        Self::load_impl(path.as_ref(), request)
+    }
 
-        // minimize monomorphization
-        let load_impl = |path: &Path| -> Result<Font, Error> {
-            let meta_path = path.join(METAINFO_FILE);
-            let mut meta: MetaInfo = plist::from_file(meta_path)?;
+    fn load_impl(path: &Path, request: DataRequest) -> Result<Font, Error> {
+        let meta_path = path.join(METAINFO_FILE);
+        let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
-            let lib_path = path.join(LIB_FILE);
-            let mut lib =
-                if lib_path.exists() && request.lib { load_lib(&lib_path)? } else { Plist::new() };
+        let lib_path = path.join(LIB_FILE);
+        let mut lib =
+            if lib_path.exists() && request.lib { load_lib(&lib_path)? } else { Plist::new() };
 
-            let fontinfo_path = path.join(FONTINFO_FILE);
-            let mut font_info = if fontinfo_path.exists() {
-                Some(load_fontinfo(&fontinfo_path, &meta, &mut lib)?)
-            } else {
-                None
-            };
-
-            let groups_path = path.join(GROUPS_FILE);
-            let groups = if groups_path.exists() && request.groups {
-                Some(load_groups(&groups_path)?)
-            } else {
-                None
-            };
-
-            let kerning_path = path.join(KERNING_FILE);
-            let kerning = if kerning_path.exists() && request.kerning {
-                Some(load_kerning(&kerning_path)?)
-            } else {
-                None
-            };
-
-            let features_path = path.join(FEATURES_FILE);
-            let mut features = if features_path.exists() && request.features {
-                Some(load_features(&features_path)?)
-            } else {
-                None
-            };
-
-            let glyph_names = NameList::default();
-            let layers = if request.layers {
-                load_layers(path, &meta, &glyph_names)?
-            } else {
-                LayerSet::default()
-            };
-
-            // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
-            // a groups.plist file, while a kerning.plist is optional.
-            let (groups, kerning) = match (meta.format_version, groups, kerning) {
-                (FormatVersion::V3, g, k) => (g, k), // For v3, we do nothing.
-                (_, None, k) => (None, k), // Without a groups.plist, there's nothing to upgrade.
-                (_, Some(g), k) => {
-                    let (groups, kerning) =
-                        upconversion::upconvert_kerning(&g, &k.unwrap_or_default(), &glyph_names);
-                    validate_groups(&groups).map_err(Error::GroupsUpconversionFailure)?;
-                    (Some(groups), Some(kerning))
-                }
-            };
-
-            // The v1 format stores some Postscript hinting related data in the lib,
-            // which we only import into fontinfo if we're reading a v1 UFO.
-            if meta.format_version == FormatVersion::V1 && lib_path.exists() {
-                let mut fontinfo =
-                    if let Some(fontinfo) = font_info { fontinfo } else { FontInfo::default() };
-
-                let features_upgraded: Option<String> =
-                    upconversion::upconvert_ufov1_robofab_data(&lib_path, &mut lib, &mut fontinfo)?;
-
-                if features_upgraded.is_some() && !features_upgraded.as_ref().unwrap().is_empty() {
-                    features = features_upgraded;
-                }
-                font_info = Some(fontinfo);
-            }
-
-            meta.format_version = FormatVersion::V3;
-
-            Ok(Font {
-                layers,
-                meta,
-                font_info,
-                lib,
-                groups,
-                kerning,
-                features,
-                data_request: request,
-            })
+        let fontinfo_path = path.join(FONTINFO_FILE);
+        let mut font_info = if fontinfo_path.exists() {
+            Some(load_fontinfo(&fontinfo_path, &meta, &mut lib)?)
+        } else {
+            None
         };
 
-        load_impl(path)
+        let groups_path = path.join(GROUPS_FILE);
+        let groups = if groups_path.exists() && request.groups {
+            Some(load_groups(&groups_path)?)
+        } else {
+            None
+        };
+
+        let kerning_path = path.join(KERNING_FILE);
+        let kerning = if kerning_path.exists() && request.kerning {
+            Some(load_kerning(&kerning_path)?)
+        } else {
+            None
+        };
+
+        let features_path = path.join(FEATURES_FILE);
+        let mut features = if features_path.exists() && request.features {
+            Some(load_features(&features_path)?)
+        } else {
+            None
+        };
+
+        let glyph_names = NameList::default();
+        let layers = if request.layers {
+            load_layers(path, &meta, &glyph_names)?
+        } else {
+            LayerSet::default()
+        };
+
+        // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
+        // a groups.plist file, while a kerning.plist is optional.
+        let (groups, kerning) = match (meta.format_version, groups, kerning) {
+            (FormatVersion::V3, g, k) => (g, k), // For v3, we do nothing.
+            (_, None, k) => (None, k), // Without a groups.plist, there's nothing to upgrade.
+            (_, Some(g), k) => {
+                let (groups, kerning) =
+                    upconversion::upconvert_kerning(&g, &k.unwrap_or_default(), &glyph_names);
+                validate_groups(&groups).map_err(Error::GroupsUpconversionFailure)?;
+                (Some(groups), Some(kerning))
+            }
+        };
+
+        // The v1 format stores some Postscript hinting related data in the lib,
+        // which we only import into fontinfo if we're reading a v1 UFO.
+        if meta.format_version == FormatVersion::V1 && lib_path.exists() {
+            let mut fontinfo =
+                if let Some(fontinfo) = font_info { fontinfo } else { FontInfo::default() };
+
+            let features_upgraded: Option<String> =
+                upconversion::upconvert_ufov1_robofab_data(&lib_path, &mut lib, &mut fontinfo)?;
+
+            if features_upgraded.is_some() && !features_upgraded.as_ref().unwrap().is_empty() {
+                features = features_upgraded;
+            }
+            font_info = Some(fontinfo);
+        }
+
+        meta.format_version = FormatVersion::V3;
+
+        Ok(Font { layers, meta, font_info, lib, groups, kerning, features, data_request: request })
     }
 
     #[deprecated(
