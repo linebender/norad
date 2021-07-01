@@ -12,9 +12,11 @@ use serde::Serialize;
 /// We use a `BTreeMap` because we need sorting for serialization.
 pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
 
+/// A helper for serializing kerning values.
+///
 /// KerningSerializer is a crutch to serialize kerning values as integers if they are
 /// integers rather than floats. This spares us having to use a wrapper type like
-/// IntegerOrFloat for kerning values.
+/// `IntegerOrFloat` for kerning values.
 pub(crate) struct KerningSerializer<'a> {
     pub(crate) kerning: &'a Kerning,
 }
