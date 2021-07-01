@@ -3,9 +3,13 @@ use std::collections::BTreeMap;
 use serde::ser::{SerializeMap, Serializer};
 use serde::Serialize;
 
-/// Kerning is a map of first half of a kerning pair (glyph name or group name) to the second half
-/// of a pair (glyph name or group name), which maps to the kerning value (high-level view:
-/// (first, second) => value). It's a BTreeMap because we need sorting for serialization.
+/// A map of kerning pairs.
+///
+/// This is represented as a map of first half of a kerning pair (glyph name or group name)
+/// to the second half of a pair (glyph name or group name), which maps to the kerning value
+/// (high-level view: (first, second) => value).
+///
+/// We use a `BTreeMap` because we need sorting for serialization.
 pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
 
 /// KerningSerializer is a crutch to serialize kerning values as integers if they are
