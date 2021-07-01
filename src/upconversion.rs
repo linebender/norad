@@ -1,8 +1,9 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
-use crate::font::{Groups, Kerning};
 use crate::fontinfo::FontInfo;
+use crate::groups::Groups;
+use crate::kerning::Kerning;
 use crate::names::NameList;
 use crate::shared_types::IntegerOrFloat;
 use crate::Error;

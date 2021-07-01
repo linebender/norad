@@ -54,6 +54,8 @@ pub enum GroupsValidationError {
 }
 
 /// A [`Color`] string was invalid.
+///
+/// [`Color`]: crate::Color
 #[derive(Debug)]
 pub struct InvalidColorString {
     source: String,

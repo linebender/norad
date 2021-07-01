@@ -1,24 +1,22 @@
-//! Reading and (maybe) writing Unified Font Object files.
+//! Reading and writing Unified Font Object files.
 
 #![deny(broken_intra_doc_links)]
 
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use serde::ser::{SerializeMap, Serializer};
-use serde::Serialize;
-
-use crate::error::GroupsValidationError;
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
+use crate::groups::{validate_groups, Groups};
 use crate::guideline::Guideline;
+use crate::kerning::Kerning;
 use crate::layer::{Layer, LayerSet, LAYER_CONTENTS_FILE};
 use crate::names::NameList;
 use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
 use crate::upconversion;
+use crate::DataRequest;
 use crate::Error;
 
 static METAINFO_FILE: &str = "metainfo.plist";
@@ -28,14 +26,6 @@ static GROUPS_FILE: &str = "groups.plist";
 static KERNING_FILE: &str = "kerning.plist";
 static FEATURES_FILE: &str = "features.fea";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
-
-/// Groups is a map of group name to a list of glyph names. It's a BTreeMap because we need sorting
-/// for serialization.
-pub type Groups = BTreeMap<String, Vec<GlyphName>>;
-/// Kerning is a map of first half of a kerning pair (glyph name or group name) to the second half
-/// of a pair (glyph name or group name), which maps to the kerning value (high-level view:
-/// (first, second) => value). It's a BTreeMap because we need sorting for serialization.
-pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
 
 /// A Unified Font Object.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -54,77 +44,6 @@ pub struct Font {
 #[doc(hidden)]
 #[deprecated(since = "0.4.0", note = "Renamed to Font")]
 pub type Ufo = Font;
-
-/// A type that describes which components of a UFO should be loaded.
-///
-/// By default, we load all components of the UFO file; however if you only
-/// need some subset of these, you can pass this struct to [`Ufo::with_fields`]
-/// in order to only load the fields specified in this object. This can help a
-/// lot with performance with large UFO files if you don't need the glyph data.
-///
-/// [`Ufo::with_fields`]: struct.Ufo.html#method.with_fields
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[non_exhaustive]
-pub struct DataRequest {
-    pub layers: bool,
-    pub lib: bool,
-    pub groups: bool,
-    pub kerning: bool,
-    pub features: bool,
-}
-
-impl DataRequest {
-    fn from_bool(b: bool) -> Self {
-        DataRequest { layers: b, lib: b, groups: b, kerning: b, features: b }
-    }
-
-    /// Returns a `DataRequest` requesting all UFO data.
-    pub fn all() -> Self {
-        DataRequest::from_bool(true)
-    }
-
-    /// Returns a `DataRequest` requesting no UFO data.
-    pub fn none() -> Self {
-        DataRequest::from_bool(false)
-    }
-
-    /// Request that returned UFO data include the glyph layers and points.
-    pub fn layers(&mut self, b: bool) -> &mut Self {
-        self.layers = b;
-        self
-    }
-
-    /// Request that returned UFO data include <lib> sections.
-    pub fn lib(&mut self, b: bool) -> &mut Self {
-        self.lib = b;
-        self
-    }
-
-    /// Request that returned UFO data include parsed `groups.plist`.
-    pub fn groups(&mut self, b: bool) -> &mut Self {
-        self.groups = b;
-        self
-    }
-
-    /// Request that returned UFO data include parsed `kerning.plist`.
-    pub fn kerning(&mut self, b: bool) -> &mut Self {
-        self.kerning = b;
-        self
-    }
-
-    /// Request that returned UFO data include OpenType Layout features in Adobe
-    /// .fea format.
-    pub fn features(&mut self, b: bool) -> &mut Self {
-        self.features = b;
-        self
-    }
-}
-
-impl Default for DataRequest {
-    fn default() -> Self {
-        DataRequest::from_bool(true)
-    }
-}
 
 /// A version of the [UFO spec].
 ///
@@ -195,111 +114,83 @@ impl Font {
         path: impl AsRef<Path>,
         request: DataRequest,
     ) -> Result<Font, Error> {
-        let path = path.as_ref();
+        Self::load_impl(path.as_ref(), request)
+    }
 
-        // minimize monomorphization
-        let load_impl = |path: &Path| -> Result<Font, Error> {
-            let meta_path = path.join(METAINFO_FILE);
-            let mut meta: MetaInfo = plist::from_file(meta_path)?;
+    fn load_impl(path: &Path, request: DataRequest) -> Result<Font, Error> {
+        let meta_path = path.join(METAINFO_FILE);
+        let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
-            let lib_path = path.join(LIB_FILE);
-            let mut lib = if lib_path.exists() && request.lib {
-                plist::Value::from_file(&lib_path)?.into_dictionary().ok_or_else(|| {
-                    Error::ExpectedPlistDictionary(lib_path.to_string_lossy().into_owned())
-                })?
-            } else {
-                Plist::new()
-            };
+        let lib_path = path.join(LIB_FILE);
+        let mut lib =
+            if lib_path.exists() && request.lib { load_lib(&lib_path)? } else { Plist::new() };
 
-            let fontinfo_path = path.join(FONTINFO_FILE);
-            let mut font_info = if fontinfo_path.exists() {
-                let font_info: FontInfo =
-                    FontInfo::from_file(fontinfo_path, meta.format_version, &mut lib)?;
-                Some(font_info)
-            } else {
-                None
-            };
-
-            let groups_path = path.join(GROUPS_FILE);
-            let groups = if groups_path.exists() && request.groups {
-                let groups: Groups = plist::from_file(groups_path)?;
-                validate_groups(&groups).map_err(Error::InvalidGroups)?;
-                Some(groups)
-            } else {
-                None
-            };
-
-            let kerning_path = path.join(KERNING_FILE);
-            let kerning = if kerning_path.exists() && request.kerning {
-                let kerning: Kerning = plist::from_file(kerning_path)?;
-                Some(kerning)
-            } else {
-                None
-            };
-
-            let features_path = path.join(FEATURES_FILE);
-            let mut features = if features_path.exists() && request.features {
-                let features = fs::read_to_string(features_path)?;
-                Some(features)
-            } else {
-                None
-            };
-
-            let glyph_names = NameList::default();
-            let layers = if request.layers {
-                if meta.format_version == FormatVersion::V3
-                    && !path.join(LAYER_CONTENTS_FILE).exists()
-                {
-                    return Err(Error::MissingLayerContents);
-                }
-                LayerSet::load(path, &glyph_names)?
-            } else {
-                LayerSet::default()
-            };
-
-            // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
-            // a groups.plist file, while a kerning.plist is optional.
-            let (groups, kerning) = match (meta.format_version, groups, kerning) {
-                (FormatVersion::V3, g, k) => (g, k), // For v3, we do nothing.
-                (_, None, k) => (None, k), // Without a groups.plist, there's nothing to upgrade.
-                (_, Some(g), k) => {
-                    let (groups, kerning) =
-                        upconversion::upconvert_kerning(&g, &k.unwrap_or_default(), &glyph_names);
-                    validate_groups(&groups).map_err(Error::GroupsUpconversionFailure)?;
-                    (Some(groups), Some(kerning))
-                }
-            };
-
-            // The v1 format stores some Postscript hinting related data in the lib,
-            // which we only import into fontinfo if we're reading a v1 UFO.
-            if meta.format_version == FormatVersion::V1 && lib_path.exists() {
-                let mut fontinfo =
-                    if let Some(fontinfo) = font_info { fontinfo } else { FontInfo::default() };
-
-                let features_upgraded: Option<String> =
-                    upconversion::upconvert_ufov1_robofab_data(&lib_path, &mut lib, &mut fontinfo)?;
-
-                if features_upgraded.is_some() && !features_upgraded.as_ref().unwrap().is_empty() {
-                    features = features_upgraded;
-                }
-                font_info = Some(fontinfo);
-            }
-
-            meta.format_version = FormatVersion::V3;
-
-            Ok(Font {
-                layers,
-                meta,
-                font_info,
-                lib,
-                groups,
-                kerning,
-                features,
-                data_request: request,
-            })
+        let fontinfo_path = path.join(FONTINFO_FILE);
+        let mut font_info = if fontinfo_path.exists() {
+            Some(load_fontinfo(&fontinfo_path, &meta, &mut lib)?)
+        } else {
+            None
         };
 
-        load_impl(path)
+        let groups_path = path.join(GROUPS_FILE);
+        let groups = if groups_path.exists() && request.groups {
+            Some(load_groups(&groups_path)?)
+        } else {
+            None
+        };
+
+        let kerning_path = path.join(KERNING_FILE);
+        let kerning = if kerning_path.exists() && request.kerning {
+            Some(load_kerning(&kerning_path)?)
+        } else {
+            None
+        };
+
+        let features_path = path.join(FEATURES_FILE);
+        let mut features = if features_path.exists() && request.features {
+            Some(load_features(&features_path)?)
+        } else {
+            None
+        };
+
+        let glyph_names = NameList::default();
+        let layers = if request.layers {
+            load_layers(path, &meta, &glyph_names)?
+        } else {
+            LayerSet::default()
+        };
+
+        // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
+        // a groups.plist file, while a kerning.plist is optional.
+        let (groups, kerning) = match (meta.format_version, groups, kerning) {
+            (FormatVersion::V3, g, k) => (g, k), // For v3, we do nothing.
+            (_, None, k) => (None, k), // Without a groups.plist, there's nothing to upgrade.
+            (_, Some(g), k) => {
+                let (groups, kerning) =
+                    upconversion::upconvert_kerning(&g, &k.unwrap_or_default(), &glyph_names);
+                validate_groups(&groups).map_err(Error::GroupsUpconversionFailure)?;
+                (Some(groups), Some(kerning))
+            }
+        };
+
+        // The v1 format stores some Postscript hinting related data in the lib,
+        // which we only import into fontinfo if we're reading a v1 UFO.
+        if meta.format_version == FormatVersion::V1 && lib_path.exists() {
+            let mut fontinfo =
+                if let Some(fontinfo) = font_info { fontinfo } else { FontInfo::default() };
+
+            let features_upgraded: Option<String> =
+                upconversion::upconvert_ufov1_robofab_data(&lib_path, &mut lib, &mut fontinfo)?;
+
+            if features_upgraded.is_some() && !features_upgraded.as_ref().unwrap().is_empty() {
+                features = features_upgraded;
+            }
+            font_info = Some(fontinfo);
+        }
+
+        meta.format_version = FormatVersion::V3;
+
+        Ok(Font { layers, meta, font_info, lib, groups, kerning, features, data_request: request })
     }
 
     #[deprecated(
@@ -372,7 +263,7 @@ impl Font {
         }
 
         if let Some(kerning) = self.kerning.as_ref() {
-            let kerning_serializer = KerningSerializer { kerning: &kerning };
+            let kerning_serializer = crate::kerning::KerningSerializer { kerning: &kerning };
             plist::to_file_xml(path.join(KERNING_FILE), &kerning_serializer)?;
         }
 
@@ -464,96 +355,53 @@ impl Font {
     }
 }
 
-/// Validate the contents of the groups.plist file according to the rules in the
-/// [Unified Font Object v3 specification for groups.plist](http://unifiedfontobject.org/versions/ufo3/groups.plist/#specification).
-fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidationError> {
-    let mut kern1_set = HashSet::new();
-    let mut kern2_set = HashSet::new();
-    for (group_name, group_glyph_names) in groups_map {
-        if group_name.is_empty() {
-            return Err(GroupsValidationError::InvalidName);
-        }
+fn load_lib(lib_path: &Path) -> Result<plist::Dictionary, Error> {
+    plist::Value::from_file(lib_path)?
+        .into_dictionary()
+        .ok_or_else(|| Error::ExpectedPlistDictionary(lib_path.to_string_lossy().into_owned()))
+}
 
-        if group_name.starts_with("public.kern1.") {
-            if group_name.len() == 13 {
-                // Prefix but no actual name.
-                return Err(GroupsValidationError::InvalidName);
-            }
-            for glyph_name in group_glyph_names {
-                if !kern1_set.insert(glyph_name) {
-                    return Err(GroupsValidationError::OverlappingKerningGroups {
-                        glyph_name: glyph_name.to_string(),
-                        group_name: group_name.to_string(),
-                    });
-                }
-            }
-        } else if group_name.starts_with("public.kern2.") {
-            if group_name.len() == 13 {
-                // Prefix but no actual name.
-                return Err(GroupsValidationError::InvalidName);
-            }
-            for glyph_name in group_glyph_names {
-                if !kern2_set.insert(glyph_name) {
-                    return Err(GroupsValidationError::OverlappingKerningGroups {
-                        glyph_name: glyph_name.to_string(),
-                        group_name: group_name.to_string(),
-                    });
-                }
-            }
-        }
+fn load_fontinfo(
+    fontinfo_path: &Path,
+    meta: &MetaInfo,
+    lib: &mut plist::Dictionary,
+) -> Result<FontInfo, Error> {
+    let font_info: FontInfo = FontInfo::from_file(fontinfo_path, meta.format_version, lib)?;
+    Ok(font_info)
+}
+
+fn load_groups(groups_path: &Path) -> Result<Groups, Error> {
+    let groups: Groups = plist::from_file(groups_path)?;
+    validate_groups(&groups).map_err(Error::InvalidGroups)?;
+    Ok(groups)
+}
+
+fn load_kerning(kerning_path: &Path) -> Result<Kerning, Error> {
+    let kerning: Kerning = plist::from_file(kerning_path)?;
+    Ok(kerning)
+}
+
+fn load_features(features_path: &Path) -> Result<String, Error> {
+    let features = fs::read_to_string(features_path)?;
+    Ok(features)
+}
+
+fn load_layers(
+    ufo_path: &Path,
+    meta: &MetaInfo,
+    glyph_names: &NameList,
+) -> Result<LayerSet, Error> {
+    let layercontents_path = ufo_path.join(LAYER_CONTENTS_FILE);
+    if meta.format_version == FormatVersion::V3 && !layercontents_path.exists() {
+        return Err(Error::MissingLayerContents);
     }
-
-    Ok(())
-}
-
-/// KerningSerializer is a crutch to serialize kerning values as integers if they are
-/// integers rather than floats. This spares us having to use a wrapper type like
-/// IntegerOrFloat for kerning values.
-struct KerningSerializer<'a> {
-    kerning: &'a Kerning,
-}
-
-struct KerningInnerSerializer<'a> {
-    inner_kerning: &'a BTreeMap<String, f32>,
-}
-
-impl<'a> Serialize for KerningSerializer<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(self.kerning.len()))?;
-        for (k, v) in self.kerning {
-            let inner_v = KerningInnerSerializer { inner_kerning: v };
-            map.serialize_entry(k, &inner_v)?;
-        }
-        map.end()
-    }
-}
-
-impl<'a> Serialize for KerningInnerSerializer<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(self.inner_kerning.len()))?;
-        for (k, v) in self.inner_kerning {
-            if (v - v.round()).abs() < std::f32::EPSILON {
-                map.serialize_entry(k, &(*v as i32))?;
-            } else {
-                map.serialize_entry(k, v)?;
-            }
-        }
-        map.end()
-    }
+    LayerSet::load(ufo_path, glyph_names)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::shared_types::IntegerOrFloat;
-    use maplit::btreemap;
-    use serde_test::{assert_ser_tokens, Token};
 
     #[test]
     fn new_is_v3() {
@@ -671,37 +519,5 @@ mod tests {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo/metainfo.plist";
         let meta: MetaInfo = plist::from_file(path).expect("failed to load metainfo");
         assert_eq!(meta.creator, "org.robofab.ufoLib");
-    }
-
-    #[test]
-    fn serialize_kerning() {
-        let kerning: Kerning = btreemap! {
-            "A".into() => btreemap!{
-                "A".into() => 1.0,
-            },
-            "B".into() => btreemap!{
-                "A".into() => 5.4,
-            },
-        };
-
-        let kerning_serializer = KerningSerializer { kerning: &kerning };
-
-        assert_ser_tokens(
-            &kerning_serializer,
-            &[
-                Token::Map { len: Some(2) },
-                Token::Str("A"),
-                Token::Map { len: Some(1) },
-                Token::Str("A"),
-                Token::I32(1),
-                Token::MapEnd,
-                Token::Str("B"),
-                Token::Map { len: Some(1) },
-                Token::Str("A"),
-                Token::F32(5.4),
-                Token::MapEnd,
-                Token::MapEnd,
-            ],
-        );
     }
 }
