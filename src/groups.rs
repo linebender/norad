@@ -3,8 +3,9 @@ use std::collections::{BTreeMap, HashSet};
 use crate::error::GroupsValidationError;
 use crate::GlyphName;
 
-/// Groups is a map of group name to a list of glyph names. It's a BTreeMap because we need sorting
-/// for serialization.
+/// A map of group name to a list of glyph names.
+///
+/// We use a BTreeMap because we need sorting for serialization.
 pub type Groups = BTreeMap<String, Vec<GlyphName>>;
 
 /// Validate the contents of the groups.plist file according to the rules in the
