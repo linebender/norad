@@ -53,7 +53,9 @@ pub enum GroupsValidationError {
     OverlappingKerningGroups { glyph_name: String, group_name: String },
 }
 
-/// A [`crate::Color`] string was invalid.
+/// A [`Color`] string was invalid.
+///
+/// [`Color`]: crate::Color
 #[derive(Debug)]
 pub struct InvalidColorString {
     source: String,
