@@ -119,7 +119,7 @@ impl Font {
 
     fn load_impl(path: &Path, request: DataRequest) -> Result<Font, Error> {
         if !path.exists() {
-            let msg = format!("invalid path: {:?}", &path);
+            let msg = format!("invalid path: {:?}", path);
             return Err(std::io::Error::new(std::io::ErrorKind::NotFound, msg).into());
         }
 
