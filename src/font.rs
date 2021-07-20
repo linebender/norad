@@ -118,6 +118,11 @@ impl Font {
     }
 
     fn load_impl(path: &Path, request: DataRequest) -> Result<Font, Error> {
+        if !path.exists() {
+            let msg = format!("invalid path: {:?}", &path);
+            return Err(std::io::Error::new(std::io::ErrorKind::NotFound, msg).into());
+        }
+
         let meta_path = path.join(METAINFO_FILE);
         let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
@@ -436,6 +441,14 @@ mod tests {
         assert_eq!(font_obj.groups.unwrap().get("public.kern1.@MMK_L_A"), Some(&vec!["A".into()]));
         assert_eq!(font_obj.kerning.unwrap().get("B").unwrap().get("H").unwrap(), &-40.0);
         assert_eq!(font_obj.features.unwrap(), "# this is the feature from lightWide\n");
+    }
+
+    #[test]
+    fn loading_invalid_path() {
+        let path = "totally/bogus/filepath/font.ufo";
+        let font_obj = Font::load(path);
+        assert!(font_obj.is_err());
+        assert_eq!(format!("{:?}", font_obj), "Err(IoError(Custom { kind: NotFound, error: \"invalid path: \\\"totally/bogus/filepath/font.ufo\\\"\" }))");
     }
 
     #[test]
