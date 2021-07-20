@@ -85,7 +85,7 @@ impl Font {
     #[doc(hidden)]
     #[deprecated(
         since = "0.4.1",
-        note = "To load only specific fields, use Font::load_requestd_data"
+        note = "To load only specific fields, use Font::load_requested_data"
     )]
     pub fn with_fields(data_request: DataRequest) -> Self {
         let mut ufo = Self::new();
