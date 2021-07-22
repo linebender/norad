@@ -119,11 +119,21 @@ impl Font {
 
     fn load_impl(path: &Path, request: DataRequest) -> Result<Font, Error> {
         if !path.exists() {
-            let msg = format!("invalid path: {:?}", path);
+            let msg = format!("invalid UFO directory path: {:?}", path);
             return Err(std::io::Error::new(std::io::ErrorKind::NotFound, msg).into());
         }
 
+        // ===============
+        // mandatory files
+        // ===============
+        // We abort read with error if any UFO spec defined mandatory file is missing
+
+        // metainfo.plist
         let meta_path = path.join(METAINFO_FILE);
+        if !meta_path.exists() {
+            let msg = format!("missing mandatory {} file in directory {:?}", METAINFO_FILE, path);
+            return Err(std::io::Error::new(std::io::ErrorKind::NotFound, msg).into());
+        }
         let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
         let lib_path = path.join(LIB_FILE);
@@ -448,7 +458,7 @@ mod tests {
         let path = "totally/bogus/filepath/font.ufo";
         let font_obj = Font::load(path);
         assert!(font_obj.is_err());
-        assert_eq!(format!("{:?}", font_obj), "Err(IoError(Custom { kind: NotFound, error: \"invalid path: \\\"totally/bogus/filepath/font.ufo\\\"\" }))");
+        assert_eq!(format!("{:?}", font_obj), "Err(IoError(Custom { kind: NotFound, error: \"invalid UFO directory path: \\\"totally/bogus/filepath/font.ufo\\\"\" }))");
     }
 
     #[test]
