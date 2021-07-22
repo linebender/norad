@@ -353,6 +353,70 @@ impl Font {
             .guidelines
             .get_or_insert_with(Default::default)
     }
+
+    /// Returns a vector of immutable lib key string references
+    pub fn lib_keys(&self) -> Vec<&String> {
+        self.lib.keys().collect::<Vec<&String>>()
+    }
+
+    /// Returns an iterator over immutable lib key string references
+    pub fn iter_lib_keys(&self) -> impl Iterator<Item = &String> {
+        self.lib.keys()
+    }
+
+    /// Returns a vector of immutable group name string references
+    pub fn group_names(&self) -> Vec<&String> {
+        match &self.groups {
+            Some(g) => g.keys().collect::<Vec<&String>>(),
+            None => vec![],
+        }
+    }
+
+    /// Returns an iterator over immutable group name string references
+    pub fn iter_group_names(&self) -> impl Iterator<Item = &String> {
+        match &self.groups {
+            Some(g) => {
+                let mut groupvec = vec![];
+                for groupname in g.keys() {
+                    groupvec.push(groupname)
+                }
+                groupvec.into_iter()
+            }
+            None => vec![].into_iter(),
+        }
+    }
+
+    /// Returns a vector of immutable kerning glyph name string references
+    pub fn kerning_names(&self) -> Vec<&String> {
+        match &self.kerning {
+            Some(k) => k.keys().collect::<Vec<&String>>(),
+            None => vec![],
+        }
+    }
+
+    /// Returns an iterator over immutable kerning glyph name string references
+    pub fn iter_kerning_names(&self) -> impl Iterator<Item = &String> {
+        match &self.kerning {
+            Some(k) => {
+                let mut kerningvec = vec![];
+                for kerningname in k.keys() {
+                    kerningvec.push(kerningname)
+                }
+                kerningvec.into_iter()
+            }
+            None => vec![].into_iter(),
+        }
+    }
+
+    /// Returns a vector of layer name String types
+    pub fn layer_names(&self) -> Vec<String> {
+        self.layers.names().map(|s| s.to_string()).collect::<Vec<String>>()
+    }
+
+    /// Returns an iterator over layer name String types
+    pub fn iter_layer_names(&self) -> impl Iterator<Item = String> + '_ {
+        self.layers.names().map(|s| s.to_string())
+    }
 }
 
 fn load_lib(lib_path: &Path) -> Result<plist::Dictionary, Error> {
@@ -519,5 +583,172 @@ mod tests {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo/metainfo.plist";
         let meta: MetaInfo = plist::from_file(path).expect("failed to load metainfo");
         assert_eq!(meta.creator, "org.robofab.ufoLib");
+    }
+
+    #[test]
+    fn lib_keys() {
+        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
+        let ufo = Font::load(path).unwrap();
+        assert_eq!(
+            ufo.lib_keys(),
+            vec![
+                "com.defcon.sortDescriptor",
+                "com.typemytype.robofont.background.layerStrokeColor",
+                "com.typemytype.robofont.compileSettings.autohint",
+                "com.typemytype.robofont.compileSettings.checkOutlines",
+                "com.typemytype.robofont.compileSettings.createDummyDSIG",
+                "com.typemytype.robofont.compileSettings.decompose",
+                "com.typemytype.robofont.compileSettings.generateFormat",
+                "com.typemytype.robofont.compileSettings.releaseMode",
+                "com.typemytype.robofont.foreground.layerStrokeColor",
+                "com.typemytype.robofont.italicSlantOffset",
+                "com.typemytype.robofont.segmentType",
+                "com.typemytype.robofont.shouldAddPointsInSplineConversion",
+                "com.typesupply.MetricsMachine4.groupColors",
+                "com.typesupply.defcon.sortDescriptor",
+                "public.glyphOrder"
+            ]
+        )
+    }
+
+    #[test]
+    fn iter_lib_keys() {
+        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
+        let ufo = Font::load(path).unwrap();
+        let mut libkey_iter = ufo.iter_lib_keys();
+        assert_eq!(libkey_iter.next(), Some(&String::from("com.defcon.sortDescriptor")));
+        assert_eq!(
+            libkey_iter.next(),
+            Some(&String::from("com.typemytype.robofont.background.layerStrokeColor"))
+        );
+        assert_eq!(
+            libkey_iter.next(),
+            Some(&String::from("com.typemytype.robofont.compileSettings.autohint"))
+        );
+        assert_eq!(
+            libkey_iter.next(),
+            Some(&String::from("com.typemytype.robofont.compileSettings.checkOutlines"))
+        );
+        assert_eq!(
+            libkey_iter.next(),
+            Some(&String::from("com.typemytype.robofont.compileSettings.createDummyDSIG"))
+        );
+        assert_eq!(
+            libkey_iter.next(),
+            Some(&String::from("com.typemytype.robofont.compileSettings.decompose"))
+        );
+        assert_eq!(
+            libkey_iter.next(),
+            Some(&String::from("com.typemytype.robofont.compileSettings.generateFormat"))
+        );
+        assert_eq!(
+            libkey_iter.next(),
+            Some(&String::from("com.typemytype.robofont.compileSettings.releaseMode"))
+        );
+        assert_eq!(
+            libkey_iter.next(),
+            Some(&String::from("com.typemytype.robofont.foreground.layerStrokeColor"))
+        );
+        assert_eq!(
+            libkey_iter.next(),
+            Some(&String::from("com.typemytype.robofont.italicSlantOffset"))
+        );
+        assert_eq!(libkey_iter.next(), Some(&String::from("com.typemytype.robofont.segmentType")));
+        assert_eq!(
+            libkey_iter.next(),
+            Some(&String::from("com.typemytype.robofont.shouldAddPointsInSplineConversion"))
+        );
+        assert_eq!(
+            libkey_iter.next(),
+            Some(&String::from("com.typesupply.MetricsMachine4.groupColors"))
+        );
+        assert_eq!(libkey_iter.next(), Some(&String::from("com.typesupply.defcon.sortDescriptor")));
+        assert_eq!(libkey_iter.next(), Some(&String::from("public.glyphOrder")));
+        assert_eq!(libkey_iter.next(), None);
+    }
+
+    #[test]
+    fn group_names() {
+        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
+        let ufo = Font::load(path).unwrap();
+        assert_eq!(ufo.group_names(), vec!["public.kern1.@MMK_L_A", "public.kern2.@MMK_R_A"]);
+    }
+
+    #[test]
+    fn iter_group_names() {
+        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
+        let ufo = Font::load(path).unwrap();
+        let mut groupname_iter = ufo.iter_group_names();
+        assert_eq!(groupname_iter.next(), Some(&String::from("public.kern1.@MMK_L_A")));
+        assert_eq!(groupname_iter.next(), Some(&String::from("public.kern2.@MMK_R_A")));
+        assert_eq!(groupname_iter.next(), None);
+    }
+
+    #[test]
+    fn kerning_names() {
+        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
+        let ufo = Font::load(path).unwrap();
+        assert_eq!(
+            ufo.kerning_names(),
+            vec![
+                "B",
+                "C",
+                "E",
+                "F",
+                "G",
+                "H",
+                "J",
+                "L",
+                "O",
+                "P",
+                "R",
+                "S",
+                "T",
+                "U",
+                "V",
+                "public.kern1.@MMK_L_A"
+            ]
+        );
+    }
+
+    #[test]
+    fn iter_kerning_names() {
+        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
+        let ufo = Font::load(path).unwrap();
+        let mut kerning_iter = ufo.iter_kerning_names();
+        assert_eq!(kerning_iter.next(), Some(&String::from("B")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("C")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("E")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("F")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("G")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("H")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("J")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("L")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("O")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("P")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("R")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("S")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("T")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("U")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("V")));
+        assert_eq!(kerning_iter.next(), Some(&String::from("public.kern1.@MMK_L_A")));
+        assert_eq!(kerning_iter.next(), None);
+    }
+
+    #[test]
+    fn layer_names() {
+        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
+        let ufo = Font::load(path).unwrap();
+        assert_eq!(ufo.layer_names(), vec!["foreground".to_string(), "background".to_string()]);
+    }
+
+    #[test]
+    fn iter_layer_names() {
+        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
+        let ufo = Font::load(path).unwrap();
+        let mut layer_iter = ufo.iter_layer_names();
+        assert_eq!(layer_iter.next(), Some("foreground".to_string()));
+        assert_eq!(layer_iter.next(), Some("background".to_string()));
+        assert_eq!(layer_iter.next(), None);
     }
 }
