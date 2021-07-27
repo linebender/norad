@@ -458,6 +458,8 @@ mod tests {
 
     #[test]
     fn loading_missing_metainfo_plist_path() {
+        // This UFO source does not have a metainfo.plist file
+        // This should raise an error
         let path = "testdata/ufo/Tester-MissingMetaInfo.ufo";
         let font_load_res = Font::load(path);
         match font_load_res {
@@ -469,8 +471,38 @@ mod tests {
 
     #[test]
     fn loading_missing_layercontents_plist_path() {
+        // This UFO source does not have a layercontents.plist file
+        // This should raise an error
         let path = "testdata/ufo/Tester-MissingLayerContents.ufo";
         let font_load_res = Font::load(path);
+        match font_load_res {
+            Ok(_) => panic!("unxpected Ok result"),
+            Err(Error::MissingFile(_)) => (), // expected value
+            _ => panic!("incorrect error type returned"),
+        }
+    }
+
+    #[test]
+    fn loading_missing_glyphs_contents_plist_path() {
+        // This UFO source does not have contents.plist in the default glyphs
+        // directory. This should raise an error
+        let path = "testdata/ufo/Tester-MissingGlyphsContents.ufo";
+        let font_load_res = Font::load(path);
+        println!("{:?}", font_load_res);
+        match font_load_res {
+            Ok(_) => panic!("unxpected Ok result"),
+            Err(Error::MissingFile(_)) => (), // expected value
+            _ => panic!("incorrect error type returned"),
+        }
+    }
+
+    #[test]
+    fn loading_missing_glyphs_contents_plist_path_background_layer() {
+        // This UFO source has a contents.plist in the default glyphs directory
+        // but not in the glyphs.background directory. This should raise an error
+        let path = "testdata/ufo/Tester-MissingGlyphsContents-BackgroundLayer.ufo";
+        let font_load_res = Font::load(path);
+        println!("{:?}", font_load_res);
         match font_load_res {
             Ok(_) => panic!("unxpected Ok result"),
             Err(Error::MissingFile(_)) => (), // expected value
