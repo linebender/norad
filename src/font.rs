@@ -397,7 +397,7 @@ fn load_layers(
 ) -> Result<LayerSet, Error> {
     let layercontents_path = ufo_path.join(LAYER_CONTENTS_FILE);
     if meta.format_version == FormatVersion::V3 && !layercontents_path.exists() {
-        return Err(Error::MissingLayerContents);
+        return Err(Error::MissingFile(layercontents_path.display().to_string()));
     }
     LayerSet::load(ufo_path, glyph_names)
 }

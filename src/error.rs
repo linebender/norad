@@ -19,7 +19,6 @@ pub enum Error {
     MissingDefaultLayer,
     MissingLayer(String),
     DuplicateLayer(String),
-    MissingLayerContents,
     InvalidColor(InvalidColorString),
     DuplicateGlyph {
         layer: String,
@@ -162,9 +161,6 @@ impl std::fmt::Display for Error {
             Error::MissingDefaultLayer => write!(f, "Missing default ('glyphs') layer."),
             Error::DuplicateLayer(name) => write!(f, "Layer name '{}' already exists.", name),
             Error::MissingLayer(name) => write!(f, "Layer name '{}' does not exist.", name),
-            Error::MissingLayerContents => {
-                write!(f, "Missing required 'layercontents.plist' file.")
-            }
             Error::DuplicateGlyph { layer, glyph } => {
                 write!(f, "Glyph named '{}' already exists in layer '{}'", glyph, layer)
             }
