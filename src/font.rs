@@ -123,6 +123,9 @@ impl Font {
         }
 
         let meta_path = path.join(METAINFO_FILE);
+        if !meta_path.exists() {
+            return Err(Error::MissingFile(meta_path.display().to_string()));
+        }
         let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
         let lib_path = path.join(LIB_FILE);
@@ -449,6 +452,17 @@ mod tests {
         match font_load_res {
             Ok(_) => panic!("unxpected Ok result"),
             Err(Error::MissingUfoDir(_)) => (), // expected value
+            _ => panic!("incorrect error type returned"),
+        }
+    }
+
+    #[test]
+    fn loading_missing_metainfo_plist_path() {
+        let path = "testdata/ufo/Tester-MissingMetaInfo.ufo";
+        let font_load_res = Font::load(path);
+        match font_load_res {
+            Ok(_) => panic!("unxpected Ok result"),
+            Err(Error::MissingFile(_)) => (), // expected value
             _ => panic!("incorrect error type returned"),
         }
     }
