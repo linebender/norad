@@ -118,6 +118,10 @@ impl Font {
     }
 
     fn load_impl(path: &Path, request: DataRequest) -> Result<Font, Error> {
+        if !path.exists() {
+            return Err(Error::MissingUFODir(path.display().to_string()));
+        }
+
         let meta_path = path.join(METAINFO_FILE);
         let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
@@ -436,6 +440,17 @@ mod tests {
         assert_eq!(font_obj.groups.unwrap().get("public.kern1.@MMK_L_A"), Some(&vec!["A".into()]));
         assert_eq!(font_obj.kerning.unwrap().get("B").unwrap().get("H").unwrap(), &-40.0);
         assert_eq!(font_obj.features.unwrap(), "# this is the feature from lightWide\n");
+    }
+
+    #[test]
+    fn loading_invalid_ufo_dir_path() {
+        let path = "totally/bogus/filepath/font.ufo";
+        let font_load_res = Font::load(path);
+        match font_load_res {
+            Ok(_) => panic!("unxpected Ok result"),
+            Err(Error::MissingUFODir(_)) => (), // expected value
+            _ => panic!("incorrect error type returned"),
+        }
     }
 
     #[test]
