@@ -44,7 +44,7 @@ pub enum Error {
     #[cfg(feature = "kurbo")]
     ConvertContour(ErrorKind),
     MissingFile(String),
-    MissingUFODir(String),
+    MissingUfoDir(String),
 }
 
 /// An error representing a failure to validate UFO groups.
@@ -195,7 +195,7 @@ impl std::fmt::Display for Error {
             Error::MissingFile(path) => {
                 write!(f, "missing required {} file", path)
             }
-            Error::MissingUFODir(path) => {
+            Error::MissingUfoDir(path) => {
                 write!(f, "{} directory was not found", path)
             }
             #[cfg(feature = "kurbo")]

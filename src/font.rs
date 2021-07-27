@@ -119,7 +119,7 @@ impl Font {
 
     fn load_impl(path: &Path, request: DataRequest) -> Result<Font, Error> {
         if !path.exists() {
-            return Err(Error::MissingUFODir(path.display().to_string()));
+            return Err(Error::MissingUfoDir(path.display().to_string()));
         }
 
         let meta_path = path.join(METAINFO_FILE);
@@ -448,7 +448,7 @@ mod tests {
         let font_load_res = Font::load(path);
         match font_load_res {
             Ok(_) => panic!("unxpected Ok result"),
-            Err(Error::MissingUFODir(_)) => (), // expected value
+            Err(Error::MissingUfoDir(_)) => (), // expected value
             _ => panic!("incorrect error type returned"),
         }
     }
