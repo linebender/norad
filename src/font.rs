@@ -488,7 +488,6 @@ mod tests {
         // directory. This should raise an error
         let path = "testdata/ufo/Tester-MissingGlyphsContents.ufo";
         let font_load_res = Font::load(path);
-        println!("{:?}", font_load_res);
         match font_load_res {
             Ok(_) => panic!("unxpected Ok result"),
             Err(Error::MissingFile(_)) => (), // expected value
@@ -502,7 +501,6 @@ mod tests {
         // but not in the glyphs.background directory. This should raise an error
         let path = "testdata/ufo/Tester-MissingGlyphsContents-BackgroundLayer.ufo";
         let font_load_res = Font::load(path);
-        println!("{:?}", font_load_res);
         match font_load_res {
             Ok(_) => panic!("unxpected Ok result"),
             Err(Error::MissingFile(_)) => (), // expected value
