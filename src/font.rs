@@ -468,6 +468,17 @@ mod tests {
     }
 
     #[test]
+    fn loading_missing_layercontents_plist_path() {
+        let path = "testdata/ufo/Tester-MissingLayerContents.ufo";
+        let font_load_res = Font::load(path);
+        match font_load_res {
+            Ok(_) => panic!("unxpected Ok result"),
+            Err(Error::MissingFile(_)) => (), // expected value
+            _ => panic!("incorrect error type returned"),
+        }
+    }
+
+    #[test]
     fn data_request() {
         let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
         let font_obj = Font::load_requested_data(path, DataRequest::none()).unwrap();
