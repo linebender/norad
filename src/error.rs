@@ -44,6 +44,8 @@ pub enum Error {
     ExpectedPositiveValue,
     #[cfg(feature = "kurbo")]
     ConvertContour(ErrorKind),
+    MissingFile(String),
+    MissingUFODir(String),
 }
 
 /// An error representing a failure to validate UFO groups.
@@ -193,6 +195,12 @@ impl std::fmt::Display for Error {
             Error::ExpectedPlistString => write!(f, "Expected a Plist string."),
             Error::ExpectedPositiveValue => {
                 write!(f, "PositiveIntegerOrFloat expects a positive value.")
+            }
+            Error::MissingFile(path) => {
+                write!(f, "missing required {} file", path)
+            }
+            Error::MissingUFODir(path) => {
+                write!(f, "{} directory was not found", path)
             }
             #[cfg(feature = "kurbo")]
             Error::ConvertContour(cause) => write!(f, "Failed to convert contour: '{}'", cause),
