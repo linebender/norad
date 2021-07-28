@@ -9,7 +9,7 @@ use quick_xml::{
 
 use super::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{
-    AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
+    util, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
     Guideline, Image, Line, Plist, PointType,
 };
 
@@ -79,13 +79,15 @@ impl Glyph {
         // glyph.lib in-memory. If there are object libs to serialize, clone the
         // existing lib and insert them there for serialization, otherwise avoid
         // cloning and write out the original.
+        let mut lib = self.lib.clone();
         let object_libs = self.dump_object_libs();
         if !object_libs.is_empty() {
-            let mut new_lib = self.lib.clone();
-            new_lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), plist::Value::Dictionary(object_libs));
-            write_lib_section(&new_lib, &mut writer)?;
-        } else if !self.lib.is_empty() {
-            write_lib_section(&self.lib, &mut writer)?;
+            lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), object_libs.into());
+        }
+
+        if !lib.is_empty() {
+            util::recursive_sort_plist_keys(&mut lib);
+            write_lib_section(&lib, &mut writer)?;
         }
 
         if let Some(ref note) = self.note {

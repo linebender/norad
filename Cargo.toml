@@ -18,7 +18,7 @@ exclude = [
 features = ["kurbo"]
 
 [dependencies]
-plist = "1.0.1"
+plist = "1.2"
 uuid = { version = "0.8", features = ["v4"] }
 serde = { version =  "1.0", features = ["rc"] }
 serde_derive = "1.0"

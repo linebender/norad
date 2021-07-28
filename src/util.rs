@@ -1,5 +1,17 @@
 //! Common utilities.
 
+/// Given a `plist::Dictionary`, recursively sort keys.
+///
+/// This ensures we have a consistent serialization order.
+pub fn recursive_sort_plist_keys(plist: &mut plist::Dictionary) {
+    plist.sort_keys();
+    for val in plist.values_mut() {
+        if let Some(dict) = val.as_dictionary_mut() {
+            recursive_sort_plist_keys(dict);
+        }
+    }
+}
+
 //NOTE: this is hacky, and intended mostly as a placeholder. It was adapted from
 // https://github.com/unified-font-object/ufoLib/blob/master/Lib/ufoLib/filenames.py
 /// given a glyph name, compute an appropriate file name.
