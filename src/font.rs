@@ -251,17 +251,18 @@ impl Font {
         // to store them inline, so they have to be placed into the font's lib
         // under the public.objectLibs parent key. To avoid mutation behind the
         // client's back, object libs are written out but not stored in
-        // font.lib in-memory. If there are object libs to serialize, clone the
-        // existing lib and insert them there for serialization, otherwise write
-        // out the original.
-        let object_libs =
-            self.font_info.as_ref().map(|f| f.dump_object_libs()).unwrap_or_else(Plist::new);
-        if !object_libs.is_empty() {
-            let mut new_lib = self.lib.clone();
-            new_lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), plist::Value::Dictionary(object_libs));
-            plist::Value::Dictionary(new_lib).to_file_xml(path.join(LIB_FILE))?;
-        } else if !self.lib.is_empty() {
-            plist::Value::Dictionary(self.lib.clone()).to_file_xml(path.join(LIB_FILE))?;
+        // font.lib in-memory. Instead we clone the lib, add the object libs, and
+        // write out that.
+
+        let mut lib = self.lib.clone();
+        if let Some(object_libs) =
+            self.font_info.as_ref().map(FontInfo::dump_object_libs).filter(|dict| !dict.is_empty())
+        {
+            lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), object_libs.into());
+        }
+        if !lib.is_empty() {
+            crate::util::recursive_sort_plist_keys(&mut lib);
+            plist::Value::Dictionary(lib).to_file_xml(path.join(LIB_FILE))?;
         }
 
         if let Some(groups) = self.groups.as_ref() {

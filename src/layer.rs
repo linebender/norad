@@ -11,7 +11,7 @@ use rayon::prelude::*;
 use crate::glyph::GlyphName;
 use crate::names::NameList;
 use crate::shared_types::Color;
-use crate::{Error, Glyph, Plist};
+use crate::{util, Error, Glyph, Plist};
 
 static CONTENTS_FILE: &str = "contents.plist";
 static LAYER_INFO_FILE: &str = "layerinfo.plist";
@@ -308,11 +308,13 @@ impl Layer {
         let mut dict = plist::dictionary::Dictionary::new();
 
         if let Some(c) = &self.color {
-            dict.insert("color".into(), plist::Value::String(c.to_rgba_string()));
+            dict.insert("color".into(), c.to_rgba_string().into());
         }
         if !self.lib.is_empty() {
-            dict.insert("lib".into(), plist::Value::Dictionary(self.lib.clone()));
+            dict.insert("lib".into(), self.lib.clone().into());
         }
+
+        util::recursive_sort_plist_keys(&mut dict);
 
         plist::Value::Dictionary(dict).to_file_xml(path.join(LAYER_INFO_FILE))?;
 
