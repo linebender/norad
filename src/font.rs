@@ -118,7 +118,14 @@ impl Font {
     }
 
     fn load_impl(path: &Path, request: DataRequest) -> Result<Font, Error> {
+        if !path.exists() {
+            return Err(Error::MissingUfoDir(path.display().to_string()));
+        }
+
         let meta_path = path.join(METAINFO_FILE);
+        if !meta_path.exists() {
+            return Err(Error::MissingFile(meta_path.display().to_string()));
+        }
         let mut meta: MetaInfo = plist::from_file(meta_path)?;
 
         let lib_path = path.join(LIB_FILE);
@@ -393,7 +400,7 @@ fn load_layers(
 ) -> Result<LayerSet, Error> {
     let layercontents_path = ufo_path.join(LAYER_CONTENTS_FILE);
     if meta.format_version == FormatVersion::V3 && !layercontents_path.exists() {
-        return Err(Error::MissingLayerContents);
+        return Err(Error::MissingFile(layercontents_path.display().to_string()));
     }
     LayerSet::load(ufo_path, glyph_names)
 }
@@ -436,6 +443,49 @@ mod tests {
         assert_eq!(font_obj.groups.unwrap().get("public.kern1.@MMK_L_A"), Some(&vec!["A".into()]));
         assert_eq!(font_obj.kerning.unwrap().get("B").unwrap().get("H").unwrap(), &-40.0);
         assert_eq!(font_obj.features.unwrap(), "# this is the feature from lightWide\n");
+    }
+
+    #[test]
+    fn loading_invalid_ufo_dir_path() {
+        let path = "totally/bogus/filepath/font.ufo";
+        let font_load_res = Font::load(path);
+        assert!(matches!(font_load_res, Err(Error::MissingUfoDir(_))));
+    }
+
+    #[test]
+    fn loading_missing_metainfo_plist_path() {
+        // This UFO source does not have a metainfo.plist file
+        // This should raise an error
+        let path = "testdata/ufo/Tester-MissingMetaInfo.ufo";
+        let font_load_res = Font::load(path);
+        assert!(matches!(font_load_res, Err(Error::MissingFile(_))));
+    }
+
+    #[test]
+    fn loading_missing_layercontents_plist_path() {
+        // This UFO source does not have a layercontents.plist file
+        // This should raise an error
+        let path = "testdata/ufo/Tester-MissingLayerContents.ufo";
+        let font_load_res = Font::load(path);
+        assert!(matches!(font_load_res, Err(Error::MissingFile(_))));
+    }
+
+    #[test]
+    fn loading_missing_glyphs_contents_plist_path() {
+        // This UFO source does not have contents.plist in the default glyphs
+        // directory. This should raise an error
+        let path = "testdata/ufo/Tester-MissingGlyphsContents.ufo";
+        let font_load_res = Font::load(path);
+        assert!(matches!(font_load_res, Err(Error::MissingFile(_))));
+    }
+
+    #[test]
+    fn loading_missing_glyphs_contents_plist_path_background_layer() {
+        // This UFO source has a contents.plist in the default glyphs directory
+        // but not in the glyphs.background directory. This should raise an error
+        let path = "testdata/ufo/Tester-MissingGlyphsContents-BackgroundLayer.ufo";
+        let font_load_res = Font::load(path);
+        assert!(matches!(font_load_res, Err(Error::MissingFile(_))));
     }
 
     #[test]

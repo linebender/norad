@@ -19,7 +19,6 @@ pub enum Error {
     MissingDefaultLayer,
     MissingLayer(String),
     DuplicateLayer(String),
-    MissingLayerContents,
     InvalidColor(InvalidColorString),
     DuplicateGlyph {
         layer: String,
@@ -44,6 +43,8 @@ pub enum Error {
     ExpectedPositiveValue,
     #[cfg(feature = "kurbo")]
     ConvertContour(ErrorKind),
+    MissingFile(String),
+    MissingUfoDir(String),
 }
 
 /// An error representing a failure to validate UFO groups.
@@ -160,9 +161,6 @@ impl std::fmt::Display for Error {
             Error::MissingDefaultLayer => write!(f, "Missing default ('glyphs') layer."),
             Error::DuplicateLayer(name) => write!(f, "Layer name '{}' already exists.", name),
             Error::MissingLayer(name) => write!(f, "Layer name '{}' does not exist.", name),
-            Error::MissingLayerContents => {
-                write!(f, "Missing required 'layercontents.plist' file.")
-            }
             Error::DuplicateGlyph { layer, glyph } => {
                 write!(f, "Glyph named '{}' already exists in layer '{}'", glyph, layer)
             }
@@ -193,6 +191,12 @@ impl std::fmt::Display for Error {
             Error::ExpectedPlistString => write!(f, "Expected a Plist string."),
             Error::ExpectedPositiveValue => {
                 write!(f, "PositiveIntegerOrFloat expects a positive value.")
+            }
+            Error::MissingFile(path) => {
+                write!(f, "missing required {} file", path)
+            }
+            Error::MissingUfoDir(path) => {
+                write!(f, "{} directory was not found", path)
             }
             #[cfg(feature = "kurbo")]
             Error::ConvertContour(cause) => write!(f, "Failed to convert contour: '{}'", cause),

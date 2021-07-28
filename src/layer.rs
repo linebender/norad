@@ -239,6 +239,9 @@ impl Layer {
         names: &NameList,
     ) -> Result<Layer, Error> {
         let contents_path = path.join(CONTENTS_FILE);
+        if !contents_path.exists() {
+            return Err(Error::MissingFile(contents_path.display().to_string()));
+        }
         // these keys are never used; a future optimization would be to skip the
         // names and deserialize to a vec; that would not be a one-liner, though.
         let contents: BTreeMap<GlyphName, PathBuf> = plist::from_file(contents_path)?;
