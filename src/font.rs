@@ -449,11 +449,7 @@ mod tests {
     fn loading_invalid_ufo_dir_path() {
         let path = "totally/bogus/filepath/font.ufo";
         let font_load_res = Font::load(path);
-        match font_load_res {
-            Ok(_) => panic!("unxpected Ok result"),
-            Err(Error::MissingUfoDir(_)) => (), // expected value
-            _ => panic!("incorrect error type returned"),
-        }
+        assert!(matches!(font_load_res, Err(Error::MissingUfoDir(_))));
     }
 
     #[test]
@@ -462,11 +458,7 @@ mod tests {
         // This should raise an error
         let path = "testdata/ufo/Tester-MissingMetaInfo.ufo";
         let font_load_res = Font::load(path);
-        match font_load_res {
-            Ok(_) => panic!("unxpected Ok result"),
-            Err(Error::MissingFile(_)) => (), // expected value
-            _ => panic!("incorrect error type returned"),
-        }
+        assert!(matches!(font_load_res, Err(Error::MissingFile(_))));
     }
 
     #[test]
@@ -475,11 +467,7 @@ mod tests {
         // This should raise an error
         let path = "testdata/ufo/Tester-MissingLayerContents.ufo";
         let font_load_res = Font::load(path);
-        match font_load_res {
-            Ok(_) => panic!("unxpected Ok result"),
-            Err(Error::MissingFile(_)) => (), // expected value
-            _ => panic!("incorrect error type returned"),
-        }
+        assert!(matches!(font_load_res, Err(Error::MissingFile(_))));
     }
 
     #[test]
@@ -488,11 +476,7 @@ mod tests {
         // directory. This should raise an error
         let path = "testdata/ufo/Tester-MissingGlyphsContents.ufo";
         let font_load_res = Font::load(path);
-        match font_load_res {
-            Ok(_) => panic!("unxpected Ok result"),
-            Err(Error::MissingFile(_)) => (), // expected value
-            _ => panic!("incorrect error type returned"),
-        }
+        assert!(matches!(font_load_res, Err(Error::MissingFile(_))));
     }
 
     #[test]
@@ -501,11 +485,7 @@ mod tests {
         // but not in the glyphs.background directory. This should raise an error
         let path = "testdata/ufo/Tester-MissingGlyphsContents-BackgroundLayer.ufo";
         let font_load_res = Font::load(path);
-        match font_load_res {
-            Ok(_) => panic!("unxpected Ok result"),
-            Err(Error::MissingFile(_)) => (), // expected value
-            _ => panic!("incorrect error type returned"),
-        }
+        assert!(matches!(font_load_res, Err(Error::MissingFile(_))));
     }
 
     #[test]
