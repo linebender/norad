@@ -334,12 +334,16 @@ impl Layer {
         if !self.layerinfo_is_empty() {
             self.layerinfo_to_file(path)?;
         }
-        for (name, glyph_path) in self.contents.iter() {
-            let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
-            glyph.save(path.join(glyph_path))?;
-        }
 
-        Ok(())
+        #[cfg(feature = "rayon")]
+        let iter = self.contents.par_iter();
+        #[cfg(not(feature = "rayon"))]
+        let mut iter = self.contents.iter();
+
+        iter.try_for_each(|(name, glyph_path)| {
+            let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
+            glyph.save(path.join(glyph_path))
+        })
     }
 
     /// The number of [`Glyph`]s in the layer.
