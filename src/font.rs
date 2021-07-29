@@ -258,12 +258,12 @@ impl Font {
         }
 
         if let Some(groups) = self.groups.as_ref() {
-            validate_groups(&groups).map_err(Error::InvalidGroups)?;
+            validate_groups(groups).map_err(Error::InvalidGroups)?;
             plist::to_file_xml(path.join(GROUPS_FILE), groups)?;
         }
 
         if let Some(kerning) = self.kerning.as_ref() {
-            let kerning_serializer = crate::kerning::KerningSerializer { kerning: &kerning };
+            let kerning_serializer = crate::kerning::KerningSerializer { kerning };
             plist::to_file_xml(path.join(KERNING_FILE), &kerning_serializer)?;
         }
 

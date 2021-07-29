@@ -53,7 +53,7 @@ impl LayerSet {
             .into_iter()
             .map(|(name, path)| {
                 let layer_path = base_dir.join(&path);
-                Layer::load_impl(&layer_path, name, &glyph_names)
+                Layer::load_impl(&layer_path, name, glyph_names)
             })
             .collect::<Result<_, _>>()?;
 
@@ -329,7 +329,7 @@ impl Layer {
         plist::to_file_xml(path.join(CONTENTS_FILE), &self.contents)?;
         // Avoid writing empty layerinfo.plist file.
         if !self.layerinfo_is_empty() {
-            self.layerinfo_to_file(&path)?;
+            self.layerinfo_to_file(path)?;
         }
         for (name, glyph_path) in self.contents.iter() {
             let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");

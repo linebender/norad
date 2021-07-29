@@ -1164,8 +1164,8 @@ impl Serialize for WoffAttributeDirection {
         S: Serializer,
     {
         match self {
-            WoffAttributeDirection::LeftToRight => serializer.serialize_str(&"ltr"),
-            WoffAttributeDirection::RightToLeft => serializer.serialize_str(&"rtl"),
+            WoffAttributeDirection::LeftToRight => serializer.serialize_str("ltr"),
+            WoffAttributeDirection::RightToLeft => serializer.serialize_str("rtl"),
         }
     }
 }
@@ -1200,10 +1200,10 @@ impl Serialize for StyleMapStyle {
         S: Serializer,
     {
         match self {
-            StyleMapStyle::Regular => serializer.serialize_str(&"regular"),
-            StyleMapStyle::Italic => serializer.serialize_str(&"italic"),
-            StyleMapStyle::Bold => serializer.serialize_str(&"bold"),
-            StyleMapStyle::BoldItalic => serializer.serialize_str(&"bold italic"),
+            StyleMapStyle::Regular => serializer.serialize_str("regular"),
+            StyleMapStyle::Italic => serializer.serialize_str("italic"),
+            StyleMapStyle::Bold => serializer.serialize_str("bold"),
+            StyleMapStyle::BoldItalic => serializer.serialize_str("bold italic"),
         }
     }
 }
