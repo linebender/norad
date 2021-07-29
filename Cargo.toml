@@ -18,7 +18,9 @@ exclude = [
 features = ["kurbo"]
 
 [dependencies]
-plist = "1.2"
+# we need the enabled_fancy_long_feature feature until
+# https://github.com/ebarnard/rust-plist/pull/69 lands/is released
+plist = { version =  "~1.2", features = ["serde", "enable_unstable_features_that_may_break_with_minor_version_bumps"] }
 uuid = { version = "0.8", features = ["v4"] }
 serde = { version =  "1.0", features = ["rc"] }
 serde_derive = "1.0"

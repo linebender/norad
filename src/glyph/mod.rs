@@ -15,7 +15,7 @@ use druid::{Data, Lens};
 use crate::error::{Error, ErrorKind, GlifError, GlifErrorInternal};
 use crate::names::NameList;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
-use crate::{Color, Guideline, Identifier, Line, Plist};
+use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
 
 /// The name of a glyph.
 pub type GlyphName = Arc<str>;
@@ -64,13 +64,20 @@ impl Glyph {
 
     #[doc(hidden)]
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
+        let path = path.as_ref();
+        let opts = WriteOptions::default();
+        self.save_with_options(path, &opts)
+    }
+
+    pub(crate) fn save_with_options(&self, path: &Path, opts: &WriteOptions) -> Result<(), Error> {
         if self.format != GlifVersion::V2 {
             return Err(Error::DowngradeUnsupported);
         }
         if self.lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
             return Err(Error::PreexistingPublicObjectLibsKey);
         }
-        let data = self.encode_xml()?;
+
+        let data = self.encode_xml_with_options(opts)?;
         std::fs::write(path, &data)?;
         Ok(())
     }

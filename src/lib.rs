@@ -37,6 +37,7 @@ mod names;
 mod shared_types;
 mod upconversion;
 pub mod util;
+mod write;
 
 pub use data_request::DataRequest;
 pub use error::Error;
@@ -50,6 +51,7 @@ pub use guideline::{Guideline, Line};
 pub use identifier::Identifier;
 pub use layer::{Layer, LayerSet};
 pub use shared_types::{Color, IntegerOrFloat, NonNegativeIntegerOrFloat, Plist};
+pub use write::WriteOptions;
 
 #[allow(deprecated)]
 pub use font::Ufo;
