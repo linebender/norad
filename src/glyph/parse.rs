@@ -55,7 +55,7 @@ impl<'names> GlifParser<'names> {
             match reader.read_event(buf)? {
                 // outline, lib and note are expected to be start element tags.
                 Event::Start(start) => {
-                    let tag_name = reader.decode(&start.name())?;
+                    let tag_name = reader.decode(start.name())?;
                     match tag_name.borrow() {
                         "outline" => self.parse_outline(reader, buf)?,
                         "lib" => self.parse_lib(reader, raw_xml, buf)?, // do this at some point?
@@ -65,7 +65,7 @@ impl<'names> GlifParser<'names> {
                 }
                 // The rest are expected to be empty element tags (exception: outline) with attributes.
                 Event::Empty(start) => {
-                    let tag_name = reader.decode(&start.name())?;
+                    let tag_name = reader.decode(start.name())?;
                     match tag_name.borrow() {
                         "outline" => {
                             // ufoLib parses `<outline/>` as an empty outline.
@@ -103,7 +103,7 @@ impl<'names> GlifParser<'names> {
         loop {
             match reader.read_event(buf)? {
                 Event::Start(start) => {
-                    let tag_name = reader.decode(&start.name())?;
+                    let tag_name = reader.decode(start.name())?;
                     let mut new_buf = Vec::new(); // borrowck :/
                     match tag_name.borrow() {
                         "contour" => {
@@ -113,7 +113,7 @@ impl<'names> GlifParser<'names> {
                     }
                 }
                 Event::Empty(start) => {
-                    let tag_name = reader.decode(&start.name())?;
+                    let tag_name = reader.decode(start.name())?;
                     match tag_name.borrow() {
                         // Skip empty contours as meaningless.
                         // https://github.com/unified-font-object/ufo-spec/issues/150
@@ -352,7 +352,7 @@ impl<'names> GlifParser<'names> {
                 b"hex" => {
                     let value = attr.unescaped_value()?;
                     let value = reader.decode(&value)?;
-                    let chr = u32::from_str_radix(&value, 16)
+                    let chr = u32::from_str_radix(value, 16)
                         .map_err(|_| value.to_string())
                         .and_then(|n| char::try_from(n).map_err(|_| value.to_string()))
                         .map_err(|_| err!(reader, ErrorKind::BadHexValue))?;
@@ -516,7 +516,7 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<GlyphBuilder, 
                     // XXX: support `formatMinor`
                     match attr.key {
                         b"name" => {
-                            name = attr.unescape_and_decode_value(&reader)?;
+                            name = attr.unescape_and_decode_value(reader)?;
                         }
                         b"format" => {
                             let value = attr.unescaped_value()?;

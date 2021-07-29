@@ -22,7 +22,7 @@ pub(crate) fn upconvert_kerning(
 ) -> (Groups, Kerning) {
     // Gather known kerning groups based on the prefixes. This will catch groups that exist in
     // `groups` but are not referenced in `kerning`.
-    let (mut groups_first, mut groups_second) = find_known_kerning_groups(&groups);
+    let (mut groups_first, mut groups_second) = find_known_kerning_groups(groups);
 
     // Make lists of groups referenced in kerning pairs, based on their side.
     for (first, seconds) in kerning {
@@ -165,12 +165,12 @@ pub(crate) fn upconvert_ufov1_robofab_data(
             features_split.keys().cloned().collect::<Vec<String>>()
         };
 
-        features.push_str(&"\n");
+        features.push('\n');
 
         for key in order {
             // Ignore non-existant keys because defcon does it, too.
             if let Some(txt) = features_split.get(&key) {
-                features.push_str(&txt);
+                features.push_str(txt);
             }
         }
     }
