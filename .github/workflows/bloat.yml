@@ -37,21 +37,21 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --example=open_ufo
+          args: --release --example=load_save
 
       - name: build base (debug)
         if: steps.get_revs.outputs.base != steps.get_revs.outputs.head
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --example=open_ufo
+          args: --example=load_save
 
       - name: get old sizes
         if: steps.get_revs.outputs.base != steps.get_revs.outputs.head
         id: old
         uses: cmyr/bloat-cmp/get-sizes@v2
         with:
-          paths: target/release/examples/open_ufo target/debug/examples/open_ufo
+          paths: target/release/examples/load_save target/debug/examples/load_save
 
       - name: checkout head
         uses: actions/checkout@v1
@@ -64,21 +64,21 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --example=open_ufo
+          args: --release --example=load_save
 
       - name: build head (debug)
         if: steps.get_revs.outputs.base != steps.get_revs.outputs.head
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --example=open_ufo
+          args: --example=load_save
 
       - name: get new sizes
         if: steps.get_revs.outputs.base != steps.get_revs.outputs.head
         id: new
         uses: cmyr/bloat-cmp/get-sizes@v2
         with:
-          paths: target/release/examples/open_ufo target/debug/examples/open_ufo
+          paths: target/release/examples/load_save target/debug/examples/load_save
 
       - name: compare
         if: steps.get_revs.outputs.base != steps.get_revs.outputs.head
