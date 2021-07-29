@@ -11,7 +11,7 @@ use rayon::prelude::*;
 use crate::glyph::GlyphName;
 use crate::names::NameList;
 use crate::shared_types::Color;
-use crate::{util, Error, Glyph, Plist};
+use crate::{util, Error, Glyph, Plist, WriteOptions};
 
 static CONTENTS_FILE: &str = "contents.plist";
 static LAYER_INFO_FILE: &str = "layerinfo.plist";
@@ -304,7 +304,15 @@ impl Layer {
         Ok((color, lib))
     }
 
-    fn layerinfo_to_file(&self, path: &Path) -> Result<(), Error> {
+    fn layerinfo_to_file_if_needed(
+        &self,
+        path: &Path,
+        options: &WriteOptions,
+    ) -> Result<(), Error> {
+        if self.color.is_none() && self.lib.is_empty() {
+            return Ok(());
+        }
+
         let mut dict = plist::dictionary::Dictionary::new();
 
         if let Some(c) = &self.color {
@@ -316,25 +324,34 @@ impl Layer {
 
         util::recursive_sort_plist_keys(&mut dict);
 
-        plist::Value::Dictionary(dict).to_file_xml(path.join(LAYER_INFO_FILE))?;
-
-        Ok(())
-    }
-
-    fn layerinfo_is_empty(&self) -> bool {
-        self.color.is_none() && self.lib.is_empty()
+        crate::write::write_plist_value_to_file(
+            &path.join(LAYER_INFO_FILE),
+            &dict.into(),
+            options.xml_options(),
+        )
     }
 
     /// Attempt to write this layer to the given path.
     ///
     /// The path should not exist.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
-        let path = path.as_ref();
+        let options = WriteOptions::default();
+        self.save_with_options(path.as_ref(), &options)
+    }
+
+    pub fn save_with_options(&self, path: &Path, opts: &WriteOptions) -> Result<(), Error> {
         fs::create_dir(&path)?;
-        plist::to_file_xml(path.join(CONTENTS_FILE), &self.contents)?;
-        // Avoid writing empty layerinfo.plist file.
-        if !self.layerinfo_is_empty() {
-            self.layerinfo_to_file(path)?;
+        crate::write::write_xml_to_file(
+            &path.join(CONTENTS_FILE),
+            &self.contents,
+            opts.xml_options(),
+        )?;
+
+        self.layerinfo_to_file_if_needed(path, opts)?;
+
+        for (name, glyph_path) in self.contents.iter() {
+            let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
+            glyph.save_with_options(&path.join(glyph_path), opts)?;
         }
 
         #[cfg(feature = "rayon")]

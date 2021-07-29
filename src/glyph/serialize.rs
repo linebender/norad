@@ -10,7 +10,7 @@ use quick_xml::{
 use super::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{
     util, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    Guideline, Image, Line, Plist, PointType,
+    Guideline, Image, Line, Plist, PointType, WriteOptions,
 };
 
 use crate::error::{GlifWriteError, WriteError};
@@ -22,11 +22,21 @@ impl Glyph {
     ///
     /// [ufonormalizer]: https://github.com/unified-font-object/ufoNormalizer/
     pub fn encode_xml(&self) -> Result<Vec<u8>, GlifWriteError> {
-        self.encode_xml_impl().map_err(|inner| GlifWriteError { name: self.name.clone(), inner })
+        let options = WriteOptions::default();
+        self.encode_xml_with_options(&options)
     }
 
-    fn encode_xml_impl(&self) -> Result<Vec<u8>, WriteError> {
-        let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b'\t', 1);
+    pub fn encode_xml_with_options(&self, opts: &WriteOptions) -> Result<Vec<u8>, GlifWriteError> {
+        self.encode_xml_impl(opts)
+            .map_err(|inner| GlifWriteError { name: self.name.clone(), inner })
+    }
+
+    fn encode_xml_impl(&self, options: &WriteOptions) -> Result<Vec<u8>, WriteError> {
+        let mut writer = Writer::new_with_indent(
+            Cursor::new(Vec::new()),
+            options.whitespace_char,
+            options.whitespace_count,
+        );
         writer.write_event(Event::Decl(BytesDecl::new(b"1.0", Some(b"UTF-8"), None)))?;
         let mut start = BytesStart::borrowed_name(b"glyph");
         start.push_attribute(("name", &*self.name));
@@ -87,7 +97,7 @@ impl Glyph {
 
         if !lib.is_empty() {
             util::recursive_sort_plist_keys(&mut lib);
-            write_lib_section(&lib, &mut writer)?;
+            write_lib_section(lib, &mut writer, options)?;
         }
 
         if let Some(ref note) = self.note {
@@ -111,13 +121,14 @@ impl Glyph {
 /// such as the xml declaration and the <plist> tag.
 ///
 /// We then take this and write it into the middle of our active write session.
-///
-/// By a lovely coincidence the whitespace is the same in both places; if this
-/// changes we will need to do custom whitespace handling.
-fn write_lib_section<T: Write>(lib: &Plist, writer: &mut Writer<T>) -> Result<(), WriteError> {
-    let as_value: plist::Value = lib.to_owned().into();
+fn write_lib_section<T: Write>(
+    lib: Plist,
+    writer: &mut Writer<T>,
+    options: &WriteOptions,
+) -> Result<(), WriteError> {
+    let as_value: plist::Value = lib.into();
     let mut out_buffer = Vec::with_capacity(256); // a reasonable min size?
-    as_value.to_writer_xml(&mut out_buffer)?;
+    as_value.to_writer_xml_with_options(&mut out_buffer, options.xml_options())?;
     let lib_xml = String::from_utf8(out_buffer).expect("XML writer wrote invalid UTF-8");
     let header = "<plist version=\"1.0\">\n";
     let footer = "\n</plist>";
@@ -130,7 +141,9 @@ fn write_lib_section<T: Write>(lib: &Plist, writer: &mut Writer<T>) -> Result<()
 
     writer.write_event(Event::Start(BytesStart::borrowed_name(b"lib")))?;
     for line in to_write.lines() {
-        writer.inner().write_all("\n\t\t".as_bytes())?;
+        writer.inner().write_all("\n".as_bytes())?;
+        writer.inner().write_all(options.indent_str.as_bytes())?;
+        writer.inner().write_all(options.indent_str.as_bytes())?;
         writer.inner().write_all(line.as_bytes())?;
     }
     writer.write_event(Event::End(BytesEnd::borrowed(b"lib")))?;

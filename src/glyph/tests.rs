@@ -35,6 +35,66 @@ fn serialize_full_glyph() {
 }
 
 #[test]
+fn serialize_with_default_formatting() {
+    let data = include_str!("../../testdata/small_lib.glif");
+    let glyph = parse_glyph(data.as_bytes()).unwrap();
+    let one_tab = glyph.encode_xml().unwrap();
+    let one_tab = std::str::from_utf8(&one_tab).unwrap();
+    pretty_assertions::assert_eq!(
+        one_tab,
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="hello" format="2">
+	<advance width="1200"/>
+	<outline>
+		<contour>
+			<point x="2" y="30" type="line"/>
+			<point x="44" y="10" type="line"/>
+		</contour>
+	</outline>
+	<lib>
+		<dict>
+			<key>test.key</key>
+			<string>I am a creative professional :)</string>
+		</dict>
+	</lib>
+	<note>durp</note>
+</glyph>
+"#
+    );
+}
+
+#[test]
+fn serialize_with_custom_whitespace() {
+    let data = include_str!("../../testdata/small_lib.glif");
+    let glyph = parse_glyph(data.as_bytes()).unwrap();
+    let options = WriteOptions::default().whitespace("  ");
+    let two_spaces = glyph.encode_xml_with_options(&options).unwrap();
+    let two_spaces = std::str::from_utf8(&two_spaces).unwrap();
+
+    pretty_assertions::assert_eq!(
+        two_spaces,
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="hello" format="2">
+  <advance width="1200"/>
+  <outline>
+    <contour>
+      <point x="2" y="30" type="line"/>
+      <point x="44" y="10" type="line"/>
+    </contour>
+  </outline>
+  <lib>
+    <dict>
+      <key>test.key</key>
+      <string>I am a creative professional :)</string>
+    </dict>
+  </lib>
+  <note>durp</note>
+</glyph>
+"#
+    );
+}
+
+#[test]
 fn parse() {
     let bytes = include_bytes!("../../testdata/sample_period.glif");
     let glyph = parse_glyph(bytes).unwrap();

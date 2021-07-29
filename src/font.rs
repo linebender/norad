@@ -16,6 +16,7 @@ use crate::layer::{Layer, LayerSet, LAYER_CONTENTS_FILE};
 use crate::names::NameList;
 use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
 use crate::upconversion;
+use crate::write::{self, WriteOptions};
 use crate::DataRequest;
 use crate::Error;
 
@@ -218,10 +219,20 @@ impl Font {
     /// `public.objectLibs` key, as object lib management is done automatically.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
         let path = path.as_ref();
-        self.save_impl(path)
+        self.save_impl(path, &Default::default())
     }
 
-    fn save_impl(&self, path: &Path) -> Result<(), Error> {
+    /// Attempt to save the UFO, using the provided [`WriteOptions`].
+    pub fn save_with_options(
+        &self,
+        path: impl AsRef<Path>,
+        options: &WriteOptions,
+    ) -> Result<(), Error> {
+        let path = path.as_ref();
+        self.save_impl(path, options)
+    }
+
+    fn save_impl(&self, path: &Path, options: &WriteOptions) -> Result<(), Error> {
         if self.meta.format_version != FormatVersion::V3 {
             return Err(Error::DowngradeUnsupported);
         }
@@ -238,13 +249,17 @@ impl Font {
         // we want to always set ourselves as the creator when serializing,
         // but we also don't have mutable access to self.
         if self.meta.creator == DEFAULT_METAINFO_CREATOR {
-            plist::to_file_xml(path.join(METAINFO_FILE), &self.meta)?;
+            write::write_xml_to_file(&path.join(METAINFO_FILE), &self.meta, options.xml_options())?;
         } else {
-            plist::to_file_xml(path.join(METAINFO_FILE), &MetaInfo::default())?;
+            write::write_xml_to_file(
+                &path.join(METAINFO_FILE),
+                &MetaInfo::default(),
+                options.xml_options(),
+            )?;
         }
 
         if let Some(font_info) = self.font_info.as_ref() {
-            plist::to_file_xml(path.join(FONTINFO_FILE), &font_info)?;
+            write::write_xml_to_file(&path.join(FONTINFO_FILE), font_info, options.xml_options())?;
         }
 
         // Object libs are treated specially. The UFO v3 format won't allow us
@@ -262,17 +277,25 @@ impl Font {
         }
         if !lib.is_empty() {
             crate::util::recursive_sort_plist_keys(&mut lib);
-            plist::Value::Dictionary(lib).to_file_xml(path.join(LIB_FILE))?;
+            write::write_plist_value_to_file(
+                &path.join(LIB_FILE),
+                &lib.into(),
+                options.xml_options(),
+            )?;
         }
 
         if let Some(groups) = self.groups.as_ref() {
             validate_groups(groups).map_err(Error::InvalidGroups)?;
-            plist::to_file_xml(path.join(GROUPS_FILE), groups)?;
+            write::write_xml_to_file(&path.join(GROUPS_FILE), groups, options.xml_options())?;
         }
 
         if let Some(kerning) = self.kerning.as_ref() {
             let kerning_serializer = crate::kerning::KerningSerializer { kerning };
-            plist::to_file_xml(path.join(KERNING_FILE), &kerning_serializer)?;
+            write::write_xml_to_file(
+                &path.join(KERNING_FILE),
+                &kerning_serializer,
+                options.xml_options(),
+            )?;
         }
 
         if let Some(features) = self.features.as_ref() {
@@ -281,11 +304,15 @@ impl Font {
 
         let contents: Vec<(&str, &PathBuf)> =
             self.layers.iter().map(|l| (l.name.as_ref(), &l.path)).collect();
-        plist::to_file_xml(path.join(LAYER_CONTENTS_FILE), &contents)?;
+        write::write_xml_to_file(
+            &path.join(LAYER_CONTENTS_FILE),
+            &contents,
+            options.xml_options(),
+        )?;
 
         for layer in self.layers.iter() {
             let layer_path = path.join(&layer.path);
-            layer.save(layer_path)?;
+            layer.save_with_options(&layer_path, options)?;
         }
 
         Ok(())
