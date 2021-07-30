@@ -11,8 +11,7 @@ fn transform() {
 #[test]
 fn serialize_empty_glyph() {
     let glyph = Glyph::new_named("a");
-    let glif = glyph.encode_xml().unwrap();
-    let glif = std::str::from_utf8(&glif).unwrap();
+    let glif = glyph.encode_xml_to_string().unwrap();
     assert_eq!(
         glif,
         r#"
@@ -29,8 +28,8 @@ fn serialize_empty_glyph() {
 // fn serialize_full_glyph() {
 //     let bytes = include_bytes!("../../testdata/sample_period_normalized.glif");
 //     let glyph = parse_glyph(bytes).unwrap();
-//     let glif = glyph.encode_xml().unwrap();
-//     assert_eq!(std::str::from_utf8(&glif).unwrap(), std::str::from_utf8(bytes).unwrap());
+//     let glif = glyph.encode_xml_to_string().unwrap();
+//     assert_eq!(glif, std::str::from_utf8(bytes).unwrap());
 // }
 
 #[test]
@@ -114,12 +113,12 @@ fn parse_note() {
 fn save() {
     let bytes = include_bytes!("../../testdata/sample_period.glif");
     let glyph = parse_glyph(bytes).expect("initial load failed");
-    let buf = glyph.encode_xml().expect("encode failed");
+    let encoded = glyph.encode_xml_to_string().expect("encode failed");
 
-    println!("{}", String::from_utf8_lossy(&buf));
+    println!("{}", &encoded);
     //panic!("ahh");
 
-    let glyph2 = parse_glyph(buf.as_slice()).expect("re-parse failed");
+    let glyph2 = parse_glyph(encoded.as_bytes()).expect("re-parse failed");
     assert_eq!(glyph.name, glyph2.name);
     assert_eq!(glyph.format, glyph2.format);
     assert_eq!(glyph.height, glyph2.height);

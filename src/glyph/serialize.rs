@@ -25,6 +25,12 @@ impl Glyph {
         self.encode_xml_impl().map_err(|inner| GlifWriteError { name: self.name.clone(), inner })
     }
 
+    /// For testing, dump directly to a string.
+    #[cfg(test)]
+    pub fn encode_xml_to_string(&self) -> Result<String, GlifWriteError> {
+        self.encode_xml().map(|bytes| String::from_utf8(bytes).expect("XML is always valid UTF-8"))
+    }
+
     fn encode_xml_impl(&self) -> Result<Vec<u8>, WriteError> {
         let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b'\t', 1);
         writer.write_event(Event::Decl(BytesDecl::new(b"1.0", Some(b"UTF-8"), None)))?;
