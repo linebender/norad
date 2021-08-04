@@ -3,6 +3,7 @@ use super::*;
 use std::path::PathBuf;
 
 #[test]
+#[allow(clippy::float_cmp)]
 fn transform() {
     let transform = AffineTransform::default();
     assert_eq!(transform.x_scale, 1.0);
@@ -70,13 +71,14 @@ fn curve_types() {
     let glyph = parse_glyph(bytes).unwrap();
     assert_eq!(glyph.contours.len(), 2);
     assert_eq!(glyph.contours[1].points[0].typ, PointType::Line);
-    assert_eq!(glyph.contours[1].points[0].smooth, false);
-    assert_eq!(glyph.contours[1].points[1].smooth, true);
+    assert!(!glyph.contours[1].points[0].smooth);
+    assert!(glyph.contours[1].points[1].smooth);
     assert_eq!(glyph.contours[1].points[2].typ, PointType::OffCurve);
     assert_eq!(glyph.contours[1].points[4].typ, PointType::Curve);
 }
 
 #[test]
+#[allow(clippy::float_cmp)]
 fn guidelines() {
     let bytes = include_bytes!("../../testdata/Blinker_one.glif");
     let glyph = parse_glyph(bytes).unwrap();
@@ -111,6 +113,7 @@ fn parse_note() {
 }
 
 #[test]
+#[allow(clippy::float_cmp)]
 fn save() {
     let bytes = include_bytes!("../../testdata/sample_period.glif");
     let glyph = parse_glyph(bytes).expect("initial load failed");

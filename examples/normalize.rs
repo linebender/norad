@@ -52,12 +52,9 @@ fn main() {
         });
 
         ufo.meta.creator = "org.linebender.norad".to_string();
-        match ufo.save(arg) {
-            Err(e) => {
-                eprintln!("Saving UFO failed: {}", e);
-                std::process::exit(1);
-            }
-            _ => {}
-        };
+        if let Err(e) = ufo.save(arg) {
+            eprintln!("Saving UFO failed: {}", e);
+            std::process::exit(1);
+        }
     }
 }

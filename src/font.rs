@@ -422,11 +422,11 @@ mod tests {
 
         let mut font = Font::new();
         font.meta.format_version = FormatVersion::V1;
-        assert_eq!(font.save(&dir).is_err(), true);
+        assert!(font.save(&dir).is_err());
         font.meta.format_version = FormatVersion::V2;
-        assert_eq!(font.save(&dir).is_err(), true);
+        assert!(font.save(&dir).is_err());
         font.meta.format_version = FormatVersion::V3;
-        assert_eq!(font.save(&dir).is_ok(), true);
+        assert!(font.save(&dir).is_ok());
     }
 
     #[test]
@@ -441,7 +441,12 @@ mod tests {
             Some(&plist::Value::Boolean(true))
         );
         assert_eq!(font_obj.groups.unwrap().get("public.kern1.@MMK_L_A"), Some(&vec!["A".into()]));
-        assert_eq!(font_obj.kerning.unwrap().get("B").unwrap().get("H").unwrap(), &-40.0);
+
+        #[allow(clippy::float_cmp)]
+        {
+            assert_eq!(font_obj.kerning.unwrap().get("B").and_then(|k| k.get("H")), Some(&-40.0));
+        }
+
         assert_eq!(font_obj.features.unwrap(), "# this is the feature from lightWide\n");
     }
 

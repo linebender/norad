@@ -1363,6 +1363,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::field_reassign_with_default)]
     fn test_validate_head_created() {
         let mut fi = FontInfo::default();
         fi.open_type_head_created = Some("YYYY/MM/DD HH:MM:SS".to_string());

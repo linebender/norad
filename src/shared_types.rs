@@ -263,9 +263,11 @@ mod tests {
         let c4 = Color { red: 0.123, green: 0.456, blue: 0.789, alpha: 0.159 };
         assert_tokens(&c4, &[Token::Str("0.123,0.456,0.789,0.159")]);
 
+        #[allow(clippy::excessive_precision)]
         let c5 = Color { red: 0.123456789, green: 0.456789123, blue: 0.789123456, alpha: 0.1 };
         assert_ser_tokens(&c5, &[Token::Str("0.123,0.457,0.789,0.1")]);
 
+        #[allow(clippy::excessive_precision)]
         let c6 = Color { red: 0.123456789, green: 0.456789123, blue: 0.789123456, alpha: 0.1 };
         assert_de_tokens(&c6, &[Token::Str("0.123456789,0.456789123,0.789123456,0.1")]);
     }

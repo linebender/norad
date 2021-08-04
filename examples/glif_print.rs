@@ -7,7 +7,6 @@
 //! Afterwards it will print the xml tree to stderr, which may be useful when
 //! debugging parse errors.
 
-use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::{env, fs, io};
@@ -21,7 +20,7 @@ use quick_xml::{
 use norad::Glyph;
 
 fn main() -> Result<(), io::Error> {
-    let path = match env::args().skip(1).next().map(PathBuf::from) {
+    let path = match env::args().nth(1).map(PathBuf::from) {
         Some(ref p) if p.exists() && p.extension() == Some(OsStr::new("glif")) => p.to_owned(),
         Some(ref p) => {
             eprintln!("path {:?} is not an existing .glif file, exiting", p);
@@ -50,7 +49,7 @@ fn main() -> Result<(), io::Error> {
 }
 
 fn print_tokens(xml: &str) -> Result<(), Error> {
-    let mut reader = Reader::from_str(&xml);
+    let mut reader = Reader::from_str(xml);
     let mut buf = Vec::new();
     reader.trim_text(true);
     let mut level = 0;
@@ -61,9 +60,9 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
                 let version = decl.version()?;
                 let version = std::str::from_utf8(&version)?;
 
-                let slice: &[u8] = &[];
-                let encoding = decl.encoding().unwrap_or(Ok(Cow::from(slice)))?;
+                let encoding = decl.encoding().transpose()?.unwrap_or_default();
                 let encoding = std::str::from_utf8(&encoding)?;
+
                 eprintln!("xml version {} encoding {}", version, encoding);
             }
             Ok(Event::Start(start)) => {
@@ -71,7 +70,7 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
                 eprint!("{}<{}", spaces_for_level(level), name);
                 for attr in start.attributes() {
                     let attr = attr?;
-                    let key = std::str::from_utf8(&attr.key)?;
+                    let key = std::str::from_utf8(attr.key)?;
                     let value = attr.unescaped_value()?;
                     let value = reader.decode(&value)?;
                     eprint!(" {}=\"{}\"", key, value);
@@ -89,7 +88,7 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
                 eprint!("{}<{}", spaces_for_level(level), name);
                 for attr in start.attributes() {
                     let Attribute { key, value } = attr?;
-                    let key = std::str::from_utf8(&key)?;
+                    let key = std::str::from_utf8(key)?;
                     let value = std::str::from_utf8(&value)?;
                     eprint!(" {}=\"{}\"", key, value);
                 }

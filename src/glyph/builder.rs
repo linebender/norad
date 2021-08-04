@@ -273,7 +273,8 @@ impl GlyphBuilder {
     }
 }
 
-/// An OutlineBuilder is a consuming builder for [`crate::glyph::Outline`], not unlike a [fontTools point pen].
+/// An OutlineBuilder is a consuming builder for [`Outline`], not unlike a
+/// [fontTools point pen].
 ///
 /// Primarily to be used in conjunction with [`GlyphBuilder`].
 ///
