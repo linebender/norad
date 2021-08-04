@@ -478,6 +478,7 @@ mod tests {
     use std::path::Path;
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn load_layer() {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
@@ -553,6 +554,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn set_glyph() {
         let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
         let mut layer = Layer::load(layer_path, DEFAULT_LAYER_NAME.into()).unwrap();
@@ -567,15 +569,15 @@ mod tests {
     fn layer_creation() {
         let mut ufo = crate::Font::load("testdata/mutatorSans/MutatorSansBoldWide.ufo").unwrap();
 
-        let default_layer = ufo.layers.get_or_create("foreground".into());
+        let default_layer = ufo.layers.get_or_create("foreground");
         assert!(!default_layer.is_empty());
         default_layer.clear();
 
-        let background_layer = ufo.layers.get_or_create("background".into());
+        let background_layer = ufo.layers.get_or_create("background");
         assert!(!background_layer.is_empty());
         background_layer.clear();
 
-        let misc_layer = ufo.layers.get_or_create("misc".into());
+        let misc_layer = ufo.layers.get_or_create("misc");
         assert!(misc_layer.is_empty());
         misc_layer.insert_glyph(Glyph::new_named("A"));
 

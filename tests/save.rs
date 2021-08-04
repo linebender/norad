@@ -1,6 +1,7 @@
 //! Testing saving files.
 
 use norad::{Font, FormatVersion, Glyph, Identifier, Layer, Plist};
+use plist::Value;
 
 #[test]
 fn save_default() {
@@ -71,17 +72,17 @@ fn save_fancy() {
 #[test]
 fn roundtrip_object_libs() {
     let ufo = Font::load("testdata/identifiers.ufo").unwrap();
-    assert_eq!(ufo.lib.contains_key("public.objectLibs"), false);
+    assert!(!ufo.lib.contains_key("public.objectLibs"));
 
     let glyph = ufo.get_glyph("test").unwrap();
-    assert_eq!(glyph.lib.contains_key("public.objectLibs"), false);
+    assert!(!glyph.lib.contains_key("public.objectLibs"));
 
     let dir = tempdir::TempDir::new("identifiers.ufo").unwrap();
     ufo.save(&dir).unwrap();
-    assert_eq!(glyph.lib.contains_key("public.objectLibs"), false);
+    assert!(!glyph.lib.contains_key("public.objectLibs"));
 
     let ufo2 = Font::load(&dir).unwrap();
-    assert_eq!(ufo2.lib.contains_key("public.objectLibs"), false);
+    assert!(!ufo2.lib.contains_key("public.objectLibs"));
 
     let font_guideline_second = &ufo2.font_info.as_ref().unwrap().guidelines.as_ref().unwrap()[1];
     assert_eq!(
@@ -101,7 +102,7 @@ fn roundtrip_object_libs() {
     );
 
     let glyph2 = ufo2.get_glyph("test").unwrap();
-    assert_eq!(glyph2.lib.contains_key("public.objectLibs"), false);
+    assert!(!glyph2.lib.contains_key("public.objectLibs"));
 
     let anchor_second = &glyph2.anchors[1];
     assert_eq!(
@@ -112,12 +113,8 @@ fn roundtrip_object_libs() {
         anchor_second
             .lib()
             .as_ref()
-            .unwrap()
-            .get("com.test.anchorTool")
-            .unwrap()
-            .as_boolean()
-            .unwrap(),
-        true
+            .and_then(|l| l.get("com.test.anchorTool").and_then(Value::as_boolean)),
+        Some(true)
     );
 
     assert_eq!(
@@ -193,7 +190,7 @@ fn object_libs_reject_existing_key() {
 
     ufo.lib = test_lib.clone();
     assert!(ufo.save(&dir).is_err());
-    ufo.lib.remove("public.objectLibs".into());
+    ufo.lib.remove("public.objectLibs");
 
     let glyph = Glyph {
         name: "test".into(),

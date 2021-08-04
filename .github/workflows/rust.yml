@@ -30,11 +30,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: install libgtk-dev
-        run: |
-          sudo apt update
-          sudo apt install libgtk-3-dev
-
       - name: install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -43,16 +38,28 @@ jobs:
           profile: minimal
           override: true
 
+      - run: git submodule update --init --recursive
+
+      - name: cargo clippy --all-features
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features --all-targets -- -D warnings
+
       - name: cargo clippy
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features -- -D warnings
-
-      - run: git submodule update --init --recursive
+          args: --all-targets -- -D warnings
 
       - name: cargo test
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: --all-features
+
+      - name: cargo doc
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --all-features --document-private-items
