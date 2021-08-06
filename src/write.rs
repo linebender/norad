@@ -11,7 +11,7 @@ use crate::Error;
 /// You construct `WriteOptions` using builder semantics:
 ///
 /// ```
-/// # use norad::WriteOptions;
+/// # use norad::{QuoteStyle, WriteOptions};
 /// let single_tab = WriteOptions::default();
 ///
 /// let two_tabs = WriteOptions::default()
@@ -19,6 +19,9 @@ use crate::Error;
 ///
 /// let spaces = WriteOptions::default()
 ///     .whitespace("  ");
+///
+/// let spaces_and_singlequotes = WriteOptions::default()
+///     .whitespace("  ").quote_char(QuoteStyle::Single);
 /// ```
 #[derive(Debug, Clone)]
 pub struct WriteOptions {
@@ -27,6 +30,7 @@ pub struct WriteOptions {
     xml_opts: XmlWriteOptions,
     pub(crate) whitespace_char: u8,
     pub(crate) whitespace_count: usize,
+    pub(crate) quote_style: QuoteStyle,
 }
 
 impl Default for WriteOptions {
@@ -36,6 +40,7 @@ impl Default for WriteOptions {
             xml_opts: Default::default(),
             whitespace_char: b'\t',
             whitespace_count: 1,
+            quote_style: QuoteStyle::Double,
         }
     }
 }
@@ -69,10 +74,27 @@ impl WriteOptions {
         self
     }
 
+    /// Builder-style method to customize the XML declaration attribute definition quote
+    /// char.
+    ///
+    /// By default, we indent with double quotes.
+    ///
+    /// The quote style is defined with a [QuoteStyle] enum argument.
+    pub fn quote_char(mut self, quote_style: QuoteStyle) -> Self {
+        self.quote_style = quote_style;
+        self
+    }
+
     /// Return a reference to [`XmlWriteOptions`] for use with the `plist` crate.
     pub fn xml_options(&self) -> &XmlWriteOptions {
         &self.xml_opts
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum QuoteStyle {
+    Single,
+    Double,
 }
 
 /// Write a `plist::Value` to file, providing custom options.
