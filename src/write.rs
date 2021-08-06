@@ -21,7 +21,8 @@ use crate::Error;
 ///     .whitespace("  ");
 ///
 /// let spaces_and_singlequotes = WriteOptions::default()
-///     .whitespace("  ").quote_char(QuoteStyle::Single);
+///     .whitespace("  ")
+///     .quote_char(QuoteStyle::Single);
 /// ```
 #[derive(Debug, Clone)]
 pub struct WriteOptions {
@@ -48,7 +49,7 @@ impl Default for WriteOptions {
 impl WriteOptions {
     /// Builder-style method to customize the whitespace.
     ///
-    /// By default, we intent with a single tab ("\t").
+    /// By default, we indent with a single tab ("\t").
     ///
     /// The argument, may be either a `'static str` or a `String`. You should
     /// prefer to use a `'static str` where possible.
