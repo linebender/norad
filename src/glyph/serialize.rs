@@ -3,7 +3,7 @@
 use std::io::{Cursor, Write};
 
 use quick_xml::{
-    events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event},
+    events::{BytesEnd, BytesStart, BytesText, Event},
     Error as XmlError, Writer,
 };
 
@@ -14,6 +14,7 @@ use crate::{
 };
 
 use crate::error::{GlifWriteError, WriteError};
+use crate::write::QuoteStyle;
 
 impl Glyph {
     /// Serialize the glyph into an XML byte stream.
@@ -37,7 +38,10 @@ impl Glyph {
             options.whitespace_char,
             options.whitespace_count,
         );
-        writer.write_event(Event::Decl(BytesDecl::new(b"1.0", Some(b"UTF-8"), None)))?;
+        match options.quote_style {
+            QuoteStyle::Double => writer.write(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")?,
+            QuoteStyle::Single => writer.write(b"<?xml version='1.0' encoding='UTF-8'?>\n")?,
+        }
         let mut start = BytesStart::borrowed_name(b"glyph");
         start.push_attribute(("name", &*self.name));
         start.push_attribute(("format", self.format.as_str()));
