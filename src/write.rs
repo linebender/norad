@@ -118,7 +118,7 @@ pub fn write_plist_value_to_file(
     let mut file = File::create(path)?;
     let writer = BufWriter::new(&mut file);
     value.to_writer_xml_with_options(writer, options.xml_options())?;
-    write_quote_style(&file, &options)?;
+    write_quote_style(&file, options)?;
     file.sync_all()?;
     Ok(())
 }
@@ -136,7 +136,7 @@ pub fn write_xml_to_file(
         let mut ser = plist::Serializer::new(writer);
         value.serialize(&mut ser)?;
     }
-    write_quote_style(&file, &options)?;
+    write_quote_style(&file, options)?;
     file.sync_all()?;
     Ok(())
 }
