@@ -14,7 +14,7 @@ use crate::{
 };
 
 use crate::error::{GlifWriteError, WriteError};
-use crate::write::QuoteStyle;
+use crate::write::QuoteChar;
 
 impl Glyph {
     /// Serialize the glyph into an XML byte stream.
@@ -39,8 +39,8 @@ impl Glyph {
             options.whitespace_count,
         );
         match options.quote_style {
-            QuoteStyle::Double => writer.write(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")?,
-            QuoteStyle::Single => writer.write(b"<?xml version='1.0' encoding='UTF-8'?>\n")?,
+            QuoteChar::Double => writer.write(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")?,
+            QuoteChar::Single => writer.write(b"<?xml version='1.0' encoding='UTF-8'?>\n")?,
         }
         let mut start = BytesStart::borrowed_name(b"glyph");
         start.push_attribute(("name", &*self.name));

@@ -17,7 +17,7 @@ use crate::Error;
 /// You construct `WriteOptions` using builder semantics:
 ///
 /// ```
-/// # use norad::{QuoteStyle, WriteOptions};
+/// # use norad::{QuoteChar, WriteOptions};
 /// let single_tab = WriteOptions::default();
 ///
 /// let two_tabs = WriteOptions::default()
@@ -28,7 +28,7 @@ use crate::Error;
 ///
 /// let spaces_and_singlequotes = WriteOptions::default()
 ///     .whitespace("  ")
-///     .quote_char(QuoteStyle::Single);
+///     .quote_char(QuoteChar::Single);
 /// ```
 #[derive(Debug, Clone)]
 pub struct WriteOptions {
@@ -37,7 +37,7 @@ pub struct WriteOptions {
     xml_opts: XmlWriteOptions,
     pub(crate) whitespace_char: u8,
     pub(crate) whitespace_count: usize,
-    pub(crate) quote_style: QuoteStyle,
+    pub(crate) quote_style: QuoteChar,
 }
 
 impl Default for WriteOptions {
@@ -47,7 +47,7 @@ impl Default for WriteOptions {
             xml_opts: Default::default(),
             whitespace_char: b'\t',
             whitespace_count: 1,
-            quote_style: QuoteStyle::Double,
+            quote_style: QuoteChar::Double,
         }
     }
 }
@@ -86,8 +86,8 @@ impl WriteOptions {
     ///
     /// By default, we indent with double quotes.
     ///
-    /// The quote style is defined with a [QuoteStyle] enum argument.
-    pub fn quote_char(mut self, quote_style: QuoteStyle) -> Self {
+    /// The quote style is defined with a [QuoteChar] enum argument.
+    pub fn quote_char(mut self, quote_style: QuoteChar) -> Self {
         self.quote_style = quote_style;
         self
     }
@@ -144,7 +144,7 @@ pub fn write_xml_to_file(
 pub fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), Error> {
     // Optionally modify the XML declaration quote style
     match options.quote_style {
-        QuoteStyle::Single => {
+        QuoteChar::Single => {
             // Unix platform specific write
             #[cfg(target_family = "unix")]
             file.write_at(b"<?xml version='1.0' encoding='UTF-8'?>", 0)?;
@@ -152,7 +152,7 @@ pub fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), Erro
             #[cfg(target_family = "windows")]
             file.seek_write(b"<?xml version='1.0' encoding='UTF-8'?>", 0)?;
         }
-        QuoteStyle::Double => (), // double quote is the default style
+        QuoteChar::Double => (), // double quote is the default style
     }
     Ok(())
 }
