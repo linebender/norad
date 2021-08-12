@@ -349,11 +349,6 @@ impl Layer {
 
         self.layerinfo_to_file_if_needed(path, opts)?;
 
-        for (name, glyph_path) in self.contents.iter() {
-            let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
-            glyph.save_with_options(&path.join(glyph_path), opts)?;
-        }
-
         #[cfg(feature = "rayon")]
         let iter = self.contents.par_iter();
         #[cfg(not(feature = "rayon"))]
@@ -361,7 +356,7 @@ impl Layer {
 
         iter.try_for_each(|(name, glyph_path)| {
             let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
-            glyph.save(path.join(glyph_path))
+            glyph.save_with_options(&path.join(glyph_path), opts)
         })
     }
 
