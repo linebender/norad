@@ -113,18 +113,7 @@ pub fn write_plist_value_to_file(
     let mut file = File::create(path)?;
     let writer = BufWriter::new(&mut file);
     value.to_writer_xml_with_options(writer, options.xml_options())?;
-    // Optionally modify the XML declaration quote style
-    match options.quote_style {
-        QuoteStyle::Single => {
-            // Unix platform specific write
-            #[cfg(target_family = "unix")]
-            file.write_at(b"<?xml version='1.0' encoding='UTF-8'?>", 0)?;
-            // Windows platform specific write
-            #[cfg(target_family = "windows")]
-            file.seek_write(b"<?xml version='1.0' encoding='UTF-8'?>", 0)?;
-        }
-        QuoteStyle::Double => (), // double quote is the default style
-    }
+    write_quote_style(&file, &options)?;
     file.sync_all()?;
     Ok(())
 }
@@ -142,6 +131,12 @@ pub fn write_xml_to_file(
         let mut ser = plist::Serializer::new(writer);
         value.serialize(&mut ser)?;
     }
+    write_quote_style(&file, &options)?;
+    file.sync_all()?;
+    Ok(())
+}
+
+pub fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), Error> {
     // Optionally modify the XML declaration quote style
     match options.quote_style {
         QuoteStyle::Single => {
@@ -154,6 +149,5 @@ pub fn write_xml_to_file(
         }
         QuoteStyle::Double => (), // double quote is the default style
     }
-    file.sync_all()?;
     Ok(())
 }
