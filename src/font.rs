@@ -249,17 +249,13 @@ impl Font {
         // we want to always set ourselves as the creator when serializing,
         // but we also don't have mutable access to self.
         if self.meta.creator == DEFAULT_METAINFO_CREATOR {
-            write::write_xml_to_file(&path.join(METAINFO_FILE), &self.meta, options.xml_options())?;
+            write::write_xml_to_file(&path.join(METAINFO_FILE), &self.meta, options)?;
         } else {
-            write::write_xml_to_file(
-                &path.join(METAINFO_FILE),
-                &MetaInfo::default(),
-                options.xml_options(),
-            )?;
+            write::write_xml_to_file(&path.join(METAINFO_FILE), &MetaInfo::default(), options)?;
         }
 
         if let Some(font_info) = self.font_info.as_ref() {
-            write::write_xml_to_file(&path.join(FONTINFO_FILE), font_info, options.xml_options())?;
+            write::write_xml_to_file(&path.join(FONTINFO_FILE), font_info, options)?;
         }
 
         // Object libs are treated specially. The UFO v3 format won't allow us
@@ -277,25 +273,17 @@ impl Font {
         }
         if !lib.is_empty() {
             crate::util::recursive_sort_plist_keys(&mut lib);
-            write::write_plist_value_to_file(
-                &path.join(LIB_FILE),
-                &lib.into(),
-                options.xml_options(),
-            )?;
+            write::write_plist_value_to_file(&path.join(LIB_FILE), &lib.into(), options)?;
         }
 
         if let Some(groups) = self.groups.as_ref() {
             validate_groups(groups).map_err(Error::InvalidGroups)?;
-            write::write_xml_to_file(&path.join(GROUPS_FILE), groups, options.xml_options())?;
+            write::write_xml_to_file(&path.join(GROUPS_FILE), groups, options)?;
         }
 
         if let Some(kerning) = self.kerning.as_ref() {
             let kerning_serializer = crate::kerning::KerningSerializer { kerning };
-            write::write_xml_to_file(
-                &path.join(KERNING_FILE),
-                &kerning_serializer,
-                options.xml_options(),
-            )?;
+            write::write_xml_to_file(&path.join(KERNING_FILE), &kerning_serializer, options)?;
         }
 
         if let Some(features) = self.features.as_ref() {
@@ -304,11 +292,7 @@ impl Font {
 
         let contents: Vec<(&str, &PathBuf)> =
             self.layers.iter().map(|l| (l.name.as_ref(), &l.path)).collect();
-        write::write_xml_to_file(
-            &path.join(LAYER_CONTENTS_FILE),
-            &contents,
-            options.xml_options(),
-        )?;
+        write::write_xml_to_file(&path.join(LAYER_CONTENTS_FILE), &contents, options)?;
 
         for layer in self.layers.iter() {
             let layer_path = path.join(&layer.path);

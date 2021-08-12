@@ -2,6 +2,12 @@
 
 use std::{borrow::Cow, fs::File, io::BufWriter, path::Path};
 
+#[cfg(target_family = "unix")]
+use std::os::unix::prelude::FileExt;
+
+#[cfg(target_family = "windows")]
+use std::os::windows::prelude::*;
+
 use plist::XmlWriteOptions;
 
 use crate::Error;
@@ -102,12 +108,24 @@ pub enum QuoteStyle {
 pub fn write_plist_value_to_file(
     path: &Path,
     value: &plist::Value,
-    options: &XmlWriteOptions,
+    options: &WriteOptions,
 ) -> Result<(), Error> {
     let mut file = File::create(path)?;
     let writer = BufWriter::new(&mut file);
-    value.to_writer_xml_with_options(writer, options)?;
+    value.to_writer_xml_with_options(writer, options.xml_options())?;
     file.sync_all()?;
+    // Optionally modify the XML declaration quote style
+    match options.quote_style {
+        QuoteStyle::Single => {
+            // Unix platform specific write
+            #[cfg(target_family = "unix")]
+            file.write_at(b"<?xml version='1.0' encoding='UTF-8'?>", 0)?;
+            // Windows platform specific write
+            #[cfg(target_family = "windows")]
+            file.seek_write(b"<?xml version='1.0' encoding='UTF-8'?>", 0)?;
+        }
+        QuoteStyle::Double => (), // double quote is the default style
+    }
     Ok(())
 }
 
@@ -115,15 +133,27 @@ pub fn write_plist_value_to_file(
 pub fn write_xml_to_file(
     path: &Path,
     value: &impl serde::Serialize,
-    options: &XmlWriteOptions,
+    options: &WriteOptions,
 ) -> Result<(), Error> {
     let mut file = File::create(path)?;
     {
         let buf_writer = BufWriter::new(&mut file);
-        let writer = plist::stream::XmlWriter::new_with_options(buf_writer, options);
+        let writer = plist::stream::XmlWriter::new_with_options(buf_writer, options.xml_options());
         let mut ser = plist::Serializer::new(writer);
         value.serialize(&mut ser)?;
     }
     file.sync_all()?;
+    // Optionally modify the XML declaration quote style
+    match options.quote_style {
+        QuoteStyle::Single => {
+            // Unix platform specific write
+            #[cfg(target_family = "unix")]
+            file.write_at(b"<?xml version='1.0' encoding='UTF-8'?>", 0)?;
+            // Windows platform specific write
+            #[cfg(target_family = "windows")]
+            file.seek_write(b"<?xml version='1.0' encoding='UTF-8'?>", 0)?;
+        }
+        QuoteStyle::Double => (), // double quote is the default style
+    }
     Ok(())
 }
