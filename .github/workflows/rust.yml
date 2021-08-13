@@ -4,7 +4,7 @@ on:
     branches:
       - master
     tags:
-      - '*'
+      - "*"
 
 name: Continuous integration
 
@@ -24,9 +24,9 @@ jobs:
           command: fmt
           args: --all -- --check
 
-  test-stable:
+  clippy-lint:
+    name: Clippy lints
     runs-on: ubuntu-latest
-    name: cargo test stable
     steps:
       - uses: actions/checkout@v2
 
@@ -51,6 +51,25 @@ jobs:
         with:
           command: clippy
           args: --all-targets -- -D warnings
+
+  test-stable:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    name: cargo test stable
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - run: git submodule update --init --recursive
 
       - name: cargo test
         uses: actions-rs/cargo@v1
