@@ -156,3 +156,122 @@ pub fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), Erro
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use plist::Value;
+    use std::fs;
+    use tempdir::TempDir;
+
+    #[test]
+    fn write_lib_plist_default() -> Result<(), Error> {
+        let opt = WriteOptions::default();
+        let plist_read =
+            Value::from_file("testdata/mutatorSans/MutatorSansBoldCondensed.ufo/lib.plist")
+                .expect("failed to read plist");
+        let tmp = TempDir::new("test")?;
+        let filepath = tmp.path().join("lib.plist");
+        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        let plist_write = fs::read_to_string(filepath)?;
+        let str_list = plist_write.split("\n").collect::<Vec<&str>>();
+        assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
+        assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
+        assert_eq!(str_list[4], "\t<key>com.defcon.sortDescriptor</key>"); // single tab spacing by default
+        assert_eq!(str_list[6], "\t\t<dict>"); // second level should use two tab char
+        tmp.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn write_lib_plist_with_custom_whitespace() -> Result<(), Error> {
+        let opt = WriteOptions::default().whitespace("  ");
+        let plist_read =
+            Value::from_file("testdata/mutatorSans/MutatorSansBoldCondensed.ufo/lib.plist")
+                .expect("failed to read plist");
+        let tmp = TempDir::new("test")?;
+        let filepath = tmp.path().join("lib.plist");
+        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        let plist_write = fs::read_to_string(filepath)?;
+        let str_list = plist_write.split("\n").collect::<Vec<&str>>();
+        assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
+        assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
+        assert_eq!(str_list[4], "  <key>com.defcon.sortDescriptor</key>"); // should use two space char
+        assert_eq!(str_list[6], "    <dict>"); // second level should use four space char
+        tmp.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn write_lib_plist_with_custom_whitespace_and_single_quotes() -> Result<(), Error> {
+        let opt = WriteOptions::default().whitespace("  ").quote_char(QuoteChar::Single);
+        let plist_read =
+            Value::from_file("testdata/mutatorSans/MutatorSansBoldCondensed.ufo/lib.plist")
+                .expect("failed to read plist");
+        let tmp = TempDir::new("test")?;
+        let filepath = tmp.path().join("lib.plist");
+        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        let plist_write = fs::read_to_string(filepath)?;
+        let str_list = plist_write.split("\n").collect::<Vec<&str>>();
+        assert_eq!(str_list[0], "<?xml version='1.0' encoding='UTF-8'?>"); // should use single quotes
+        assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
+        assert_eq!(str_list[4], "  <key>com.defcon.sortDescriptor</key>"); // should use two space char
+        assert_eq!(str_list[6], "    <dict>"); // second level should use four space char
+        tmp.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn write_fontinfo_plist_default() -> Result<(), Error> {
+        let opt = WriteOptions::default();
+        let plist_read =
+            Value::from_file("testdata/mutatorSans/MutatorSansBoldCondensed.ufo/fontinfo.plist")
+                .expect("failed to read plist");
+        let tmp = TempDir::new("test")?;
+        let filepath = tmp.path().join("fontinfo.plist");
+        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        let plist_write = fs::read_to_string(filepath)?;
+        let str_list = plist_write.split("\n").collect::<Vec<&str>>();
+        assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
+        assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
+        assert_eq!(str_list[4], "\t<key>ascender</key>"); // single tab level spacing by default
+        tmp.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn write_fontinfo_plist_with_custom_whitespace() -> Result<(), Error> {
+        let opt = WriteOptions::default().whitespace("  ");
+        let plist_read =
+            Value::from_file("testdata/mutatorSans/MutatorSansBoldCondensed.ufo/fontinfo.plist")
+                .expect("failed to read plist");
+        let tmp = TempDir::new("test")?;
+        let filepath = tmp.path().join("fontinfo.plist");
+        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        let plist_write = fs::read_to_string(filepath)?;
+        let str_list = plist_write.split("\n").collect::<Vec<&str>>();
+        assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
+        assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
+        assert_eq!(str_list[4], "  <key>ascender</key>"); // should use two space char
+        tmp.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn write_fontinfo_plist_with_custom_whitespace_and_single_quotes() -> Result<(), Error> {
+        let opt = WriteOptions::default().whitespace("  ").quote_char(QuoteChar::Single);
+        let plist_read =
+            Value::from_file("testdata/mutatorSans/MutatorSansBoldCondensed.ufo/fontinfo.plist")
+                .expect("failed to read plist");
+        let tmp = TempDir::new("test")?;
+        let filepath = tmp.path().join("fontinfo.plist");
+        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        let plist_write = fs::read_to_string(filepath)?;
+        let str_list = plist_write.split("\n").collect::<Vec<&str>>();
+        assert_eq!(str_list[0], "<?xml version='1.0' encoding='UTF-8'?>"); // should use single quotes
+        assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
+        assert_eq!(str_list[4], "  <key>ascender</key>"); // should use two space char
+        tmp.close()?;
+        Ok(())
+    }
+}
