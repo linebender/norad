@@ -1,5 +1,6 @@
 use super::parse::parse_glyph;
 use super::*;
+use crate::write::QuoteChar;
 use std::path::PathBuf;
 
 #[test]
@@ -74,6 +75,37 @@ fn serialize_with_custom_whitespace() {
     pretty_assertions::assert_eq!(
         two_spaces,
         r#"<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="hello" format="2">
+  <advance width="1200"/>
+  <outline>
+    <contour>
+      <point x="2" y="30" type="line"/>
+      <point x="44" y="10" type="line"/>
+    </contour>
+  </outline>
+  <lib>
+    <dict>
+      <key>test.key</key>
+      <string>I am a creative professional :)</string>
+    </dict>
+  </lib>
+  <note>durp</note>
+</glyph>
+"#
+    );
+}
+
+#[test]
+fn serialize_with_custom_whitespace_and_single_quote_style() {
+    let data = include_str!("../../testdata/small_lib.glif");
+    let glyph = parse_glyph(data.as_bytes()).unwrap();
+    let options = WriteOptions::default().whitespace("  ").quote_char(QuoteChar::Single);
+    let two_spaces = glyph.encode_xml_with_options(&options).unwrap();
+    let two_spaces = std::str::from_utf8(&two_spaces).unwrap();
+
+    pretty_assertions::assert_eq!(
+        two_spaces,
+        r#"<?xml version='1.0' encoding='UTF-8'?>
 <glyph name="hello" format="2">
   <advance width="1200"/>
   <outline>
