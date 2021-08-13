@@ -193,7 +193,7 @@ mod tests {
         let filepath = tmp.path().join("lib.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath)?;
-        let str_list = plist_write.split("\n").collect::<Vec<&str>>();
+        let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
         assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
         assert_eq!(str_list[4], "  <key>com.defcon.sortDescriptor</key>"); // should use two space char
@@ -212,7 +212,7 @@ mod tests {
         let filepath = tmp.path().join("lib.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath)?;
-        let str_list = plist_write.split("\n").collect::<Vec<&str>>();
+        let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version='1.0' encoding='UTF-8'?>"); // should use single quotes
         assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
         assert_eq!(str_list[4], "  <key>com.defcon.sortDescriptor</key>"); // should use two space char
@@ -231,7 +231,7 @@ mod tests {
         let filepath = tmp.path().join("fontinfo.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath)?;
-        let str_list = plist_write.split("\n").collect::<Vec<&str>>();
+        let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
         assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
         assert_eq!(str_list[4], "\t<key>ascender</key>"); // single tab level spacing by default
@@ -249,7 +249,7 @@ mod tests {
         let filepath = tmp.path().join("fontinfo.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath)?;
-        let str_list = plist_write.split("\n").collect::<Vec<&str>>();
+        let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
         assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
         assert_eq!(str_list[4], "  <key>ascender</key>"); // should use two space char
@@ -267,7 +267,7 @@ mod tests {
         let filepath = tmp.path().join("fontinfo.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath)?;
-        let str_list = plist_write.split("\n").collect::<Vec<&str>>();
+        let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version='1.0' encoding='UTF-8'?>"); // should use single quotes
         assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
         assert_eq!(str_list[4], "  <key>ascender</key>"); // should use two space char
