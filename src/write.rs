@@ -86,7 +86,7 @@ impl WriteOptions {
     ///
     /// By default, we indent with double quotes.
     ///
-    /// The quote style is defined with a [QuoteChar] enum argument.
+    /// The quote style is defined with a [`QuoteChar`] enum argument.
     pub fn quote_char(mut self, quote_style: QuoteChar) -> Self {
         self.quote_style = quote_style;
         self
