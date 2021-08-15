@@ -324,11 +324,7 @@ impl Layer {
 
         util::recursive_sort_plist_keys(&mut dict);
 
-        crate::write::write_plist_value_to_file(
-            &path.join(LAYER_INFO_FILE),
-            &dict.into(),
-            options.xml_options(),
-        )
+        crate::write::write_plist_value_to_file(&path.join(LAYER_INFO_FILE), &dict.into(), options)
     }
 
     /// Attempt to write this layer to the given path.
@@ -341,11 +337,7 @@ impl Layer {
 
     pub fn save_with_options(&self, path: &Path, opts: &WriteOptions) -> Result<(), Error> {
         fs::create_dir(&path)?;
-        crate::write::write_xml_to_file(
-            &path.join(CONTENTS_FILE),
-            &self.contents,
-            opts.xml_options(),
-        )?;
+        crate::write::write_xml_to_file(&path.join(CONTENTS_FILE), &self.contents, opts)?;
 
         self.layerinfo_to_file_if_needed(path, opts)?;
 
