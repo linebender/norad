@@ -130,12 +130,8 @@ pub fn write_xml_to_file(
     options: &WriteOptions,
 ) -> Result<(), Error> {
     let mut file = File::create(path)?;
-    {
-        let buf_writer = BufWriter::new(&mut file);
-        let writer = plist::stream::XmlWriter::new_with_options(buf_writer, options.xml_options());
-        let mut ser = plist::Serializer::new(writer);
-        value.serialize(&mut ser)?;
-    }
+    let buf_writer = BufWriter::new(&mut file);
+    plist::to_writer_xml_with_options(buf_writer, value, options.xml_options())?;
     write_quote_style(&file, options)?;
     file.sync_all()?;
     Ok(())
