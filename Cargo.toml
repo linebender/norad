@@ -6,7 +6,7 @@ license = "MIT/Apache-2.0"
 edition = "2018"
 keywords = ["font", "ufo", "fonts"]
 repository = "https://github.com/linebender/norad"
-description = "Read and write Unifed Font Object files."
+description = "Read and write Unified Font Object files."
 readme = "README.md"
 categories = ["graphics", "text-processing"]
 
