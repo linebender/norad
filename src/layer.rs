@@ -490,7 +490,7 @@ mod tests {
     #[test]
     #[allow(clippy::float_cmp)]
     fn load_layer() {
-        let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
+        let layer_path = "testdata/MutatorSansLightWide.ufo/glyphs";
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
         let layer = Layer::load(layer_path, DEFAULT_LAYER_NAME.into()).unwrap();
         assert_eq!(
@@ -503,13 +503,13 @@ mod tests {
         );
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
         assert_eq!(glyph.height, 0.);
-        assert_eq!(glyph.width, 1290.);
+        assert_eq!(glyph.width, 1190.);
         assert_eq!(glyph.codepoints, vec!['A']);
     }
 
     #[test]
     fn load_write_layerinfo() {
-        let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
+        let layer_path = "testdata/MutatorSansLightWide.ufo/glyphs";
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
         let mut layer = Layer::load(layer_path, DEFAULT_LAYER_NAME.into()).unwrap();
 
@@ -551,7 +551,7 @@ mod tests {
 
     #[test]
     fn delete() {
-        let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
+        let layer_path = "testdata/MutatorSansLightWide.ufo/glyphs";
         let mut layer = Layer::load(layer_path, DEFAULT_LAYER_NAME.into()).unwrap();
         layer.remove_glyph("A");
         if let Some(glyph) = layer.get_glyph("A") {
@@ -566,7 +566,7 @@ mod tests {
     #[test]
     #[allow(clippy::float_cmp)]
     fn set_glyph() {
-        let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
+        let layer_path = "testdata/MutatorSansLightWide.ufo/glyphs";
         let mut layer = Layer::load(layer_path, DEFAULT_LAYER_NAME.into()).unwrap();
         let mut glyph = Glyph::new_named("A");
         glyph.width = 69.;
@@ -577,7 +577,7 @@ mod tests {
 
     #[test]
     fn layer_creation() {
-        let mut ufo = crate::Font::load("testdata/mutatorSans/MutatorSansBoldWide.ufo").unwrap();
+        let mut ufo = crate::Font::load("testdata/MutatorSansLightWide.ufo").unwrap();
 
         let default_layer = ufo.layers.get_or_create("foreground");
         assert!(!default_layer.is_empty());

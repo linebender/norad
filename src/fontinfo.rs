@@ -1232,7 +1232,7 @@ mod tests {
 
     #[test]
     fn fontinfo() {
-        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo/fontinfo.plist";
+        let path = "testdata/MutatorSansLightWide.ufo/fontinfo.plist";
         let font_info: FontInfo = plist::from_file(path).expect("failed to load fontinfo");
         assert_eq!(font_info.family_name, Some("MutatorMathTest".to_string()));
         assert_eq!(font_info.trademark, None);

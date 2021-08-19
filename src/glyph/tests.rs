@@ -189,7 +189,7 @@ fn parse_v1_upgrade_anchors() {
 
 #[test]
 fn curve_types() {
-    let bytes = include_bytes!("../../testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs/D_.glif");
+    let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/D_.glif");
     let glyph = parse_glyph(bytes).unwrap();
     assert_eq!(glyph.contours.len(), 2);
     assert_eq!(glyph.contours[1].points[0].typ, PointType::Line);
