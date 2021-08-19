@@ -812,8 +812,8 @@ impl FontInfo {
 #[serde(rename_all = "camelCase")]
 pub struct GaspRangeRecord {
     #[serde(rename = "rangeMaxPPEM")]
-    range_max_ppem: NonNegativeInteger,
-    range_gasp_behavior: Vec<GaspBehavior>,
+    pub range_max_ppem: NonNegativeInteger,
+    pub range_gasp_behavior: Vec<GaspBehavior>,
 }
 
 /// Corresponds to [rangeGaspBehavior Bits](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#rangegaspbehavior-bits).
@@ -831,14 +831,14 @@ pub enum GaspBehavior {
 #[serde(deny_unknown_fields)]
 pub struct NameRecord {
     #[serde(rename = "nameID")]
-    name_id: NonNegativeInteger,
+    pub name_id: NonNegativeInteger,
     #[serde(rename = "platformID")]
-    platform_id: NonNegativeInteger,
+    pub platform_id: NonNegativeInteger,
     #[serde(rename = "encodingID")]
-    encoding_id: NonNegativeInteger,
+    pub encoding_id: NonNegativeInteger,
     #[serde(rename = "languageID")]
-    language_id: NonNegativeInteger,
-    string: String,
+    pub language_id: NonNegativeInteger,
+    pub string: String,
 }
 
 /// Corresponds to the allowed values for [openTypeOS2WidthClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
@@ -859,8 +859,8 @@ pub enum Os2WidthClass {
 /// Corresponds to [openTypeOS2FamilyClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Os2FamilyClass {
-    class_id: u8,
-    subclass_id: u8,
+    pub class_id: u8,
+    pub subclass_id: u8,
 }
 
 impl Os2FamilyClass {
@@ -902,16 +902,16 @@ impl<'de> Deserialize<'de> for Os2FamilyClass {
 /// Corresponds to [openTypeOS2Panose](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Os2Panose {
-    family_type: NonNegativeInteger,
-    serif_style: NonNegativeInteger,
-    weight: NonNegativeInteger,
-    proportion: NonNegativeInteger,
-    contrast: NonNegativeInteger,
-    stroke_variation: NonNegativeInteger,
-    arm_style: NonNegativeInteger,
-    letterform: NonNegativeInteger,
-    midline: NonNegativeInteger,
-    x_height: NonNegativeInteger,
+    pub family_type: NonNegativeInteger,
+    pub serif_style: NonNegativeInteger,
+    pub weight: NonNegativeInteger,
+    pub proportion: NonNegativeInteger,
+    pub contrast: NonNegativeInteger,
+    pub stroke_variation: NonNegativeInteger,
+    pub arm_style: NonNegativeInteger,
+    pub letterform: NonNegativeInteger,
+    pub midline: NonNegativeInteger,
+    pub x_height: NonNegativeInteger,
 }
 
 impl Serialize for Os2Panose {
@@ -1050,104 +1050,104 @@ pub enum PostscriptWindowsCharacterSet {
 /// Corresponds to woffMetadataCopyright in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCopyright {
-    text: Vec<WoffMetadataTextRecord>,
+    pub text: Vec<WoffMetadataTextRecord>,
 }
 
 /// Corresponds to woffMetadataCredits in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCredits {
-    credits: Vec<WoffMetadataCredit>,
+    pub credits: Vec<WoffMetadataCredit>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCredit {
-    name: String,
-    url: Option<String>,
-    role: Option<String>,
-    dir: Option<WoffAttributeDirection>,
-    class: Option<String>,
+    pub name: String,
+    pub url: Option<String>,
+    pub role: Option<String>,
+    pub dir: Option<WoffAttributeDirection>,
+    pub class: Option<String>,
 }
 
 /// Corresponds to woffMetadataDescription in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataDescription {
-    url: Option<String>,
-    text: Vec<WoffMetadataTextRecord>,
+    pub url: Option<String>,
+    pub text: Vec<WoffMetadataTextRecord>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataTextRecord {
-    text: String,
-    language: Option<String>,
-    dir: Option<WoffAttributeDirection>,
-    class: Option<String>,
+    pub text: String,
+    pub language: Option<String>,
+    pub dir: Option<WoffAttributeDirection>,
+    pub class: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionRecord {
-    id: Option<String>,
-    names: Vec<WoffMetadataExtensionNameRecord>,
-    items: Vec<WoffMetadataExtensionItemRecord>,
+    pub id: Option<String>,
+    pub names: Vec<WoffMetadataExtensionNameRecord>,
+    pub items: Vec<WoffMetadataExtensionItemRecord>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionNameRecord {
-    text: String,
-    language: Option<String>,
-    dir: Option<WoffAttributeDirection>,
-    class: Option<String>,
+    pub text: String,
+    pub language: Option<String>,
+    pub dir: Option<WoffAttributeDirection>,
+    pub class: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionItemRecord {
-    id: Option<String>, // XXX: Spec does not specify if required, assume optional.
-    names: Vec<WoffMetadataExtensionNameRecord>,
-    values: Vec<WoffMetadataExtensionValueRecord>,
+    pub id: Option<String>, // XXX: Spec does not specify if required, assume optional.
+    pub names: Vec<WoffMetadataExtensionNameRecord>,
+    pub values: Vec<WoffMetadataExtensionValueRecord>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionValueRecord {
-    text: String,
-    language: Option<String>,
-    dir: Option<WoffAttributeDirection>,
-    class: Option<String>,
+    pub text: String,
+    pub language: Option<String>,
+    pub dir: Option<WoffAttributeDirection>,
+    pub class: Option<String>,
 }
 
 /// Corresponds to woffMetadataLicense in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataLicense {
-    url: Option<String>,
-    id: Option<String>,
-    text: Vec<WoffMetadataTextRecord>,
+    pub url: Option<String>,
+    pub id: Option<String>,
+    pub text: Vec<WoffMetadataTextRecord>,
 }
 
 /// Corresponds to woffMetadataLicensee in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataLicensee {
-    name: String,
-    dir: Option<WoffAttributeDirection>,
-    class: Option<String>,
+    pub name: String,
+    pub dir: Option<WoffAttributeDirection>,
+    pub class: Option<String>,
 }
 
 /// Corresponds to woffMetadataTrademark in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataTrademark {
-    text: Vec<WoffMetadataTextRecord>,
+    pub text: Vec<WoffMetadataTextRecord>,
 }
 
 /// Corresponds to woffMetadataUniqueID in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataUniqueId {
-    id: String,
+    pub id: String,
 }
 
 /// Corresponds to woffMetadataVendor in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataVendor {
-    name: String,
-    url: String,
-    dir: Option<WoffAttributeDirection>,
-    class: Option<String>,
+    pub name: String,
+    pub url: String,
+    pub dir: Option<WoffAttributeDirection>,
+    pub class: Option<String>,
 }
 
 /// Corresponds to the writing direction attribute used in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
