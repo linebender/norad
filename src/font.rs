@@ -255,6 +255,7 @@ impl Font {
         }
 
         if let Some(font_info) = self.font_info.as_ref() {
+            font_info.validate()?;
             write::write_xml_to_file(&path.join(FONTINFO_FILE), font_info, options)?;
         }
 
