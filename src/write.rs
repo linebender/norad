@@ -163,9 +163,8 @@ mod tests {
     #[test]
     fn write_lib_plist_default() -> Result<(), Error> {
         let opt = WriteOptions::default();
-        let plist_read =
-            Value::from_file("testdata/mutatorSans/MutatorSansBoldCondensed.ufo/lib.plist")
-                .expect("failed to read plist");
+        let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/lib.plist")
+            .expect("failed to read plist");
         let tmp = TempDir::new("test")?;
         let filepath = tmp.path().join("lib.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
@@ -182,9 +181,8 @@ mod tests {
     #[test]
     fn write_lib_plist_with_custom_whitespace() -> Result<(), Error> {
         let opt = WriteOptions::default().whitespace("  ");
-        let plist_read =
-            Value::from_file("testdata/mutatorSans/MutatorSansBoldCondensed.ufo/lib.plist")
-                .expect("failed to read plist");
+        let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/lib.plist")
+            .expect("failed to read plist");
         let tmp = TempDir::new("test")?;
         let filepath = tmp.path().join("lib.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
@@ -201,9 +199,8 @@ mod tests {
     #[test]
     fn write_lib_plist_with_custom_whitespace_and_single_quotes() -> Result<(), Error> {
         let opt = WriteOptions::default().whitespace("  ").quote_char(QuoteChar::Single);
-        let plist_read =
-            Value::from_file("testdata/mutatorSans/MutatorSansBoldCondensed.ufo/lib.plist")
-                .expect("failed to read plist");
+        let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/lib.plist")
+            .expect("failed to read plist");
         let tmp = TempDir::new("test")?;
         let filepath = tmp.path().join("lib.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
@@ -220,9 +217,8 @@ mod tests {
     #[test]
     fn write_fontinfo_plist_default() -> Result<(), Error> {
         let opt = WriteOptions::default();
-        let plist_read =
-            Value::from_file("testdata/mutatorSans/MutatorSansBoldCondensed.ufo/fontinfo.plist")
-                .expect("failed to read plist");
+        let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
+            .expect("failed to read plist");
         let tmp = TempDir::new("test")?;
         let filepath = tmp.path().join("fontinfo.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
@@ -238,9 +234,8 @@ mod tests {
     #[test]
     fn write_fontinfo_plist_with_custom_whitespace() -> Result<(), Error> {
         let opt = WriteOptions::default().whitespace("  ");
-        let plist_read =
-            Value::from_file("testdata/mutatorSans/MutatorSansBoldCondensed.ufo/fontinfo.plist")
-                .expect("failed to read plist");
+        let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
+            .expect("failed to read plist");
         let tmp = TempDir::new("test")?;
         let filepath = tmp.path().join("fontinfo.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
@@ -256,9 +251,8 @@ mod tests {
     #[test]
     fn write_fontinfo_plist_with_custom_whitespace_and_single_quotes() -> Result<(), Error> {
         let opt = WriteOptions::default().whitespace("  ").quote_char(QuoteChar::Single);
-        let plist_read =
-            Value::from_file("testdata/mutatorSans/MutatorSansBoldCondensed.ufo/fontinfo.plist")
-                .expect("failed to read plist");
+        let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
+            .expect("failed to read plist");
         let tmp = TempDir::new("test")?;
         let filepath = tmp.path().join("fontinfo.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;

@@ -443,7 +443,7 @@ mod tests {
 
     #[test]
     fn loading() {
-        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
+        let path = "testdata/MutatorSansLightWide.ufo";
         let font_obj = Font::load(path).unwrap();
         assert_eq!(font_obj.iter_layers().count(), 2);
         font_obj.layers.get("background").expect("missing layer");
@@ -507,7 +507,7 @@ mod tests {
 
     #[test]
     fn data_request() {
-        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo";
+        let path = "testdata/MutatorSansLightWide.ufo";
         let font_obj = Font::load_requested_data(path, DataRequest::none()).unwrap();
         assert_eq!(font_obj.iter_layers().count(), 1);
         assert!(font_obj.layers.default_layer().is_empty());
@@ -583,7 +583,7 @@ mod tests {
 
     #[test]
     fn metainfo() {
-        let path = "testdata/mutatorSans/MutatorSansLightWide.ufo/metainfo.plist";
+        let path = "testdata/MutatorSansLightWide.ufo/metainfo.plist";
         let meta: MetaInfo = plist::from_file(path).expect("failed to load metainfo");
         assert_eq!(meta.creator, "org.robofab.ufoLib");
     }

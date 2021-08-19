@@ -50,7 +50,7 @@ fn save_new_file() {
 #[test]
 fn save_fancy() {
     let mut my_ufo = Font::new();
-    let layer_path = "testdata/mutatorSans/MutatorSansBoldWide.ufo/glyphs";
+    let layer_path = "testdata/MutatorSansLightWide.ufo/glyphs";
     let layer = Layer::load(layer_path, "foreground".into()).unwrap();
     *my_ufo.default_layer_mut() = layer;
 
