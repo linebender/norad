@@ -446,18 +446,6 @@ impl Layer {
         }
     }
 
-    #[doc(hidden)]
-    #[deprecated(since = "0.4.0", note = "renamed to 'iter'")]
-    pub fn iter_contents(&self) -> impl Iterator<Item = &Arc<Glyph>> + '_ {
-        self.iter()
-    }
-
-    #[doc(hidden)]
-    #[deprecated(since = "0.4.0", note = "renamed to 'iter_mut'")]
-    pub fn iter_contents_mut(&mut self) -> impl Iterator<Item = &mut Glyph> {
-        self.iter_mut()
-    }
-
     /// Iterate over the glyphs in this layer.
     pub fn iter(&self) -> impl Iterator<Item = &Arc<Glyph>> + '_ {
         self.glyphs.values()
