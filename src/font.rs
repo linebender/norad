@@ -42,10 +42,6 @@ pub struct Font {
     pub data_request: DataRequest,
 }
 
-#[doc(hidden)]
-#[deprecated(since = "0.4.0", note = "Renamed to Font")]
-pub type Ufo = Font;
-
 /// A version of the [UFO spec].
 ///
 /// [UFO spec]: http://unifiedfontobject.org
@@ -80,18 +76,6 @@ impl Font {
     /// Create a new, empty `Font` object.
     pub fn new() -> Self {
         Font::default()
-    }
-
-    /// Create a new `Font` only with certain fields.
-    #[doc(hidden)]
-    #[deprecated(
-        since = "0.4.1",
-        note = "To load only specific fields, use Font::load_requested_data"
-    )]
-    pub fn with_fields(data_request: DataRequest) -> Self {
-        let mut ufo = Self::new();
-        ufo.data_request = data_request;
-        ufo
     }
 
     /// Attempt to load a font object from a file.
@@ -201,14 +185,6 @@ impl Font {
         Ok(Font { layers, meta, font_info, lib, groups, kerning, features, data_request: request })
     }
 
-    #[deprecated(
-        since = "0.4.1",
-        note = "To load only specific fields, use Font::load_requestd_data"
-    )]
-    pub fn load_ufo<P: AsRef<Path>>(&self, path: P) -> Result<Font, Error> {
-        Font::load_requested_data(path, self.data_request)
-    }
-
     /// Attempt to save this UFO to the given path, overriding any existing contents.
     ///
     /// This may fail; instead of saving directly to the target path, it is a good
@@ -308,21 +284,9 @@ impl Font {
         self.layers.default_layer()
     }
 
-    #[deprecated(since = "0.4.0", note = "use default_layer instead")]
-    #[doc(hidden)]
-    pub fn get_default_layer(&self) -> Option<&Layer> {
-        Some(self.default_layer())
-    }
-
     /// Returns a mutable reference to the default layer.
     pub fn default_layer_mut(&mut self) -> &mut Layer {
         self.layers.default_layer_mut()
-    }
-
-    #[deprecated(since = "0.4.0", note = "use default_layer instead")]
-    #[doc(hidden)]
-    pub fn get_default_layer_mut(&mut self) -> Option<&mut Layer> {
-        Some(self.default_layer_mut())
     }
 
     /// Returns an iterator over all layers in this font object.
