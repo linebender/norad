@@ -179,8 +179,9 @@ impl Default for LayerSet {
     }
 }
 
-/// A [layer], corresponding to a 'glyphs' directory. Conceptually, a layer
-/// is just a collection of glyphs.
+/// A [layer], corresponding to a 'glyphs' directory.
+///
+/// Conceptually, a layer is just a collection of glyphs.
 ///
 /// [layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
 #[derive(Debug, Clone, PartialEq)]

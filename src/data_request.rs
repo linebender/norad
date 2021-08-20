@@ -1,3 +1,5 @@
+//! Load only requested font data.
+
 /// A type that describes which components of a UFO should be loaded.
 ///
 /// By default, we load all components of the UFO file; however if you only
