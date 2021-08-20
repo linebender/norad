@@ -23,15 +23,15 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_repr;
 
-pub mod data_request;
+mod data_request;
 pub mod error;
 mod font;
 pub mod fontinfo;
 mod glyph;
-pub mod groups;
+mod groups;
 mod guideline;
 mod identifier;
-pub mod kerning;
+mod kerning;
 mod layer;
 mod names;
 mod shared_types;
@@ -47,8 +47,11 @@ pub use glyph::{
     AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, GlyphName,
     Image, PointType,
 };
+
+pub use groups::Groups;
 pub use guideline::{Guideline, Line};
 pub use identifier::Identifier;
+pub use kerning::Kerning;
 pub use layer::{Layer, LayerSet};
 pub use shared_types::{Color, IntegerOrFloat, NonNegativeIntegerOrFloat, Plist};
 pub use write::{QuoteChar, WriteOptions};

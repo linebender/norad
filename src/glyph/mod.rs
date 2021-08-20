@@ -210,6 +210,9 @@ impl Data for Glyph {
     }
 }
 
+/// Version of a `.glif` file, per the [UFO spec].
+///
+/// [UFO spec]: https://unifiedfontobject.org/versions/ufo1/glyphs/glif/#specification
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub enum GlifVersion {
