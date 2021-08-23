@@ -1,5 +1,6 @@
 //! Customize serialization behaviour
 
+use std::io::{prelude::*, Seek, SeekFrom};
 use std::{borrow::Cow, fs::File, io::BufWriter, path::Path};
 
 #[cfg(target_family = "unix")]
@@ -29,6 +30,9 @@ use crate::Error;
 /// let spaces_and_singlequotes = WriteOptions::default()
 ///     .whitespace("  ")
 ///     .quote_char(QuoteChar::Single);
+///
+/// let use_linefeed_line_endings_on_win = WriteOptions::default()
+///     .normalize_line_endings();
 /// ```
 #[derive(Debug, Clone)]
 pub struct WriteOptions {
@@ -38,6 +42,7 @@ pub struct WriteOptions {
     pub(crate) whitespace_char: u8,
     pub(crate) whitespace_count: usize,
     pub(crate) quote_style: QuoteChar,
+    pub(crate) line_ending_normalization: bool,
 }
 
 impl Default for WriteOptions {
@@ -48,6 +53,7 @@ impl Default for WriteOptions {
             whitespace_char: b'\t',
             whitespace_count: 1,
             quote_style: QuoteChar::Double,
+            line_ending_normalization: false,
         }
     }
 }
@@ -92,9 +98,66 @@ impl WriteOptions {
         self
     }
 
+    /// Builder-style method to normalize line endings to `\n` on all platforms
+    ///
+    /// By default, non-Windows platforms write line feed (`\n`) line endings and
+    /// the Windows platform writes carriage return and line feed (`\r\n`) line endings.
+    pub fn normalize_line_endings(mut self) -> Self {
+        self.line_ending_normalization = true;
+        self
+    }
+
     /// Return a reference to [`XmlWriteOptions`] for use with the `plist` crate.
     pub fn xml_options(&self) -> &XmlWriteOptions {
         &self.xml_opts
+    }
+}
+
+//
+#[derive(Debug, Clone)]
+struct CarriageReturnRemover<I> {
+    iter: I,
+    previous_was_cr: bool,
+}
+
+/// Iterator implementation for the CarriageReturnRemover struct
+///
+/// Iterates through u8 and removes all `\r` to normalize line endings
+/// as `\n` only irrespective of the platform.  Returns u8 values.
+///
+/// This implementation is a u8 iterable derivative of
+/// https://github.com/derekdreery/normalize-line-endings/blob/master/src/lib.rs
+/// (Apache License v2)
+impl<I> Iterator for CarriageReturnRemover<I>
+where
+    I: Iterator<Item = u8>,
+{
+    type Item = u8;
+    fn next(&mut self) -> Option<u8> {
+        match self.iter.next() {
+            Some(0x000A) if self.previous_was_cr => {
+                self.previous_was_cr = false;
+                match self.iter.next() {
+                    Some(0x000D) => {
+                        self.previous_was_cr = true;
+                        Some(0x000A)
+                    }
+                    any => {
+                        self.previous_was_cr = false;
+                        Some(any.unwrap())
+                    }
+                }
+            }
+            Some(0x000D) => {
+                self.previous_was_cr = true;
+                Some(0x000A)
+            }
+            None => None,
+            any => {
+                self.previous_was_cr = false;
+                Some(any.unwrap())
+            }
+        }
     }
 }
 
@@ -119,6 +182,7 @@ pub fn write_plist_value_to_file(
     let writer = BufWriter::new(&mut file);
     value.to_writer_xml_with_options(writer, options.xml_options())?;
     write_quote_style(&file, options)?;
+    normalize_plist_line_endings(&mut file, options)?;
     file.sync_all()?;
     Ok(())
 }
@@ -133,10 +197,12 @@ pub fn write_xml_to_file(
     let buf_writer = BufWriter::new(&mut file);
     plist::to_writer_xml_with_options(buf_writer, value, options.xml_options())?;
     write_quote_style(&file, options)?;
+    normalize_plist_line_endings(&mut file, options)?;
     file.sync_all()?;
     Ok(())
 }
 
+/// Write optional XML declaration single quote attribute format
 pub fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), Error> {
     // Optionally modify the XML declaration quote style
     match options.quote_style {
@@ -151,6 +217,38 @@ pub fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), Erro
         QuoteChar::Double => (), // double quote is the default style
     }
     Ok(())
+}
+
+/// Write optional normalized `\n` line endings on all platforms
+///
+/// This is a Windows-only implementation that changes the line ending style from `\r\n` (default)
+/// to `\n`.
+pub fn normalize_plist_line_endings(file: &mut File, options: &WriteOptions) -> Result<(), Error> {
+    // Optionally remove the platform-specific Win style `\r\n` line endings
+    // serialized on Win platform only
+    if !cfg!(windows) {
+        // non-Windows platforms write line feed char line endings by default
+        // nothing to do unless we are in a Win environment
+        Ok(())
+    } else {
+        if options.line_ending_normalization {
+            file.seek(SeekFrom::Start(0)).unwrap();
+            let removed_cr_byte_vec =
+                remove_carriage_returns(file.bytes().map(|b| b.unwrap())).collect::<Vec<u8>>();
+            match file.write_all(&removed_cr_byte_vec) {
+                Ok(_) => return Ok(()),
+                Err(e) => return Err(Error::IoError(e)),
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Returns an iterator over u8 with all carriage return (`\r`) u8 values removed from an
+/// iterator over u8 argument
+#[inline]
+pub fn remove_carriage_returns(iter: impl Iterator<Item = u8>) -> impl Iterator<Item = u8> {
+    CarriageReturnRemover { iter, previous_was_cr: false }
 }
 
 #[cfg(test)]
@@ -215,6 +313,20 @@ mod tests {
     }
 
     #[test]
+    fn write_lib_plist_with_normalized_line_endings() -> Result<(), Error> {
+        let opt = WriteOptions::default().normalize_line_endings();
+        let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/lib.plist")
+            .expect("failed to read plist");
+        let tmp = TempDir::new("test")?;
+        let filepath = tmp.path().join("lib.plist");
+        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        let plist_write = fs::read_to_string(filepath)?;
+        assert!(plist_write.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"));
+        tmp.close()?;
+        Ok(())
+    }
+
+    #[test]
     fn write_fontinfo_plist_default() -> Result<(), Error> {
         let opt = WriteOptions::default();
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
@@ -263,5 +375,27 @@ mod tests {
         assert_eq!(str_list[4], "  <key>ascender</key>"); // should use two space char
         tmp.close()?;
         Ok(())
+    }
+
+    #[test]
+    fn write_fontinfo_plist_normalized_line_endings() -> Result<(), Error> {
+        let opt = WriteOptions::default();
+        let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
+            .expect("failed to read plist");
+        let tmp = TempDir::new("test")?;
+        let filepath = tmp.path().join("fontinfo.plist");
+        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        let plist_write = fs::read_to_string(filepath)?;
+        assert!(plist_write.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"));
+        tmp.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn remove_carriage_returns_pub_fn() {
+        let input = b"This is a string \n with \r some \n\r\n random newlines\r\r\n\n";
+        let res_vec =
+            remove_carriage_returns(input.iter().map(|b| b.to_owned())).collect::<Vec<u8>>();
+        assert_eq!(&res_vec, b"This is a string \n with \n some \n\n random newlines\n\n\n");
     }
 }

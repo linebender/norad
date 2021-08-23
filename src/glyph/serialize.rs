@@ -7,6 +7,9 @@ use quick_xml::{
     Error as XmlError, Writer,
 };
 
+use lazy_static::lazy_static;
+use regex::bytes::Regex;
+
 use super::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{
     util, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
@@ -111,10 +114,36 @@ impl Glyph {
         }
 
         writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;
-        writer.inner().write_all("\n".as_bytes())?;
-        writer.inner().flush()?;
 
-        Ok(writer.into_inner().into_inner())
+        // Handle platform-specific line endings
+        if cfg!(windows) && !options.line_ending_normalization {
+            // Change all line endings from `\n` to `\r\n` by default on Win.
+            // This is not the default line ending serialization in the quick-xml
+            // crate so this workaround is required.
+            lazy_static! {
+                static ref RE: Regex = Regex::new("\x0A").unwrap();
+            }
+            let mut writer_win = Writer::new_with_indent(
+                Cursor::new(Vec::new()),
+                options.whitespace_char,
+                options.whitespace_count,
+            );
+            let glif_byte_vec = writer.into_inner().into_inner();
+            let buf = RE.replace_all(&glif_byte_vec, &b"\r\n"[..]);
+            writer_win.inner().write_all(&buf)?;
+            // Write a final `\r\n` line ending
+            writer_win.inner().write_all("\r\n".as_bytes())?;
+            writer_win.inner().flush()?;
+            Ok(writer_win.into_inner().into_inner())
+        } else {
+            // All other env's use `\n` default, including Win with optional
+            // line ending normalization.  This is the default quick-xml crate
+            // approach across platforms.
+            // Write a final `\n` line ending
+            writer.inner().write_all("\n".as_bytes())?;
+            writer.inner().flush()?;
+            Ok(writer.into_inner().into_inner())
+        }
     }
 }
 
