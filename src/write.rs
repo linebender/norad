@@ -144,7 +144,7 @@ where
                     }
                     any => {
                         self.previous_was_cr = false;
-                        Some(any.unwrap())
+                        any
                     }
                 }
             }
@@ -152,10 +152,9 @@ where
                 self.previous_was_cr = true;
                 Some(0x000A)
             }
-            None => None,
             any => {
                 self.previous_was_cr = false;
-                Some(any.unwrap())
+                any
             }
         }
     }
