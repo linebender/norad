@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="hello" format="2">
+  <advance width="1200"/>
+  <outline>
+    <contour>
+      <point x="2" y="30" type="line"/>
+      <point x="44" y="10" type="line"/>
+    </contour>
+  </outline>
+  <lib>
+    <dict>
+      <key>test.key</key>
+      <string>I am a creative professional :)</string>
+    </dict>
+  </lib>
+  <note>durp</note>
+</glyph>

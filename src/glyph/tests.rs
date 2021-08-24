@@ -15,20 +15,24 @@ fn serialize_empty_glyph() {
     let glyph = Glyph::new_named("a");
     let glif = glyph.encode_xml().unwrap();
     let glif = std::str::from_utf8(&glif).unwrap();
-    assert_eq!(
-        glif,
-        r#"
-<?xml version="1.0" encoding="UTF-8"?>
-<glyph name="a" format="2">
-</glyph>
-"#
-        .trim_start()
-    );
+
+    #[cfg(target_family = "unix")]
+    let expected =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<glyph name=\"a\" format=\"2\">\n</glyph>\n";
+
+    #[cfg(target_family = "windows")]
+    let expected = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<glyph name=\"a\" format=\"2\">\r\n</glyph>\r\n";
+
+    pretty_assertions::assert_eq!(glif, expected);
 }
 
 #[test]
 fn serialize_full_glyph() {
+    #[cfg(target_family = "unix")]
     let source = include_str!("../../testdata/sample_period_normalized.glif");
+    #[cfg(target_family = "windows")]
+    let source = include_str!("../../testdata/windows/windows_sample_period_normalized.glif");
+
     let glyph = parse_glyph(source.as_bytes()).unwrap();
     let glif = glyph.encode_xml().unwrap();
     let glif = String::from_utf8(glif).expect("xml is always valid UTF-8");
@@ -38,122 +42,67 @@ fn serialize_full_glyph() {
 #[test]
 fn serialize_with_default_formatting() {
     let data = include_str!("../../testdata/small_lib.glif");
+
+    #[cfg(target_family = "unix")]
+    let expected = include_str!("../../testdata/unix/unix_default_formatting.glif");
+    #[cfg(target_family = "windows")]
+    let expected = include_str!("../../testdata/windows/windows_default_formatting.glif");
+
     let glyph = parse_glyph(data.as_bytes()).unwrap();
     let one_tab = glyph.encode_xml().unwrap();
     let one_tab = std::str::from_utf8(&one_tab).unwrap();
-    pretty_assertions::assert_eq!(
-        one_tab,
-        r#"<?xml version="1.0" encoding="UTF-8"?>
-<glyph name="hello" format="2">
-	<advance width="1200"/>
-	<outline>
-		<contour>
-			<point x="2" y="30" type="line"/>
-			<point x="44" y="10" type="line"/>
-		</contour>
-	</outline>
-	<lib>
-		<dict>
-			<key>test.key</key>
-			<string>I am a creative professional :)</string>
-		</dict>
-	</lib>
-	<note>durp</note>
-</glyph>
-"#
-    );
+    pretty_assertions::assert_eq!(one_tab, expected);
 }
 
 #[test]
 fn serialize_with_custom_whitespace() {
     let data = include_str!("../../testdata/small_lib.glif");
+
+    #[cfg(target_family = "unix")]
+    let expected = include_str!("../../testdata/unix/unix_custom_whitespace.glif");
+    #[cfg(target_family = "windows")]
+    let expected = include_str!("../../testdata/windows/windows_custom_whitespace.glif");
+
     let glyph = parse_glyph(data.as_bytes()).unwrap();
     let options = WriteOptions::default().whitespace("  ");
     let two_spaces = glyph.encode_xml_with_options(&options).unwrap();
     let two_spaces = std::str::from_utf8(&two_spaces).unwrap();
 
-    pretty_assertions::assert_eq!(
-        two_spaces,
-        r#"<?xml version="1.0" encoding="UTF-8"?>
-<glyph name="hello" format="2">
-  <advance width="1200"/>
-  <outline>
-    <contour>
-      <point x="2" y="30" type="line"/>
-      <point x="44" y="10" type="line"/>
-    </contour>
-  </outline>
-  <lib>
-    <dict>
-      <key>test.key</key>
-      <string>I am a creative professional :)</string>
-    </dict>
-  </lib>
-  <note>durp</note>
-</glyph>
-"#
-    );
+    pretty_assertions::assert_eq!(two_spaces, expected);
 }
 
 #[test]
 fn serialize_with_single_quote_style() {
     let data = include_str!("../../testdata/small_lib.glif");
+
+    #[cfg(target_family = "unix")]
+    let expected = include_str!("../../testdata/unix/unix_single_quote.glif");
+    #[cfg(target_family = "windows")]
+    let expected = include_str!("../../testdata/windows/windows_single_quote.glif");
+
     let glyph = parse_glyph(data.as_bytes()).unwrap();
     let options = WriteOptions::default().quote_char(QuoteChar::Single);
     let one_tab = glyph.encode_xml_with_options(&options).unwrap();
     let one_tab = std::str::from_utf8(&one_tab).unwrap();
-    pretty_assertions::assert_eq!(
-        one_tab,
-        r#"<?xml version='1.0' encoding='UTF-8'?>
-<glyph name="hello" format="2">
-	<advance width="1200"/>
-	<outline>
-		<contour>
-			<point x="2" y="30" type="line"/>
-			<point x="44" y="10" type="line"/>
-		</contour>
-	</outline>
-	<lib>
-		<dict>
-			<key>test.key</key>
-			<string>I am a creative professional :)</string>
-		</dict>
-	</lib>
-	<note>durp</note>
-</glyph>
-"#
-    );
+    pretty_assertions::assert_eq!(one_tab, expected);
 }
 
 #[test]
 fn serialize_with_custom_whitespace_and_single_quote_style() {
     let data = include_str!("../../testdata/small_lib.glif");
+
+    #[cfg(target_family = "unix")]
+    let expected = include_str!("../../testdata/unix/unix_custom_whitespace_single_quote.glif");
+    #[cfg(target_family = "windows")]
+    let expected =
+        include_str!("../../testdata/windows/windows_custom_whitespace_single_quote.glif");
+
     let glyph = parse_glyph(data.as_bytes()).unwrap();
     let options = WriteOptions::default().whitespace("  ").quote_char(QuoteChar::Single);
     let two_spaces = glyph.encode_xml_with_options(&options).unwrap();
     let two_spaces = std::str::from_utf8(&two_spaces).unwrap();
 
-    pretty_assertions::assert_eq!(
-        two_spaces,
-        r#"<?xml version='1.0' encoding='UTF-8'?>
-<glyph name="hello" format="2">
-  <advance width="1200"/>
-  <outline>
-    <contour>
-      <point x="2" y="30" type="line"/>
-      <point x="44" y="10" type="line"/>
-    </contour>
-  </outline>
-  <lib>
-    <dict>
-      <key>test.key</key>
-      <string>I am a creative professional :)</string>
-    </dict>
-  </lib>
-  <note>durp</note>
-</glyph>
-"#
-    );
+    pretty_assertions::assert_eq!(two_spaces, expected);
 }
 
 #[test]
