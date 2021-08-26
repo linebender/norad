@@ -320,7 +320,7 @@ mod tests {
         let filepath = tmp.path().join("lib.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath)?;
-        assert!(plist_write.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"));
+        assert!(plist_write.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"));
         tmp.close()?;
         Ok(())
     }
@@ -385,7 +385,7 @@ mod tests {
         let filepath = tmp.path().join("fontinfo.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath)?;
-        assert!(plist_write.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"));
+        assert!(plist_write.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"));
         tmp.close()?;
         Ok(())
     }
