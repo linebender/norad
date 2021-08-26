@@ -264,7 +264,13 @@ impl Font {
         }
 
         if let Some(features) = self.features.as_ref() {
-            fs::write(path.join(FEATURES_FILE), features)?;
+            // Normalize feature files with line feed line endings
+            // This is consistent with the line endings serialized in glif and plist files
+            if features.contains('\r') {
+                fs::write(path.join(FEATURES_FILE), features.replace("\r", ""))?;
+            } else {
+                fs::write(path.join(FEATURES_FILE), features)?;
+            }
         }
 
         let contents: Vec<(&str, &PathBuf)> =
@@ -384,6 +390,8 @@ fn load_layers(
 
 #[cfg(test)]
 mod tests {
+    use tempdir::TempDir;
+
     use super::*;
     use crate::shared_types::IntegerOrFloat;
 
@@ -425,6 +433,18 @@ mod tests {
         }
 
         assert_eq!(font_obj.features.unwrap(), "# this is the feature from lightWide\n");
+    }
+
+    #[test]
+    fn load_save_feature_file_line_endings() {
+        let font_obj = Font::load("testdata/lineendings/Tester-LineEndings.ufo").unwrap();
+        let tmp = TempDir::new("test").unwrap();
+        let ufopath = tmp.path().join("test.ufo");
+        let feapath = ufopath.join("features.fea");
+        font_obj.save(ufopath).unwrap();
+        let test_fea = fs::read_to_string(feapath).unwrap();
+        let expected_fea = String::from("feature ss01 {\n    featureNames {\n        name \"Bogus feature\";\n        name 1 \"Bogus feature\";\n    };\n    sub one by two;\n} ss01;\n");
+        assert_eq!(test_fea, expected_fea);
     }
 
     #[test]
