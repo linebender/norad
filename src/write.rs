@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn write_lib_plist_line_endings() -> Result<(), Error> {
         let opt = WriteOptions::default();
-        let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/lib.plist")
+        let plist_read = Value::from_file("testdata/lineendings/Tester-LineEndings.ufo/lib.plist")
             .expect("failed to read plist");
         let tmp = TempDir::new("test")?;
         let filepath = tmp.path().join("lib.plist");
@@ -282,8 +282,9 @@ mod tests {
     #[test]
     fn write_fontinfo_plist_line_endings() -> Result<(), Error> {
         let opt = WriteOptions::default();
-        let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
-            .expect("failed to read plist");
+        let plist_read =
+            Value::from_file("testdata/lineendings/Tester-LineEndings.ufo/fontinfo.plist")
+                .expect("failed to read plist");
         let tmp = TempDir::new("test")?;
         let filepath = tmp.path().join("fontinfo.plist");
         write_plist_value_to_file(&filepath, &plist_read, &opt)?;
