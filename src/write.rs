@@ -215,7 +215,7 @@ mod tests {
     }
 
     #[test]
-    fn write_lib_plist_with_line_endings() -> Result<(), Error> {
+    fn write_lib_plist_line_endings() -> Result<(), Error> {
         let opt = WriteOptions::default();
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/lib.plist")
             .expect("failed to read plist");
