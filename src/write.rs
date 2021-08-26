@@ -215,6 +215,20 @@ mod tests {
     }
 
     #[test]
+    fn write_lib_plist_with_line_endings() -> Result<(), Error> {
+        let opt = WriteOptions::default();
+        let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/lib.plist")
+            .expect("failed to read plist");
+        let tmp = TempDir::new("test")?;
+        let filepath = tmp.path().join("lib.plist");
+        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        let plist_write = fs::read_to_string(filepath)?;
+        assert!(plist_write.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"));
+        tmp.close()?;
+        Ok(())
+    }
+
+    #[test]
     fn write_fontinfo_plist_default() -> Result<(), Error> {
         let opt = WriteOptions::default();
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
@@ -261,6 +275,20 @@ mod tests {
         assert_eq!(str_list[0], "<?xml version='1.0' encoding='UTF-8'?>"); // should use single quotes
         assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
         assert_eq!(str_list[4], "  <key>ascender</key>"); // should use two space char
+        tmp.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn write_fontinfo_plist_line_endings() -> Result<(), Error> {
+        let opt = WriteOptions::default();
+        let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
+            .expect("failed to read plist");
+        let tmp = TempDir::new("test")?;
+        let filepath = tmp.path().join("fontinfo.plist");
+        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        let plist_write = fs::read_to_string(filepath)?;
+        assert!(plist_write.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"));
         tmp.close()?;
         Ok(())
     }
