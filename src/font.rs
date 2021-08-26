@@ -267,7 +267,7 @@ impl Font {
             // Normalize feature files with line feed line endings
             // This is consistent with the line endings serialized in glif and plist files
             if features.contains('\r') {
-                fs::write(path.join(FEATURES_FILE), features.replace("\r", ""))?;
+                fs::write(path.join(FEATURES_FILE), features.replace("\r\n", "\n"))?;
             } else {
                 fs::write(path.join(FEATURES_FILE), features)?;
             }
