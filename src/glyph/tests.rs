@@ -28,6 +28,17 @@ fn serialize_empty_glyph() {
 }
 
 #[test]
+fn serialize_empty_glyph_explicit_line_ending_check() {
+    let glyph = Glyph::new_named("a");
+    let glif = glyph.encode_xml().unwrap();
+    let glif = std::str::from_utf8(&glif).unwrap();
+    assert_eq!(
+        glif,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<glyph name=\"a\" format=\"2\">\n</glyph>\n"
+    );
+}
+
+#[test]
 fn serialize_full_glyph() {
     let source = include_str!("../../testdata/sample_period_normalized.glif");
     let glyph = parse_glyph(source.as_bytes()).unwrap();
