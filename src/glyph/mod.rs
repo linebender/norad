@@ -366,6 +366,20 @@ pub enum PointType {
     QCurve,
 }
 
+/// FromStr trait implementation for [`PointType`].
+impl std::str::FromStr for PointType {
+    type Err = ErrorKind;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "move" => Ok(PointType::Move),
+            "line" => Ok(PointType::Line),
+            "offcurve" => Ok(PointType::OffCurve),
+            "curve" => Ok(PointType::Curve),
+            "qcurve" => Ok(PointType::QCurve),
+            _other => Err(ErrorKind::UnknownPointType),
+        }
+    }
+}
 /// A 2D affine transformation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
