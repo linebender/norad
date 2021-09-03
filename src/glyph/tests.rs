@@ -584,7 +584,7 @@ fn pointtype_display_trait() {
 }
 
 #[test]
-fn pointtype_from_str() {
+fn pointtype_from_str_trait() {
     assert!(PointType::from_str("move").unwrap() == PointType::Move);
     assert!(PointType::from_str("line").unwrap() == PointType::Line);
     assert!(PointType::from_str("offcurve").unwrap() == PointType::OffCurve);
