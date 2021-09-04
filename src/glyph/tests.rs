@@ -2,6 +2,7 @@ use super::parse::parse_glyph;
 use super::*;
 use crate::write::QuoteChar;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 #[test]
 #[allow(clippy::float_cmp)]
@@ -571,4 +572,28 @@ fn empty_contours() {
     let test2 = parse_glyph(data2.as_bytes()).unwrap();
     assert_eq!(test2.components, vec![]);
     assert_eq!(test2.contours, vec![]);
+}
+
+#[test]
+fn pointtype_display_trait() {
+    assert_eq!(format!("{}", PointType::Move), "move");
+    assert_eq!(format!("{}", PointType::Line), "line");
+    assert_eq!(format!("{}", PointType::OffCurve), "offcurve");
+    assert_eq!(format!("{}", PointType::Curve), "curve");
+    assert_eq!(format!("{}", PointType::QCurve), "qcurve");
+}
+
+#[test]
+fn pointtype_from_str_trait() {
+    assert!(PointType::from_str("move").unwrap() == PointType::Move);
+    assert!(PointType::from_str("line").unwrap() == PointType::Line);
+    assert!(PointType::from_str("offcurve").unwrap() == PointType::OffCurve);
+    assert!(PointType::from_str("curve").unwrap() == PointType::Curve);
+    assert!(PointType::from_str("qcurve").unwrap() == PointType::QCurve);
+}
+
+#[test]
+#[should_panic(expected = "UnknownPointType")]
+fn pointtype_from_str_unknown_type() {
+    PointType::from_str("bogus").unwrap();
 }
