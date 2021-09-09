@@ -1,0 +1,1 @@
+This directory contains a test UFO directory with files that are formatted with `\r\n` line endings and is used to test line ending normalization during the serialization process.

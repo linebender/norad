@@ -1,0 +1,7 @@
+feature ss01 {
+    featureNames {
+        name "Bogus feature";
+        name 1 "Bogus feature";
+    };
+    sub one by two;
+} ss01;
