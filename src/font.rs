@@ -266,7 +266,7 @@ impl Font {
         if let Some(features) = self.features.as_ref() {
             // Normalize feature files with line feed line endings
             // This is consistent with the line endings serialized in glif and plist files
-            if features.contains('\r') {
+            if features.as_bytes().contains(&b'\r') {
                 fs::write(path.join(FEATURES_FILE), features.replace("\r\n", "\n"))?;
             } else {
                 fs::write(path.join(FEATURES_FILE), features)?;
