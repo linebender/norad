@@ -27,6 +27,8 @@ static GROUPS_FILE: &str = "groups.plist";
 static KERNING_FILE: &str = "kerning.plist";
 static FEATURES_FILE: &str = "features.fea";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
+pub(crate) static DATA_DIR: &str = "data";
+pub(crate) static IMAGES_DIR: &str = "images";
 
 /// A Unified Font Object.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -40,6 +42,8 @@ pub struct Font {
     pub kerning: Option<Kerning>,
     pub features: Option<String>,
     pub data_request: DataRequest,
+    data_paths: Vec<PathBuf>,
+    images_paths: Vec<PathBuf>,
 }
 
 /// A version of the [UFO spec].
@@ -152,6 +156,18 @@ impl Font {
             LayerSet::default()
         };
 
+        let data_paths = if path.join(DATA_DIR).exists() && request.data {
+            crate::ufo_data::list_data_directory(path)?
+        } else {
+            vec![]
+        };
+
+        let images_paths = if path.join(IMAGES_DIR).exists() && request.data {
+            crate::ufo_data::list_images_directory(path)?
+        } else {
+            vec![]
+        };
+
         // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
         // a groups.plist file, while a kerning.plist is optional.
         let (groups, kerning) = match (meta.format_version, groups, kerning) {
@@ -182,7 +198,18 @@ impl Font {
 
         meta.format_version = FormatVersion::V3;
 
-        Ok(Font { layers, meta, font_info, lib, groups, kerning, features, data_request: request })
+        Ok(Font {
+            layers,
+            meta,
+            font_info,
+            lib,
+            groups,
+            kerning,
+            features,
+            data_request: request,
+            data_paths,
+            images_paths,
+        })
     }
 
     /// Attempt to save this UFO to the given path, overriding any existing contents.
@@ -342,6 +369,20 @@ impl Font {
             .get_or_insert_with(Default::default)
             .guidelines
             .get_or_insert_with(Default::default)
+    }
+
+    /// Returns the paths found in the UFO data directory at loading time.
+    ///
+    /// To use them, join the path to the UFO root directory and the path.
+    pub fn data_paths(&self) -> &Vec<PathBuf> {
+        &self.data_paths
+    }
+
+    /// Returns the paths found in the UFO images directory at loading time.
+    ///
+    /// To use them, join the path to the UFO root directory and the path.
+    pub fn images_paths(&self) -> &Vec<PathBuf> {
+        &self.images_paths
     }
 }
 
@@ -571,5 +612,47 @@ mod tests {
         let path = "testdata/MutatorSansLightWide.ufo/metainfo.plist";
         let meta: MetaInfo = plist::from_file(path).expect("failed to load metainfo");
         assert_eq!(meta.creator, "org.robofab.ufoLib");
+    }
+
+    #[test]
+    fn data_listing() {
+        let ufo = Font::load("testdata/dataimagetest.ufo").unwrap();
+        assert_eq!(
+            ufo.data_paths(),
+            &vec![
+                PathBuf::from("data/a.txt"),
+                PathBuf::from("data/b.bin"),
+                PathBuf::from("data/com.testing.random/c.txt"),
+                PathBuf::from("data/com.testing.random/zzz/z.txt"),
+            ]
+        );
+    }
+
+    #[test]
+    fn images_listing() {
+        let ufo = Font::load("testdata/dataimagetest.ufo").unwrap();
+        assert_eq!(
+            ufo.images_paths(),
+            &vec![
+                PathBuf::from("images/image1.png"),
+                PathBuf::from("images/image2.png"),
+                PathBuf::from("images/image3.png"),
+            ]
+        );
+    }
+
+    #[test]
+    fn images_with_subdirectory() {
+        let ufo = Font::new();
+        let dir = tempdir::TempDir::new("Test.ufo").unwrap();
+        ufo.save(&dir).unwrap();
+
+        let images_dir = dir.as_ref().join(IMAGES_DIR);
+        fs::create_dir(&images_dir).unwrap();
+        let images_dir_subdir = images_dir.join("test");
+        fs::create_dir(&images_dir_subdir).unwrap();
+
+        let ufo = Font::load(&dir);
+        assert!(ufo.is_err());
     }
 }

@@ -35,6 +35,7 @@ mod kerning;
 mod layer;
 mod names;
 mod shared_types;
+mod ufo_data;
 mod upconversion;
 pub mod util;
 mod write;

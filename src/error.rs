@@ -45,6 +45,8 @@ pub enum Error {
     ConvertContour(ErrorKind),
     MissingFile(String),
     MissingUfoDir(String),
+    InvalidDataEntry(PathBuf),
+    InvalidImageEntry(PathBuf),
 }
 
 /// An error representing a failure to validate UFO groups.
@@ -197,6 +199,20 @@ impl std::fmt::Display for Error {
             }
             Error::MissingUfoDir(path) => {
                 write!(f, "{} directory was not found", path)
+            }
+            Error::InvalidDataEntry(path) => {
+                write!(
+                    f,
+                    "Data directory contains {} which is neither a plain file nor a directory",
+                    path.display()
+                )
+            }
+            Error::InvalidImageEntry(path) => {
+                write!(
+                    f,
+                    "Image directory contains {} but must contain only plain (PNG) files",
+                    path.display()
+                )
             }
             #[cfg(feature = "kurbo")]
             Error::ConvertContour(cause) => write!(f, "Failed to convert contour: '{}'", cause),
