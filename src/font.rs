@@ -374,14 +374,14 @@ impl Font {
     /// Returns the paths found in the UFO data directory at loading time.
     ///
     /// To use them, join the path to the UFO root directory and the path.
-    pub fn data_paths(&self) -> &Vec<PathBuf> {
+    pub fn data_paths(&self) -> &[PathBuf] {
         &self.data_paths
     }
 
     /// Returns the paths found in the UFO images directory at loading time.
     ///
     /// To use them, join the path to the UFO root directory and the path.
-    pub fn images_paths(&self) -> &Vec<PathBuf> {
+    pub fn images_paths(&self) -> &[PathBuf] {
         &self.images_paths
     }
 }
