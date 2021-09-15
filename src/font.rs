@@ -7,6 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use crate::datastore::{DataStore, ImageStore};
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::groups::{validate_groups, Groups};
@@ -27,6 +28,8 @@ static GROUPS_FILE: &str = "groups.plist";
 static KERNING_FILE: &str = "kerning.plist";
 static FEATURES_FILE: &str = "features.fea";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
+pub(crate) static DATA_DIR: &str = "data";
+pub(crate) static IMAGES_DIR: &str = "images";
 
 /// A Unified Font Object.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -40,6 +43,8 @@ pub struct Font {
     pub kerning: Option<Kerning>,
     pub features: Option<String>,
     pub data_request: DataRequest,
+    pub data: DataStore,
+    pub images: ImageStore,
 }
 
 /// A version of the [UFO spec].
@@ -152,6 +157,18 @@ impl Font {
             LayerSet::default()
         };
 
+        let data = if path.join(DATA_DIR).exists() && request.data {
+            DataStore::try_new_from_path(path)?
+        } else {
+            Default::default()
+        };
+
+        let images = if path.join(IMAGES_DIR).exists() && request.data {
+            ImageStore::try_new_from_path(path)?
+        } else {
+            Default::default()
+        };
+
         // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
         // a groups.plist file, while a kerning.plist is optional.
         let (groups, kerning) = match (meta.format_version, groups, kerning) {
@@ -182,7 +199,18 @@ impl Font {
 
         meta.format_version = FormatVersion::V3;
 
-        Ok(Font { layers, meta, font_info, lib, groups, kerning, features, data_request: request })
+        Ok(Font {
+            layers,
+            meta,
+            font_info,
+            lib,
+            groups,
+            kerning,
+            features,
+            data_request: request,
+            data,
+            images,
+        })
     }
 
     /// Attempt to save this UFO to the given path, overriding any existing contents.
@@ -280,6 +308,24 @@ impl Font {
         for layer in self.layers.iter() {
             let layer_path = path.join(&layer.path);
             layer.save_with_options(&layer_path, options)?;
+        }
+
+        if !self.data.is_empty() {
+            let data_dir = path.join(DATA_DIR);
+            for (data_path, contents) in self.data.iter() {
+                let destination = data_dir.join(data_path);
+                fs::create_dir_all(&destination.parent().unwrap())?;
+                fs::write(destination, contents)?;
+            }
+        }
+
+        if !self.images.is_empty() {
+            let images_dir = path.join(IMAGES_DIR);
+            fs::create_dir(&images_dir)?; // Only a flat directory.
+            for (image_path, contents) in self.images.iter() {
+                let destination = images_dir.join(image_path);
+                fs::write(destination, contents)?;
+            }
         }
 
         Ok(())
@@ -571,5 +617,68 @@ mod tests {
         let path = "testdata/MutatorSansLightWide.ufo/metainfo.plist";
         let meta: MetaInfo = plist::from_file(path).expect("failed to load metainfo");
         assert_eq!(meta.creator, "org.robofab.ufoLib");
+    }
+
+    #[test]
+    fn data_and_images_loading() {
+        let ufo = Font::load("testdata/dataimagetest.ufo").unwrap();
+
+        let path_a_txt = PathBuf::from("a.txt");
+        let expected_a_txt = &b"Hello World".to_vec();
+        let path_b_bin = PathBuf::from("b.bin");
+        let expected_b_bin = &b"\x1c\n\n~\n\x06\n\xe2\n\x96\n,\n,\n\x8c\nL\n".to_vec();
+        let path_c_txt = PathBuf::from("com.testing.random/c.txt");
+        let expected_c_txt = &b"World Hello\r\n".to_vec();
+        let path_z_txt = PathBuf::from("com.testing.random/zzz/z.txt");
+        let expected_z_txt = &b"".to_vec();
+
+        let path_image1 = PathBuf::from("image1.png");
+        let path_image2 = PathBuf::from("image2.png");
+        let path_image3 = PathBuf::from("image3.png");
+
+        let mut data_paths: Vec<_> = ufo.data.keys().collect();
+        data_paths.sort();
+        assert_eq!(data_paths, vec![&path_a_txt, &path_b_bin, &path_c_txt, &path_z_txt]);
+        assert_eq!(ufo.data.get(&path_a_txt), Some(expected_a_txt));
+        assert_eq!(ufo.data.get(&path_b_bin), Some(expected_b_bin));
+        assert_eq!(ufo.data.get(&path_c_txt), Some(expected_c_txt));
+        assert_eq!(ufo.data.get(&path_z_txt), Some(expected_z_txt));
+
+        let mut images_paths: Vec<_> = ufo.images.keys().collect();
+        images_paths.sort();
+        assert_eq!(images_paths, vec![&path_image1, &path_image2, &path_image3]);
+
+        // Roundtrip font to ensure we save data and images.
+        let roundtrip_dir = tempdir::TempDir::new("Roundtrip.ufo").unwrap();
+        ufo.save(&roundtrip_dir).unwrap();
+        std::mem::drop(ufo); // Avoid accidental use below.
+        let ufo_rt = Font::load(&roundtrip_dir).unwrap();
+
+        let mut data_paths: Vec<_> = ufo_rt.data.keys().collect();
+        data_paths.sort();
+        assert_eq!(data_paths, vec![&path_a_txt, &path_b_bin, &path_c_txt, &path_z_txt]);
+        assert_eq!(ufo_rt.data.get(&path_a_txt), Some(expected_a_txt));
+        assert_eq!(ufo_rt.data.get(&path_b_bin), Some(expected_b_bin));
+        assert_eq!(ufo_rt.data.get(&path_c_txt), Some(expected_c_txt));
+        assert_eq!(ufo_rt.data.get(&path_z_txt), Some(expected_z_txt));
+
+        let mut images_paths: Vec<_> = ufo_rt.images.keys().collect();
+        images_paths.sort();
+        assert_eq!(images_paths, vec![&path_image1, &path_image2, &path_image3]);
+    }
+
+    #[test]
+    fn images_with_subdirectory() {
+        let ufo = Font::new();
+        let dir = tempdir::TempDir::new("Test.ufo").unwrap();
+        ufo.save(&dir).unwrap();
+
+        let images_dir = dir.as_ref().join(IMAGES_DIR);
+        fs::create_dir(&images_dir).unwrap();
+        let images_dir_subdir = images_dir.join("test");
+        fs::create_dir(&images_dir_subdir).unwrap();
+
+        let ufo = Font::load(&dir);
+        assert!(ufo.is_err());
     }
 }

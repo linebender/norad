@@ -45,6 +45,25 @@ pub enum Error {
     ConvertContour(ErrorKind),
     MissingFile(String),
     MissingUfoDir(String),
+    InvalidDataEntry(PathBuf, DataStoreError),
+    InvalidImageEntry(PathBuf, ImageStoreError),
+}
+
+#[derive(Debug)]
+pub enum DataStoreError {
+    DirUnderFile,
+    EmptyPath,
+    NotPlainFileOrDir,
+    PathIsAbsolute,
+}
+
+#[derive(Debug)]
+pub enum ImageStoreError {
+    EmptyPath,
+    InvalidImage,
+    NotPlainFile,
+    PathIsAbsolute,
+    Subdir,
 }
 
 /// An error representing a failure to validate UFO groups.
@@ -198,8 +217,47 @@ impl std::fmt::Display for Error {
             Error::MissingUfoDir(path) => {
                 write!(f, "{} directory was not found", path)
             }
+            Error::InvalidDataEntry(path, e) => {
+                write!(f, "Data set entry '{}' error: {}", path.display(), e)
+            }
+            Error::InvalidImageEntry(path, e) => {
+                write!(f, "Image set entry '{}' error: {}", path.display(), e)
+            }
             #[cfg(feature = "kurbo")]
             Error::ConvertContour(cause) => write!(f, "Failed to convert contour: '{}'", cause),
+        }
+    }
+}
+
+impl std::fmt::Display for DataStoreError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            DataStoreError::DirUnderFile => write!(f, "The parent of the file is a file itself."),
+            DataStoreError::NotPlainFileOrDir => {
+                write!(f, "Only plain files and directories are allowed, no symlinks.")
+            }
+            DataStoreError::PathIsAbsolute => write!(f, "The path must be relative."),
+            DataStoreError::EmptyPath => {
+                write!(f, "An empty path cannot be used as a key in the data store.")
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for ImageStoreError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ImageStoreError::InvalidImage => write!(f, "An image must be a valid PNG."),
+            ImageStoreError::EmptyPath => {
+                write!(f, "An empty path cannot be used as a key in the data store.")
+            }
+            ImageStoreError::NotPlainFile => {
+                write!(f, "Only plain files are allowed, no symlinks.")
+            }
+            ImageStoreError::PathIsAbsolute => write!(f, "The path must be relative."),
+            ImageStoreError::Subdir => {
+                write!(f, "Subdirectories are not allowed in the image store.")
+            }
         }
     }
 }
