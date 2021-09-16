@@ -1,6 +1,6 @@
 //! Reading and writing Unified Font Object files.
 
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 use std::borrow::Borrow;
 use std::fs;

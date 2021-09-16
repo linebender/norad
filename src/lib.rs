@@ -16,7 +16,7 @@
 //! assert_eq!(glyph_a.name.as_ref(), "A");
 //! ```
 
-#![deny(broken_intra_doc_links, unsafe_code)]
+#![deny(rustdoc::broken_intra_doc_links, unsafe_code)]
 
 #[macro_use]
 extern crate serde_derive;
