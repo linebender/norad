@@ -289,7 +289,8 @@ impl ImageStore {
         if k.parent().map_or(false, |p| !p.as_os_str().is_empty()) {
             return Err(ImageStoreError::Subdir);
         }
-        if !Self::is_valid_png(&v) {
+        // Check for a valid PNG header signature.
+        if !v.starts_with(&[137u8, 80, 78, 71, 13, 10, 26, 10]) {
             return Err(ImageStoreError::InvalidImage);
         }
         Ok(self.store.insert(k, v))
@@ -310,9 +311,63 @@ impl ImageStore {
     pub fn iter(&self) -> impl Iterator<Item = (&PathBuf, &Vec<u8>)> {
         self.store.iter()
     }
+}
 
-    /// Checks for a valid PNG header signature.
-    fn is_valid_png(bytes: &[u8]) -> bool {
-        bytes[..8] == [137u8, 80, 78, 71, 13, 10, 26, 10]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn datastore_errors() {
+        let mut store = DataStore::default();
+
+        assert!(matches!(store.try_insert(PathBuf::new(), vec![]), Err(DataStoreError::EmptyPath)));
+        #[cfg(not(target_family = "windows"))]
+        assert!(matches!(
+            store.try_insert(PathBuf::from("/a"), vec![]),
+            Err(DataStoreError::PathIsAbsolute)
+        ));
+        #[cfg(target_family = "windows")]
+        assert!(matches!(
+            store.try_insert(PathBuf::from("C:\\a"), vec![]),
+            Err(DataStoreError::PathIsAbsolute)
+        ));
+
+        store.try_insert(PathBuf::from("a"), vec![]).unwrap();
+        assert!(matches!(
+            store.try_insert(PathBuf::from("a/b/zzz/c.txt"), vec![]),
+            Err(DataStoreError::DirUnderFile)
+        ));
+    }
+
+    #[test]
+    fn imagestore_errors() {
+        let mut store = ImageStore::default();
+
+        assert!(matches!(
+            store.try_insert(PathBuf::new(), vec![]),
+            Err(ImageStoreError::EmptyPath)
+        ));
+        #[cfg(not(target_family = "windows"))]
+        assert!(matches!(
+            store.try_insert(PathBuf::from("/a"), vec![]),
+            Err(ImageStoreError::PathIsAbsolute)
+        ));
+        #[cfg(target_family = "windows")]
+        assert!(matches!(
+            store.try_insert(PathBuf::from("C:\\a"), vec![]),
+            Err(ImageStoreError::PathIsAbsolute)
+        ));
+        assert!(matches!(
+            store.try_insert(PathBuf::from("a.png"), vec![1, 2, 3]),
+            Err(ImageStoreError::InvalidImage)
+        ));
+        assert!(matches!(
+            store.try_insert(
+                PathBuf::from("a/b/zzz/c.png"),
+                vec![137u8, 80, 78, 71, 13, 10, 26, 10]
+            ),
+            Err(ImageStoreError::Subdir)
+        ));
     }
 }
