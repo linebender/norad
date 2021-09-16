@@ -49,20 +49,31 @@ pub enum Error {
     InvalidImageEntry(PathBuf, ImageStoreError),
 }
 
+/// An error representing a failure to insert content into [`crate::datastore::DataStore`].
 #[derive(Debug)]
 pub enum DataStoreError {
+    /// Tried to insert a path whose ancestor is in the store already, implying nesting a file under a file.
     DirUnderFile,
+    /// The path was empty.
     EmptyPath,
+    /// The path was neither plain file nor directory, but e.g. a symlink.
     NotPlainFileOrDir,
+    /// The path was absolute; only relative paths are allowed.
     PathIsAbsolute,
 }
 
+/// An error representing a failure to insert an image into [`crate::datastore::ImageStore`].
 #[derive(Debug)]
 pub enum ImageStoreError {
+    /// The path was empty.
     EmptyPath,
+    /// The image did not have a valid PNG header.
     InvalidImage,
+    /// The path was not a plain file, but e.g. a directory or symlink.
     NotPlainFile,
+    /// The path was absolute; only relative paths are allowed.
     PathIsAbsolute,
+    /// The path contained a subdirectory; `images` is a flat directory.
     Subdir,
 }
 
