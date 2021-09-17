@@ -608,3 +608,98 @@ fn pointtype_from_str_trait() {
 fn pointtype_from_str_unknown_type() {
     PointType::from_str("bogus").unwrap();
 }
+
+#[test]
+fn components_load() {
+    let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_dieresis.glif");
+    let glyph = parse_glyph(bytes).expect("initial load failed");
+    // component order
+    assert_eq!(glyph.components[0].base, std::sync::Arc::<str>::from("A"));
+    assert_eq!(glyph.components[1].base, std::sync::Arc::<str>::from("dieresis"));
+    let error_margin = f32::EPSILON;
+    // component affine transforms
+    assert!(glyph.components[0].transform.x_scale - 1.0 < error_margin);
+    assert!(glyph.components[0].transform.y_scale - 1.0 < error_margin);
+    assert!(glyph.components[0].transform.xy_scale - 0.0 < error_margin);
+    assert!(glyph.components[0].transform.yx_scale - 0.0 < error_margin);
+    assert!(glyph.components[0].transform.x_offset - 0.0 < error_margin);
+    assert!(glyph.components[0].transform.y_offset - 0.0 < error_margin);
+
+    assert!(glyph.components[1].transform.x_scale - 1.0 < error_margin);
+    assert!(glyph.components[1].transform.y_scale - 1.0 < error_margin);
+    assert!(glyph.components[1].transform.xy_scale - 0.0 < error_margin);
+    assert!(glyph.components[1].transform.yx_scale - 0.0 < error_margin);
+    assert!(glyph.components[1].transform.x_offset - 421.0 < error_margin);
+    assert!(glyph.components[1].transform.y_offset - 20.0 < error_margin);
+}
+
+#[test]
+fn has_component() {
+    let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_dieresis.glif");
+    let glyph = parse_glyph(bytes).expect("initial load failed");
+    assert!(glyph.has_component());
+
+    let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_.glif");
+    let glyph = parse_glyph(bytes).expect("initial load failed");
+    assert!(!glyph.has_component());
+}
+
+#[test]
+fn component_number() {
+    let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_dieresis.glif");
+    let glyph = parse_glyph(bytes).expect("initial load failed");
+    assert_eq!(glyph.component_number(), 2);
+
+    let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_.glif");
+    let glyph = parse_glyph(bytes).expect("initial load failed");
+    assert_eq!(glyph.component_number(), 0);
+}
+
+#[test]
+fn get_components_with_base() {
+    let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_dieresis.glif");
+    let glyph = parse_glyph(bytes).expect("initial load failed");
+
+    assert_eq!(glyph.components[0].base, std::sync::Arc::<str>::from("A"));
+    assert_eq!(glyph.components[1].base, std::sync::Arc::<str>::from("dieresis"));
+
+    let component_a_vec = glyph.get_components_with_base("A");
+    assert!(component_a_vec.len() == 1);
+    assert_eq!(glyph.components[0], *component_a_vec[0]);
+
+    let component_dieresis_vec = glyph.get_components_with_base("dieresis");
+    assert!(component_dieresis_vec.len() == 1);
+    assert_eq!(glyph.components[1], *component_dieresis_vec[0]);
+}
+
+#[test]
+fn get_components_with_base_multiple_same_base_components() {
+    let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/quotedblbase.glif");
+    let glyph = parse_glyph(bytes).expect("initial load failed");
+    let error_margin = f32::EPSILON;
+    assert_eq!(glyph.components[0].base, std::sync::Arc::<str>::from("comma"));
+    assert!(glyph.components[0].transform.x_offset - 0.0 < error_margin);
+    assert_eq!(glyph.components[1].base, std::sync::Arc::<str>::from("comma"));
+    assert!(glyph.components[1].transform.x_offset - 130.0 < error_margin);
+
+    let component_comma_vec = glyph.get_components_with_base("comma");
+    assert!(component_comma_vec.len() == 2);
+    assert_eq!(glyph.components[0], *component_comma_vec[0]);
+    assert_eq!(glyph.components[1], *component_comma_vec[1]);
+}
+
+#[test]
+fn get_components_with_base_missing() {
+    let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_dieresis.glif");
+    let glyph = parse_glyph(bytes).expect("initial load failed");
+    assert!(glyph.get_components_with_base("Z").is_empty());
+}
+
+#[test]
+fn has_component_with_base() {
+    let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_dieresis.glif");
+    let glyph = parse_glyph(bytes).expect("initial load failed");
+    assert!(glyph.has_component_with_base("A"));
+    assert!(glyph.has_component_with_base("dieresis"));
+    assert!(!glyph.has_component_with_base("Z"));
+}
