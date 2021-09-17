@@ -136,16 +136,6 @@ impl DataStore {
         self.store.keys()
     }
 
-    /// An iterator visiting all content in arbitrary order.
-    pub fn values(&self) -> impl Iterator<Item = &Vec<u8>> {
-        self.store.values()
-    }
-
-    /// An iterator visiting all content mutably in arbitrary order.
-    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut Vec<u8>> {
-        self.store.values_mut()
-    }
-
     /// Tries to insert a path-content pair into the store.
     ///
     /// If the store did not have this path present, `None` is returned.
@@ -256,11 +246,6 @@ impl ImageStore {
     /// An iterator visiting all paths in arbitrary order.
     pub fn keys(&self) -> impl Iterator<Item = &PathBuf> {
         self.store.keys()
-    }
-
-    /// An iterator visiting all images in arbitrary order.
-    pub fn values(&self) -> impl Iterator<Item = &Vec<u8>> {
-        self.store.values()
     }
 
     /// Tries to insert a path-image pair into the store.
