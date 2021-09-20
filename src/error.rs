@@ -50,7 +50,7 @@ pub enum Error {
 }
 
 /// An error representing a failure to insert content into [`crate::datastore::DataStore`].
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum DataStoreError {
     /// Tried to insert a path whose ancestor is in the store already, implying nesting a file under a file.
     DirUnderFile,
@@ -60,10 +60,12 @@ pub enum DataStoreError {
     NotPlainFileOrDir,
     /// The path was absolute; only relative paths are allowed.
     PathIsAbsolute,
+    /// Encountered an IO error while trying to load data
+    Io(std::sync::Arc<std::io::Error>),
 }
 
 /// An error representing a failure to insert an image into [`crate::datastore::ImageStore`].
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ImageStoreError {
     /// The path was empty.
     EmptyPath,
@@ -75,6 +77,8 @@ pub enum ImageStoreError {
     PathIsAbsolute,
     /// The path contained a subdirectory; `images` is a flat directory.
     Subdir,
+    /// Encountered an IO error while trying to load image
+    Io(std::sync::Arc<std::io::Error>),
 }
 
 /// An error representing a failure to validate UFO groups.
@@ -251,6 +255,9 @@ impl std::fmt::Display for DataStoreError {
             DataStoreError::EmptyPath => {
                 write!(f, "An empty path cannot be used as a key in the data store.")
             }
+            DataStoreError::Io(e) => {
+                write!(f, "Encountered an IO error while trying to load content: {}.", e)
+            }
         }
     }
 }
@@ -268,6 +275,9 @@ impl std::fmt::Display for ImageStoreError {
             ImageStoreError::PathIsAbsolute => write!(f, "The path must be relative."),
             ImageStoreError::Subdir => {
                 write!(f, "Subdirectories are not allowed in the image store.")
+            }
+            ImageStoreError::Io(e) => {
+                write!(f, "Encountered an IO error while trying to load content: {}.", e)
             }
         }
     }
@@ -462,6 +472,20 @@ impl From<XmlError> for WriteError {
 impl From<IoError> for WriteError {
     fn from(src: IoError) -> WriteError {
         WriteError::IoError(src)
+    }
+}
+
+#[doc(hidden)]
+impl From<IoError> for DataStoreError {
+    fn from(src: IoError) -> DataStoreError {
+        DataStoreError::Io(std::sync::Arc::new(src))
+    }
+}
+
+#[doc(hidden)]
+impl From<IoError> for ImageStoreError {
+    fn from(src: IoError) -> ImageStoreError {
+        ImageStoreError::Io(std::sync::Arc::new(src))
     }
 }
 
