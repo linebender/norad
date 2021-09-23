@@ -441,8 +441,7 @@ mod tests {
         let mut data_request = crate::DataRequest::default();
         data_request.data_eager(false).images_eager(false);
 
-        let ufo = crate::Font::load_requested_data(UFO_DATA_IMAGE_TEST_PATH, data_request.clone())
-            .unwrap();
+        let ufo = crate::Font::load_requested_data(UFO_DATA_IMAGE_TEST_PATH, data_request).unwrap();
 
         // 1. Roundtrip font to different dir to ensure we save data and images to
         //    new destination.
@@ -450,8 +449,7 @@ mod tests {
         ufo.save(&roundtrip_dir).unwrap();
         std::mem::drop(ufo); // Avoid accidental use below.
 
-        let ufo_rt =
-            crate::Font::load_requested_data(&roundtrip_dir, data_request.clone()).unwrap();
+        let ufo_rt = crate::Font::load_requested_data(&roundtrip_dir, data_request).unwrap();
 
         let mut data_paths: Vec<_> = ufo_rt.data.keys().collect();
         data_paths.sort();
@@ -473,14 +471,12 @@ mod tests {
 
         // 2. Open font again so all data is unloaded again and save in same destination,
         //    to check that we load/unlazify the data before saving in-place.
-        let ufo_rt =
-            crate::Font::load_requested_data(&roundtrip_dir, data_request.clone()).unwrap();
+        let ufo_rt = crate::Font::load_requested_data(&roundtrip_dir, data_request).unwrap();
         ufo_rt.save(&roundtrip_dir).unwrap();
         std::mem::drop(ufo_rt); // Avoid accidental use below.
 
         // All data and images should still exist because Font was unlazified before saving.
-        let ufo_rt =
-            crate::Font::load_requested_data(&roundtrip_dir, data_request.clone()).unwrap();
+        let ufo_rt = crate::Font::load_requested_data(&roundtrip_dir, data_request).unwrap();
 
         let mut data_paths: Vec<_> = ufo_rt.data.keys().collect();
         data_paths.sort();
