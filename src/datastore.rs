@@ -261,7 +261,7 @@ impl<T: DataType> Store<T, T::Error> {
                     Arc::new(RwLock::new(if lazy {
                         Item::NotLoaded
                     } else {
-                        match impl_type.try_load_item(&ufo_root, &path) {
+                        match impl_type.try_load_item(ufo_root, &path) {
                             Ok(data) => {
                                 match impl_type.validate_entry(&path, &HashMap::new(), &data) {
                                     Ok(_) => Item::Loaded(Arc::new(data)),
@@ -317,7 +317,7 @@ impl<T: DataType> Store<T, T::Error> {
             let mut guard = lock.write().unwrap();
             if let Item::NotLoaded = *guard {
                 *guard = match self.impl_type.try_load_item(&self.ufo_root, path) {
-                    Ok(data) => match self.impl_type.validate_entry(&path, &self.items, &data) {
+                    Ok(data) => match self.impl_type.validate_entry(path, &self.items, &data) {
                         Ok(_) => Item::Loaded(Arc::new(data)),
                         Err(e) => Item::Error(e),
                     },
@@ -335,7 +335,7 @@ impl<T: DataType> Store<T, T::Error> {
 
     /// Try to insert data for this path. Overwrites an existing data.
     ///
-    /// Does not return the overwritten data, use [`get`] first to get it if you need
+    /// Does not return the overwritten data, use [`Self::get`] first to get it if you need
     /// it.
     ///
     /// In a data store, returns a [`DataStoreError`] if:
@@ -357,7 +357,7 @@ impl<T: DataType> Store<T, T::Error> {
 
     /// Removes a path from the store.
     ///
-    /// Does not return the removed data, use [`get`] first to get it if you need
+    /// Does not return the removed data, use [`Self::get`] first to get it if you need
     /// it.
     pub fn remove(&mut self, k: &Path) {
         self.items.remove(k);
