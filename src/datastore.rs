@@ -16,7 +16,7 @@ use crate::Error;
 /// If initialized from disk, data can be loaded eagerly or lazily, as in, on access.
 /// It will remember the root data directory for this purpose. This complicates the
 /// accessor methods somewhat, because 1. access can fail with an IO error and 2.
-/// insertion can fail.
+/// insertion can fail. Data is wrapped in a [`std::sync::Arc`] to help on-demand loading.
 ///
 /// Note that it tracks files, not directories. Data paths you insert must not have
 /// any existing path in the store as an ancestor, or you would nest a file under a
