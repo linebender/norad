@@ -261,15 +261,7 @@ impl<T: DataType> Store<T, T::Error> {
                     Arc::new(RwLock::new(if lazy {
                         Item::NotLoaded
                     } else {
-                        match impl_type.try_load_item(ufo_root, &path) {
-                            Ok(data) => {
-                                match impl_type.validate_entry(&path, &HashMap::new(), &data) {
-                                    Ok(_) => Item::Loaded(Arc::new(data)),
-                                    Err(e) => Item::Error(e),
-                                }
-                            }
-                            Err(e) => Item::Error(e),
-                        }
+                        Self::load_item(&impl_type, ufo_root, &path, &HashMap::new())
                     })),
                 )
             })
@@ -316,13 +308,7 @@ impl<T: DataType> Store<T, T::Error> {
             // Acquire exclusive access to the item so we can load and store data in peace.
             let mut guard = lock.write().unwrap();
             if let Item::NotLoaded = *guard {
-                *guard = match self.impl_type.try_load_item(&self.ufo_root, path) {
-                    Ok(data) => match self.impl_type.validate_entry(path, &self.items, &data) {
-                        Ok(_) => Item::Loaded(Arc::new(data)),
-                        Err(e) => Item::Error(e),
-                    },
-                    Err(e) => Item::Error(e),
-                };
+                *guard = Self::load_item(&self.impl_type, &self.ufo_root, path, &self.items);
             }
         }
 
@@ -330,6 +316,21 @@ impl<T: DataType> Store<T, T::Error> {
             Item::Error(e) => Some(Err(e.clone())),
             Item::Loaded(data) => Some(Ok(data.clone())),
             Item::NotLoaded => unreachable!(),
+        }
+    }
+
+    fn load_item(
+        impl_type: &T,
+        ufo_root: &Path,
+        path: &Path,
+        items: &HashMap<PathBuf, Arc<RwLock<Item<T::Error>>>>,
+    ) -> Item<<T as DataType>::Error> {
+        match impl_type.try_load_item(ufo_root, path) {
+            Ok(data) => match impl_type.validate_entry(path, items, &data) {
+                Ok(_) => Item::Loaded(Arc::new(data)),
+                Err(e) => Item::Error(e),
+            },
+            Err(e) => Item::Error(e),
         }
     }
 
