@@ -371,8 +371,6 @@ impl<T: DataType> Store<T, T::Error> {
 
 #[cfg(test)]
 mod tests {
-    use crate::data_request;
-
     use super::*;
 
     const UFO_DATA_IMAGE_TEST_PATH: &str = "testdata/dataimagetest.ufo";
