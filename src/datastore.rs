@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::error::{DataStoreError, ImageStoreError};
+use crate::error::StoreError;
 use crate::Error;
 
 /// A generic file store for UFO [data][spec_data] and [images][spec_images],
@@ -63,8 +63,8 @@ use crate::Error;
 /// [spec_data]: https://unifiedfontobject.org/versions/ufo3/data/
 /// [spec_images]: https://unifiedfontobject.org/versions/ufo3/images/
 #[derive(Debug, Clone)]
-pub struct Store<T, E> {
-    items: HashMap<PathBuf, Arc<RwLock<Item<E>>>>,
+pub struct Store<T> {
+    items: HashMap<PathBuf, Arc<RwLock<Item>>>,
     ufo_root: PathBuf,
     impl_type: T,
 }
@@ -73,38 +73,37 @@ pub struct Store<T, E> {
 #[derive(Debug, Default, Clone)]
 pub struct Data;
 
-pub type DataStore = Store<Data, DataStoreError>;
+pub type DataStore = Store<Data>;
 
 /// Implements custom behavior for the images store.
 #[derive(Debug, Default, Clone)]
 pub struct Image;
 
-pub type ImageStore = Store<Image, ImageStoreError>;
+pub type ImageStore = Store<Image>;
 
 /// Defines custom behavior for data and images stores.
 pub trait DataType: Default {
-    type Error: Clone;
     fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, Error>;
-    fn try_load_item(&self, ufo_root: &Path, path: &Path) -> Result<Vec<u8>, Self::Error>;
+    fn try_load_item(&self, ufo_root: &Path, path: &Path) -> Result<Vec<u8>, StoreError>;
     fn validate_entry(
         &self,
         path: &Path,
-        items: &HashMap<PathBuf, Arc<RwLock<Item<Self::Error>>>>,
+        items: &HashMap<PathBuf, Arc<RwLock<Item>>>,
         data: &[u8],
-    ) -> Result<(), Self::Error>;
+    ) -> Result<(), StoreError>;
 }
 
 /// Internal placeholder enum for the data.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Item<E> {
+#[derive(Debug, Clone)]
+pub enum Item {
     Loaded(Arc<Vec<u8>>),
     NotLoaded,
-    Error(E),
+    Error(StoreError),
 }
 
 // Implement custom Default for Store because automatically deriving it requires
 // making the error type E implement Default as well, which makes no sense.
-impl<T, E> Default for Store<T, E>
+impl<T> Default for Store<T>
 where
     T: Default,
 {
@@ -114,7 +113,7 @@ where
 }
 
 /// Implements partial equality testing by just comparing paths.
-impl<T: DataType> PartialEq for Store<T, T::Error> {
+impl<T: DataType> PartialEq for Store<T> {
     fn eq(&self, other: &Self) -> bool {
         self.items.len() == other.items.len()
             && self.items.keys().all(|key| other.items.contains_key(key))
@@ -122,8 +121,6 @@ impl<T: DataType> PartialEq for Store<T, T::Error> {
 }
 
 impl DataType for Data {
-    type Error = DataStoreError;
-
     fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, Error> {
         let source_root = ufo_root.join(crate::font::DATA_DIR);
         let mut paths = Vec::new();
@@ -131,14 +128,14 @@ impl DataType for Data {
         let mut dir_queue: Vec<PathBuf> = vec![source_root.clone()];
         while let Some(dir_path) = dir_queue.pop() {
             for entry in std::fs::read_dir(&dir_path)
-                .map_err(|e| Error::InvalidDataEntry(dir_path.clone(), e.into()))?
+                .map_err(|e| Error::InvalidStoreEntry(dir_path.clone(), e.into()))?
             {
                 let entry =
-                    entry.map_err(|e| Error::InvalidDataEntry(dir_path.clone(), e.into()))?;
+                    entry.map_err(|e| Error::InvalidStoreEntry(dir_path.clone(), e.into()))?;
                 let path = entry.path();
                 let attributes = entry
                     .metadata() // "will not traverse symlinks"
-                    .map_err(|e| Error::InvalidDataEntry(entry.path(), e.into()))?;
+                    .map_err(|e| Error::InvalidStoreEntry(entry.path(), e.into()))?;
 
                 if attributes.is_file() {
                     let key = path.strip_prefix(&source_root).unwrap().to_path_buf();
@@ -147,7 +144,7 @@ impl DataType for Data {
                     dir_queue.push(path);
                 } else {
                     // The spec forbids symlinks.
-                    return Err(Error::InvalidDataEntry(path, DataStoreError::NotPlainFileOrDir));
+                    return Err(Error::InvalidStoreEntry(path, StoreError::NotPlainFileOrDir));
                 }
             }
         }
@@ -155,25 +152,25 @@ impl DataType for Data {
         Ok(paths)
     }
 
-    fn try_load_item(&self, ufo_root: &Path, path: &Path) -> Result<Vec<u8>, Self::Error> {
+    fn try_load_item(&self, ufo_root: &Path, path: &Path) -> Result<Vec<u8>, StoreError> {
         std::fs::read(ufo_root.join(crate::font::DATA_DIR).join(path)).map_err(|e| e.into())
     }
 
     fn validate_entry(
         &self,
         path: &Path,
-        items: &HashMap<PathBuf, Arc<RwLock<Item<Self::Error>>>>,
+        items: &HashMap<PathBuf, Arc<RwLock<Item>>>,
         _data: &[u8],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), StoreError> {
         if path.as_os_str().is_empty() {
-            return Err(Self::Error::EmptyPath);
+            return Err(StoreError::EmptyPath);
         }
         if path.is_absolute() {
-            return Err(Self::Error::PathIsAbsolute);
+            return Err(StoreError::PathIsAbsolute);
         }
         for ancestor in path.ancestors().skip(1) {
             if !ancestor.as_os_str().is_empty() && items.contains_key(ancestor) {
-                return Err(Self::Error::DirUnderFile);
+                return Err(StoreError::DirUnderFile);
             }
         }
 
@@ -182,66 +179,64 @@ impl DataType for Data {
 }
 
 impl DataType for Image {
-    type Error = ImageStoreError;
-
     fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, Error> {
         let source_root = ufo_root.join(crate::font::IMAGES_DIR);
         let mut paths = Vec::new();
 
         for entry in std::fs::read_dir(&source_root)
-            .map_err(|e| Error::InvalidImageEntry(source_root.clone(), e.into()))?
+            .map_err(|e| Error::InvalidStoreEntry(source_root.clone(), e.into()))?
         {
             let entry =
-                entry.map_err(|e| Error::InvalidImageEntry(source_root.clone(), e.into()))?;
+                entry.map_err(|e| Error::InvalidStoreEntry(source_root.clone(), e.into()))?;
             let path = entry.path();
             let attributes = entry
                 .metadata() // "will not traverse symlinks"
-                .map_err(|e| Error::InvalidImageEntry(path.clone(), e.into()))?;
+                .map_err(|e| Error::InvalidStoreEntry(path.clone(), e.into()))?;
 
             if attributes.is_file() {
                 let key = path.strip_prefix(&source_root).unwrap().to_path_buf();
                 paths.push(key);
             } else if attributes.is_dir() {
                 // The spec forbids directories...
-                return Err(Error::InvalidImageEntry(path, ImageStoreError::Subdir));
+                return Err(Error::InvalidStoreEntry(path, StoreError::Subdir));
             } else {
                 // ... and symlinks.
-                return Err(Error::InvalidImageEntry(path, ImageStoreError::NotPlainFile));
+                return Err(Error::InvalidStoreEntry(path, StoreError::NotPlainFile));
             }
         }
 
         Ok(paths)
     }
 
-    fn try_load_item(&self, ufo_root: &Path, path: &Path) -> Result<Vec<u8>, Self::Error> {
+    fn try_load_item(&self, ufo_root: &Path, path: &Path) -> Result<Vec<u8>, StoreError> {
         std::fs::read(ufo_root.join(crate::font::IMAGES_DIR).join(path)).map_err(|e| e.into())
     }
 
     fn validate_entry(
         &self,
         path: &Path,
-        _items: &HashMap<PathBuf, Arc<RwLock<Item<Self::Error>>>>,
+        _items: &HashMap<PathBuf, Arc<RwLock<Item>>>,
         data: &[u8],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), StoreError> {
         if path.as_os_str().is_empty() {
-            return Err(ImageStoreError::EmptyPath);
+            return Err(StoreError::EmptyPath);
         }
         if path.is_absolute() {
-            return Err(ImageStoreError::PathIsAbsolute);
+            return Err(StoreError::PathIsAbsolute);
         }
         if path.parent().map_or(false, |p| !p.as_os_str().is_empty()) {
-            return Err(ImageStoreError::Subdir);
+            return Err(StoreError::Subdir);
         }
         // Check for a valid PNG header signature.
         if !data.starts_with(&[137u8, 80, 78, 71, 13, 10, 26, 10]) {
-            return Err(ImageStoreError::InvalidImage);
+            return Err(StoreError::InvalidImage);
         }
 
         Ok(())
     }
 }
 
-impl<T: DataType> Store<T, T::Error> {
+impl<T: DataType> Store<T> {
     pub(crate) fn new(ufo_root: &Path, lazy: bool) -> Result<Self, Error> {
         let impl_type = T::default();
         let dir_contents = impl_type.try_list_contents(ufo_root)?;
@@ -287,7 +282,7 @@ impl<T: DataType> Store<T, T::Error> {
     }
 
     /// Returns a reference to the data corresponding to the path.
-    pub fn get(&self, path: &Path) -> Option<Result<Arc<Vec<u8>>, T::Error>> {
+    pub fn get(&self, path: &Path) -> Option<Result<Arc<Vec<u8>>, StoreError>> {
         let lock = match self.items.get(path) {
             Some(lock) => lock,
             None => return None,
@@ -315,8 +310,8 @@ impl<T: DataType> Store<T, T::Error> {
         impl_type: &T,
         ufo_root: &Path,
         path: &Path,
-        items: &HashMap<PathBuf, Arc<RwLock<Item<T::Error>>>>,
-    ) -> Item<<T as DataType>::Error> {
+        items: &HashMap<PathBuf, Arc<RwLock<Item>>>,
+    ) -> Item {
         match impl_type.try_load_item(ufo_root, path) {
             Ok(data) => match impl_type.validate_entry(path, items, &data) {
                 Ok(_) => Item::Loaded(Arc::new(data)),
@@ -331,18 +326,18 @@ impl<T: DataType> Store<T, T::Error> {
     /// Does not return the overwritten data, use [`Self::get`] first to get it if you need
     /// it.
     ///
-    /// In a data store, returns a [`DataStoreError`] if:
+    /// In a data store, returns a [`StoreError`] if:
     /// 1. The path is empty.
     /// 2. The path is absolute.
     /// 3. Any of the path's ancestors is already tracked in the store, implying
     ///    the path to be nested under a file.
     ///
-    /// In an images store, returns an [`ImageStoreError`] if:
+    /// In an images store, returns an [`StoreError`] if:
     /// 1. The path is empty.
     /// 2. The path is absolute.
     /// 3. The path contains an ancestor, implying subdirectories.
     /// 4. The image data does not start with the PNG header.
-    pub fn insert(&mut self, path: PathBuf, data: Vec<u8>) -> Result<(), T::Error> {
+    pub fn insert(&mut self, path: PathBuf, data: Vec<u8>) -> Result<(), StoreError> {
         self.impl_type.validate_entry(&path, &self.items, &data)?;
         self.items.insert(path, Arc::new(RwLock::new(Item::Loaded(Arc::new(data)))));
         Ok(())
@@ -357,7 +352,7 @@ impl<T: DataType> Store<T, T::Error> {
     }
 
     /// An iterator visiting all path-data pairs in arbitrary order.
-    pub fn iter(&self) -> impl Iterator<Item = (&PathBuf, Result<Arc<Vec<u8>>, T::Error>)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&PathBuf, Result<Arc<Vec<u8>>, StoreError>)> {
         self.items.keys().map(move |k| (k, self.get(k).unwrap()))
     }
 }
@@ -384,22 +379,22 @@ mod tests {
     fn lazy_datastore_errors() {
         let mut store = DataStore::default();
 
-        assert!(matches!(store.insert(PathBuf::new(), vec![]), Err(DataStoreError::EmptyPath)));
+        assert!(matches!(store.insert(PathBuf::new(), vec![]), Err(StoreError::EmptyPath)));
         #[cfg(not(target_family = "windows"))]
         assert!(matches!(
             store.insert(PathBuf::from("/a"), vec![]),
-            Err(DataStoreError::PathIsAbsolute)
+            Err(StoreError::PathIsAbsolute)
         ));
         #[cfg(target_family = "windows")]
         assert!(matches!(
             store.insert(PathBuf::from("C:\\a"), vec![]),
-            Err(DataStoreError::PathIsAbsolute)
+            Err(StoreError::PathIsAbsolute)
         ));
 
         store.insert(PathBuf::from("a"), vec![]).unwrap();
         assert!(matches!(
             store.insert(PathBuf::from("a/b/zzz/c.txt"), vec![]),
-            Err(DataStoreError::DirUnderFile)
+            Err(StoreError::DirUnderFile)
         ));
     }
 
@@ -407,24 +402,24 @@ mod tests {
     fn lazy_imagestore_errors() {
         let mut store = ImageStore::default();
 
-        assert!(matches!(store.insert(PathBuf::new(), vec![]), Err(ImageStoreError::EmptyPath)));
+        assert!(matches!(store.insert(PathBuf::new(), vec![]), Err(StoreError::EmptyPath)));
         #[cfg(not(target_family = "windows"))]
         assert!(matches!(
             store.insert(PathBuf::from("/a"), vec![]),
-            Err(ImageStoreError::PathIsAbsolute)
+            Err(StoreError::PathIsAbsolute)
         ));
         #[cfg(target_family = "windows")]
         assert!(matches!(
             store.insert(PathBuf::from("C:\\a"), vec![]),
-            Err(ImageStoreError::PathIsAbsolute)
+            Err(StoreError::PathIsAbsolute)
         ));
         assert!(matches!(
             store.insert(PathBuf::from("a.png"), vec![1, 2, 3]),
-            Err(ImageStoreError::InvalidImage)
+            Err(StoreError::InvalidImage)
         ));
         assert!(matches!(
             store.insert(PathBuf::from("a/b/zzz/c.png"), vec![137u8, 80, 78, 71, 13, 10, 26, 10]),
-            Err(ImageStoreError::Subdir)
+            Err(StoreError::Subdir)
         ));
     }
 
@@ -499,7 +494,7 @@ mod tests {
         run_data_store_test(DataStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref(), false).unwrap());
     }
 
-    fn run_data_store_test(mut store: Store<Data, DataStoreError>) {
+    fn run_data_store_test(mut store: Store<Data>) {
         let mut paths: Vec<&Path> = store.keys().map(|p| p.as_ref()).collect();
         paths.sort();
         assert_eq!(
@@ -555,7 +550,7 @@ mod tests {
         run_image_store_test(ImageStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref(), false).unwrap());
     }
 
-    fn run_image_store_test(mut store: Store<Image, ImageStoreError>) {
+    fn run_image_store_test(mut store: Store<Image>) {
         assert!(!store.is_empty());
         let mut paths: Vec<_> = store.keys().collect();
         paths.sort();

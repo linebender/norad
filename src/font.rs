@@ -323,7 +323,7 @@ impl Font {
                         fs::create_dir_all(&destination.parent().unwrap())?;
                         fs::write(destination, &*data)?;
                     }
-                    Err(e) => return Err(Error::InvalidDataEntry(data_path.clone(), e)),
+                    Err(e) => return Err(Error::InvalidStoreEntry(data_path.clone(), e)),
                 }
             }
         }
@@ -337,7 +337,7 @@ impl Font {
                         let destination = images_dir.join(image_path);
                         fs::write(destination, &*data)?;
                     }
-                    Err(e) => return Err(Error::InvalidImageEntry(image_path.clone(), e)),
+                    Err(e) => return Err(Error::InvalidStoreEntry(image_path.clone(), e)),
                 }
             }
         }
