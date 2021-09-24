@@ -237,21 +237,12 @@ impl DataType for Image {
 }
 
 impl<T: DataType> Store<T> {
-    pub(crate) fn new(ufo_root: &Path, lazy: bool) -> Result<Self, Error> {
+    pub(crate) fn new(ufo_root: &Path) -> Result<Self, Error> {
         let impl_type = T::default();
         let dir_contents = impl_type.try_list_contents(ufo_root)?;
         let items = dir_contents
             .into_iter()
-            .map(|path| {
-                (
-                    path.clone(),
-                    Arc::new(RwLock::new(if lazy {
-                        Item::NotLoaded
-                    } else {
-                        Self::load_item(&impl_type, ufo_root, &path, &HashMap::new())
-                    })),
-                )
-            })
+            .map(|path| (path, Arc::new(RwLock::new(Item::NotLoaded))))
             .collect();
         Ok(Store { items, ufo_root: ufo_root.to_path_buf(), impl_type })
     }
@@ -376,7 +367,7 @@ mod tests {
     const PATH_IMAGE3: &str = "image3.png";
 
     #[test]
-    fn lazy_datastore_errors() {
+    fn datastore_errors() {
         let mut store = DataStore::default();
 
         assert!(matches!(store.insert(PathBuf::new(), vec![]), Err(StoreError::EmptyPath)));
@@ -399,7 +390,7 @@ mod tests {
     }
 
     #[test]
-    fn lazy_imagestore_errors() {
+    fn imagestore_errors() {
         let mut store = ImageStore::default();
 
         assert!(matches!(store.insert(PathBuf::new(), vec![]), Err(StoreError::EmptyPath)));
@@ -425,10 +416,7 @@ mod tests {
 
     #[test]
     fn data_images_roundtripping() {
-        let mut data_request = crate::DataRequest::default();
-        data_request.data_eager(false).images_eager(false);
-
-        let ufo = crate::Font::load_requested_data(UFO_DATA_IMAGE_TEST_PATH, data_request).unwrap();
+        let ufo = crate::Font::load(UFO_DATA_IMAGE_TEST_PATH).unwrap();
 
         // 1. Roundtrip font to different dir to ensure we save data and images to
         //    new destination.
@@ -436,7 +424,7 @@ mod tests {
         ufo.save(&roundtrip_dir).unwrap();
         std::mem::drop(ufo); // Avoid accidental use below.
 
-        let ufo_rt = crate::Font::load_requested_data(&roundtrip_dir, data_request).unwrap();
+        let ufo_rt = crate::Font::load(&roundtrip_dir).unwrap();
 
         let mut data_paths: Vec<_> = ufo_rt.data.keys().collect();
         data_paths.sort();
@@ -458,12 +446,12 @@ mod tests {
 
         // 2. Open font again so all data is unloaded again and save in same destination,
         //    to check that we load/unlazify the data before saving in-place.
-        let ufo_rt = crate::Font::load_requested_data(&roundtrip_dir, data_request).unwrap();
+        let ufo_rt = crate::Font::load(&roundtrip_dir).unwrap();
         ufo_rt.save(&roundtrip_dir).unwrap();
         std::mem::drop(ufo_rt); // Avoid accidental use below.
 
         // All data and images should still exist because Font was unlazified before saving.
-        let ufo_rt = crate::Font::load_requested_data(&roundtrip_dir, data_request).unwrap();
+        let ufo_rt = crate::Font::load(&roundtrip_dir).unwrap();
 
         let mut data_paths: Vec<_> = ufo_rt.data.keys().collect();
         data_paths.sort();
@@ -486,15 +474,8 @@ mod tests {
 
     #[test]
     fn lazy_data_loading() {
-        run_data_store_test(DataStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref(), true).unwrap());
-    }
+        let mut store = DataStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref()).unwrap();
 
-    #[test]
-    fn eager_data_loading() {
-        run_data_store_test(DataStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref(), false).unwrap());
-    }
-
-    fn run_data_store_test(mut store: Store<Data>) {
         let mut paths: Vec<&Path> = store.keys().map(|p| p.as_ref()).collect();
         paths.sort();
         assert_eq!(
@@ -542,15 +523,8 @@ mod tests {
 
     #[test]
     fn lazy_image_loading() {
-        run_image_store_test(ImageStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref(), true).unwrap());
-    }
+        let mut store = ImageStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref()).unwrap();
 
-    #[test]
-    fn eager_image_loading() {
-        run_image_store_test(ImageStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref(), false).unwrap());
-    }
-
-    fn run_image_store_test(mut store: Store<Image>) {
         assert!(!store.is_empty());
         let mut paths: Vec<_> = store.keys().collect();
         paths.sort();
@@ -576,7 +550,7 @@ mod tests {
     fn lazy_data_loading_parallel() {
         use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
-        let store = DataStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref(), true).unwrap();
+        let store = DataStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref()).unwrap();
 
         (1..100)
             .into_par_iter()
@@ -586,10 +560,10 @@ mod tests {
     }
 
     #[test]
-    fn lazy_eager_equality() {
+    fn store_equality() {
         let ufo_path = UFO_DATA_IMAGE_TEST_PATH.as_ref();
-        let store1 = DataStore::new(ufo_path, true).unwrap();
-        let store2 = DataStore::new(ufo_path, false).unwrap();
+        let store1 = DataStore::new(ufo_path).unwrap();
+        let store2 = DataStore::new(ufo_path).unwrap();
 
         assert_eq!(store1, store2);
     }

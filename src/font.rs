@@ -158,13 +158,13 @@ impl Font {
         };
 
         let data = if path.join(DATA_DIR).exists() && request.data {
-            DataStore::new(path, !request.data_eager)?
+            DataStore::new(path)?
         } else {
             Default::default()
         };
 
         let images = if path.join(IMAGES_DIR).exists() && request.data {
-            ImageStore::new(path, !request.images_eager)?
+            ImageStore::new(path)?
         } else {
             Default::default()
         };

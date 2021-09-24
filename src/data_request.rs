@@ -17,24 +17,12 @@ pub struct DataRequest {
     pub kerning: bool,
     pub features: bool,
     pub data: bool,
-    pub data_eager: bool,
     pub images: bool,
-    pub images_eager: bool,
 }
 
 impl DataRequest {
     fn from_bool(b: bool) -> Self {
-        DataRequest {
-            layers: b,
-            lib: b,
-            groups: b,
-            kerning: b,
-            features: b,
-            data: b,
-            data_eager: b,
-            images: b,
-            images_eager: b,
-        }
+        DataRequest { layers: b, lib: b, groups: b, kerning: b, features: b, data: b, images: b }
     }
 
     /// Returns a `DataRequest` requesting all UFO data.
@@ -84,23 +72,9 @@ impl DataRequest {
         self
     }
 
-    /// Request that returned UFO data include data (loaded into memory).
-    /// Otherwise, they are loaded on first access.
-    pub fn data_eager(&mut self, b: bool) -> &mut Self {
-        self.data_eager = b;
-        self
-    }
-
     /// Request that returned UFO data include images.
     pub fn images(&mut self, b: bool) -> &mut Self {
         self.images = b;
-        self
-    }
-
-    /// Request that returned UFO data include images (loaded into memory).
-    /// Otherwise, they are loaded on first access.
-    pub fn images_eager(&mut self, b: bool) -> &mut Self {
-        self.images_eager = b;
         self
     }
 }
