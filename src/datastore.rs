@@ -71,17 +71,20 @@ pub struct Store<T> {
 
 /// Implements custom behavior for the data store.
 #[derive(Debug, Default, Clone)]
+#[doc(hidden)]
 pub struct Data;
 
 pub type DataStore = Store<Data>;
 
 /// Implements custom behavior for the images store.
 #[derive(Debug, Default, Clone)]
+#[doc(hidden)]
 pub struct Image;
 
 pub type ImageStore = Store<Image>;
 
 /// Defines custom behavior for data and images stores.
+#[doc(hidden)]
 pub trait DataType: Default {
     fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, Error>;
     fn try_load_item(&self, ufo_root: &Path, path: &Path) -> Result<Vec<u8>, StoreError>;
@@ -95,6 +98,7 @@ pub trait DataType: Default {
 
 /// Internal placeholder enum for the data.
 #[derive(Debug, Clone)]
+#[doc(hidden)]
 pub enum Item {
     Loaded(Arc<Vec<u8>>),
     NotLoaded,
