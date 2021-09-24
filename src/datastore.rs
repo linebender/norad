@@ -1,9 +1,10 @@
 //! Storage structures for UFO data and images.
 
 use std::{
+    cell::RefCell,
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 use crate::error::StoreError;
@@ -64,7 +65,7 @@ use crate::Error;
 /// [spec_images]: https://unifiedfontobject.org/versions/ufo3/images/
 #[derive(Debug, Clone)]
 pub struct Store<T> {
-    items: HashMap<PathBuf, Arc<RwLock<Item>>>,
+    items: HashMap<PathBuf, Arc<RefCell<Item>>>,
     ufo_root: PathBuf,
     impl_type: T,
 }
@@ -91,18 +92,23 @@ pub trait DataType: Default {
     fn validate_entry(
         &self,
         path: &Path,
-        items: &HashMap<PathBuf, Arc<RwLock<Item>>>,
+        items: &HashMap<PathBuf, Arc<RefCell<Item>>>,
         data: &[u8],
     ) -> Result<(), StoreError>;
 }
 
-/// Internal placeholder enum for the data.
 #[derive(Debug, Clone)]
 #[doc(hidden)]
 pub enum Item {
-    Loaded(Arc<Vec<u8>>),
     NotLoaded,
+    Loaded(Arc<Vec<u8>>),
     Error(StoreError),
+}
+
+impl Default for Item {
+    fn default() -> Self {
+        Item::NotLoaded
+    }
 }
 
 // Implement custom Default for Store because automatically deriving it requires
@@ -163,7 +169,7 @@ impl DataType for Data {
     fn validate_entry(
         &self,
         path: &Path,
-        items: &HashMap<PathBuf, Arc<RwLock<Item>>>,
+        items: &HashMap<PathBuf, Arc<RefCell<Item>>>,
         _data: &[u8],
     ) -> Result<(), StoreError> {
         if path.as_os_str().is_empty() {
@@ -219,7 +225,7 @@ impl DataType for Image {
     fn validate_entry(
         &self,
         path: &Path,
-        _items: &HashMap<PathBuf, Arc<RwLock<Item>>>,
+        _items: &HashMap<PathBuf, Arc<RefCell<Item>>>,
         data: &[u8],
     ) -> Result<(), StoreError> {
         if path.as_os_str().is_empty() {
@@ -246,7 +252,7 @@ impl<T: DataType> Store<T> {
         let dir_contents = impl_type.try_list_contents(ufo_root)?;
         let items = dir_contents
             .into_iter()
-            .map(|path| (path, Arc::new(RwLock::new(Item::NotLoaded))))
+            .map(|path| (path, Arc::new(RefCell::new(Item::default()))))
             .collect();
         Ok(Store { items, ufo_root: ufo_root.to_path_buf(), impl_type })
     }
@@ -278,23 +284,20 @@ impl<T: DataType> Store<T> {
 
     /// Returns a reference to the data corresponding to the path.
     pub fn get(&self, path: &Path) -> Option<Result<Arc<Vec<u8>>, StoreError>> {
-        let lock = match self.items.get(path) {
-            Some(lock) => lock,
+        let cell = match self.items.get(path) {
+            Some(item) => item,
             None => return None,
         };
 
         // If item isn't loaded, try to load it, saving the data or the error
         // NOTE: Figure out whether the item is unloaded and immediately drop the
-        //       read lock so we can take the write lock. Otherwise, deadlock.
-        if matches!(*lock.read().unwrap(), Item::NotLoaded) {
-            // Acquire exclusive access to the item so we can load and store data in peace.
-            let mut guard = lock.write().unwrap();
-            if let Item::NotLoaded = *guard {
-                *guard = Self::load_item(&self.impl_type, &self.ufo_root, path, &self.items);
-            }
+        //       read borrow so we can take the write borrow. Otherwise, we panic.
+        if matches!(*cell.borrow(), Item::NotLoaded) {
+            *cell.borrow_mut() =
+                Self::load_item(&self.impl_type, &self.ufo_root, path, &self.items);
         }
 
-        match &*lock.read().unwrap() {
+        match &*cell.borrow() {
             Item::Error(e) => Some(Err(e.clone())),
             Item::Loaded(data) => Some(Ok(data.clone())),
             Item::NotLoaded => unreachable!(),
@@ -305,7 +308,7 @@ impl<T: DataType> Store<T> {
         impl_type: &T,
         ufo_root: &Path,
         path: &Path,
-        items: &HashMap<PathBuf, Arc<RwLock<Item>>>,
+        items: &HashMap<PathBuf, Arc<RefCell<Item>>>,
     ) -> Item {
         match impl_type.try_load_item(ufo_root, path) {
             Ok(data) => match impl_type.validate_entry(path, items, &data) {
@@ -334,7 +337,7 @@ impl<T: DataType> Store<T> {
     /// 4. The image data does not start with the PNG header.
     pub fn insert(&mut self, path: PathBuf, data: Vec<u8>) -> Result<(), StoreError> {
         self.impl_type.validate_entry(&path, &self.items, &data)?;
-        self.items.insert(path, Arc::new(RwLock::new(Item::Loaded(Arc::new(data)))));
+        self.items.insert(path, Arc::new(RefCell::new(Item::Loaded(Arc::new(data)))));
         Ok(())
     }
 
