@@ -113,19 +113,11 @@ where
     }
 }
 
-/// Implements partial equality testing by loading data on demand for comparison.
+/// Implements partial equality testing by just comparing paths.
 impl<T: DataType> PartialEq for Store<T, T::Error> {
     fn eq(&self, other: &Self) -> bool {
-        if self.items.len() != other.items.len() {
-            return false;
-        }
-
-        self.iter().all(|(key, value)| {
-            other.get(key).map_or(false, |value_other| match (value, value_other) {
-                (Ok(s), Ok(o)) => *s == *o,
-                _ => false,
-            })
-        })
+        self.items.len() == other.items.len()
+            && self.items.keys().all(|key| other.items.contains_key(key))
     }
 }
 
