@@ -65,7 +65,7 @@ use crate::Error;
 /// [spec_images]: https://unifiedfontobject.org/versions/ufo3/images/
 #[derive(Debug, Clone)]
 pub struct Store<T> {
-    items: HashMap<PathBuf, Arc<RefCell<Item>>>,
+    items: HashMap<PathBuf, RefCell<Item>>,
     ufo_root: PathBuf,
     impl_type: T,
 }
@@ -92,7 +92,7 @@ pub trait DataType: Default {
     fn validate_entry(
         &self,
         path: &Path,
-        items: &HashMap<PathBuf, Arc<RefCell<Item>>>,
+        items: &HashMap<PathBuf, RefCell<Item>>,
         data: &[u8],
     ) -> Result<(), StoreError>;
 }
@@ -169,7 +169,7 @@ impl DataType for Data {
     fn validate_entry(
         &self,
         path: &Path,
-        items: &HashMap<PathBuf, Arc<RefCell<Item>>>,
+        items: &HashMap<PathBuf, RefCell<Item>>,
         _data: &[u8],
     ) -> Result<(), StoreError> {
         if path.as_os_str().is_empty() {
@@ -225,7 +225,7 @@ impl DataType for Image {
     fn validate_entry(
         &self,
         path: &Path,
-        _items: &HashMap<PathBuf, Arc<RefCell<Item>>>,
+        _items: &HashMap<PathBuf, RefCell<Item>>,
         data: &[u8],
     ) -> Result<(), StoreError> {
         if path.as_os_str().is_empty() {
@@ -250,10 +250,8 @@ impl<T: DataType> Store<T> {
     pub(crate) fn new(ufo_root: &Path) -> Result<Self, Error> {
         let impl_type = T::default();
         let dir_contents = impl_type.try_list_contents(ufo_root)?;
-        let items = dir_contents
-            .into_iter()
-            .map(|path| (path, Arc::new(RefCell::new(Item::default()))))
-            .collect();
+        let items =
+            dir_contents.into_iter().map(|path| (path, RefCell::new(Item::default()))).collect();
         Ok(Store { items, ufo_root: ufo_root.to_path_buf(), impl_type })
     }
 
@@ -308,7 +306,7 @@ impl<T: DataType> Store<T> {
         impl_type: &T,
         ufo_root: &Path,
         path: &Path,
-        items: &HashMap<PathBuf, Arc<RefCell<Item>>>,
+        items: &HashMap<PathBuf, RefCell<Item>>,
     ) -> Item {
         match impl_type.try_load_item(ufo_root, path) {
             Ok(data) => match impl_type.validate_entry(path, items, &data) {
@@ -337,7 +335,7 @@ impl<T: DataType> Store<T> {
     /// 4. The image data does not start with the PNG header.
     pub fn insert(&mut self, path: PathBuf, data: Vec<u8>) -> Result<(), StoreError> {
         self.impl_type.validate_entry(&path, &self.items, &data)?;
-        self.items.insert(path, Arc::new(RefCell::new(Item::Loaded(Arc::new(data)))));
+        self.items.insert(path, RefCell::new(Item::Loaded(Arc::new(data))));
         Ok(())
     }
 
@@ -550,20 +548,6 @@ mod tests {
         store.remove(PATH_BOGUS.as_ref());
         store.remove(&path_new_image);
         assert!(store.get(&path_new_image).is_none());
-    }
-
-    #[cfg(feature = "rayon")]
-    #[test]
-    fn lazy_data_loading_parallel() {
-        use rayon::iter::{IntoParallelIterator, ParallelIterator};
-
-        let store = DataStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref()).unwrap();
-
-        (1..100)
-            .into_par_iter()
-            .for_each(|_| assert_eq!(*store.get(PATH_A.as_ref()).unwrap().unwrap(), EXPECTED_A))
-
-        // TODO: check the file was read from disk only once.
     }
 
     #[test]
