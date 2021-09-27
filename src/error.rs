@@ -10,6 +10,7 @@ use crate::GlyphName;
 
 /// Errors that occur while working with font objects.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Error {
     /// An error returned when trying to save an UFO in anything less than the latest version.
     DowngradeUnsupported,
