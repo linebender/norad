@@ -1,12 +1,13 @@
 //! Reading and writing Unified Font Object files.
 
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 use std::borrow::Borrow;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use crate::datastore::{DataStore, ImageStore};
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::groups::{validate_groups, Groups};
@@ -27,6 +28,8 @@ static GROUPS_FILE: &str = "groups.plist";
 static KERNING_FILE: &str = "kerning.plist";
 static FEATURES_FILE: &str = "features.fea";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
+pub(crate) static DATA_DIR: &str = "data";
+pub(crate) static IMAGES_DIR: &str = "images";
 
 /// A Unified Font Object.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -40,6 +43,8 @@ pub struct Font {
     pub kerning: Option<Kerning>,
     pub features: Option<String>,
     pub data_request: DataRequest,
+    pub data: DataStore,
+    pub images: ImageStore,
 }
 
 /// A version of the [UFO spec].
@@ -152,6 +157,18 @@ impl Font {
             LayerSet::default()
         };
 
+        let data = if path.join(DATA_DIR).exists() && request.data {
+            DataStore::new(path)?
+        } else {
+            Default::default()
+        };
+
+        let images = if path.join(IMAGES_DIR).exists() && request.data {
+            ImageStore::new(path)?
+        } else {
+            Default::default()
+        };
+
         // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
         // a groups.plist file, while a kerning.plist is optional.
         let (groups, kerning) = match (meta.format_version, groups, kerning) {
@@ -182,7 +199,18 @@ impl Font {
 
         meta.format_version = FormatVersion::V3;
 
-        Ok(Font { layers, meta, font_info, lib, groups, kerning, features, data_request: request })
+        Ok(Font {
+            layers,
+            meta,
+            font_info,
+            lib,
+            groups,
+            kerning,
+            features,
+            data_request: request,
+            data,
+            images,
+        })
     }
 
     /// Attempt to save this UFO to the given path, overriding any existing contents.
@@ -216,6 +244,10 @@ impl Font {
         if self.lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
             return Err(Error::PreexistingPublicObjectLibsKey);
         }
+
+        // Load all data and images before potentially deleting it from disk.
+        for _ in self.data.iter() {}
+        for _ in self.images.iter() {}
 
         if path.exists() {
             fs::remove_dir_all(path)?;
@@ -280,6 +312,34 @@ impl Font {
         for layer in self.layers.iter() {
             let layer_path = path.join(&layer.path);
             layer.save_with_options(&layer_path, options)?;
+        }
+
+        if !self.data.is_empty() {
+            let data_dir = path.join(DATA_DIR);
+            for (data_path, contents) in self.data.iter() {
+                match contents {
+                    Ok(data) => {
+                        let destination = data_dir.join(data_path);
+                        fs::create_dir_all(&destination.parent().unwrap())?;
+                        fs::write(destination, &*data)?;
+                    }
+                    Err(e) => return Err(Error::InvalidStoreEntry(data_path.clone(), e)),
+                }
+            }
+        }
+
+        if !self.images.is_empty() {
+            let images_dir = path.join(IMAGES_DIR);
+            fs::create_dir(&images_dir)?; // Only a flat directory.
+            for (image_path, contents) in self.images.iter() {
+                match contents {
+                    Ok(data) => {
+                        let destination = images_dir.join(image_path);
+                        fs::write(destination, &*data)?;
+                    }
+                    Err(e) => return Err(Error::InvalidStoreEntry(image_path.clone(), e)),
+                }
+            }
         }
 
         Ok(())

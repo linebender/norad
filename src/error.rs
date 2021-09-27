@@ -45,6 +45,29 @@ pub enum Error {
     ConvertContour(ErrorKind),
     MissingFile(String),
     MissingUfoDir(String),
+    InvalidStoreEntry(PathBuf, StoreError),
+}
+
+/// An error representing a failure to insert content into a [`crate::datastore::Store`].
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum StoreError {
+    /// Tried to insert a path whose ancestor is in the store already, implying nesting a file under a file.
+    DirUnderFile,
+    /// The path was empty.
+    EmptyPath,
+    /// The path was neither plain file nor directory, but e.g. a symlink.
+    NotPlainFileOrDir,
+    /// The path was absolute; only relative paths are allowed.
+    PathIsAbsolute,
+    /// The path was not a plain file, but e.g. a directory or symlink.
+    NotPlainFile,
+    /// The path contained a subdirectory; `images` is a flat directory.
+    Subdir,
+    /// The image did not have a valid PNG header.
+    InvalidImage,
+    /// Encountered an IO error while trying to load data
+    Io(std::sync::Arc<std::io::Error>),
 }
 
 /// An error representing a failure to validate UFO groups.
@@ -198,8 +221,34 @@ impl std::fmt::Display for Error {
             Error::MissingUfoDir(path) => {
                 write!(f, "{} directory was not found", path)
             }
+            Error::InvalidStoreEntry(path, e) => {
+                write!(f, "Store entry '{}' error: {}", path.display(), e)
+            }
             #[cfg(feature = "kurbo")]
             Error::ConvertContour(cause) => write!(f, "Failed to convert contour: '{}'", cause),
+        }
+    }
+}
+
+impl std::fmt::Display for StoreError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use StoreError::*;
+
+        match self {
+            DirUnderFile => write!(f, "The parent of the file is a file itself."),
+            NotPlainFileOrDir => {
+                write!(f, "Only plain files and directories are allowed, no symlinks.")
+            }
+            PathIsAbsolute => write!(f, "The path must be relative."),
+            EmptyPath => {
+                write!(f, "An empty path cannot be used as a key in the store.")
+            }
+            NotPlainFile => write!(f, "Only plain files are allowed, no symlinks."),
+            Subdir => write!(f, "Subdirectories are not allowed in the image store."),
+            InvalidImage => write!(f, "An image must be a valid PNG."),
+            Io(e) => {
+                write!(f, "Encountered an IO error while trying to load content: {}.", e)
+            }
         }
     }
 }
@@ -393,6 +442,13 @@ impl From<XmlError> for WriteError {
 impl From<IoError> for WriteError {
     fn from(src: IoError) -> WriteError {
         WriteError::IoError(src)
+    }
+}
+
+#[doc(hidden)]
+impl From<IoError> for StoreError {
+    fn from(src: IoError) -> StoreError {
+        StoreError::Io(std::sync::Arc::new(src))
     }
 }
 

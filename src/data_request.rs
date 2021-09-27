@@ -16,11 +16,13 @@ pub struct DataRequest {
     pub groups: bool,
     pub kerning: bool,
     pub features: bool,
+    pub data: bool,
+    pub images: bool,
 }
 
 impl DataRequest {
     fn from_bool(b: bool) -> Self {
-        DataRequest { layers: b, lib: b, groups: b, kerning: b, features: b }
+        DataRequest { layers: b, lib: b, groups: b, kerning: b, features: b, data: b, images: b }
     }
 
     /// Returns a `DataRequest` requesting all UFO data.
@@ -61,6 +63,18 @@ impl DataRequest {
     /// .fea format.
     pub fn features(&mut self, b: bool) -> &mut Self {
         self.features = b;
+        self
+    }
+
+    /// Request that returned UFO data include data.
+    pub fn data(&mut self, b: bool) -> &mut Self {
+        self.data = b;
+        self
+    }
+
+    /// Request that returned UFO data include images.
+    pub fn images(&mut self, b: bool) -> &mut Self {
+        self.images = b;
         self
     }
 }
