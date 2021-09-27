@@ -111,7 +111,7 @@ impl Glyph {
     }
 
     /// Returns a usize that represents the number of [`Component`] defined on the Glyph.
-    pub fn component_number(&self) -> usize {
+    pub fn component_count(&self) -> usize {
         self.components.len()
     }
 
