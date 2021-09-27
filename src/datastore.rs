@@ -101,7 +101,7 @@ pub trait DataType: Default {
 #[doc(hidden)]
 pub enum Item {
     NotLoaded,
-    Loaded(Arc<Vec<u8>>),
+    Loaded(Arc<[u8]>),
     Error(StoreError),
 }
 
@@ -281,7 +281,7 @@ impl<T: DataType> Store<T> {
     }
 
     /// Returns a reference to the data corresponding to the path.
-    pub fn get(&self, path: &Path) -> Option<Result<Arc<Vec<u8>>, StoreError>> {
+    pub fn get(&self, path: &Path) -> Option<Result<Arc<[u8]>, StoreError>> {
         let cell = match self.items.get(path) {
             Some(item) => item,
             None => return None,
@@ -310,7 +310,7 @@ impl<T: DataType> Store<T> {
     ) -> Item {
         match impl_type.try_load_item(ufo_root, path) {
             Ok(data) => match impl_type.validate_entry(path, items, &data) {
-                Ok(_) => Item::Loaded(Arc::new(data)),
+                Ok(_) => Item::Loaded(data.into()),
                 Err(e) => Item::Error(e),
             },
             Err(e) => Item::Error(e),
@@ -335,7 +335,7 @@ impl<T: DataType> Store<T> {
     /// 4. The image data does not start with the PNG header.
     pub fn insert(&mut self, path: PathBuf, data: Vec<u8>) -> Result<(), StoreError> {
         self.impl_type.validate_entry(&path, &self.items, &data)?;
-        self.items.insert(path, RefCell::new(Item::Loaded(Arc::new(data))));
+        self.items.insert(path, RefCell::new(Item::Loaded(data.into())));
         Ok(())
     }
 
@@ -348,7 +348,7 @@ impl<T: DataType> Store<T> {
     }
 
     /// An iterator visiting all path-data pairs in arbitrary order.
-    pub fn iter(&self) -> impl Iterator<Item = (&PathBuf, Result<Arc<Vec<u8>>, StoreError>)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&PathBuf, Result<Arc<[u8]>, StoreError>)> {
         self.items.keys().map(move |k| (k, self.get(k).unwrap()))
     }
 }
@@ -437,10 +437,10 @@ mod tests {
             data_paths,
             vec![Path::new(PATH_A), PATH_B.as_ref(), PATH_C.as_ref(), PATH_Z.as_ref()]
         );
-        assert_eq!(*ufo_rt.data.get(PATH_A.as_ref()).unwrap().unwrap(), EXPECTED_A);
-        assert_eq!(*ufo_rt.data.get(PATH_B.as_ref()).unwrap().unwrap(), EXPECTED_B);
-        assert_eq!(*ufo_rt.data.get(PATH_C.as_ref()).unwrap().unwrap(), EXPECTED_C);
-        assert_eq!(*ufo_rt.data.get(PATH_Z.as_ref()).unwrap().unwrap(), EXPECTED_Z);
+        assert_eq!(&*ufo_rt.data.get(PATH_A.as_ref()).unwrap().unwrap(), EXPECTED_A);
+        assert_eq!(&*ufo_rt.data.get(PATH_B.as_ref()).unwrap().unwrap(), EXPECTED_B);
+        assert_eq!(&*ufo_rt.data.get(PATH_C.as_ref()).unwrap().unwrap(), EXPECTED_C);
+        assert_eq!(&*ufo_rt.data.get(PATH_Z.as_ref()).unwrap().unwrap(), EXPECTED_Z);
 
         let mut images_paths: Vec<_> = ufo_rt.images.keys().collect();
         images_paths.sort();
@@ -464,10 +464,10 @@ mod tests {
             data_paths,
             vec![Path::new(PATH_A), PATH_B.as_ref(), PATH_C.as_ref(), PATH_Z.as_ref()]
         );
-        assert_eq!(*ufo_rt.data.get(PATH_A.as_ref()).unwrap().unwrap(), EXPECTED_A);
-        assert_eq!(*ufo_rt.data.get(PATH_B.as_ref()).unwrap().unwrap(), EXPECTED_B);
-        assert_eq!(*ufo_rt.data.get(PATH_C.as_ref()).unwrap().unwrap(), EXPECTED_C);
-        assert_eq!(*ufo_rt.data.get(PATH_Z.as_ref()).unwrap().unwrap(), EXPECTED_Z);
+        assert_eq!(&*ufo_rt.data.get(PATH_A.as_ref()).unwrap().unwrap(), EXPECTED_A);
+        assert_eq!(&*ufo_rt.data.get(PATH_B.as_ref()).unwrap().unwrap(), EXPECTED_B);
+        assert_eq!(&*ufo_rt.data.get(PATH_C.as_ref()).unwrap().unwrap(), EXPECTED_C);
+        assert_eq!(&*ufo_rt.data.get(PATH_Z.as_ref()).unwrap().unwrap(), EXPECTED_Z);
 
         let mut images_paths: Vec<_> = ufo_rt.images.keys().collect();
         images_paths.sort();
@@ -488,25 +488,25 @@ mod tests {
             vec![Path::new(PATH_A), PATH_B.as_ref(), PATH_C.as_ref(), PATH_Z.as_ref()]
         );
 
-        assert_eq!(*store.get(PATH_A.as_ref()).unwrap().unwrap(), EXPECTED_A);
-        assert_eq!(*store.get(PATH_B.as_ref()).unwrap().unwrap(), EXPECTED_B);
+        assert_eq!(&*store.get(PATH_A.as_ref()).unwrap().unwrap(), EXPECTED_A);
+        assert_eq!(&*store.get(PATH_B.as_ref()).unwrap().unwrap(), EXPECTED_B);
         store.insert(PathBuf::from(PATH_B), b"123".to_vec()).unwrap();
         assert_eq!(*store.get(PATH_B.as_ref()).unwrap().unwrap(), b"123"[0..]);
-        assert_eq!(*store.get(PATH_C.as_ref()).unwrap().unwrap(), EXPECTED_C);
-        assert_eq!(*store.get(PATH_Z.as_ref()).unwrap().unwrap(), EXPECTED_Z);
+        assert_eq!(&*store.get(PATH_C.as_ref()).unwrap().unwrap(), EXPECTED_C);
+        assert_eq!(&*store.get(PATH_Z.as_ref()).unwrap().unwrap(), EXPECTED_Z);
         assert!(store.get(PATH_BOGUS.as_ref()).is_none());
         store.remove(PATH_BOGUS.as_ref());
         store.remove(PATH_B.as_ref());
 
-        let mut paths2: Vec<(&Path, Arc<Vec<u8>>)> =
+        let mut paths2: Vec<(&Path, Arc<[u8]>)> =
             store.iter().map(|(k, v)| (k.as_ref(), v.unwrap())).collect();
         paths2.sort();
         assert_eq!(
             paths2,
             vec![
-                (Path::new(PATH_A), Arc::new(EXPECTED_A.to_vec())),
-                (PATH_C.as_ref(), Arc::new(EXPECTED_C.to_vec())),
-                (PATH_Z.as_ref(), Arc::new(EXPECTED_Z.to_vec()))
+                (Path::new(PATH_A), EXPECTED_A.into()),
+                (PATH_C.as_ref(), EXPECTED_C.into()),
+                (PATH_Z.as_ref(), EXPECTED_Z.into())
             ]
         );
     }
@@ -543,7 +543,7 @@ mod tests {
         let path_new_bytes = vec![137u8, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3];
         assert!(store.get(&path_new_image).is_none());
         store.insert(path_new_image.clone(), path_new_bytes.clone()).unwrap();
-        assert_eq!(*store.get(&path_new_image).unwrap().unwrap(), &path_new_bytes[0..]);
+        assert_eq!(&*store.get(&path_new_image).unwrap().unwrap(), &path_new_bytes[0..]);
         assert!(store.get(PATH_BOGUS.as_ref()).is_none());
         store.remove(PATH_BOGUS.as_ref());
         store.remove(&path_new_image);
