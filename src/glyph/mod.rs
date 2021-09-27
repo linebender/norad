@@ -28,8 +28,8 @@ pub type GlyphName = Arc<str>;
 pub struct Glyph {
     pub name: GlyphName,
     pub format: GlifVersion,
-    pub height: f32,
-    pub width: f32,
+    pub height: f64,
+    pub width: f64,
     pub codepoints: Vec<char>,
     pub note: Option<String>,
     pub guidelines: Vec<Guideline>,
@@ -227,8 +227,8 @@ pub enum GlifVersion {
 /// [Anchor section]: https://unifiedfontobject.org/versions/ufo3/glyphs/glif/#anchor
 #[derive(Debug, Clone, PartialEq)]
 pub struct Anchor {
-    pub x: f32,
-    pub y: f32,
+    pub x: f64,
+    pub y: f64,
     /// An arbitrary name for the anchor.
     pub name: Option<String>,
     pub color: Option<Color>,
@@ -323,8 +323,8 @@ impl Contour {
 /// A single point in a [`Contour`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct ContourPoint {
-    pub x: f32,
-    pub y: f32,
+    pub x: f64,
+    pub y: f64,
     pub typ: PointType,
     pub smooth: bool,
     pub name: Option<String>,
@@ -398,18 +398,18 @@ impl std::fmt::Display for PointType {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub struct AffineTransform {
-    pub x_scale: f32,
-    pub xy_scale: f32,
-    pub yx_scale: f32,
-    pub y_scale: f32,
-    pub x_offset: f32,
-    pub y_offset: f32,
+    pub x_scale: f64,
+    pub xy_scale: f64,
+    pub yx_scale: f64,
+    pub y_scale: f64,
+    pub x_offset: f64,
+    pub y_offset: f64,
 }
 
 impl Anchor {
     pub fn new(
-        x: f32,
-        y: f32,
+        x: f64,
+        y: f64,
         name: Option<String>,
         color: Option<Color>,
         identifier: Option<Identifier>,
@@ -515,8 +515,8 @@ impl Contour {
 
 impl ContourPoint {
     pub fn new(
-        x: f32,
-        y: f32,
+        x: f64,
+        y: f64,
         typ: PointType,
         smooth: bool,
         name: Option<String>,
@@ -684,12 +684,12 @@ impl From<kurbo::Affine> for AffineTransform {
     fn from(src: kurbo::Affine) -> AffineTransform {
         let coeffs = src.as_coeffs();
         AffineTransform {
-            x_scale: coeffs[0] as f32,
-            xy_scale: coeffs[1] as f32,
-            yx_scale: coeffs[2] as f32,
-            y_scale: coeffs[3] as f32,
-            x_offset: coeffs[4] as f32,
-            y_offset: coeffs[5] as f32,
+            x_scale: coeffs[0],
+            xy_scale: coeffs[1],
+            yx_scale: coeffs[2],
+            y_scale: coeffs[3],
+            x_offset: coeffs[4],
+            y_offset: coeffs[5],
         }
     }
 }
@@ -698,10 +698,10 @@ impl From<kurbo::Affine> for AffineTransform {
 impl From<druid::piet::Color> for Color {
     fn from(src: druid::piet::Color) -> Color {
         let rgba = src.as_rgba_u32();
-        let r = ((rgba >> 24) & 0xff) as f32 / 255.0;
-        let g = ((rgba >> 16) & 0xff) as f32 / 255.0;
-        let b = ((rgba >> 8) & 0xff) as f32 / 255.0;
-        let a = (rgba & 0xff) as f32 / 255.0;
+        let r = ((rgba >> 24) & 0xff) as f64 / 255.0;
+        let g = ((rgba >> 16) & 0xff) as f64 / 255.0;
+        let b = ((rgba >> 8) & 0xff) as f64 / 255.0;
+        let a = (rgba & 0xff) as f64 / 255.0;
         assert!((0.0..=1.0).contains(&b), "b: {}, raw {}", b, (rgba & (0xff << 8)));
 
         Color {

@@ -69,7 +69,7 @@ pub(crate) fn upconvert_kerning(
 
     for (first, seconds) in kerning {
         let first_new = groups_first_old_to_new.get(first).unwrap_or(first);
-        let mut seconds_new: BTreeMap<String, f32> = BTreeMap::new();
+        let mut seconds_new: BTreeMap<String, f64> = BTreeMap::new();
         for (second, value) in seconds {
             let second_new = groups_second_old_to_new.get(second).unwrap_or(second);
             seconds_new.insert(second_new.to_string(), *value);

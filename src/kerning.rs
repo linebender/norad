@@ -10,7 +10,7 @@ use serde::Serialize;
 /// (high-level view: (first, second) => value).
 ///
 /// We use a `BTreeMap` because we need sorting for serialization.
-pub type Kerning = BTreeMap<String, BTreeMap<String, f32>>;
+pub type Kerning = BTreeMap<String, BTreeMap<String, f64>>;
 
 /// A helper for serializing kerning values.
 ///
@@ -22,7 +22,7 @@ pub(crate) struct KerningSerializer<'a> {
 }
 
 struct KerningInnerSerializer<'a> {
-    inner_kerning: &'a BTreeMap<String, f32>,
+    inner_kerning: &'a BTreeMap<String, f64>,
 }
 
 impl<'a> Serialize for KerningSerializer<'a> {
@@ -46,7 +46,7 @@ impl<'a> Serialize for KerningInnerSerializer<'a> {
     {
         let mut map = serializer.serialize_map(Some(self.inner_kerning.len()))?;
         for (k, v) in self.inner_kerning {
-            if (v - v.round()).abs() < std::f32::EPSILON {
+            if (v - v.round()).abs() < std::f64::EPSILON {
                 map.serialize_entry(k, &(*v as i32))?;
             } else {
                 map.serialize_entry(k, v)?;
@@ -87,7 +87,7 @@ mod tests {
                 Token::Str("B"),
                 Token::Map { len: Some(1) },
                 Token::Str("A"),
-                Token::F32(5.4),
+                Token::F64(5.4),
                 Token::MapEnd,
                 Token::MapEnd,
             ],

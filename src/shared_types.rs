@@ -21,17 +21,17 @@ pub type Plist = plist::Dictionary;
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub struct Color {
-    pub red: f32,
-    pub green: f32,
-    pub blue: f32,
-    pub alpha: f32,
+    pub red: f64,
+    pub green: f64,
+    pub blue: f64,
+    pub alpha: f64,
 }
 
 impl FromStr for Color {
     type Err = InvalidColorString;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut iter = s.split(',').map(|v| match v.parse::<f32>() {
+        let mut iter = s.split(',').map(|v| match v.parse::<f64>() {
             Ok(val) if (0.0..=1.0).contains(&val) => Ok(val),
             _ => Err(InvalidColorString::new(s.to_owned())),
         });
@@ -298,13 +298,13 @@ mod tests {
                 Token::Struct { name: "RawGuideline", len: 6 },
                 Token::Str("x"),
                 Token::Some,
-                Token::F32(10.0),
+                Token::F64(10.0),
                 Token::Str("y"),
                 Token::Some,
-                Token::F32(20.0),
+                Token::F64(20.0),
                 Token::Str("angle"),
                 Token::Some,
-                Token::F32(360.0),
+                Token::F64(360.0),
                 Token::Str("name"),
                 Token::Some,
                 Token::Str("hello"),
