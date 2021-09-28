@@ -669,12 +669,12 @@ pub struct Image {
 impl From<AffineTransform> for kurbo::Affine {
     fn from(src: AffineTransform) -> kurbo::Affine {
         kurbo::Affine::new([
-            src.x_scale as f64,
-            src.xy_scale as f64,
-            src.yx_scale as f64,
-            src.y_scale as f64,
-            src.x_offset as f64,
-            src.y_offset as f64,
+            src.x_scale,
+            src.xy_scale,
+            src.yx_scale,
+            src.y_scale,
+            src.x_offset,
+            src.y_offset,
         ])
     }
 }
@@ -716,11 +716,6 @@ impl From<druid::piet::Color> for Color {
 #[cfg(feature = "druid")]
 impl From<Color> for druid::piet::Color {
     fn from(src: Color) -> druid::piet::Color {
-        druid::piet::Color::rgba(
-            src.red.into(),
-            src.green.into(),
-            src.blue.into(),
-            src.alpha.into(),
-        )
+        druid::piet::Color::rgba(src.red, src.green, src.blue, src.alpha)
     }
 }
