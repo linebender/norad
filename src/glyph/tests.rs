@@ -645,14 +645,14 @@ fn has_component() {
 }
 
 #[test]
-fn component_number() {
+fn component_count() {
     let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_dieresis.glif");
     let glyph = parse_glyph(bytes).expect("initial load failed");
-    assert_eq!(glyph.component_number(), 2);
+    assert_eq!(glyph.component_count(), 2);
 
     let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_.glif");
     let glyph = parse_glyph(bytes).expect("initial load failed");
-    assert_eq!(glyph.component_number(), 0);
+    assert_eq!(glyph.component_count(), 0);
 }
 
 #[test]
