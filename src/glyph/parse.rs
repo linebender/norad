@@ -268,8 +268,8 @@ impl<'names> GlifParser<'names> {
         outline_builder: &mut OutlineBuilder,
     ) -> Result<(), Error> {
         let mut name: Option<String> = None;
-        let mut x: Option<f32> = None;
-        let mut y: Option<f32> = None;
+        let mut x: Option<f64> = None;
+        let mut y: Option<f64> = None;
         let mut typ = PointType::OffCurve;
         let mut identifier: Option<Identifier> = None;
         let mut smooth = false;
@@ -314,15 +314,15 @@ impl<'names> GlifParser<'names> {
         reader: &Reader<&[u8]>,
         data: BytesStart<'a>,
     ) -> Result<(), Error> {
-        let mut width: f32 = 0.0;
-        let mut height: f32 = 0.0;
+        let mut width: f64 = 0.0;
+        let mut height: f64 = 0.0;
         for attr in data.attributes() {
             let attr = attr?;
             match attr.key {
                 b"width" | b"height" => {
                     let value = attr.unescaped_value()?;
                     let value = reader.decode(&value)?;
-                    let value: f32 =
+                    let value: f64 =
                         value.parse().map_err(|_| err!(reader, ErrorKind::BadNumber))?;
                     match attr.key {
                         b"width" => width = value,
@@ -369,8 +369,8 @@ impl<'names> GlifParser<'names> {
         reader: &Reader<&[u8]>,
         data: BytesStart<'a>,
     ) -> Result<(), Error> {
-        let mut x: Option<f32> = None;
-        let mut y: Option<f32> = None;
+        let mut x: Option<f64> = None;
+        let mut y: Option<f64> = None;
         let mut name: Option<String> = None;
         let mut color: Option<Color> = None;
         let mut identifier: Option<Identifier> = None;
@@ -411,9 +411,9 @@ impl<'names> GlifParser<'names> {
         reader: &Reader<&[u8]>,
         data: BytesStart<'a>,
     ) -> Result<(), Error> {
-        let mut x: Option<f32> = None;
-        let mut y: Option<f32> = None;
-        let mut angle: Option<f32> = None;
+        let mut x: Option<f64> = None;
+        let mut y: Option<f64> = None;
+        let mut angle: Option<f64> = None;
         let mut name: Option<String> = None;
         let mut color: Option<Color> = None;
         let mut identifier: Option<Identifier> = None;

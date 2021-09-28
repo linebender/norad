@@ -24,13 +24,13 @@ pub struct Guideline {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Line {
     /// A vertical line, passing through a given `x` coordinate.
-    Vertical(f32),
+    Vertical(f64),
     /// A horizontal line, passing through a given `y` coordinate.
-    Horizontal(f32),
+    Horizontal(f64),
     /// An angled line passing through `(x, y)` at `degrees` degrees counteer-clockwise
     /// to the horizontal.
     // TODO: make a Degrees newtype that checks `0 <= degrees <= 360`.
-    Angle { x: f32, y: f32, degrees: f32 },
+    Angle { x: f64, y: f64, degrees: f64 },
 }
 
 impl Guideline {
@@ -90,9 +90,9 @@ impl Guideline {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawGuideline {
-    x: Option<f32>,
-    y: Option<f32>,
-    angle: Option<f32>,
+    x: Option<f64>,
+    y: Option<f64>,
+    angle: Option<f64>,
     name: Option<String>,
     color: Option<Color>,
     identifier: Option<Identifier>,

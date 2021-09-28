@@ -87,8 +87,8 @@ use crate::{
 #[derive(Debug)]
 pub(crate) struct GlyphBuilder {
     glyph: Glyph,
-    height: Option<f32>,
-    width: Option<f32>,
+    height: Option<f64>,
+    width: Option<f64>,
     outline: Option<Outline>,
     lib: Option<Plist>,
     identifiers: HashSet<Identifier>, // All identifiers within a glyph must be unique.
@@ -116,7 +116,7 @@ impl GlyphBuilder {
     /// Set the glyph width.
     ///
     /// Errors when the function is called more than once.
-    pub fn width(&mut self, width: f32) -> Result<&mut Self, ErrorKind> {
+    pub fn width(&mut self, width: f64) -> Result<&mut Self, ErrorKind> {
         if self.width.is_some() {
             return Err(ErrorKind::UnexpectedDuplicate);
         }
@@ -127,7 +127,7 @@ impl GlyphBuilder {
     /// Set the glyph height.
     ///
     /// Errors when the function is called more than once.
-    pub fn height(&mut self, height: f32) -> Result<&mut Self, ErrorKind> {
+    pub fn height(&mut self, height: f64) -> Result<&mut Self, ErrorKind> {
         if self.height.is_some() {
             return Err(ErrorKind::UnexpectedDuplicate);
         }
@@ -346,7 +346,7 @@ impl OutlineBuilder {
     /// point.
     pub fn add_point(
         &mut self,
-        (x, y): (f32, f32),
+        (x, y): (f64, f64),
         segment_type: PointType,
         smooth: bool,
         name: Option<String>,
