@@ -120,7 +120,7 @@ impl Font {
 
         let lib_path = path.join(LIB_FILE);
         let mut lib =
-            if lib_path.exists() && request.lib { load_lib(&lib_path)? } else { Plist::new() };
+            if request.lib && lib_path.exists() { load_lib(&lib_path)? } else { Plist::new() };
 
         let fontinfo_path = path.join(FONTINFO_FILE);
         let mut font_info = if fontinfo_path.exists() {
@@ -130,21 +130,21 @@ impl Font {
         };
 
         let groups_path = path.join(GROUPS_FILE);
-        let groups = if groups_path.exists() && request.groups {
+        let groups = if request.groups && groups_path.exists() {
             Some(load_groups(&groups_path)?)
         } else {
             None
         };
 
         let kerning_path = path.join(KERNING_FILE);
-        let kerning = if kerning_path.exists() && request.kerning {
+        let kerning = if request.kerning && kerning_path.exists() {
             Some(load_kerning(&kerning_path)?)
         } else {
             None
         };
 
         let features_path = path.join(FEATURES_FILE);
-        let mut features = if features_path.exists() && request.features {
+        let mut features = if request.features && features_path.exists() {
             Some(load_features(&features_path)?)
         } else {
             None
@@ -157,13 +157,13 @@ impl Font {
             LayerSet::default()
         };
 
-        let data = if path.join(DATA_DIR).exists() && request.data {
+        let data = if request.data && path.join(DATA_DIR).exists() {
             DataStore::new(path)?
         } else {
             Default::default()
         };
 
-        let images = if path.join(IMAGES_DIR).exists() && request.data {
+        let images = if request.images && path.join(IMAGES_DIR).exists() {
             ImageStore::new(path)?
         } else {
             Default::default()
