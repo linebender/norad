@@ -118,7 +118,7 @@ fn find_known_kerning_groups(groups: &Groups) -> (HashSet<String>, HashSet<Strin
 pub(crate) fn upconvert_ufov1_robofab_data(
     lib_path: &Path,
     lib: &mut plist::Dictionary,
-    fontinfo: &mut FontInfo,
+    font_info: &mut FontInfo,
 ) -> Result<Option<String>, Error> {
     #[derive(Debug, Deserialize)]
     struct LibData {
@@ -177,27 +177,27 @@ pub(crate) fn upconvert_ufov1_robofab_data(
 
     // Convert PostScript hinting data.
     if let Some(ps_hinting_data) = lib_data.ps_hinting_data {
-        fontinfo.postscript_blue_fuzz = ps_hinting_data.blue_fuzz;
-        fontinfo.postscript_blue_scale = ps_hinting_data.blue_scale;
-        fontinfo.postscript_blue_shift = ps_hinting_data.blue_shift;
+        font_info.postscript_blue_fuzz = ps_hinting_data.blue_fuzz;
+        font_info.postscript_blue_scale = ps_hinting_data.blue_scale;
+        font_info.postscript_blue_shift = ps_hinting_data.blue_shift;
         if let Some(blue_values) = ps_hinting_data.blue_values {
-            fontinfo.postscript_blue_values = Some(blue_values.into_iter().flatten().collect());
+            font_info.postscript_blue_values = Some(blue_values.into_iter().flatten().collect());
         };
         if let Some(other_blues) = ps_hinting_data.other_blues {
-            fontinfo.postscript_other_blues = Some(other_blues.into_iter().flatten().collect());
+            font_info.postscript_other_blues = Some(other_blues.into_iter().flatten().collect());
         };
         if let Some(family_blues) = ps_hinting_data.family_blues {
-            fontinfo.postscript_family_blues = Some(family_blues.into_iter().flatten().collect());
+            font_info.postscript_family_blues = Some(family_blues.into_iter().flatten().collect());
         };
         if let Some(family_other_blues) = ps_hinting_data.family_other_blues {
-            fontinfo.postscript_family_other_blues =
+            font_info.postscript_family_other_blues =
                 Some(family_other_blues.into_iter().flatten().collect());
         };
-        fontinfo.postscript_force_bold = ps_hinting_data.force_bold;
-        fontinfo.postscript_stem_snap_h = ps_hinting_data.h_stems;
-        fontinfo.postscript_stem_snap_v = ps_hinting_data.v_stems;
+        font_info.postscript_force_bold = ps_hinting_data.force_bold;
+        font_info.postscript_stem_snap_h = ps_hinting_data.h_stems;
+        font_info.postscript_stem_snap_v = ps_hinting_data.v_stems;
 
-        fontinfo.validate().map_err(|_| Error::FontInfoUpconversion)?;
+        font_info.validate().map_err(|_| Error::FontInfoUpconversion)?;
     }
 
     lib.remove("org.robofab.postScriptHintData");
@@ -499,9 +499,9 @@ mod tests {
 
         assert_eq!(ufo_v1.meta.format_version, FormatVersion::V3);
         assert_eq!(ufo_v2.meta.format_version, FormatVersion::V3);
-        assert_eq!(ufo_v1.groups.unwrap(), groups_expected);
-        assert_eq!(ufo_v2.groups.unwrap(), groups_expected);
-        assert_eq!(ufo_v1.kerning.unwrap(), kerning_expected);
-        assert_eq!(ufo_v2.kerning.unwrap(), kerning_expected);
+        assert_eq!(ufo_v1.groups, groups_expected);
+        assert_eq!(ufo_v2.groups, groups_expected);
+        assert_eq!(ufo_v1.kerning, kerning_expected);
+        assert_eq!(ufo_v2.kerning, kerning_expected);
     }
 }

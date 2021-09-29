@@ -610,6 +610,11 @@ impl FontInfo {
         }
     }
 
+    /// Returns `false` if this FontInfo has any non-default value, and `true` otherwise.
+    pub fn is_empty(&self) -> bool {
+        self == &Self::default()
+    }
+
     /// Validates various fields according to the [specification][].
     ///
     /// [specification]: http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/

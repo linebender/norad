@@ -36,12 +36,12 @@ pub(crate) static IMAGES_DIR: &str = "images";
 #[non_exhaustive]
 pub struct Font {
     pub meta: MetaInfo,
-    pub font_info: Option<FontInfo>,
+    pub font_info: FontInfo,
     pub layers: LayerSet,
     pub lib: Plist,
-    pub groups: Option<Groups>,
-    pub kerning: Option<Kerning>,
-    pub features: Option<String>,
+    pub groups: Groups,
+    pub kerning: Kerning,
+    pub features: String,
     pub data_request: DataRequest,
     pub data: DataStore,
     pub images: ImageStore,
@@ -131,9 +131,9 @@ impl Font {
 
         let fontinfo_path = path.join(FONTINFO_FILE);
         let mut font_info = if fontinfo_path.exists() {
-            Some(load_fontinfo(&fontinfo_path, &meta, &mut lib)?)
+            load_fontinfo(&fontinfo_path, &meta, &mut lib)?
         } else {
-            None
+            Default::default()
         };
 
         let groups_path = path.join(GROUPS_FILE);
@@ -152,9 +152,9 @@ impl Font {
 
         let features_path = path.join(FEATURES_FILE);
         let mut features = if request.features && features_path.exists() {
-            Some(load_features(&features_path)?)
+            load_features(&features_path)?
         } else {
-            None
+            Default::default()
         };
 
         let glyph_names = NameList::default();
@@ -192,16 +192,13 @@ impl Font {
         // The v1 format stores some Postscript hinting related data in the lib,
         // which we only import into fontinfo if we're reading a v1 UFO.
         if meta.format_version == FormatVersion::V1 && lib_path.exists() {
-            let mut fontinfo =
-                if let Some(fontinfo) = font_info { fontinfo } else { FontInfo::default() };
-
-            let features_upgraded: Option<String> =
-                upconversion::upconvert_ufov1_robofab_data(&lib_path, &mut lib, &mut fontinfo)?;
-
-            if features_upgraded.is_some() && !features_upgraded.as_ref().unwrap().is_empty() {
-                features = features_upgraded;
+            if let Some(features_upgraded) =
+                upconversion::upconvert_ufov1_robofab_data(&lib_path, &mut lib, &mut font_info)?
+            {
+                if !features_upgraded.is_empty() {
+                    features = features_upgraded;
+                }
             }
-            font_info = Some(fontinfo);
         }
 
         meta.format_version = FormatVersion::V3;
@@ -211,8 +208,8 @@ impl Font {
             meta,
             font_info,
             lib,
-            groups,
-            kerning,
+            groups: groups.unwrap_or_default(),
+            kerning: kerning.unwrap_or_default(),
             features,
             data_request: request,
             data,
@@ -269,9 +266,9 @@ impl Font {
             write::write_xml_to_file(&path.join(METAINFO_FILE), &MetaInfo::default(), options)?;
         }
 
-        if let Some(font_info) = self.font_info.as_ref() {
-            font_info.validate()?;
-            write::write_xml_to_file(&path.join(FONTINFO_FILE), font_info, options)?;
+        if !self.font_info.is_empty() {
+            self.font_info.validate()?;
+            write::write_xml_to_file(&path.join(FONTINFO_FILE), &self.font_info, options)?;
         }
 
         // Object libs are treated specially. The UFO v3 format won't allow us
@@ -282,33 +279,32 @@ impl Font {
         // write out that.
 
         let mut lib = self.lib.clone();
-        if let Some(object_libs) =
-            self.font_info.as_ref().map(FontInfo::dump_object_libs).filter(|dict| !dict.is_empty())
-        {
-            lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), object_libs.into());
+        let font_object_libs = self.font_info.dump_object_libs();
+        if !font_object_libs.is_empty() {
+            lib.insert(PUBLIC_OBJECT_LIBS_KEY.into(), font_object_libs.into());
         }
         if !lib.is_empty() {
             crate::util::recursive_sort_plist_keys(&mut lib);
             write::write_plist_value_to_file(&path.join(LIB_FILE), &lib.into(), options)?;
         }
 
-        if let Some(groups) = self.groups.as_ref() {
-            validate_groups(groups).map_err(Error::InvalidGroups)?;
-            write::write_xml_to_file(&path.join(GROUPS_FILE), groups, options)?;
+        if !self.groups.is_empty() {
+            validate_groups(&self.groups).map_err(Error::InvalidGroups)?;
+            write::write_xml_to_file(&path.join(GROUPS_FILE), &self.groups, options)?;
         }
 
-        if let Some(kerning) = self.kerning.as_ref() {
-            let kerning_serializer = crate::kerning::KerningSerializer { kerning };
+        if !self.kerning.is_empty() {
+            let kerning_serializer = crate::kerning::KerningSerializer { kerning: &self.kerning };
             write::write_xml_to_file(&path.join(KERNING_FILE), &kerning_serializer, options)?;
         }
 
-        if let Some(features) = self.features.as_ref() {
+        if !self.features.is_empty() {
             // Normalize feature files with line feed line endings
             // This is consistent with the line endings serialized in glif and plist files
-            if features.as_bytes().contains(&b'\r') {
-                fs::write(path.join(FEATURES_FILE), features.replace("\r\n", "\n"))?;
+            if self.features.as_bytes().contains(&b'\r') {
+                fs::write(path.join(FEATURES_FILE), self.features.replace("\r\n", "\n"))?;
             } else {
-                fs::write(path.join(FEATURES_FILE), features)?;
+                fs::write(path.join(FEATURES_FILE), &self.features)?;
             }
         }
 
@@ -398,17 +394,14 @@ impl Font {
 
     /// Return the font's global guidelines, stored in [`FontInfo`].
     pub fn guidelines(&self) -> &[Guideline] {
-        self.font_info.as_ref().and_then(|info| info.guidelines.as_deref()).unwrap_or(&[])
+        self.font_info.guidelines.as_deref().unwrap_or(&[])
     }
 
     /// Returns a mutable reference to the font's global guidelines.
     ///
     /// These will be created if they do not already exist.
     pub fn guidelines_mut(&mut self) -> &mut Vec<Guideline> {
-        self.font_info
-            .get_or_insert_with(Default::default)
-            .guidelines
-            .get_or_insert_with(Default::default)
+        self.font_info.guidelines.get_or_insert_with(Default::default)
     }
 }
 
@@ -492,14 +485,14 @@ mod tests {
             font_obj.lib.get("com.typemytype.robofont.compileSettings.autohint"),
             Some(&plist::Value::Boolean(true))
         );
-        assert_eq!(font_obj.groups.unwrap().get("public.kern1.@MMK_L_A"), Some(&vec!["A".into()]));
+        assert_eq!(font_obj.groups.get("public.kern1.@MMK_L_A"), Some(&vec!["A".into()]));
 
         #[allow(clippy::float_cmp)]
         {
-            assert_eq!(font_obj.kerning.unwrap().get("B").and_then(|k| k.get("H")), Some(&-40.0));
+            assert_eq!(font_obj.kerning.get("B").and_then(|k| k.get("H")), Some(&-40.0));
         }
 
-        assert_eq!(font_obj.features.unwrap(), "# this is the feature from lightWide\n");
+        assert_eq!(font_obj.features, "# this is the feature from lightWide\n");
     }
 
     #[test]
@@ -564,9 +557,9 @@ mod tests {
         assert_eq!(font_obj.iter_layers().count(), 1);
         assert!(font_obj.layers.default_layer().is_empty());
         assert_eq!(font_obj.lib, Plist::new());
-        assert_eq!(font_obj.groups, None);
-        assert_eq!(font_obj.kerning, None);
-        assert_eq!(font_obj.features, None);
+        assert!(font_obj.groups.is_empty());
+        assert!(font_obj.kerning.is_empty());
+        assert!(font_obj.features.is_empty());
     }
 
     #[test]
@@ -576,7 +569,7 @@ mod tests {
 
         assert_eq!(font.meta.format_version, FormatVersion::V3);
 
-        let font_info = font.font_info.unwrap();
+        let font_info = font.font_info;
         assert_eq!(font_info.postscript_blue_fuzz, Some(IntegerOrFloat::from(1)));
         assert_eq!(font_info.postscript_blue_scale, Some(0.039625));
         assert_eq!(font_info.postscript_blue_shift, Some(IntegerOrFloat::from(7)));
@@ -618,7 +611,7 @@ mod tests {
         assert_eq!(font.lib.keys().collect::<Vec<&String>>(), vec!["org.robofab.testFontLibData"]);
 
         assert_eq!(
-            font.features.unwrap(),
+            font.features,
             "@myClass = [A B];\n\nfeature liga {\n    sub A A by b;\n} liga;\n"
         );
     }
