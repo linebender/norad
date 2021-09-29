@@ -66,6 +66,12 @@ pub enum FormatVersion {
 pub struct MetaInfo {
     pub creator: String,
     pub format_version: FormatVersion,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub format_version_minor: u32,
+}
+
+fn is_zero(v: &u32) -> bool {
+    *v == 0
 }
 
 impl Default for MetaInfo {
@@ -73,6 +79,7 @@ impl Default for MetaInfo {
         MetaInfo {
             creator: DEFAULT_METAINFO_CREATOR.to_string(),
             format_version: FormatVersion::V3,
+            format_version_minor: 0,
         }
     }
 }
@@ -631,5 +638,38 @@ mod tests {
         let path = "testdata/MutatorSansLightWide.ufo/metainfo.plist";
         let meta: MetaInfo = plist::from_file(path).expect("failed to load metainfo");
         assert_eq!(meta.creator, "org.robofab.ufoLib");
+    }
+
+    #[test]
+    fn serialize_metainfo() {
+        use serde_test::{assert_ser_tokens, Token};
+
+        let meta1 = MetaInfo::default();
+        assert_ser_tokens(
+            &meta1,
+            &[
+                Token::Struct { name: "MetaInfo", len: 2 },
+                Token::Str("creator"),
+                Token::Str(DEFAULT_METAINFO_CREATOR),
+                Token::Str("formatVersion"),
+                Token::U8(3),
+                Token::StructEnd,
+            ],
+        );
+
+        let meta2 = MetaInfo { format_version_minor: 123, ..Default::default() };
+        assert_ser_tokens(
+            &meta2,
+            &[
+                Token::Struct { name: "MetaInfo", len: 3 },
+                Token::Str("creator"),
+                Token::Str(DEFAULT_METAINFO_CREATOR),
+                Token::Str("formatVersion"),
+                Token::U8(3),
+                Token::Str("formatVersionMinor"),
+                Token::U32(123),
+                Token::StructEnd,
+            ],
+        );
     }
 }
