@@ -616,7 +616,7 @@ fn components_load() {
     // component order
     assert_eq!(glyph.components[0].base, std::sync::Arc::<str>::from("A"));
     assert_eq!(glyph.components[1].base, std::sync::Arc::<str>::from("dieresis"));
-    let error_margin = f32::EPSILON;
+    let error_margin = f64::EPSILON;
     // component affine transforms
     assert!(glyph.components[0].transform.x_scale - 1.0 < error_margin);
     assert!(glyph.components[0].transform.y_scale - 1.0 < error_margin);
@@ -663,11 +663,12 @@ fn get_components_with_base() {
     assert_eq!(glyph.components[0].base, std::sync::Arc::<str>::from("A"));
     assert_eq!(glyph.components[1].base, std::sync::Arc::<str>::from("dieresis"));
 
-    let component_a_vec = glyph.get_components_with_base("A");
+    let component_a_vec = glyph.get_components_with_base("A").collect::<Vec<&Component>>();
     assert!(component_a_vec.len() == 1);
     assert_eq!(glyph.components[0], *component_a_vec[0]);
 
-    let component_dieresis_vec = glyph.get_components_with_base("dieresis");
+    let component_dieresis_vec =
+        glyph.get_components_with_base("dieresis").collect::<Vec<&Component>>();
     assert!(component_dieresis_vec.len() == 1);
     assert_eq!(glyph.components[1], *component_dieresis_vec[0]);
 }
@@ -676,13 +677,13 @@ fn get_components_with_base() {
 fn get_components_with_base_multiple_same_base_components() {
     let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/quotedblbase.glif");
     let glyph = parse_glyph(bytes).expect("initial load failed");
-    let error_margin = f32::EPSILON;
+    let error_margin = f64::EPSILON;
     assert_eq!(glyph.components[0].base, std::sync::Arc::<str>::from("comma"));
     assert!(glyph.components[0].transform.x_offset - 0.0 < error_margin);
     assert_eq!(glyph.components[1].base, std::sync::Arc::<str>::from("comma"));
     assert!(glyph.components[1].transform.x_offset - 130.0 < error_margin);
 
-    let component_comma_vec = glyph.get_components_with_base("comma");
+    let component_comma_vec = glyph.get_components_with_base("comma").collect::<Vec<&Component>>();
     assert!(component_comma_vec.len() == 2);
     assert_eq!(glyph.components[0], *component_comma_vec[0]);
     assert_eq!(glyph.components[1], *component_comma_vec[1]);
@@ -692,7 +693,7 @@ fn get_components_with_base_multiple_same_base_components() {
 fn get_components_with_base_missing() {
     let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_dieresis.glif");
     let glyph = parse_glyph(bytes).expect("initial load failed");
-    assert!(glyph.get_components_with_base("Z").is_empty());
+    assert!(glyph.get_components_with_base("Z").collect::<Vec<&Component>>().is_empty());
 }
 
 #[test]
