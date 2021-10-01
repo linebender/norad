@@ -693,7 +693,7 @@ fn get_components_with_base_multiple_same_base_components() {
 fn get_components_with_base_missing() {
     let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_dieresis.glif");
     let glyph = parse_glyph(bytes).expect("initial load failed");
-    assert!(glyph.get_components_with_base("Z").collect::<Vec<&Component>>().is_empty());
+    assert!(glyph.get_components_with_base("Z").next().is_none());
 }
 
 #[test]
