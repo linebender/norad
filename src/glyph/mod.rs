@@ -122,8 +122,8 @@ impl Glyph {
     }
 
     /// Return a Vec of immutable [`Component`] references filtered by base glyph name.
-    pub fn get_components_with_base(&self, basename: &str) -> Vec<&Component> {
-        self.components.iter().filter(|x| *x.base == *basename).collect::<Vec<&Component>>()
+    pub fn get_components_with_base<'b, 'a: 'b>(&'a self, basename: &'b str) -> impl Iterator<Item=&'a Component> + 'b {
+        self.components.iter().filter(move |x| *x.base == *basename)
     }
 
     /// Move libs from the lib's `public.objectLibs` into the actual objects.
