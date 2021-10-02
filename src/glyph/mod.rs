@@ -104,6 +104,31 @@ impl Glyph {
         }
     }
 
+    /// Returns boolean value indicating whether [`Glyph`] is defined with one or
+    /// more [`Component`].
+    pub fn has_component(&self) -> bool {
+        !self.components.is_empty()
+    }
+
+    /// Returns a usize that represents the number of [`Component`] defined on the Glyph.
+    pub fn component_count(&self) -> usize {
+        self.components.len()
+    }
+
+    /// Returns boolean indicating the presence of one or more [`Component`] with base
+    /// glyph name `basename`.
+    pub fn has_component_with_base(&self, basename: &str) -> bool {
+        self.components.iter().any(|x| *x.base == *basename)
+    }
+
+    /// Return a iterator over immutable [`Component`] references filtered by base glyph name.
+    pub fn get_components_with_base<'b, 'a: 'b>(
+        &'a self,
+        basename: &'b str,
+    ) -> impl Iterator<Item = &'a Component> + 'b {
+        self.components.iter().filter(move |x| *x.base == *basename)
+    }
+
     /// Move libs from the lib's `public.objectLibs` into the actual objects.
     /// The key will be removed from the glyph lib.
     fn load_object_libs(&mut self) -> Result<(), ErrorKind> {
