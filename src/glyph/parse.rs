@@ -17,7 +17,7 @@ use quick_xml::{
 
 #[cfg(test)]
 pub(crate) fn parse_glyph(xml: &[u8]) -> Result<Glyph, GlifErrorInternal> {
-    GlifParser::from_xml(xml, None)
+    GlifParser::from_xml(xml, None, &DataRequest::default())
 }
 
 macro_rules! err {
@@ -35,14 +35,18 @@ pub(crate) struct GlifParser<'names> {
 }
 
 impl<'names> GlifParser<'names> {
-    pub(crate) fn from_xml(xml: &[u8], names: Option<&'names NameList>) -> Result<Glyph, Error> {
+    pub(crate) fn from_xml(
+        xml: &[u8],
+        names: Option<&'names NameList>,
+        request: &DataRequest,
+    ) -> Result<Glyph, Error> {
         let mut reader = Reader::from_reader(xml);
         let mut buf = Vec::new();
         reader.trim_text(true);
 
         let builder = start(&mut reader, &mut buf)?;
         let this = GlifParser { builder, names };
-        this.parse_body(&mut reader, xml, &mut buf)
+        this.parse_body(&mut reader, xml, &mut buf, request)
     }
 
     fn parse_body(
@@ -50,6 +54,7 @@ impl<'names> GlifParser<'names> {
         reader: &mut Reader<&[u8]>,
         raw_xml: &[u8],
         buf: &mut Vec<u8>,
+        request: &DataRequest,
     ) -> Result<Glyph, Error> {
         loop {
             match reader.read_event(buf)? {
@@ -58,7 +63,13 @@ impl<'names> GlifParser<'names> {
                     let tag_name = reader.decode(start.name())?;
                     match tag_name.borrow() {
                         "outline" => self.parse_outline(reader, buf)?,
-                        "lib" => self.parse_lib(reader, raw_xml, buf)?, // do this at some point?
+                        "lib" => {
+                            if request.glyph_lib {
+                                self.parse_lib(reader, raw_xml, buf)?
+                            } else {
+                                reader.read_to_end("lib", buf)?
+                            }
+                        }
                         "note" => self.parse_note(reader, buf)?,
                         _other => return Err(err!(reader, ErrorKind::UnexpectedTag)),
                     }

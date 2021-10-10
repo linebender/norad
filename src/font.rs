@@ -159,7 +159,7 @@ impl Font {
 
         let glyph_names = NameList::default();
         let layers = if request.layers {
-            load_layers(path, &meta, &glyph_names)?
+            load_layers(path, &meta, &glyph_names, &request)?
         } else {
             LayerSet::default()
         };
@@ -447,12 +447,13 @@ fn load_layers(
     ufo_path: &Path,
     meta: &MetaInfo,
     glyph_names: &NameList,
+    request: &DataRequest,
 ) -> Result<LayerSet, Error> {
     let layercontents_path = ufo_path.join(LAYER_CONTENTS_FILE);
     if meta.format_version == FormatVersion::V3 && !layercontents_path.exists() {
         return Err(Error::MissingFile(layercontents_path.display().to_string()));
     }
-    LayerSet::load(ufo_path, glyph_names)
+    LayerSet::load(ufo_path, glyph_names, request)
 }
 
 #[cfg(test)]

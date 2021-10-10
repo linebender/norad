@@ -15,7 +15,7 @@ use druid::{Data, Lens};
 use crate::error::{Error, ErrorKind, GlifError, GlifErrorInternal};
 use crate::names::NameList;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
-use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
+use crate::{Color, DataRequest, Guideline, Identifier, Line, Plist, WriteOptions};
 
 /// The name of a glyph.
 pub type GlyphName = Arc<str>;
@@ -49,12 +49,16 @@ impl Glyph {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
         let names = NameList::default();
-        Glyph::load_with_names(path, &names)
+        Glyph::load_with_names(path, &names, &DataRequest::default())
     }
 
-    pub fn load_with_names(path: &Path, names: &NameList) -> Result<Self, Error> {
+    pub fn load_with_names(
+        path: &Path,
+        names: &NameList,
+        request: &DataRequest,
+    ) -> Result<Self, Error> {
         let data = std::fs::read(path)?;
-        parse::GlifParser::from_xml(&data, Some(names)).map_err(|e| match e {
+        parse::GlifParser::from_xml(&data, Some(names), request).map_err(|e| match e {
             GlifErrorInternal::Xml(e) => e.into(),
             GlifErrorInternal::Spec { kind, position } => {
                 GlifError { kind, position, path: Some(path.to_owned()) }.into()

@@ -13,6 +13,7 @@
 pub struct DataRequest {
     pub layers: bool,
     pub lib: bool,
+    pub glyph_lib: bool,
     pub groups: bool,
     pub kerning: bool,
     pub features: bool,
@@ -22,7 +23,16 @@ pub struct DataRequest {
 
 impl DataRequest {
     fn from_bool(b: bool) -> Self {
-        DataRequest { layers: b, lib: b, groups: b, kerning: b, features: b, data: b, images: b }
+        DataRequest {
+            layers: b,
+            lib: b,
+            glyph_lib: b,
+            groups: b,
+            kerning: b,
+            features: b,
+            data: b,
+            images: b,
+        }
     }
 
     /// Returns a `DataRequest` requesting all UFO data.
@@ -44,6 +54,12 @@ impl DataRequest {
     /// Request that returned UFO data include <lib> sections.
     pub fn lib(&mut self, b: bool) -> &mut Self {
         self.lib = b;
+        self
+    }
+
+    /// Request that returned UFO data include glyph lib sections.
+    pub fn glyph_lib(&mut self, b: bool) -> &mut Self {
+        self.glyph_lib = b;
         self
     }
 

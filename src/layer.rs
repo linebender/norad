@@ -11,7 +11,7 @@ use rayon::prelude::*;
 use crate::glyph::GlyphName;
 use crate::names::NameList;
 use crate::shared_types::Color;
-use crate::{util, Error, Glyph, Plist, WriteOptions};
+use crate::{util, DataRequest, Error, Glyph, Plist, WriteOptions};
 
 static CONTENTS_FILE: &str = "contents.plist";
 static LAYER_INFO_FILE: &str = "layerinfo.plist";
@@ -41,7 +41,11 @@ impl LayerSet {
     ///
     /// The `glyph_names` argument allows norad to reuse glyph name strings,
     /// reducing memory use.
-    pub fn load(base_dir: &Path, glyph_names: &NameList) -> Result<LayerSet, Error> {
+    pub fn load(
+        base_dir: &Path,
+        glyph_names: &NameList,
+        request: &crate::DataRequest,
+    ) -> Result<LayerSet, Error> {
         let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
         let to_load: Vec<(LayerName, PathBuf)> = if layer_contents_path.exists() {
             plist::from_file(layer_contents_path)?
@@ -53,7 +57,7 @@ impl LayerSet {
             .into_iter()
             .map(|(name, path)| {
                 let layer_path = base_dir.join(&path);
-                Layer::load_impl(&layer_path, name, glyph_names)
+                Layer::load_impl(&layer_path, name, glyph_names, request)
             })
             .collect::<Result<_, _>>()?;
 
@@ -227,7 +231,7 @@ impl Layer {
     pub fn load(path: impl AsRef<Path>, name: LayerName) -> Result<Layer, Error> {
         let path = path.as_ref();
         let names = NameList::default();
-        Layer::load_impl(path, name, &names)
+        Layer::load_impl(path, name, &names, &DataRequest::default())
     }
 
     /// the actual loading logic.
@@ -238,6 +242,7 @@ impl Layer {
         path: &Path,
         name: LayerName,
         names: &NameList,
+        request: &DataRequest,
     ) -> Result<Layer, Error> {
         let contents_path = path.join(CONTENTS_FILE);
         if !contents_path.exists() {
@@ -257,7 +262,7 @@ impl Layer {
                 let name = names.get(name);
                 let glyph_path = path.join(glyph_path);
 
-                Glyph::load_with_names(&glyph_path, names).map(|mut glyph| {
+                Glyph::load_with_names(&glyph_path, names, request).map(|mut glyph| {
                     glyph.name = name.clone();
                     (name, Arc::new(glyph))
                 })

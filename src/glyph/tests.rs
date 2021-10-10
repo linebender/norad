@@ -1,5 +1,6 @@
 use super::parse::parse_glyph;
 use super::*;
+use crate::glyph::parse::GlifParser;
 use crate::write::QuoteChar;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -703,4 +704,38 @@ fn has_component_with_base() {
     assert!(glyph.has_component_with_base("A"));
     assert!(glyph.has_component_with_base("dieresis"));
     assert!(!glyph.has_component_with_base("Z"));
+}
+
+#[test]
+fn load_no_glyph_lib() {
+    let data = r#"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <glyph name="test" format="2">
+            <outline>
+                <component base="component"/>
+            </outline>
+            <lib>
+                <dict>
+                    <key>test.key</key>
+                    <string>I am a creative professional :)</string>
+                </dict>
+            </lib>
+            <note>durp</note>
+        </glyph>
+        "#;
+
+    let request = DataRequest { glyph_lib: false, ..Default::default() };
+    let test = GlifParser::from_xml(data.as_bytes(), None, &request).unwrap();
+    assert_eq!(
+        test.components,
+        vec![Component {
+            base: "component".into(),
+            transform: Default::default(),
+            identifier: None,
+            lib: None
+        }]
+    );
+    assert_eq!(test.contours, vec![]);
+    assert!(test.lib.is_empty());
+    assert_eq!(test.note, Some("durp".into()));
 }
