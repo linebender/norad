@@ -43,13 +43,16 @@ fn load_family_very_large() {
     let _ = Font::load("../amalgamate-noto/NotoAmalgamated-Medium.ufo").unwrap();
     let _ = Font::load("../amalgamate-noto/NotoAmalgamated-Thin.ufo").unwrap();
     let _ = Font::load("../amalgamate-noto/NotoAmalgamated-Black.ufo").unwrap();
-    let _ = Font::load("../amalgamate-noto/NotoAmalgamated-DisplayBoldCondensedItalic.ufo").unwrap();
+    let _ =
+        Font::load("../amalgamate-noto/NotoAmalgamated-DisplayBoldCondensedItalic.ufo").unwrap();
     let _ = Font::load("../amalgamate-noto/NotoAmalgamated-DisplayBoldItalic.ufo").unwrap();
     let _ = Font::load("../amalgamate-noto/NotoAmalgamated-DisplayCondensedItalic.ufo").unwrap();
     let _ = Font::load("../amalgamate-noto/NotoAmalgamated-DisplayItalic.ufo").unwrap();
-    let _ = Font::load("../amalgamate-noto/NotoAmalgamated-DisplayLightCondensedItalic.ufo").unwrap();
+    let _ =
+        Font::load("../amalgamate-noto/NotoAmalgamated-DisplayLightCondensedItalic.ufo").unwrap();
     let _ = Font::load("../amalgamate-noto/NotoAmalgamated-DisplayLightItalic.ufo").unwrap();
-    let _ = Font::load("../amalgamate-noto/NotoAmalgamated-DisplaySemiBoldCondensedItalic.ufo").unwrap();
+    let _ = Font::load("../amalgamate-noto/NotoAmalgamated-DisplaySemiBoldCondensedItalic.ufo")
+        .unwrap();
     let _ = Font::load("../amalgamate-noto/NotoAmalgamated-DisplaySemiBoldItalic.ufo").unwrap();
     let _ = Font::load("../amalgamate-noto/NotoAmalgamated-DisplayBold.ufo").unwrap();
     let _ = Font::load("../amalgamate-noto/NotoAmalgamated-DisplayBoldCondensed.ufo").unwrap();
@@ -78,9 +81,9 @@ fn load_family_very_large() {
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("load_family_small", |b| b.iter(|| load_family_small()));
-    c.bench_function("load_family_medium", |b| b.iter(|| load_family_medium()));
-    c.bench_function("load_family_very_large", |b| b.iter(|| load_family_very_large()));
+    c.bench_function("load_family_small", |b| b.iter(load_family_small));
+    c.bench_function("load_family_medium", |b| b.iter(load_family_medium));
+    c.bench_function("load_family_very_large", |b| b.iter(load_family_very_large));
 }
 
 criterion_group!(benches, criterion_benchmark);
