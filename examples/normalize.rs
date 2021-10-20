@@ -51,7 +51,7 @@ fn main() {
                 || k == "com.schriftgestaltung.customParameter.GSFontMaster.paramOver"
         });
 
-        ufo.meta.creator = "org.linebender.norad".to_string();
+        ufo.meta.creator = Some("org.linebender.norad".to_string());
         if let Err(e) = ufo.save(arg) {
             eprintln!("Saving UFO failed: {}", e);
             std::process::exit(1);

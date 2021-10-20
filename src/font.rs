@@ -64,7 +64,7 @@ pub enum FormatVersion {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MetaInfo {
-    pub creator: String,
+    pub creator: Option<String>,
     pub format_version: FormatVersion,
     #[serde(default, skip_serializing_if = "is_zero")]
     pub format_version_minor: u32,
@@ -77,7 +77,7 @@ fn is_zero(v: &u32) -> bool {
 impl Default for MetaInfo {
     fn default() -> Self {
         MetaInfo {
-            creator: DEFAULT_METAINFO_CREATOR.to_string(),
+            creator: Some(DEFAULT_METAINFO_CREATOR.to_string()),
             format_version: FormatVersion::V3,
             format_version_minor: 0,
         }
@@ -260,7 +260,7 @@ impl Font {
 
         // we want to always set ourselves as the creator when serializing,
         // but we also don't have mutable access to self.
-        if self.meta.creator == DEFAULT_METAINFO_CREATOR {
+        if self.meta.creator == Some(DEFAULT_METAINFO_CREATOR.into()) {
             write::write_xml_to_file(&path.join(METAINFO_FILE), &self.meta, options)?;
         } else {
             write::write_xml_to_file(&path.join(METAINFO_FILE), &MetaInfo::default(), options)?;
@@ -630,7 +630,7 @@ mod tests {
     fn metainfo() {
         let path = "testdata/MutatorSansLightWide.ufo/metainfo.plist";
         let meta: MetaInfo = plist::from_file(path).expect("failed to load metainfo");
-        assert_eq!(meta.creator, "org.robofab.ufoLib");
+        assert_eq!(meta.creator, Some("org.robofab.ufoLib".into()));
     }
 
     #[test]
@@ -643,6 +643,7 @@ mod tests {
             &[
                 Token::Struct { name: "MetaInfo", len: 2 },
                 Token::Str("creator"),
+                Token::Some,
                 Token::Str(DEFAULT_METAINFO_CREATOR),
                 Token::Str("formatVersion"),
                 Token::U8(3),
@@ -656,6 +657,7 @@ mod tests {
             &[
                 Token::Struct { name: "MetaInfo", len: 3 },
                 Token::Str("creator"),
+                Token::Some,
                 Token::Str(DEFAULT_METAINFO_CREATOR),
                 Token::Str("formatVersion"),
                 Token::U8(3),

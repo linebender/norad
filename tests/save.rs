@@ -16,7 +16,7 @@ fn save_default() {
 
     let loaded = Font::load(dir).unwrap();
     assert!(loaded.meta.format_version == FormatVersion::V3);
-    assert!(loaded.meta.creator == "org.linebender.norad");
+    assert!(loaded.meta.creator == Some("org.linebender.norad".into()));
     assert_eq!(loaded.layers.len(), 1);
 }
 
