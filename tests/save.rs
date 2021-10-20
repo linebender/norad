@@ -84,7 +84,7 @@ fn roundtrip_object_libs() {
     let ufo2 = Font::load(&dir).unwrap();
     assert!(!ufo2.lib.contains_key("public.objectLibs"));
 
-    let font_guideline_second = &ufo2.font_info.as_ref().unwrap().guidelines.as_ref().unwrap()[1];
+    let font_guideline_second = &ufo2.font_info.guidelines.as_ref().unwrap()[1];
     assert_eq!(
         font_guideline_second.identifier(),
         Some(&Identifier::new("3f0f37d1-52d6-429c-aff4-3f81aed4abf0").unwrap())

@@ -30,11 +30,8 @@ fn main() {
 
     let duration = start.elapsed();
     let time_str = format_time(duration);
-    let font_name = ufo
-        .font_info
-        .as_ref()
-        .and_then(|f| f.family_name.clone())
-        .unwrap_or_else(|| "an unnamed font".into());
+    let font_name =
+        ufo.font_info.family_name.as_ref().cloned().unwrap_or_else(|| "an unnamed font".into());
 
     println!("loaded {} glyphs from {} in {}.", ufo.glyph_count(), font_name, time_str);
 
