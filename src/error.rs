@@ -122,7 +122,7 @@ impl InvalidColorString {
     }
 }
 
-/// An error reprsenting a failure during .glif file parsing.
+/// An error representing a failure during .glif file parsing.
 #[derive(Debug)]
 pub struct GlifError {
     /// The glif file path.
