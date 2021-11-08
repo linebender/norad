@@ -24,6 +24,8 @@ use crate::Error;
 /// file. Images must always be in a flat directory. The paths are always relative to
 /// a UFO's data directory.
 ///
+/// This type supports partial equality testing that is based on path comparisons.
+///
 /// # Example
 ///
 /// Consider a UFO on disk with the following structure:
@@ -75,6 +77,7 @@ pub struct Store<T> {
 #[doc(hidden)]
 pub struct Data;
 
+/// Type alias for a [Store<Data>] data store object.
 pub type DataStore = Store<Data>;
 
 /// Implements custom behavior for the images store.
@@ -82,6 +85,7 @@ pub type DataStore = Store<Data>;
 #[doc(hidden)]
 pub struct Image;
 
+/// Type alias for a [Store<Image>] image store object;
 pub type ImageStore = Store<Image>;
 
 /// Defines custom behavior for data and images stores.
@@ -122,7 +126,7 @@ where
     }
 }
 
-/// Implements partial equality testing by just comparing paths.
+/// Implements path testing-based partial equality for [Store<T>].
 impl<T: DataType> PartialEq for Store<T> {
     fn eq(&self, other: &Self) -> bool {
         self.items.len() == other.items.len()
@@ -275,7 +279,7 @@ impl<T: DataType> Store<T> {
         self.items.is_empty()
     }
 
-    /// An iterator visiting all paths in arbitrary order.
+    /// Returns an iterator visiting all paths in arbitrary order.
     pub fn keys(&self) -> impl Iterator<Item = &PathBuf> {
         self.items.keys()
     }
@@ -317,7 +321,7 @@ impl<T: DataType> Store<T> {
         }
     }
 
-    /// Try to insert data for this path. Overwrites an existing data.
+    /// Try to insert data for this path. Overwrites existing data.
     ///
     /// Does not return the overwritten data, use [`Self::get`] first to get it if you need
     /// it.
