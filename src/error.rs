@@ -17,35 +17,53 @@ pub enum Error {
     /// An error returned when trying to save a Glyph that contains a `public.objectLibs`
     /// lib key already (the key is automatically managed by Norad).
     PreexistingPublicObjectLibsKey,
+    /// An error returned when there is no default layer in the UFO directory.
     MissingDefaultLayer,
+    /// An error returned when an expected layer is missing.
     MissingLayer(String),
+    /// An error returned when a layer is duplicated.
     DuplicateLayer(String),
+    /// An error returned when there is an invalid color definition.
     InvalidColor(InvalidColorString),
-    DuplicateGlyph {
-        layer: String,
-        glyph: String,
-    },
-    MissingGlyph {
-        layer: String,
-        glyph: String,
-    },
+    /// An error returned when there is a duplicate glyph.
+    DuplicateGlyph { layer: String, glyph: String },
+    /// An error returned when there is a missing expected glyph
+    MissingGlyph { layer: String, glyph: String },
+    /// An error returned when there is an input/output problem during processing
     IoError(IoError),
+    /// An error returned when there is an XML parsing problem.
     ParseError(XmlError),
+    /// An error that wraps a [GlifError].
     Glif(GlifError),
+    /// An error that wraps a [GlifWriteError].
     GlifWrite(GlifWriteError),
+    /// An error that wraps a [PlistError].
     PlistError(PlistError),
+    /// An error returned when there is invalid fontinfo.plist data.
     InvalidFontInfo,
+    /// An error returned when there is a problem during fontinfo.plist version up-conversion.
     FontInfoUpconversion,
+    /// An error returned when there is invalid groups.plist data.
     InvalidGroups(GroupsValidationError),
+    /// An error returned when there is a problem during groups.plist version up-conversion.
     GroupsUpconversionFailure(GroupsValidationError),
-    // the string is the key
+    /// An error returned when there is a problem parsing plist data into
+    /// [plist::Dictionary] types.  The string is the dictionary key.
     ExpectedPlistDictionary(String),
+    /// An error returned when there is an unexpected plist string.
     ExpectedPlistString,
+    /// An error returned when there is an inappropriate negative sign on a value.
     ExpectedPositiveValue,
+    /// An error returned when there is a problem with kurbo contour conversion.
     #[cfg(feature = "kurbo")]
+    /// An error returned when there is a problem with contour conversion.
     ConvertContour(ErrorKind),
+    /// An error returned when there is a missing mandatory file.
     MissingFile(String),
+    /// An error returned when the requested UFO directory path is not present.
     MissingUfoDir(String),
+    /// An error returned when there is an invalid [crate::datastore::Store<T>] entry.
+    /// This error wraps a [StoreError] type and provides additional path data.
     InvalidStoreEntry(PathBuf, StoreError),
 }
 
@@ -74,11 +92,13 @@ pub enum StoreError {
 /// An error representing a failure to validate UFO groups.
 #[derive(Debug)]
 pub enum GroupsValidationError {
+    /// An error returned when there is an invalid groups name.
     InvalidName,
+    /// An error reutrned when there are overlapping kerning groups.
     OverlappingKerningGroups { glyph_name: String, group_name: String },
 }
 
-/// A [`Color`] string was invalid.
+/// An error representing an invalid [`Color`] string.
 ///
 /// [`Color`]: crate::Color
 #[derive(Debug)]
@@ -92,15 +112,19 @@ impl InvalidColorString {
     }
 }
 
-/// An error that occurs while parsing a .glif file
+/// An error reprsenting a failure during .glif file parsing.
 #[derive(Debug)]
 pub struct GlifError {
+    /// The glif file path.
     pub path: Option<PathBuf>,
+    /// The buffer position.
     pub position: usize,
+    /// The kind of error.
     pub kind: ErrorKind,
 }
 
-/// An error when attempting to write a .glif file
+/// An error representing a failure during .glif file serialization. This
+/// error wraps [GlyphName] and [WriteError] types.
 #[derive(Debug)]
 pub struct GlifWriteError {
     /// The name of the glif where the error occured.
@@ -113,6 +137,7 @@ pub struct GlifWriteError {
 /// out a .glif type.
 #[derive(Debug)]
 pub enum WriteError {
+    /// XML serialzation error. Wraps a [XmlError].
     Xml(XmlError),
     /// When writing out the 'lib' section, we use the plist crate to generate
     /// the plist xml, and then strip the preface and closing </plist> tag.
@@ -120,7 +145,9 @@ pub enum WriteError {
     /// If for some reason the implementation of that crate changes, we could
     /// be affected, although this is very unlikely.
     InternalLibWriteError,
+    /// Generic serialization error.  Wraps an [IoError].
     IoError(IoError),
+    /// Plist serialization error. Wraps a [PlistError].
     Plist(PlistError),
 }
 
@@ -137,38 +164,71 @@ pub(crate) enum GlifErrorInternal {
 /// The reason for a glif parse failure.
 #[derive(Debug, Clone, Copy)]
 pub enum ErrorKind {
+    /// The glif version is not supported by this library.
     UnsupportedGlifVersion,
+    /// An unknown point type.
     UnknownPointType,
+    /// The first element is invalid.
     WrongFirstElement,
+    /// Missing a close tag.
     MissingCloseTag,
+    /// Has an unexpected tag.
     UnexpectedTag,
+    /// Has an invalid hexadecimal value.
     BadHexValue,
+    /// Has an invalid numeric value.
     BadNumber,
+    /// Has an invalid color value.
     BadColor,
+    /// Has an invalid anchor definition.
     BadAnchor,
+    /// Has an invalid point definition.
     BadPoint,
+    /// Has an invalid guideline definition.
     BadGuideline,
+    /// Has an invalid component definition.
     BadComponent,
+    /// Has an invalid image definition.
     BadImage,
+    /// Has an invalid identifier.
     BadIdentifier,
+    /// Has an invalid lib.
     BadLib,
+    /// Has an unexected duplicate value.
     UnexpectedDuplicate,
+    /// Has an unexpected move definition.
     UnexpectedMove,
+    /// Has an unexpected smooth definition.
     UnexpectedSmooth,
+    /// Has an unexpected element definition.
     UnexpectedElement,
+    /// Has an unexpected attribute definition.
     UnexpectedAttribute,
+    /// Has an unexpected end of file definition.
     UnexpectedEof,
+    /// Has an unexpected point following an off curve point definition.
     UnexpectedPointAfterOffCurve,
+    /// Has too many off curve points in sequence.
     TooManyOffCurves,
+    /// The contour pen path was not started
     PenPathNotStarted,
+    /// Has trailing off curve points defined.
     TrailingOffCurves,
+    /// Has duplicate identifiers.
     DuplicateIdentifier,
+    /// Has unexepected drawing data.
     UnexpectedDrawing,
+    /// Has incomplete drawing data.
     UnfinishedDrawing,
+    /// Has an unexpected point field.
     UnexpectedPointField,
+    /// Has an unexpected component field.
     UnexpectedComponentField,
+    /// Has an unexpected anchor field.
     UnexpectedAnchorField,
+    /// Has an unexpected guideline field.
     UnexpectedGuidelineField,
+    /// Has an unexpected image field.
     UnexpectedImageField,
 }
 
