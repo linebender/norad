@@ -12,7 +12,7 @@
 //! use norad::Font;
 //!
 //! let inpath = "RoflsExtraDim.ufo";
-//! let mut font_obj = Font::load(path).expect("failed to load font");
+//! let mut font_obj = Font::load(inpath).expect("failed to load font");
 //! # let layer = font_obj.default_layer();
 //! # let glyph_a = layer.get_glyph("A").expect("missing glyph");
 //! # assert_eq!(glyph_a.name.as_ref(), "A");
@@ -25,7 +25,7 @@
 //!```no_run
 //! # use norad::Font;
 //! # let inpath = "RoflsExtraDim.ufo";
-//! # let mut font_obj = Font::load(path).expect("failed to load font");
+//! # let mut font_obj = Font::load(inpath).expect("failed to load font");
 //! let layer = font_obj.default_layer();
 //! let glyph_a = layer.get_glyph("A").expect("missing glyph");
 //! assert_eq!(glyph_a.name.as_ref(), "A");
@@ -38,7 +38,7 @@
 //!```no_run
 //! # use norad::Font;
 //! # let inpath = "RoflsExtraDim.ufo";
-//! # let mut font_obj = Font::load(path).expect("failed to load font");
+//! # let mut font_obj = Font::load(inpath).expect("failed to load font");
 //! # let layer = font_obj.default_layer();
 //! # let glyph_a = layer.get_glyph("A").expect("missing glyph");
 //! # assert_eq!(glyph_a.name.as_ref(), "A");
