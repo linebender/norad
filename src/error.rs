@@ -26,9 +26,19 @@ pub enum Error {
     /// An error returned when there is an invalid color definition.
     InvalidColor(InvalidColorString),
     /// An error returned when there is a duplicate glyph.
-    DuplicateGlyph { layer: String, glyph: String },
+    DuplicateGlyph {
+        /// The layer name.
+        layer: String,
+        /// The glyph name.
+        glyph: String,
+    },
     /// An error returned when there is a missing expected glyph
-    MissingGlyph { layer: String, glyph: String },
+    MissingGlyph {
+        /// The layer name.
+        layer: String,
+        /// The glyph name.
+        glyph: String,
+    },
     /// An error returned when there is an input/output problem during processing
     IoError(IoError),
     /// An error returned when there is an XML parsing problem.
