@@ -46,6 +46,9 @@
 //! font_obj.save(outpath);
 //! ```
 //!
+//! Refer to the [`examples` directory of the source repository](https://github.com/linebender/norad/tree/master/examples)
+//! for additional source code examples.
+//!
 //! # API Documentation
 //!
 //! Details on the full API for working with UFO fonts are available in these docs.
