@@ -105,7 +105,12 @@ pub enum GroupsValidationError {
     /// An error returned when there is an invalid groups name.
     InvalidName,
     /// An error reutrned when there are overlapping kerning groups.
-    OverlappingKerningGroups { glyph_name: String, group_name: String },
+    OverlappingKerningGroups {
+        /// The glyph name.
+        glyph_name: String,
+        /// The group name.
+        group_name: String,
+    },
 }
 
 /// An error representing an invalid [`Color`] string.
@@ -113,6 +118,7 @@ pub enum GroupsValidationError {
 /// [`Color`]: crate::Color
 #[derive(Debug)]
 pub struct InvalidColorString {
+    /// The source string that caused the error.
     source: String,
 }
 
