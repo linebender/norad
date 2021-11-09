@@ -58,7 +58,7 @@ pub enum Error {
     /// An error returned when there is a problem during groups.plist version up-conversion.
     GroupsUpconversionFailure(GroupsValidationError),
     /// An error returned when there is a problem parsing plist data into
-    /// [`plist::Dictionary`] types. 
+    /// [`plist::Dictionary`] types.
     ///
     /// The string is the dictionary key.
     ExpectedPlistDictionary(String),
@@ -107,7 +107,7 @@ pub enum StoreError {
 pub enum GroupsValidationError {
     /// An error returned when there is an invalid groups name.
     InvalidName,
-    /// An error reutrned when there are overlapping kerning groups.
+    /// An error returned when there are overlapping kerning groups.
     OverlappingKerningGroups {
         /// The glyph name.
         glyph_name: String,
