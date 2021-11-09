@@ -5,7 +5,7 @@ use crate::GlyphName;
 
 /// A map of group name to a list of glyph names.
 ///
-/// We use a BTreeMap because we need sorting for serialization.
+/// We use a [`BTreeMap`] because we need sorting for serialization.
 pub type Groups = BTreeMap<String, Vec<GlyphName>>;
 
 /// Validate the contents of the groups.plist file according to the rules in the
