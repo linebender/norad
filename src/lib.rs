@@ -33,7 +33,7 @@
 //! # font_obj.save(outpath);
 //! ```
 //!
-//! Serialize the font to UFO files on disk with the [Font::save] method:
+//! Serialize the [Font] to UFO files on disk with the [Font::save] method:
 //!
 //!```no_run
 //! # use norad::Font;
