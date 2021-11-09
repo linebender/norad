@@ -28,13 +28,15 @@ pub type LayerName = Arc<str>;
 /// layers.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LayerSet {
-    // The first layer is always the 'default layer'.
+    /// A collection of [`Layer`].  The first [`Layer`] is the default.
     layers: Vec<Layer>,
 }
 
 #[allow(clippy::len_without_is_empty)] // never empty
 impl LayerSet {
-    /// Load the layers from the provided path.
+    /// Returns a [`LayerSet`] from the provided `path`.
+    ///
+    /// # Note
     ///
     /// If a `layercontents.plist` file exists, it will be used, otherwise
     /// we will assume the pre-UFOv3 behaviour, and expect a single glyphs dir.
@@ -67,7 +69,7 @@ impl LayerSet {
         Ok(LayerSet { layers })
     }
 
-    /// Create a new `LayerSet`.
+    /// Returns a new [`LayerSet`] from a `layers` collection.
     ///
     /// Will panic if `layers` is empty.
     pub fn new(mut layers: Vec<Layer>) -> Self {
@@ -76,7 +78,7 @@ impl LayerSet {
         LayerSet { layers }
     }
 
-    /// The number of layers in the set.
+    /// Returns the number of layers in the set.
     ///
     /// This should be non-zero.
     #[allow(clippy::len_without_is_empty)]
@@ -84,17 +86,17 @@ impl LayerSet {
         self.layers.len()
     }
 
-    /// Get a reference to a layer, by name.
+    /// Returns a reference to a layer, by name.
     pub fn get(&self, name: &str) -> Option<&Layer> {
         self.layers.iter().find(|l| &*l.name == name)
     }
 
-    /// Get a mutable reference to a layer, by name.
+    /// Returns a mutable reference to a layer, by name.
     pub fn get_mut(&mut self, name: &str) -> Option<&mut Layer> {
         self.layers.iter_mut().find(|l| &*l.name == name)
     }
 
-    /// Get a mutable reference to a layer, by name, or create it if it doesn't exist.
+    /// Returns a mutable reference to a layer, by name, or create it if it doesn't exist.
     pub fn get_or_create(&mut self, name: &str) -> &mut Layer {
         if let Some(index) = self.layers.iter().position(|l| &*l.name == name) {
             self.layers.get_mut(index).unwrap()
@@ -105,29 +107,29 @@ impl LayerSet {
         }
     }
 
-    /// A reference to the default layer.
+    /// Returns a reference to the default layer.
     pub fn default_layer(&self) -> &Layer {
         debug_assert!(self.layers[0].path() == Path::new(DEFAULT_GLYPHS_DIRNAME));
         &self.layers[0]
     }
 
-    /// A mutable reference to the default layer.
+    /// Returns a mutable reference to the default layer.
     pub fn default_layer_mut(&mut self) -> &mut Layer {
         debug_assert!(self.layers[0].path() == Path::new(DEFAULT_GLYPHS_DIRNAME));
         &mut self.layers[0]
     }
 
-    /// Iterate over all layers.
+    /// Returns an iterator over all layers.
     pub fn iter(&self) -> impl Iterator<Item = &Layer> {
         self.layers.iter()
     }
 
-    /// Iterate over the names of all layers.
+    /// Returns an iterator over the names of all layers.
     pub fn names(&self) -> impl Iterator<Item = &LayerName> {
         self.layers.iter().map(|l| &l.name)
     }
 
-    /// Create a new layer with the given name.
+    /// Returns a new layer with the given name.
     pub fn new_layer(&mut self, name: &str) -> Result<(), Error> {
         if self.layers.iter().any(|l| &*l.name == name) {
             Err(Error::DuplicateLayer(name.into()))
@@ -140,6 +142,8 @@ impl LayerSet {
 
     /// Remove a layer.
     ///
+    /// # Note
+    ///
     /// The default layer cannot be removed.
     pub fn remove(&mut self, name: &str) -> Option<Layer> {
         self.layers
@@ -150,6 +154,8 @@ impl LayerSet {
     }
 
     /// Rename a layer.
+    ///
+    /// # Note
     ///
     /// If `overwrite` is true, and a layer with the new name exists, it will
     /// be replaced.
@@ -179,23 +185,27 @@ impl Default for LayerSet {
     }
 }
 
-/// A [layer], corresponding to a 'glyphs' directory.
+/// A [UFO layer], corresponding to a 'glyphs' sub-directory.
 ///
 /// Conceptually, a layer is just a collection of glyphs.
 ///
-/// [layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
+/// [UFO layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
 #[derive(Debug, Clone, PartialEq)]
 pub struct Layer {
     pub(crate) glyphs: BTreeMap<GlyphName, Arc<Glyph>>,
     pub(crate) name: LayerName,
     pub(crate) path: PathBuf,
     contents: BTreeMap<GlyphName, PathBuf>,
+    /// Color field.
     pub color: Option<Color>,
+    /// lib field.
     pub lib: Plist,
 }
 
 impl Layer {
-    /// Create a new layer with the provided name and path.
+    /// Returns a new [`Layer`] with the provided `name` and `path`.
+    ///
+    /// # Note
     ///
     /// The `path` argument, if provided, will be the directory within the UFO
     /// that the layer is saved. If it is not provided, it will be derived from
@@ -216,11 +226,12 @@ impl Layer {
         }
     }
 
-    /// Load the layer at this path.
+    /// Returns a new [`Layer`] that is loaded from `path` with the provided `name`.
+    ///
+    /// # Note
     ///
     /// Internal callers should use `load_impl` directly, so that glyph names
     /// can be reused between layers.
-    ///
     ///
     /// You generally shouldn't need this; instead prefer to load all layers
     /// with [`LayerSet::load`] and then get the layer you need from there.
@@ -230,7 +241,7 @@ impl Layer {
         Layer::load_impl(path, name, &names)
     }
 
-    /// the actual loading logic.
+    /// The actual loading logic.
     ///
     /// `names` is a map of glyphnames; we pass it throughout parsing
     /// so that we reuse the same Arc<str> for identical names.
@@ -328,7 +339,10 @@ impl Layer {
         crate::write::write_plist_value_to_file(&path.join(LAYER_INFO_FILE), &dict.into(), options)
     }
 
-    /// Attempt to write this layer to the given path.
+    /// Serialize this layer to the given path with the default
+    /// [`WriteOptions`] serialization format configuration.
+    ///
+    /// # Note
     ///
     /// The path should not exist.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
@@ -336,6 +350,12 @@ impl Layer {
         self.save_with_options(path.as_ref(), &options)
     }
 
+    /// Serialize this layer to the given `path` with a custom
+    /// [`WriteOptions`] serialization format configuration.
+    ///
+    /// # Note
+    ///
+    /// The path should not exist.
     pub fn save_with_options(&self, path: &Path, opts: &WriteOptions) -> Result<(), Error> {
         fs::create_dir(&path)?;
         crate::write::write_xml_to_file(&path.join(CONTENTS_FILE), &self.contents, opts)?;
@@ -353,7 +373,7 @@ impl Layer {
         })
     }
 
-    /// The number of [`Glyph`]s in the layer.
+    /// Returns the number of [`Glyph`]s in the layer.
     pub fn len(&self) -> usize {
         self.glyphs.len()
     }
@@ -363,14 +383,18 @@ impl Layer {
         self.glyphs.is_empty()
     }
 
-    /// The name of the layer.
+    /// Returns the name of the layer.
+    ///
+    /// # Note
     ///
     /// This can only be mutated through the [`LayerSet`].
     pub fn name(&self) -> &LayerName {
         &self.name
     }
 
-    /// The directory name of this layer.
+    /// Returns the directory path of this layer.
+    ///
+    /// # Note
     ///
     /// This cannot be mutated; it is either provided when the layer
     /// is loaded, or we will create it for you. Maybe this is bad? We can talk
@@ -379,7 +403,7 @@ impl Layer {
         &self.path
     }
 
-    /// Returns a reference the glyph with the given name, if it exists.
+    /// Returns a reference to the glyph with the given name, if it exists.
     pub fn get_glyph<K>(&self, glyph: &K) -> Option<&Arc<Glyph>>
     where
         GlyphName: Borrow<K>,
@@ -397,12 +421,14 @@ impl Layer {
         self.glyphs.get_mut(glyph).map(|g| Arc::make_mut(g))
     }
 
-    /// Returns `true` if this layer contains a glyph with this name.
+    /// Returns `true` if this layer contains a glyph with this `name`.
     pub fn contains_glyph(&self, name: &str) -> bool {
         self.glyphs.contains_key(name)
     }
 
     /// Adds or updates the given glyph.
+    ///
+    /// # Note
     ///
     /// If the glyph does not previously exist, the filename is calculated from
     /// the glyph's name.
@@ -429,6 +455,8 @@ impl Layer {
 
     /// Rename a glyph.
     ///
+    /// # Note
+    ///
     /// If `overwrite` is true, and a glyph with the new name exists, it will
     /// be replaced.
     ///
@@ -447,17 +475,19 @@ impl Layer {
         }
     }
 
-    /// Iterate over the glyphs in this layer.
+    /// Returns an iterator over the glyphs in this layer.
     pub fn iter(&self) -> impl Iterator<Item = &Arc<Glyph>> + '_ {
         self.glyphs.values()
     }
 
-    /// Iterate over the glyphs in this layer, mutably.
+    /// Returns an iterator over the glyphs in this layer, mutably.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Glyph> {
         self.glyphs.values_mut().map(Arc::make_mut)
     }
 
-    /// Returns the path to the .glif file of a given glyph name.
+    /// Returns the path to the .glif file of a given glyph `name`.
+    ///
+    /// # Note
     ///
     /// The returned path is relative to the path of the current layer.
     pub fn get_path(&self, name: &str) -> Option<&Path> {
