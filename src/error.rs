@@ -58,7 +58,9 @@ pub enum Error {
     /// An error returned when there is a problem during groups.plist version up-conversion.
     GroupsUpconversionFailure(GroupsValidationError),
     /// An error returned when there is a problem parsing plist data into
-    /// [plist::Dictionary] types.  The string is the dictionary key.
+    /// [`plist::Dictionary`] types. 
+    ///
+    /// The string is the dictionary key.
     ExpectedPlistDictionary(String),
     /// An error returned when there is an unexpected plist string.
     ExpectedPlistString,
