@@ -59,7 +59,7 @@ impl DataRequest {
         DataRequest { layers: b, lib: b, groups: b, kerning: b, features: b, data: b, images: b }
     }
 
-    /// Returns a [DataRequest] requesting all UFO data.
+    /// Returns a [`DataRequest`] requesting all UFO data.
     pub fn all() -> Self {
         DataRequest::from_bool(true)
     }
