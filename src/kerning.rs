@@ -9,12 +9,12 @@ use serde::Serialize;
 /// to the second half of a pair (glyph name or group name), which maps to the kerning value
 /// (high-level view: (first, second) => value).
 ///
-/// We use a `BTreeMap` because we need sorting for serialization.
+/// We use a [`BTreeMap`] because we need sorting for serialization.
 pub type Kerning = BTreeMap<String, BTreeMap<String, f64>>;
 
 /// A helper for serializing kerning values.
 ///
-/// KerningSerializer is a crutch to serialize kerning values as integers if they are
+/// `KerningSerializer` is a crutch to serialize kerning values as integers if they are
 /// integers rather than floats. This spares us having to use a wrapper type like
 /// `IntegerOrFloat` for kerning values.
 pub(crate) struct KerningSerializer<'a> {
