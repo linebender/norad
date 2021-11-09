@@ -38,7 +38,7 @@
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct DataRequest {
-    /// Load parsed glyph layers and points data
+    /// Load and parse all layers and glyphs.
     pub layers: bool,
     /// Load parsed lib.plist data
     pub lib: bool,
