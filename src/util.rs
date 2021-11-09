@@ -14,13 +14,13 @@ pub fn recursive_sort_plist_keys(plist: &mut plist::Dictionary) {
 
 //NOTE: this is hacky, and intended mostly as a placeholder. It was adapted from
 // https://github.com/unified-font-object/ufoLib/blob/master/Lib/ufoLib/filenames.py
-/// given a glyph name, compute an appropriate file name.
+/// Given a glyph `name`, return an appropriate file name.
 pub fn default_file_name_for_glyph_name(name: impl AsRef<str>) -> String {
     let name = name.as_ref();
     user_name_to_file_name(name, "", ".glif")
 }
 
-/// given a layer name, compute an appropriate file name.
+/// Given a layer `name`, return an appropriate file name.
 pub fn default_file_name_for_layer_name(name: &str) -> String {
     user_name_to_file_name(name, "glyphs.", "")
 }
