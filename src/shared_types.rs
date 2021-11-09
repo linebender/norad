@@ -21,9 +21,13 @@ pub type Plist = plist::Dictionary;
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub struct Color {
+    /// Red RGBA color value.
     pub red: f64,
+    /// Green RGBA color value.
     pub green: f64,
+    /// Blue RGBA color value.
     pub blue: f64,
+    /// Alpha RGBA transparency value.
     pub alpha: f64,
 }
 
@@ -81,18 +85,22 @@ pub type Bitlist = Vec<u8>;
 pub struct IntegerOrFloat(f64);
 
 impl IntegerOrFloat {
+    /// Returns a new [`IntegerOrFloat`] with the given `value`.
     pub fn new(value: f64) -> Self {
         IntegerOrFloat(value)
     }
 
+    /// Returns the value.
     pub fn get(&self) -> f64 {
         self.0
     }
 
+    /// Sets the value.
     pub fn set(&mut self, value: f64) {
         self.0 = value
     }
 
+    /// Returns `true` if the value is an integer.
     pub fn is_integer(&self) -> bool {
         (self.0 - self.round()).abs() < std::f64::EPSILON
     }
@@ -148,6 +156,8 @@ impl<'de> Deserialize<'de> for IntegerOrFloat {
 pub struct NonNegativeIntegerOrFloat(f64);
 
 impl NonNegativeIntegerOrFloat {
+    /// Returns a new [`NonNegativeIntegerOrFloat`] with the given `value` or `None`
+    /// if the value is less than or equal to zero.
     pub fn new(value: f64) -> Option<Self> {
         if value.is_sign_positive() {
             Some(NonNegativeIntegerOrFloat(value))
@@ -156,10 +166,16 @@ impl NonNegativeIntegerOrFloat {
         }
     }
 
+    /// Returns the value.
     pub fn get(&self) -> f64 {
         self.0
     }
 
+    /// Sets the value.
+    ///
+    /// # Note
+    ///
+    /// An error is raised if `value` is less than or equal to zero.
     pub fn try_set(&mut self, value: f64) -> Result<(), Error> {
         if value.is_sign_positive() {
             self.0 = value;
@@ -169,6 +185,7 @@ impl NonNegativeIntegerOrFloat {
         }
     }
 
+    /// Returns `true` if the value is an integer.
     pub fn is_integer(&self) -> bool {
         (self.0 - self.round()).abs() < std::f64::EPSILON
     }
