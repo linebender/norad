@@ -19,7 +19,7 @@ use crate::error::ErrorKind;
 pub struct Identifier(Arc<str>);
 
 impl Identifier {
-    /// Create a new `Identifier` from a `String`, if it is valid.
+    /// Create a new [`Identifier`] from a [`String`], if it is valid.
     ///
     /// A valid identifier must have between 0 and 100 characters, and each
     /// character must be in the printable ASCII range, 0x20 to 0x7E.
@@ -32,6 +32,7 @@ impl Identifier {
         }
     }
 
+    /// Create a new [`Identifier`] from a UUID v4 identifier.
     pub fn from_uuidv4() -> Self {
         Self::new(uuid::Uuid::new_v4().to_string()).unwrap()
     }
