@@ -74,8 +74,9 @@ pub enum Error {
     MissingFile(String),
     /// An error returned when the requested UFO directory path is not present.
     MissingUfoDir(String),
-    /// An error returned when there is an invalid [crate::datastore::Store<T>] entry.
-    /// This error wraps a [StoreError] type and provides additional path data.
+    /// An error returned when there is an invalid entry in an image or data store.
+    ///
+    /// This error wraps a [`StoreError`] type and provides additional path data.
     InvalidStoreEntry(PathBuf, StoreError),
 }
 
