@@ -64,7 +64,7 @@ impl DataRequest {
         DataRequest::from_bool(true)
     }
 
-    /// Returns a [DataRequest] requesting no UFO data.
+    /// Returns a [`DataRequest`] requesting no UFO data.
     pub fn none() -> Self {
         DataRequest::from_bool(false)
     }
