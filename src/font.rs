@@ -35,15 +35,25 @@ pub(crate) static IMAGES_DIR: &str = "images";
 #[derive(Clone, Debug, Default, PartialEq)]
 #[non_exhaustive]
 pub struct Font {
+    /// metainfo.plist parsed data field
     pub meta: MetaInfo,
+    /// fontinfo.plist parsed data field
     pub font_info: FontInfo,
+    /// font layers
     pub layers: LayerSet,
+    /// lib.plist parsed data field
     pub lib: Plist,
+    /// groups.plist parsed data field
     pub groups: Groups,
+    /// kerning.plist parsed data field
     pub kerning: Kerning,
+    /// Adobe OpenType feature syntax data field
     pub features: String,
+    /// [`DataRequest`] field
     pub data_request: DataRequest,
+    /// [`DataStore`] field
     pub data: DataStore,
+    /// [`ImageStore`] field
     pub images: ImageStore,
 }
 
@@ -53,8 +63,11 @@ pub struct Font {
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum FormatVersion {
+    /// UFO specification major version 1
     V1 = 1,
+    /// UFO specfication major version 2
     V2 = 2,
+    /// UFO specification major version 3
     V3 = 3,
 }
 
@@ -64,8 +77,11 @@ pub enum FormatVersion {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MetaInfo {
+    /// Creator field
     pub creator: Option<String>,
+    /// UFO specification major version field
     pub format_version: FormatVersion,
+    /// UFO specification minor version field
     #[serde(default, skip_serializing_if = "is_zero")]
     pub format_version_minor: u32,
 }
@@ -85,15 +101,23 @@ impl Default for MetaInfo {
 }
 
 impl Font {
-    /// Create a new, empty `Font` object.
+    /// Returns a new, empty [`Font`] object.
     pub fn new() -> Self {
         Font::default()
     }
 
-    /// Attempt to load a font object from a file.
+    /// Returns a [`Font`] object with data from a UFO directory `path`.
     ///
     /// `path` must point to a directory with the structure described in
     /// [v3 of the Unified Font Object][v3] spec.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use norad::Font;
+    ///
+    /// let ufo = Font::load("path/to/font.ufo").expect("failed to load");
+    /// ```
     ///
     /// # Note
     ///
@@ -101,12 +125,53 @@ impl Font {
     /// and in glyph libs and assign object libs found therein to global
     /// guidelines and glyph objects with the matching identifier, respectively.
     ///
+    /// See [Font::load_requested_data] for a load method that supports customization
+    /// of the data inclusion / exclusion criteria.
+    ///
     /// [v3]: http://unifiedfontobject.org/versions/ufo3/
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Font, Error> {
         Self::load_requested_data(path, &DataRequest::default())
     }
 
-    /// Attempt to load the requested elements of a font object from a file.
+    /// Returns a [`Font`] object with custom data inclusion/exclusion
+    /// criteria from a UFO directory `path`.  
+    ///
+    /// UFO data inclusion and exclusion criteria are defined with a [`DataRequest`] parameter.
+    ///
+    /// # Examples
+    ///
+    /// A font object that excludes all glyph layer, point, and kerning data:
+    ///
+    /// ```no_run
+    /// use norad::DataRequest;
+    /// use norad::Font;
+    ///
+    /// let datareq = DataRequest::default().layers(false).kerning(false).to_owned();
+    ///
+    /// let ufo = Font::load_requested_data("path/to/font.ufo", datareq).expect("failed to load");
+    /// ```
+    ///
+    /// A font object that excludes all data and images:
+    ///
+    /// ```no_run
+    /// use norad::DataRequest;
+    /// use norad::Font;
+    ///
+    /// let datareq = DataRequest::default().data(false).images(false).to_owned();
+    ///
+    /// let ufo = Font::load_requested_data("path/to/font.ufo", datareq).expect("failed to load");
+    /// ```
+    ///
+    /// A font object that includes only parsed lib.plist data:
+    ///
+    /// ```no_run
+    /// use norad::DataRequest;
+    /// use norad::Font;
+    ///
+    /// let datareq = DataRequest::none().lib(true).to_owned();
+    ///
+    /// let ufo = Font::load_requested_data("path/to/font.ufo", datareq).expect("failed to load");
+    /// ```
     pub fn load_requested_data(
         path: impl AsRef<Path>,
         request: &DataRequest,
@@ -217,7 +282,28 @@ impl Font {
         })
     }
 
-    /// Attempt to save this UFO to the given path, overriding any existing contents.
+    /// Serialize a [`Font`] to the given `path`, overwriting any existing contents.
+    ///
+    /// # Example
+    ///
+    /// With a [`Font`] object such as:
+    ///
+    /// ```no_run
+    /// use norad::Font;
+    ///
+    /// let ufo = Font::load("path/to/in-font.ufo").expect("failed to load");
+    /// # ufo.save("path/to/out-font.ufo").expect("failed to save");
+    /// ```
+    ///
+    /// do things with the [`Font`], then serialize to disk with:
+    ///
+    /// ```no_run
+    /// # use norad::Font;
+    /// # let ufo = Font::load("path/to/in-font.ufo").expect("failed to load");
+    /// ufo.save("path/to/out-font.ufo").expect("failed to save");
+    /// ```
+    ///
+    /// # Note
     ///
     /// This may fail; instead of saving directly to the target path, it is a good
     /// idea to save to a temporary location and then move that to the target path
@@ -230,7 +316,72 @@ impl Font {
         self.save_impl(path, &Default::default())
     }
 
-    /// Attempt to save the UFO, using the provided [`WriteOptions`].
+    /// Serialize a [`Font`] to the given `path`, overwriting any existing contents,
+    /// with custom [`WriteOptions`] serialization format settings.
+    ///
+    /// # Examples
+    ///
+    /// With a [`Font`] object:
+    ///
+    /// ```no_run
+    /// use norad::{Font, QuoteChar, WriteOptions};
+    ///
+    /// let ufo = Font::load("path/to/in-font.ufo").expect("failed to load");
+    /// ```
+    ///
+    /// define the serialization format with a [`WriteOptions`] type:
+    ///
+    /// ```no_run
+    /// # use norad::{Font, QuoteChar, WriteOptions};
+    /// # let ufo = Font::load("path/to/in-font.ufo").expect("failed to load");
+    /// let single_tab = WriteOptions::default();
+    ///
+    /// let two_tabs = WriteOptions::default()
+    ///     .whitespace("\t\t");
+    ///
+    /// let spaces = WriteOptions::default()
+    ///     .whitespace("  ");
+    ///
+    /// let spaces_and_singlequotes = WriteOptions::default()
+    ///     .whitespace("  ")
+    ///     .quote_char(QuoteChar::Single);
+    /// ```
+    ///
+    /// and serialize to disk with the respective [`WriteOptions`] configuration:
+    ///
+    /// ```no_run
+    /// # use norad::{Font, QuoteChar, WriteOptions};
+    /// # let ufo = Font::load("path/to/in-font.ufo").expect("failed to load");
+    /// # let single_tab = WriteOptions::default();
+    /// # let two_tabs = WriteOptions::default()
+    /// #   .whitespace("\t\t");
+    /// # let spaces = WriteOptions::default()
+    /// #    .whitespace("  ");
+    /// # let spaces_and_singlequotes = WriteOptions::default()
+    /// #   .whitespace("  ")
+    /// #   .quote_char(QuoteChar::Single);
+    /// // with single tab indentation (default)
+    /// ufo.save_with_options("path/to/out-font1.ufo", &single_tab);
+    ///
+    /// // with two tab indentation
+    /// ufo.save_with_options("path/to/out-font2.ufo", &two_tabs);
+    ///
+    /// // with two space indentation
+    /// ufo.save_with_options("path/to/out-font3.ufo", &spaces);
+    ///
+    /// // with two space indentation and single quote XML declarations
+    /// ufo.save_with_options("path/to/out-font4.ufo", &spaces_and_singlequotes);
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// This may fail; instead of saving directly to the target path, it is a good
+    /// idea to save to a temporary location and then move that to the target path
+    /// if the save is successful.
+    ///
+    /// This _will_ fail if either the global or any glyph lib contains the
+    /// `public.objectLibs` key, as object lib management is done automatically.
+    ///
     pub fn save_with_options(
         &self,
         path: impl AsRef<Path>,
