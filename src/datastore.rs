@@ -85,7 +85,7 @@ pub type DataStore = Store<Data>;
 #[doc(hidden)]
 pub struct Image;
 
-/// Type alias for a [Store<Image>] image store object;
+/// Lazy access to the contents of the UFO's `images` directory.
 pub type ImageStore = Store<Image>;
 
 /// Defines custom behavior for data and images stores.
