@@ -173,8 +173,6 @@ impl NonNegativeIntegerOrFloat {
 
     /// Sets the value.
     ///
-    /// # Note
-    ///
     /// An error is raised if `value` is less than or equal to zero.
     pub fn try_set(&mut self, value: f64) -> Result<(), Error> {
         if value.is_sign_positive() {

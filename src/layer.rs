@@ -36,8 +36,6 @@ pub struct LayerSet {
 impl LayerSet {
     /// Returns a [`LayerSet`] from the provided `path`.
     ///
-    /// # Note
-    ///
     /// If a `layercontents.plist` file exists, it will be used, otherwise
     /// we will assume the pre-UFOv3 behaviour, and expect a single glyphs dir.
     ///
@@ -142,8 +140,6 @@ impl LayerSet {
 
     /// Remove a layer.
     ///
-    /// # Note
-    ///
     /// The default layer cannot be removed.
     pub fn remove(&mut self, name: &str) -> Option<Layer> {
         self.layers
@@ -154,8 +150,6 @@ impl LayerSet {
     }
 
     /// Rename a layer.
-    ///
-    /// # Note
     ///
     /// If `overwrite` is true, and a layer with the new name exists, it will
     /// be replaced.
@@ -205,8 +199,6 @@ pub struct Layer {
 impl Layer {
     /// Returns a new [`Layer`] with the provided `name` and `path`.
     ///
-    /// # Note
-    ///
     /// The `path` argument, if provided, will be the directory within the UFO
     /// that the layer is saved. If it is not provided, it will be derived from
     /// the layer name.
@@ -227,8 +219,6 @@ impl Layer {
     }
 
     /// Returns a new [`Layer`] that is loaded from `path` with the provided `name`.
-    ///
-    /// # Note
     ///
     /// Internal callers should use `load_impl` directly, so that glyph names
     /// can be reused between layers.
@@ -342,8 +332,6 @@ impl Layer {
     /// Serialize this layer to the given path with the default
     /// [`WriteOptions`] serialization format configuration.
     ///
-    /// # Note
-    ///
     /// The path should not exist.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
         let options = WriteOptions::default();
@@ -352,8 +340,6 @@ impl Layer {
 
     /// Serialize this layer to the given `path` with a custom
     /// [`WriteOptions`] serialization format configuration.
-    ///
-    /// # Note
     ///
     /// The path should not exist.
     pub fn save_with_options(&self, path: &Path, opts: &WriteOptions) -> Result<(), Error> {
@@ -385,16 +371,12 @@ impl Layer {
 
     /// Returns the name of the layer.
     ///
-    /// # Note
-    ///
     /// This can only be mutated through the [`LayerSet`].
     pub fn name(&self) -> &LayerName {
         &self.name
     }
 
     /// Returns the directory path of this layer.
-    ///
-    /// # Note
     ///
     /// This cannot be mutated; it is either provided when the layer
     /// is loaded, or we will create it for you. Maybe this is bad? We can talk
@@ -428,8 +410,6 @@ impl Layer {
 
     /// Adds or updates the given glyph.
     ///
-    /// # Note
-    ///
     /// If the glyph does not previously exist, the filename is calculated from
     /// the glyph's name.
     pub fn insert_glyph(&mut self, glyph: impl Into<Arc<Glyph>>) {
@@ -454,8 +434,6 @@ impl Layer {
     }
 
     /// Rename a glyph.
-    ///
-    /// # Note
     ///
     /// If `overwrite` is true, and a glyph with the new name exists, it will
     /// be replaced.
@@ -486,8 +464,6 @@ impl Layer {
     }
 
     /// Returns the path to the .glif file of a given glyph `name`.
-    ///
-    /// # Note
     ///
     /// The returned path is relative to the path of the current layer.
     pub fn get_path(&self, name: &str) -> Option<&Path> {

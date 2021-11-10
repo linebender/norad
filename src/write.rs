@@ -86,8 +86,6 @@ impl WriteOptions {
     /// Builder-style method to customize the XML declaration attribute definition quote
     /// char.
     ///
-    /// # Note
-    ///
     /// By default, we indent with double quotes.
     ///
     /// The quote style is defined with a [`QuoteChar`] enum argument.
