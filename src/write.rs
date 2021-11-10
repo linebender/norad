@@ -55,8 +55,6 @@ impl Default for WriteOptions {
 impl WriteOptions {
     /// Builder-style method to customize the whitespace.
     ///
-    /// # Note
-    ///
     /// By default, we indent with a single tab ("\t").
     ///
     /// The argument, may be either a `'static str` or a `String`. You should

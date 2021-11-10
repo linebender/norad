@@ -119,9 +119,7 @@ impl Font {
     /// let ufo = Font::load("path/to/font.ufo").expect("failed to load");
     /// ```
     ///
-    /// # Note
-    ///
-    /// This will consume the `public.objectLibs` key in the global lib
+    /// Note: This will consume the `public.objectLibs` key in the global lib
     /// and in glyph libs and assign object libs found therein to global
     /// guidelines and glyph objects with the matching identifier, respectively.
     ///
@@ -303,9 +301,7 @@ impl Font {
     /// ufo.save("path/to/out-font.ufo").expect("failed to save");
     /// ```
     ///
-    /// # Note
-    ///
-    /// This may fail; instead of saving directly to the target path, it is a good
+    /// Note: This may fail; instead of saving directly to the target path, it is a good
     /// idea to save to a temporary location and then move that to the target path
     /// if the save is successful.
     ///
@@ -373,9 +369,7 @@ impl Font {
     /// ufo.save_with_options("path/to/out-font4.ufo", &spaces_and_singlequotes);
     /// ```
     ///
-    /// # Note
-    ///
-    /// This may fail; instead of saving directly to the target path, it is a good
+    /// Note: This may fail; instead of saving directly to the target path, it is a good
     /// idea to save to a temporary location and then move that to the target path
     /// if the save is successful.
     ///
