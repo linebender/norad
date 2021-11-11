@@ -111,7 +111,7 @@ impl Font {
     /// `path` must point to a directory with the structure described in
     /// [v3 of the Unified Font Object][v3] spec.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use norad::Font;
@@ -282,7 +282,7 @@ impl Font {
 
     /// Serialize a [`Font`] to the given `path`, overwriting any existing contents.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// With a [`Font`] object such as:
     ///

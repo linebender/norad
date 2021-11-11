@@ -26,7 +26,7 @@ use crate::Error;
 ///
 /// This type supports partial equality testing that is based on path comparisons.
 ///
-/// # Example
+/// # Examples
 ///
 /// Consider a UFO on disk with the following structure:
 ///
