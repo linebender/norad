@@ -6,7 +6,7 @@
 //!
 //! # Basic Usage
 //!
-//! Instantiate a UFO font object with a [Font] struct like this:
+//! Instantiate a UFO font object with a [`Font`] struct like this:
 //!
 //! ```no_run
 //! use norad::Font;
@@ -20,7 +20,7 @@
 //! # font_obj.save(outpath);
 //! ```
 //!
-//! The API may be used to access and modify data in the [Font]:
+//! The API may be used to access and modify data in the [`Font`]:
 //!
 //!```no_run
 //! # use norad::Font;
@@ -33,7 +33,7 @@
 //! # font_obj.save(outpath);
 //! ```
 //!
-//! Serialize the [Font] to UFO files on disk with the [Font::save] method:
+//! Serialize the [`Font`] to UFO files on disk with the [`Font::save`] method:
 //!
 //!```no_run
 //! # use norad::Font;
