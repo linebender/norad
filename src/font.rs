@@ -234,10 +234,10 @@ impl Font {
     pub fn save_with_options(
         &self,
         path: impl AsRef<Path>,
-        options: &WriteOptions,
+        options: impl Borrow<WriteOptions>,
     ) -> Result<(), Error> {
         let path = path.as_ref();
-        self.save_impl(path, options)
+        self.save_impl(path, options.borrow())
     }
 
     fn save_impl(&self, path: &Path, options: &WriteOptions) -> Result<(), Error> {
@@ -678,5 +678,21 @@ mod tests {
                 Token::StructEnd,
             ],
         );
+    }
+
+    #[test]
+    fn save_with_options_owned_wo_parameter() -> Result<(), Error> {
+        let opt = WriteOptions::default();
+        let ufo = Font::default();
+        let tmp = TempDir::new("test")?;
+        ufo.save_with_options(tmp, opt)
+    }
+
+    #[test]
+    fn save_with_options_reference_wo_parameter() -> Result<(), Error> {
+        let opt = WriteOptions::default();
+        let ufo = Font::default();
+        let tmp = TempDir::new("test")?;
+        ufo.save_with_options(tmp, &opt)
     }
 }
