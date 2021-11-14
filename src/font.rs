@@ -103,18 +103,18 @@ impl Font {
     ///
     /// [v3]: http://unifiedfontobject.org/versions/ufo3/
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Font, Error> {
-        Self::load_requested_data(path, DataRequest::default())
+        Self::load_requested_data(path, &DataRequest::default())
     }
 
     /// Attempt to load the requested elements of a font object from a file.
     pub fn load_requested_data(
         path: impl AsRef<Path>,
-        request: DataRequest,
+        request: impl Borrow<DataRequest>,
     ) -> Result<Font, Error> {
-        Self::load_impl(path.as_ref(), request)
+        Self::load_impl(path.as_ref(), request.borrow())
     }
 
-    fn load_impl(path: &Path, request: DataRequest) -> Result<Font, Error> {
+    fn load_impl(path: &Path, request: &DataRequest) -> Result<Font, Error> {
         if !path.exists() {
             return Err(Error::MissingUfoDir(path.display().to_string()));
         }
@@ -211,7 +211,7 @@ impl Font {
             groups: groups.unwrap_or_default(),
             kerning: kerning.unwrap_or_default(),
             features,
-            data_request: request,
+            data_request: *request,
             data,
             images,
         })
@@ -554,6 +554,18 @@ mod tests {
     fn data_request() {
         let path = "testdata/MutatorSansLightWide.ufo";
         let font_obj = Font::load_requested_data(path, DataRequest::none()).unwrap();
+        assert_eq!(font_obj.iter_layers().count(), 1);
+        assert!(font_obj.layers.default_layer().is_empty());
+        assert_eq!(font_obj.lib, Plist::new());
+        assert!(font_obj.groups.is_empty());
+        assert!(font_obj.kerning.is_empty());
+        assert!(font_obj.features.is_empty());
+    }
+
+    #[test]
+    fn data_request_reference_parameter() {
+        let path = "testdata/MutatorSansLightWide.ufo";
+        let font_obj = Font::load_requested_data(path, &DataRequest::none()).unwrap();
         assert_eq!(font_obj.iter_layers().count(), 1);
         assert!(font_obj.layers.default_layer().is_empty());
         assert_eq!(font_obj.lib, Plist::new());
