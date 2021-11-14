@@ -91,23 +91,11 @@ mod tests {
     use super::*;
 
     fn all_fields_are_true(dr: &DataRequest) -> bool {
-        return dr.layers
-            && dr.lib
-            && dr.groups
-            && dr.kerning
-            && dr.features
-            && dr.data
-            && dr.images;
+        dr.layers && dr.lib && dr.groups && dr.kerning && dr.features && dr.data && dr.images
     }
 
     fn all_fields_are_false(dr: &DataRequest) -> bool {
-        return !dr.layers
-            && !dr.lib
-            && !dr.groups
-            && !dr.kerning
-            && !dr.features
-            && !dr.data
-            && !dr.images;
+        !dr.layers && !dr.lib && !dr.groups && !dr.kerning && !dr.features && !dr.data && !dr.images
     }
 
     #[test]
