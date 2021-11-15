@@ -109,9 +109,9 @@ impl Font {
     /// Attempt to load the requested elements of a font object from a file.
     pub fn load_requested_data(
         path: impl AsRef<Path>,
-        request: impl Borrow<DataRequest>,
+        request: &DataRequest,
     ) -> Result<Font, Error> {
-        Self::load_impl(path.as_ref(), request.borrow())
+        Self::load_impl(path.as_ref(), request)
     }
 
     fn load_impl(path: &Path, request: &DataRequest) -> Result<Font, Error> {
@@ -234,10 +234,10 @@ impl Font {
     pub fn save_with_options(
         &self,
         path: impl AsRef<Path>,
-        options: impl Borrow<WriteOptions>,
+        options: &WriteOptions,
     ) -> Result<(), Error> {
         let path = path.as_ref();
-        self.save_impl(path, options.borrow())
+        self.save_impl(path, options)
     }
 
     fn save_impl(&self, path: &Path, options: &WriteOptions) -> Result<(), Error> {
@@ -553,18 +553,6 @@ mod tests {
     #[test]
     fn data_request() {
         let path = "testdata/MutatorSansLightWide.ufo";
-        let font_obj = Font::load_requested_data(path, DataRequest::none()).unwrap();
-        assert_eq!(font_obj.iter_layers().count(), 1);
-        assert!(font_obj.layers.default_layer().is_empty());
-        assert_eq!(font_obj.lib, Plist::new());
-        assert!(font_obj.groups.is_empty());
-        assert!(font_obj.kerning.is_empty());
-        assert!(font_obj.features.is_empty());
-    }
-
-    #[test]
-    fn data_request_reference_parameter() {
-        let path = "testdata/MutatorSansLightWide.ufo";
         let font_obj = Font::load_requested_data(path, &DataRequest::none()).unwrap();
         assert_eq!(font_obj.iter_layers().count(), 1);
         assert!(font_obj.layers.default_layer().is_empty());
@@ -681,15 +669,7 @@ mod tests {
     }
 
     #[test]
-    fn save_with_options_owned_wo_parameter() -> Result<(), Error> {
-        let opt = WriteOptions::default();
-        let ufo = Font::default();
-        let tmp = TempDir::new("test")?;
-        ufo.save_with_options(tmp, opt)
-    }
-
-    #[test]
-    fn save_with_options_reference_wo_parameter() -> Result<(), Error> {
+    fn save_with_options_with_writeoptions_parameter() -> Result<(), Error> {
         let opt = WriteOptions::default();
         let ufo = Font::default();
         let tmp = TempDir::new("test")?;
