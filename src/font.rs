@@ -144,9 +144,9 @@ impl Font {
     /// use norad::DataRequest;
     /// use norad::Font;
     ///
-    /// let datareq = DataRequest::default().layers(false).kerning(false).to_owned();
+    /// let datareq = DataRequest::default().layers(false).kerning(false);
     ///
-    /// let ufo = Font::load_requested_data("path/to/font.ufo", datareq).expect("failed to load");
+    /// let ufo = Font::load_requested_data("path/to/font.ufo", &datareq).expect("failed to load");
     /// ```
     ///
     /// A font object that excludes all data and images:
@@ -155,9 +155,9 @@ impl Font {
     /// use norad::DataRequest;
     /// use norad::Font;
     ///
-    /// let datareq = DataRequest::default().data(false).images(false).to_owned();
+    /// let datareq = DataRequest::default().data(false).images(false);
     ///
-    /// let ufo = Font::load_requested_data("path/to/font.ufo", datareq).expect("failed to load");
+    /// let ufo = Font::load_requested_data("path/to/font.ufo", &datareq).expect("failed to load");
     /// ```
     ///
     /// A font object that includes only parsed lib.plist data:
@@ -166,9 +166,9 @@ impl Font {
     /// use norad::DataRequest;
     /// use norad::Font;
     ///
-    /// let datareq = DataRequest::none().lib(true).to_owned();
+    /// let datareq = DataRequest::none().lib(true);
     ///
-    /// let ufo = Font::load_requested_data("path/to/font.ufo", datareq).expect("failed to load");
+    /// let ufo = Font::load_requested_data("path/to/font.ufo", &datareq).expect("failed to load");
     /// ```
     pub fn load_requested_data(
         path: impl AsRef<Path>,
