@@ -79,9 +79,9 @@ pub struct Font {
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum FormatVersion {
-    /// UFO specification major version 1
+    /// UFO specification major version 1. Only reading (and upconversion) is supported.
     V1 = 1,
-    /// UFO specfication major version 2
+    /// UFO specfication major version 2. Only reading (and upconversion) is supported.
     V2 = 2,
     /// UFO specification major version 3
     V3 = 3,
