@@ -32,22 +32,38 @@ pub(crate) static DATA_DIR: &str = "data";
 pub(crate) static IMAGES_DIR: &str = "images";
 
 /// A Unified Font Object.
+///
+/// See the [UFO specification] for a description of the underlying data.
+///
+/// [UFO specification]: https://unifiedfontobject.org/versions/ufo3/
 #[derive(Clone, Debug, Default, PartialEq)]
 #[non_exhaustive]
 pub struct Font {
-    /// metainfo.plist parsed data field
+    /// [metainfo.plist][mi] parsed data field
+    ///
+    /// [mi]: https://unifiedfontobject.org/versions/ufo3/metainfo.plist/
     pub meta: MetaInfo,
-    /// fontinfo.plist parsed data field
+    /// [fontinfo.plist][fi] parsed data field
+    ///
+    /// [fi]: https://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
     pub font_info: FontInfo,
-    /// font layers
+    /// font layers, each containing an independent set of glyphs.
     pub layers: LayerSet,
-    /// lib.plist parsed data field
+    /// [lib.plist][l] parsed data field
+    ///
+    /// [l]: https://unifiedfontobject.org/versions/ufo3/lib.plist/
     pub lib: Plist,
-    /// groups.plist parsed data field
+    /// [groups.plist][g] parsed data field
+    ///
+    /// [g]: https://unifiedfontobject.org/versions/ufo3/groups.plist/
     pub groups: Groups,
-    /// kerning.plist parsed data field
+    /// [kerning.plist][k] parsed data field
+    ///
+    /// [k]: https://unifiedfontobject.org/versions/ufo3/kerning.plist/
     pub kerning: Kerning,
-    /// Adobe OpenType feature syntax data field
+    /// [features.fea][fea] file data field
+    ///
+    /// [fea]: https://unifiedfontobject.org/versions/ufo3/features.fea/
     pub features: String,
     /// [`DataRequest`] field
     pub data_request: DataRequest,
@@ -138,7 +154,7 @@ impl Font {
     ///
     /// # Examples
     ///
-    /// A font object that excludes all glyph layer, point, and kerning data:
+    /// A font object that excludes all layer, glyph and kerning data:
     ///
     /// ```no_run
     /// use norad::DataRequest;
@@ -306,7 +322,8 @@ impl Font {
     /// if the save is successful.
     ///
     /// This _will_ fail if either the global or any glyph lib contains the
-    /// `public.objectLibs` key, as object lib management is done automatically.
+    /// `public.objectLibs` key, as object lib management must currently be done
+    /// by norad.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
         let path = path.as_ref();
         self.save_impl(path, &Default::default())
@@ -374,8 +391,8 @@ impl Font {
     /// if the save is successful.
     ///
     /// This _will_ fail if either the global or any glyph lib contains the
-    /// `public.objectLibs` key, as object lib management is done automatically.
-    ///
+    /// `public.objectLibs` key, as object lib management must currently be done
+    /// by norad.
     pub fn save_with_options(
         &self,
         path: impl AsRef<Path>,
@@ -508,12 +525,13 @@ impl Font {
         self.layers.iter()
     }
 
-    /// Returns an iterator over all the glyphs in the default layer.
+    /// Returns an iterator over all the glyph names _in the default layer_.
     pub fn iter_names(&self) -> impl Iterator<Item = GlyphName> + '_ {
         self.layers.default_layer().glyphs.keys().cloned()
     }
 
-    /// Returns a reference to the glyph with the given name (in the default layer).
+    /// Returns a reference to the glyph with the given name _in the default
+    /// layer_.
     pub fn get_glyph<K>(&self, key: &K) -> Option<&Arc<Glyph>>
     where
         GlyphName: Borrow<K>,
@@ -522,8 +540,8 @@ impl Font {
         self.default_layer().get_glyph(key)
     }
 
-    /// Returns a mutable reference to the glyph with the given name,
-    /// IN THE DEFAULT LAYER, if it exists.
+    /// Returns a mutable reference to the glyph with the given name
+    /// _in the default layer_, if it exists.
     pub fn get_glyph_mut<K>(&mut self, key: &K) -> Option<&mut Glyph>
     where
         GlyphName: Borrow<K>,
@@ -532,7 +550,7 @@ impl Font {
         self.default_layer_mut().get_glyph_mut(key)
     }
 
-    /// Returns the total number of glyphs in the default layer.
+    /// Returns the total number of glyphs _in the default layer_.
     pub fn glyph_count(&self) -> usize {
         self.default_layer().len()
     }

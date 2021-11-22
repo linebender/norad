@@ -2,15 +2,14 @@
 
 /// A type that describes which components of a UFO should be loaded.
 ///
-/// By default, we load all components of the UFO file; however if you only
-/// need some subset of these, you can pass this struct to [`Ufo::with_fields`]
-/// in order to only load the fields specified in this object. This can help a
-/// lot with performance in large projects when you don't need data intensive
-/// areas of the UFO font.
+/// By default, all components of the UFO file are loaded; however, if you only
+/// need a subset of them, you can pass this struct to [`Ufo::with_fields`] in
+/// order to only load the fields you specify. This can improve performance in
+/// large projects.
 ///
 /// # Examples
 ///
-/// A [DataRequest] that excludes all glyph layer, point, and kerning data:
+/// A [DataRequest] that excludes all layer, glyph and kerning data:
 ///
 /// ```
 /// use norad::DataRequest;
@@ -69,7 +68,7 @@ impl DataRequest {
         DataRequest::from_bool(false)
     }
 
-    /// Request that returned UFO data include the glyph layers and points.
+    /// Request that returned UFO data include layers and their glyph data.
     pub fn layers(mut self, b: bool) -> Self {
         self.layers = b;
         self
@@ -93,8 +92,8 @@ impl DataRequest {
         self
     }
 
-    /// Request that returned UFO data include OpenType Layout features in Adobe
-    /// .fea format.
+    /// Request that returned UFO data include [OpenType Layout features in Adobe
+    /// .fea format](https://unifiedfontobject.org/versions/ufo3/features.fea/).
     pub fn features(mut self, b: bool) -> Self {
         self.features = b;
         self

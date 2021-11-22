@@ -17,17 +17,17 @@ pub static PUBLIC_OBJECT_LIBS_KEY: &str = "public.objectLibs";
 /// A Plist dictionary.
 pub type Plist = plist::Dictionary;
 
-/// A color.
+/// A color in RGBA (Red-Green-Blue-Alpha) format.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub struct Color {
-    /// Red RGBA color value.
+    /// Red channel value. Must be in the range 0 to 1, inclusive.
     pub red: f64,
-    /// Green RGBA color value.
+    /// Green channel value. Must be in the range 0 to 1, inclusive.
     pub green: f64,
-    /// Blue RGBA color value.
+    /// Blue channel value. Must be in the range 0 to 1, inclusive.
     pub blue: f64,
-    /// Alpha RGBA transparency value.
+    /// Alpha (transparency) channel value. Must be in the range 0 to 1, inclusive.
     pub alpha: f64,
 }
 
@@ -80,7 +80,7 @@ pub type Bitlist = Vec<u8>;
 
 /// A number that may be either an integer or float.
 ///
-/// It should serialize to an integer if it effectively represents one.
+/// It serializes to an integer if it effectively represents one.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IntegerOrFloat(f64);
 

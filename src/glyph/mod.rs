@@ -258,7 +258,7 @@ impl Data for Glyph {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub enum GlifVersion {
-    /// Glif file format version 1.
+    /// Glif file format version 1. Saving this version is not supported.
     V1 = 1,
     /// Glif file format version 2.
     V2 = 2,
@@ -283,7 +283,7 @@ pub struct Anchor {
     ///
     /// This attribute is only required when a lib is present and should otherwise only be added as needed.
     identifier: Option<Identifier>,
-    /// Opitonal anchor lib for arbitary data.
+    /// Optional anchor lib for arbitary data.
     lib: Option<Plist>,
 }
 
@@ -383,7 +383,7 @@ pub struct ContourPoint {
     pub y: f64,
     /// Contour point type.
     pub typ: PointType,
-    /// Contour point smooth.
+    /// Whether a smooth curvature should be maintained at this point. Must not be set for off-curve points.
     pub smooth: bool,
     /// Optional contour point name.
     pub name: Option<String>,
@@ -730,7 +730,7 @@ impl std::default::Default for AffineTransform {
 /// An image included in a glyph.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Image {
-    /// Not an absolute / relative path, but the name of the image file.
+    /// The name of the image file. Must be a base file name, no subdirectories involved.
     pub file_name: PathBuf,
     /// Optional image color.
     pub color: Option<Color>,
