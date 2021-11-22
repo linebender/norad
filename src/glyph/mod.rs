@@ -27,6 +27,8 @@ pub type GlyphName = Arc<str>;
 #[cfg_attr(feature = "druid", derive(Lens))]
 pub struct Glyph {
     /// Glyph name.
+    ///
+    /// Must be at least one character long. Names must not contain control characters.
     pub name: GlyphName,
     /// Glif file format version.
     pub format: GlifVersion,
@@ -35,6 +37,8 @@ pub struct Glyph {
     /// Glyph width.
     pub width: f64,
     /// A collection of glyph Unicode code points.
+    ///
+    /// The first entry defines the primary Unicode value for this glyph.
     pub codepoints: Vec<char>,
     /// Arbitrary glyph note.
     pub note: Option<String>,
@@ -96,7 +100,7 @@ impl Glyph {
         Ok(())
     }
 
-    /// Returns a new, "emtpy" [`Glyph`] with the given `name`.
+    /// Returns a new, "empty" [`Glyph`] with the given `name`.
     pub fn new_named<S: Into<GlyphName>>(name: S) -> Self {
         Glyph::new(name.into(), GlifVersion::V2)
     }
@@ -118,18 +122,17 @@ impl Glyph {
         }
     }
 
-    /// Returns boolean value indicating whether [`Glyph`] is defined with one or
-    /// more [`Component`].
+    /// Returns true if [`Glyph`] contains one or more [`Component`]s.
     pub fn has_component(&self) -> bool {
         !self.components.is_empty()
     }
 
-    /// Returns a usize that represents the number of [`Component`] defined on the Glyph.
+    /// Returns the number of [`Component`]s in the Glyph.
     pub fn component_count(&self) -> usize {
         self.components.len()
     }
 
-    /// Returns boolean indicating the presence of one or more [`Component`] with base
+    /// Returns true if the Glyph contains one or more [`Component`]s with base
     /// glyph name `basename`.
     pub fn has_component_with_base(&self, basename: &str) -> bool {
         self.components.iter().any(|x| *x.base == *basename)
