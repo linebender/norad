@@ -68,7 +68,6 @@ pub enum Error {
     ExpectedPositiveValue,
     /// An error returned when there is a problem with kurbo contour conversion.
     #[cfg(feature = "kurbo")]
-    /// An error returned when there is a problem with contour conversion.
     ConvertContour(ErrorKind),
     /// An error returned when there is a missing mandatory file.
     MissingFile(String),
@@ -187,7 +186,7 @@ pub enum ErrorKind {
     UnsupportedGlifVersion,
     /// An unknown point type.
     UnknownPointType,
-    /// The first element is invalid.
+    /// The first XML element of a glif file is invalid.
     WrongFirstElement,
     /// Missing a close tag.
     MissingCloseTag,
@@ -347,7 +346,7 @@ impl std::fmt::Display for ErrorKind {
         match self {
             ErrorKind::UnsupportedGlifVersion => write!(f, "Unsupported glif version"),
             ErrorKind::UnknownPointType => write!(f, "Unknown point type"),
-            ErrorKind::WrongFirstElement => write!(f, "Wrong first element"),
+            ErrorKind::WrongFirstElement => write!(f, "Wrong first XML element in glif file"),
             ErrorKind::MissingCloseTag => write!(f, "Missing close tag"),
             ErrorKind::UnexpectedTag => write!(f, "Unexpected tag"),
             ErrorKind::BadHexValue => write!(f, "Bad hex value"),

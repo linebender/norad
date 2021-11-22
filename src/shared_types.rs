@@ -151,7 +151,7 @@ impl<'de> Deserialize<'de> for IntegerOrFloat {
 
 /// A number that can be a non-negative integer or float.
 ///
-/// It should serialize to an integer if it effectively represents one.
+/// It serializes to an integer if it effectively represents one.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NonNegativeIntegerOrFloat(f64);
 

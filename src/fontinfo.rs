@@ -979,27 +979,28 @@ pub struct NameRecord {
     pub string: String,
 }
 
-/// Corresponds to the allowed values for [openTypeOS2WidthClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
+/// Corresponds to the allowed values for
+/// [openTypeOS2WidthClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum Os2WidthClass {
-    /// UltraCondensed width.
+    /// Ultra-condensed width.
     UltraCondensed = 1,
-    /// ExtraCondensed width.
+    /// Extra-condensed width.
     ExtraCondensed = 2,
     /// Condensed width.
     Condensed = 3,
-    /// SemiCondensed width.
+    /// Semi-condensed width.
     SemiCondensed = 4,
-    /// Normal width.
+    /// Medium (normal) width.
     Normal = 5,
-    /// SemiExpanded width.
+    /// Semi-expanded width.
     SemiExpanded = 6,
     /// Expanded width.
     Expanded = 7,
-    /// ExtraExpanded width.
+    /// Extra-expanded width.
     ExtraExpanded = 8,
-    /// UltraExpanded width.
+    /// Ultra-expanded width.
     UltraExpanded = 9,
 }
 

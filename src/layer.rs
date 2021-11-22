@@ -28,7 +28,7 @@ pub type LayerName = Arc<str>;
 /// layers.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LayerSet {
-    /// A collection of [`Layer`].  The first [`Layer`] is the default.
+    /// A collection of [`Layer`]s.  The first [`Layer`] is the default.
     layers: Vec<Layer>,
 }
 
@@ -78,7 +78,7 @@ impl LayerSet {
 
     /// Returns the number of layers in the set.
     ///
-    /// This should be non-zero.
+    /// This is always non-zero.
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.layers.len()

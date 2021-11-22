@@ -264,7 +264,7 @@ pub enum GlifVersion {
     V2 = 2,
 }
 
-/// An reference position in a glyph, such as for attaching accents.
+/// A reference position in a glyph, such as for attaching accents.
 ///
 /// See the [Anchor section] of the UFO spec for more information.
 ///
