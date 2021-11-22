@@ -59,7 +59,7 @@ impl Guideline {
         this
     }
 
-    /// Returns an immutable reference to the Guideline's lib.
+    /// Returns a reference to the Guideline's lib.
     pub fn lib(&self) -> Option<&Plist> {
         self.lib.as_ref()
     }
@@ -83,7 +83,7 @@ impl Guideline {
         self.lib.take()
     }
 
-    /// Returns an immutable reference to the Guideline's identifier.
+    /// Returns a reference to the Guideline's identifier.
     pub fn identifier(&self) -> Option<&Identifier> {
         self.identifier.as_ref()
     }

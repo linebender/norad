@@ -492,7 +492,7 @@ impl Anchor {
         this
     }
 
-    /// Returns an immutable reference to the anchor's lib.
+    /// Returns a reference to the anchor's lib.
     pub fn lib(&self) -> Option<&Plist> {
         self.lib.as_ref()
     }
@@ -516,7 +516,7 @@ impl Anchor {
         self.lib.take()
     }
 
-    /// Returns an immutable reference to the anchor's identifier.
+    /// Returns a reference to the anchor's identifier.
     pub fn identifier(&self) -> Option<&Identifier> {
         self.identifier.as_ref()
     }
@@ -545,7 +545,7 @@ impl Contour {
         this
     }
 
-    /// Returns an immutable reference to the contour's lib.
+    /// Returns a reference to the contour's lib.
     pub fn lib(&self) -> Option<&Plist> {
         self.lib.as_ref()
     }
@@ -569,7 +569,7 @@ impl Contour {
         self.lib.take()
     }
 
-    /// Returns an immutable reference to the contour's identifier.
+    /// Returns a reference to the contour's identifier.
     pub fn identifier(&self) -> Option<&Identifier> {
         self.identifier.as_ref()
     }
@@ -603,7 +603,7 @@ impl ContourPoint {
         this
     }
 
-    /// Returns an immutable reference to the contour's lib.
+    /// Returns a reference to the contour's lib.
     pub fn lib(&self) -> Option<&Plist> {
         self.lib.as_ref()
     }
@@ -627,7 +627,7 @@ impl ContourPoint {
         self.lib.take()
     }
 
-    /// Returns an immutable reference to the contour's identifier.
+    /// Returns a reference to the contour's identifier.
     pub fn identifier(&self) -> Option<&Identifier> {
         self.identifier.as_ref()
     }
@@ -671,7 +671,7 @@ impl Component {
         this
     }
 
-    /// Returns an immutable reference to the component's lib.
+    /// Returns a reference to the component's lib.
     pub fn lib(&self) -> Option<&Plist> {
         self.lib.as_ref()
     }
@@ -695,7 +695,7 @@ impl Component {
         self.lib.take()
     }
 
-    /// Returns an immutable reference to the component's identifier.
+    /// Returns a reference to the component's identifier.
     pub fn identifier(&self) -> Option<&Identifier> {
         self.identifier.as_ref()
     }
