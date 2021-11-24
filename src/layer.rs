@@ -44,7 +44,8 @@ impl LayerSet {
     pub fn load(base_dir: &Path, glyph_names: &NameList) -> Result<LayerSet, Error> {
         let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
         let to_load: Vec<(LayerName, PathBuf)> = if layer_contents_path.exists() {
-            plist::from_file(layer_contents_path)?
+            plist::from_file(&layer_contents_path)
+                .map_err(|error| Error::PlistLoadError { path: layer_contents_path, error })?
         } else {
             vec![(Arc::from(DEFAULT_LAYER_NAME), PathBuf::from(DEFAULT_GLYPHS_DIRNAME))]
         };
@@ -246,7 +247,8 @@ impl Layer {
         }
         // these keys are never used; a future optimization would be to skip the
         // names and deserialize to a vec; that would not be a one-liner, though.
-        let contents: BTreeMap<GlyphName, PathBuf> = plist::from_file(contents_path)?;
+        let contents: BTreeMap<GlyphName, PathBuf> = plist::from_file(&contents_path)
+            .map_err(|error| Error::PlistLoadError { path: contents_path, error })?;
 
         #[cfg(feature = "rayon")]
         let iter = contents.par_iter();
@@ -284,7 +286,7 @@ impl Layer {
     // Ser/de must be done manually...
     fn layerinfo_from_file(path: &Path) -> Result<(Option<Color>, Plist), Error> {
         let mut info_content = plist::Value::from_file(path)
-            .map_err(Error::PlistError)?
+            .map_err(|error| Error::PlistLoadError { path: path.to_owned(), error })?
             .into_dictionary()
             .ok_or_else(|| Error::ExpectedPlistDictionary(path.to_string_lossy().into_owned()))?;
 

@@ -117,7 +117,9 @@ pub fn write_plist_value_to_file(
 ) -> Result<(), Error> {
     let mut file = File::create(path)?;
     let writer = BufWriter::new(&mut file);
-    value.to_writer_xml_with_options(writer, options.xml_options())?;
+    value
+        .to_writer_xml_with_options(writer, options.xml_options())
+        .map_err(|error| Error::PlistWriteError { path: path.to_owned(), error })?;
     write_quote_style(&file, options)?;
     file.sync_all()?;
     Ok(())
@@ -131,7 +133,8 @@ pub fn write_xml_to_file(
 ) -> Result<(), Error> {
     let mut file = File::create(path)?;
     let buf_writer = BufWriter::new(&mut file);
-    plist::to_writer_xml_with_options(buf_writer, value, options.xml_options())?;
+    plist::to_writer_xml_with_options(buf_writer, value, options.xml_options())
+        .map_err(|error| Error::PlistWriteError { path: path.to_owned(), error })?;
     write_quote_style(&file, options)?;
     file.sync_all()?;
     Ok(())
