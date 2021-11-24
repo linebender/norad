@@ -12,7 +12,7 @@ use std::sync::Arc;
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
 
-use crate::error::{Error, ErrorKind, GlifError, GlifErrorInternal};
+use crate::error::{Error, ErrorKind, GlifLoadError};
 use crate::names::NameList;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
@@ -62,22 +62,20 @@ impl Glyph {
     /// When loading glyphs in bulk, [`Glyph::load_with_names`] should be preferred,
     /// since it will allow glyph names (in glyphs and components) to be shared
     /// between instances.
-    pub fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, GlifLoadError> {
         let path = path.as_ref();
         let names = NameList::default();
         Glyph::load_with_names(path, &names)
     }
 
-    /// Returns a [`Glyph`] at this `path` with glyph and component glyph name sharing
-    /// between instances.
-    pub fn load_with_names(path: &Path, names: &NameList) -> Result<Self, Error> {
-        let data = std::fs::read(path)?;
-        parse::GlifParser::from_xml(&data, Some(names)).map_err(|e| match e {
-            GlifErrorInternal::Xml(e) => e.into(),
-            GlifErrorInternal::Spec { kind, position } => {
-                GlifError { kind, position, path: Some(path.to_owned()) }.into()
-            }
-        })
+    /// Attempt to load the glyph at `path`, reusing names from the `NameList`.
+    ///
+    /// This uses string interning to reuse allocations when a glyph name
+    /// occurs multiple times (such as in components or in different layers).
+    pub fn load_with_names(path: &Path, names: &NameList) -> Result<Self, GlifLoadError> {
+        std::fs::read(path)
+            .map_err(GlifLoadError::IoError)
+            .and_then(|data| parse::GlifParser::from_xml(&data, Some(names)))
     }
 
     #[doc(hidden)]
