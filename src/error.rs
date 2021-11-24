@@ -43,9 +43,16 @@ pub enum Error {
     IoError(IoError),
     /// An error returned when there is an XML parsing problem.
     ParseError(XmlError),
-    /// An error that wraps a [GlifError].
-    Glif(GlifError),
-    /// An error that wraps a [GlifWriteError].
+    /// A `.glif` file could not be loaded.
+    GlifLoad {
+        /// The path of the relevant `.glif` file.
+        path: PathBuf,
+        /// The underlying error.
+        inner: GlifLoadError,
+    },
+    /// An error that occurs when attempting to write a [`Glyph`] to disk.
+    ///
+    /// [`Glyph`]: crate::Glyph
     GlifWrite(GlifWriteError),
     /// An error that wraps a [PlistError].
     PlistError(PlistError),
@@ -77,6 +84,17 @@ pub enum Error {
     ///
     /// This error wraps a [`StoreError`] type and provides additional path data.
     InvalidStoreEntry(PathBuf, StoreError),
+}
+
+/// An error that occurs while attempting to read a .glif file from disk.
+#[derive(Debug)]
+pub enum GlifLoadError {
+    /// An [`std::io::Error`].
+    IoError(IoError),
+    /// A [`quick_xml::Error`].
+    Xml(XmlError),
+    /// The .glif file was malformed.
+    Parse(ErrorKind),
 }
 
 /// An error representing a failure to insert content into a [`crate::datastore::Store`].
@@ -141,8 +159,7 @@ pub struct GlifError {
     pub kind: ErrorKind,
 }
 
-/// An error representing a failure during .glif file serialization. This
-/// error wraps [GlyphName] and [WriteError] types.
+/// An error when attempting to write a .glif file.
 #[derive(Debug)]
 pub struct GlifWriteError {
     /// The name of the glif where the error occured.
@@ -167,16 +184,6 @@ pub enum WriteError {
     IoError(IoError),
     /// Plist serialization error. Wraps a [PlistError].
     Plist(PlistError),
-}
-
-/// Errors that happen when parsing `glif` files. This is converted into either
-/// `Error::ParseError` or `Error::Glif` at the parse boundary.
-#[derive(Debug)]
-pub(crate) enum GlifErrorInternal {
-    /// A problem with the xml data.
-    Xml(XmlError),
-    /// A violation of the ufo spec.
-    Spec { kind: ErrorKind, position: usize },
 }
 
 /// The reason for a glif parse failure.
@@ -272,8 +279,8 @@ impl std::fmt::Display for Error {
             Error::IoError(e) => e.fmt(f),
             Error::ParseError(e) => e.fmt(f),
             Error::InvalidColor(e) => e.fmt(f),
-            Error::Glif(GlifError { path, position, kind }) => {
-                write!(f, "Glif error in {:?} index {}: '{}", path, position, kind)
+            Error::GlifLoad { path, inner } => {
+                write!(f, "Error reading glif '{}': '{}'", path.display(), inner)
             }
             Error::GlifWrite(GlifWriteError { name, inner }) => {
                 write!(f, "Failed to save glyph {}, error: '{}'", name, inner)
@@ -305,6 +312,16 @@ impl std::fmt::Display for Error {
             }
             #[cfg(feature = "kurbo")]
             Error::ConvertContour(cause) => write!(f, "Failed to convert contour: '{}'", cause),
+        }
+    }
+}
+
+impl std::fmt::Display for GlifLoadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            GlifLoadError::Xml(err) => err.fmt(f),
+            GlifLoadError::IoError(err) => err.fmt(f),
+            GlifLoadError::Parse(err) => err.fmt(f),
         }
     }
 }
@@ -448,12 +465,6 @@ impl std::fmt::Display for InvalidColorString {
 
 impl std::error::Error for InvalidColorString {}
 
-impl ErrorKind {
-    pub(crate) fn to_error(self, position: usize) -> GlifErrorInternal {
-        GlifErrorInternal::Spec { kind: self, position }
-    }
-}
-
 #[doc(hidden)]
 impl From<InvalidColorString> for Error {
     fn from(src: InvalidColorString) -> Error {
@@ -465,13 +476,6 @@ impl From<InvalidColorString> for Error {
 impl From<GlifWriteError> for Error {
     fn from(src: GlifWriteError) -> Error {
         Error::GlifWrite(src)
-    }
-}
-
-#[doc(hidden)]
-impl From<(ErrorKind, usize)> for GlifErrorInternal {
-    fn from(src: (ErrorKind, usize)) -> GlifErrorInternal {
-        GlifErrorInternal::Spec { kind: src.0, position: src.1 }
     }
 }
 
@@ -493,20 +497,6 @@ impl From<PlistError> for Error {
 impl From<IoError> for Error {
     fn from(src: IoError) -> Error {
         Error::IoError(src)
-    }
-}
-
-#[doc(hidden)]
-impl From<GlifError> for Error {
-    fn from(src: GlifError) -> Error {
-        Error::Glif(src)
-    }
-}
-
-#[doc(hidden)]
-impl From<XmlError> for GlifErrorInternal {
-    fn from(src: XmlError) -> GlifErrorInternal {
-        GlifErrorInternal::Xml(src)
     }
 }
 

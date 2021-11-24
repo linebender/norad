@@ -258,12 +258,13 @@ impl Layer {
                 let name = names.get(name);
                 let glyph_path = path.join(glyph_path);
 
-                Glyph::load_with_names(&glyph_path, names).map(|mut glyph| {
-                    glyph.name = name.clone();
-                    (name, Arc::new(glyph))
-                })
+                Glyph::load_with_names(&glyph_path, names)
+                    .map(|mut glyph| {
+                        glyph.name = name.clone();
+                        (name, Arc::new(glyph))
+                    })
+                    .map_err(|e| Error::GlifLoad { path: glyph_path, inner: e })
             })
-            //FIXME: come up with a better way of reporting errors than just aborting at first failure
             .collect::<Result<_, _>>()?;
 
         let layerinfo_path = path.join(LAYER_INFO_FILE);
@@ -439,7 +440,7 @@ impl Layer {
     /// be replaced.
     ///
     /// Returns an error if `overwrite` is false but a glyph with the new
-    /// name exists, or if no glyph with the old name exists.
+    /// name exists, or if no glyph with the old name exists
     pub fn rename_glyph(&mut self, old: &str, new: &str, overwrite: bool) -> Result<(), Error> {
         if !overwrite && self.glyphs.contains_key(new) {
             Err(Error::DuplicateGlyph { glyph: new.into(), layer: self.name.to_string() })
