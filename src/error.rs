@@ -54,8 +54,20 @@ pub enum Error {
     ///
     /// [`Glyph`]: crate::Glyph
     GlifWrite(GlifWriteError),
-    /// An error that wraps a [PlistError].
-    PlistError(PlistError),
+    /// A plist file could not be read.
+    PlistLoadError {
+        /// The path of the relevant file.
+        path: PathBuf,
+        /// The underlying error.
+        error: PlistError,
+    },
+    /// A plist file could not be written.
+    PlistWriteError {
+        /// The path of the relevant file.
+        path: PathBuf,
+        /// The underlying error.
+        error: PlistError,
+    },
     /// An error returned when there is invalid fontinfo.plist data.
     InvalidFontInfo,
     /// An error returned when there is a problem during fontinfo.plist version up-conversion.
@@ -285,7 +297,12 @@ impl std::fmt::Display for Error {
             Error::GlifWrite(GlifWriteError { name, inner }) => {
                 write!(f, "Failed to save glyph {}, error: '{}'", name, inner)
             }
-            Error::PlistError(e) => e.fmt(f),
+            Error::PlistLoadError { path, error } => {
+                write!(f, "Error reading plist at path '{}': {}", path.display(), error)
+            }
+            Error::PlistWriteError { path, error } => {
+                write!(f, "Error writing plist to path '{}': {}", path.display(), error)
+            }
             Error::InvalidFontInfo => write!(f, "FontInfo contains invalid data"),
             Error::FontInfoUpconversion => {
                 write!(f, "FontInfo contains invalid data after upconversion")
@@ -450,7 +467,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::IoError(inner) => Some(inner),
-            Error::PlistError(inner) => Some(inner),
+            Error::PlistLoadError { error, .. } => Some(error),
             Error::GlifWrite(inner) => Some(&inner.inner),
             _ => None,
         }
@@ -483,13 +500,6 @@ impl From<GlifWriteError> for Error {
 impl From<XmlError> for Error {
     fn from(src: XmlError) -> Error {
         Error::ParseError(src)
-    }
-}
-
-#[doc(hidden)]
-impl From<PlistError> for Error {
-    fn from(src: PlistError) -> Error {
-        Error::PlistError(src)
     }
 }
 
