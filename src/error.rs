@@ -100,7 +100,7 @@ pub enum Error {
 #[derive(Debug)]
 pub enum GlifLoadError {
     /// An [`std::io::Error`].
-    IoError(IoError),
+    Io(IoError),
     /// A [`quick_xml::Error`].
     Xml(XmlError),
     /// The .glif file was malformed.
@@ -190,8 +190,8 @@ pub enum WriteError {
     /// If for some reason the implementation of that crate changes, we could
     /// be affected, although this is very unlikely.
     InternalLibWriteError,
-    /// Generic serialization error.  Wraps an [IoError].
-    IoError(IoError),
+    /// An error originating in [`std::io`].
+    Io(IoError),
     /// Plist serialization error. Wraps a [PlistError].
     Plist(PlistError),
 }
@@ -334,7 +334,7 @@ impl std::fmt::Display for GlifLoadError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             GlifLoadError::Xml(err) => err.fmt(f),
-            GlifLoadError::IoError(err) => err.fmt(f),
+            GlifLoadError::Io(err) => err.fmt(f),
             GlifLoadError::Parse(err) => err.fmt(f),
         }
     }
@@ -427,7 +427,7 @@ impl std::fmt::Display for ErrorKind {
 impl std::fmt::Display for WriteError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            WriteError::IoError(err) => err.fmt(f),
+            WriteError::Io(err) => err.fmt(f),
             WriteError::Xml(err) => err.fmt(f),
             WriteError::Plist(err) => err.fmt(f),
             WriteError::InternalLibWriteError => {
@@ -446,7 +446,7 @@ impl std::fmt::Display for GlifWriteError {
 impl std::error::Error for WriteError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            WriteError::IoError(inner) => Some(inner),
+            WriteError::Io(inner) => Some(inner),
             WriteError::Xml(inner) => Some(inner),
             WriteError::Plist(inner) => Some(inner),
             WriteError::InternalLibWriteError => None,
@@ -510,7 +510,7 @@ impl From<XmlError> for WriteError {
 #[doc(hidden)]
 impl From<IoError> for WriteError {
     fn from(src: IoError) -> WriteError {
-        WriteError::IoError(src)
+        WriteError::Io(src)
     }
 }
 

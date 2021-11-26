@@ -74,7 +74,7 @@ impl Glyph {
     /// occurs multiple times (such as in components or in different layers).
     pub fn load_with_names(path: &Path, names: &NameList) -> Result<Self, GlifLoadError> {
         std::fs::read(path)
-            .map_err(GlifLoadError::IoError)
+            .map_err(GlifLoadError::Io)
             .and_then(|data| parse::GlifParser::from_xml(&data, Some(names)))
     }
 
