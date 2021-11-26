@@ -170,7 +170,7 @@ pub enum WriteError {
 }
 
 /// Errors that happen when parsing `glif` files. This is converted into either
-/// `Error::Xml` or `Error::Glif` at the parse boundary.
+/// `Error::ParseError` or `Error::Glif` at the parse boundary.
 #[derive(Debug)]
 pub(crate) enum GlifErrorInternal {
     /// A problem with the xml data.
