@@ -41,8 +41,6 @@ pub enum Error {
     },
     /// An error returned when there is an input/output problem during processing
     IoError(IoError),
-    /// An error returned when there is an XML parsing problem.
-    ParseError(XmlError),
     /// A `.glif` file could not be loaded.
     GlifLoad {
         /// The path of the relevant `.glif` file.
@@ -289,7 +287,6 @@ impl std::fmt::Display for Error {
                 write!(f, "Glyph '{}' missing from layer '{}'", glyph, layer)
             }
             Error::IoError(e) => e.fmt(f),
-            Error::ParseError(e) => e.fmt(f),
             Error::InvalidColor(e) => e.fmt(f),
             Error::GlifLoad { path, inner } => {
                 write!(f, "Error reading glif '{}': '{}'", path.display(), inner)
@@ -493,13 +490,6 @@ impl From<InvalidColorString> for Error {
 impl From<GlifWriteError> for Error {
     fn from(src: GlifWriteError) -> Error {
         Error::GlifWrite(src)
-    }
-}
-
-#[doc(hidden)]
-impl From<XmlError> for Error {
-    fn from(src: XmlError) -> Error {
-        Error::ParseError(src)
     }
 }
 
