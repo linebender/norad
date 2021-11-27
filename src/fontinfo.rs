@@ -25,148 +25,270 @@ use crate::{Error, FormatVersion, Guideline, Identifier, Plist};
 pub struct FontInfo {
     // INFO: Keep this struct sorted alphabetically, serde serializes it in the order you see
     // here and Plist files should be sorted.
+    /// Ascender value (ascender).
     pub ascender: Option<IntegerOrFloat>,
+    /// Cap height value (capHeight).
     pub cap_height: Option<IntegerOrFloat>,
+    /// Copyright statement (copyright).
     pub copyright: Option<String>,
+    /// Descender value (descender).
     pub descender: Option<IntegerOrFloat>,
+    /// Family name (familyName).
     pub family_name: Option<String>,
+    /// Guideline definitions that apply to all glyphs in
+    /// all layers (guidelines).
     pub guidelines: Option<Vec<Guideline>>,
+    /// Italic angle in counter-clockwise degrees (italicAngle).
     pub italic_angle: Option<IntegerOrFloat>,
+    /// Family ID number (macintoshFONDFamilyID).
     #[serde(rename = "macintoshFONDFamilyID")]
     pub macintosh_fond_family_id: Option<Integer>,
+    /// Font name for the FOND resource (macintoshFONDName).
     #[serde(rename = "macintoshFONDName")]
     pub macintosh_fond_name: Option<String>,
+    /// Arbitrary note (note).
     pub note: Option<String>,
+    /// A collection of gasp Range Records (openTypeGaspRangeRecords).
     pub open_type_gasp_range_records: Option<Vec<GaspRangeRecord>>,
+    /// Creation date (openTypeHeadCreated).
     pub open_type_head_created: Option<String>,
+    /// head table flags (openTypeHeadFlags).
     pub open_type_head_flags: Option<Bitlist>,
+    /// Smallest readable size in pixels (openTypeHeadLowestRecPPEM).
     #[serde(rename = "openTypeHeadLowestRecPPEM")]
     pub open_type_head_lowest_rec_ppem: Option<NonNegativeInteger>,
+    /// Ascender value (openTypeHheaAscender).
     pub open_type_hhea_ascender: Option<Integer>,
+    /// Caret offset value (openTypeHheaCaretOffset).
     pub open_type_hhea_caret_offset: Option<Integer>,
+    /// Caret slope rise value (openTypeHheaCaretSlopeRise).
     pub open_type_hhea_caret_slope_rise: Option<Integer>,
+    /// Caret slope run value (openTypeHheaCaretSlopeRun)
     pub open_type_hhea_caret_slope_run: Option<Integer>,
+    /// Descender value (openTypeHheaDescender).
     pub open_type_hhea_descender: Option<Integer>,
+    /// Line gap value (openTypeHheaLineGap).
     pub open_type_hhea_line_gap: Option<Integer>,
+    /// Compatible full name (openTypeNameCompatibleFullName).
     pub open_type_name_compatible_full_name: Option<String>,
+    /// Description of the font (openTypeNameDescription).
     pub open_type_name_description: Option<String>,
+    /// URL for the designer (openTypeNameDesignerURL).
     #[serde(rename = "openTypeNameDesignerURL")]
     pub open_type_name_designer_url: Option<String>,
+    /// Designer name (openTypeNameDesigner).
     pub open_type_name_designer: Option<String>,
+    /// License text (openTypeNameLicense).
     pub open_type_name_license: Option<String>,
+    /// License URL (openTypeNameLicenseURL).
     #[serde(rename = "openTypeNameLicenseURL")]
     pub open_type_name_license_url: Option<String>,
+    /// Manufacturer name (openTypeNameManufacturer).
     pub open_type_name_manufacturer: Option<String>,
+    /// Manufacturer URL (openTypeNameManufacturerURL).
     #[serde(rename = "openTypeNameManufacturerURL")]
     pub open_type_name_manufacturer_url: Option<String>,
+    /// Preferred family name (openTypeNamePreferredFamilyName).
     pub open_type_name_preferred_family_name: Option<String>,
+    /// Preferred sub-family name (openTypeNamePreferredSubfamilyName).
     pub open_type_name_preferred_subfamily_name: Option<String>,
+    /// A collection of name records (openTypeNameRecords).
     pub open_type_name_records: Option<Vec<NameRecord>>,
+    /// Sample text (openTypeNameSampleText).
     pub open_type_name_sample_text: Option<String>,
+    /// Unique ID string (openTypeNameUniqueID).
     #[serde(rename = "openTypeNameUniqueID")]
     pub open_type_name_unique_id: Option<String>,
+    /// Version string (openTypeNameVersion).
     pub open_type_name_version: Option<String>,
+    /// WWS family name (openTypeNameWWSFamilyName).
     #[serde(rename = "openTypeNameWWSFamilyName")]
     pub open_type_name_wws_family_name: Option<String>,
+    /// WWS sub-family name (openTypeNameWWSSubfamilyName).
     #[serde(rename = "openTypeNameWWSSubfamilyName")]
     pub open_type_name_wws_subfamily_name: Option<String>,
+    /// Bit flags that represent code page ranges present in the font
+    /// (openTypeOS2CodePageRanges).
     #[serde(rename = "openTypeOS2CodePageRanges")]
     pub open_type_os2_code_page_ranges: Option<Bitlist>,
+    /// Font class and sub-class (openTypeOS2FamilyClass).
     #[serde(rename = "openTypeOS2FamilyClass")]
     pub open_type_os2_family_class: Option<Os2FamilyClass>,
+    /// Panose specification settings (openTypeOS2Panose).
     #[serde(rename = "openTypeOS2Panose")]
     pub open_type_os2_panose: Option<Os2Panose>,
+    /// fsSelection bit settings (openTypeOS2Selection).
     #[serde(rename = "openTypeOS2Selection")]
     pub open_type_os2_selection: Option<Bitlist>,
+    /// Strikeout position (openTypeOS2StrikeoutPosition).
     #[serde(rename = "openTypeOS2StrikeoutPosition")]
     pub open_type_os2_strikeout_position: Option<Integer>,
+    /// Strikeout size (openTypeOS2StrikeoutSize).
     #[serde(rename = "openTypeOS2StrikeoutSize")]
     pub open_type_os2_strikeout_size: Option<Integer>,
+    /// Subscript x offset (openTypeOS2SubscriptXOffset).
     #[serde(rename = "openTypeOS2SubscriptXOffset")]
     pub open_type_os2_subscript_x_offset: Option<Integer>,
+    /// Subscript horizontal size (openTypeOS2SubscriptXSize).
     #[serde(rename = "openTypeOS2SubscriptXSize")]
     pub open_type_os2_subscript_x_size: Option<Integer>,
+    /// Subscript y offset (openTypeOS2SubscriptYOffset).
     #[serde(rename = "openTypeOS2SubscriptYOffset")]
     pub open_type_os2_subscript_y_offset: Option<Integer>,
+    /// Subscript vertical size (openTypeOS2SubscriptYSize).
     #[serde(rename = "openTypeOS2SubscriptYSize")]
     pub open_type_os2_subscript_y_size: Option<Integer>,
+    /// Superscript x offset (openTypeOS2SuperscriptXOffset).
     #[serde(rename = "openTypeOS2SuperscriptXOffset")]
     pub open_type_os2_superscript_x_offset: Option<Integer>,
+    /// Superscript horizontal size (openTypeOS2SuperscriptXSize).
     #[serde(rename = "openTypeOS2SuperscriptXSize")]
     pub open_type_os2_superscript_x_size: Option<Integer>,
+    /// Superscript y offset (openTypeOS2SuperscriptYOffset).
     #[serde(rename = "openTypeOS2SuperscriptYOffset")]
     pub open_type_os2_superscript_y_offset: Option<Integer>,
+    /// Superscript vertical size (openTypeOS2SuperscriptYSize).
     #[serde(rename = "openTypeOS2SuperscriptYSize")]
     pub open_type_os2_superscript_y_size: Option<Integer>,
+    /// Bit flags indicating the embedding type (openTypeOS2Type).
     #[serde(rename = "openTypeOS2Type")]
     pub open_type_os2_type: Option<Bitlist>,
+    /// Ascender value (openTypeOS2TypoAscender).
     #[serde(rename = "openTypeOS2TypoAscender")]
     pub open_type_os2_typo_ascender: Option<Integer>,
+    /// Descender value (openTypeOS2TypoDescender).
     #[serde(rename = "openTypeOS2TypoDescender")]
     pub open_type_os2_typo_descender: Option<Integer>,
+    /// Line gap value (openTypeOS2TypoLineGap).
     #[serde(rename = "openTypeOS2TypoLineGap")]
     pub open_type_os2_typo_line_gap: Option<Integer>,
+    /// Bit flags that represent Unicode ranges present in
+    /// the font (openTypeOS2UnicodeRanges).
     #[serde(rename = "openTypeOS2UnicodeRanges")]
     pub open_type_os2_unicode_ranges: Option<Bitlist>,
+    /// Four character vendor ID (openTypeOS2VendorID).
     #[serde(rename = "openTypeOS2VendorID")]
     pub open_type_os2_vendor_id: Option<String>,
+    /// OS/2 weight class (openTypeOS2WeightClass).
     #[serde(rename = "openTypeOS2WeightClass")]
     pub open_type_os2_weight_class: Option<NonNegativeInteger>,
+    /// OS/2 width class (openTypeOS2WidthClass).
     #[serde(rename = "openTypeOS2WidthClass")]
     pub open_type_os2_width_class: Option<Os2WidthClass>,
+    /// Ascender value (openTypeOS2WinAscent).
     #[serde(rename = "openTypeOS2WinAscent")]
     pub open_type_os2_win_ascent: Option<NonNegativeInteger>,
+    /// Descender value (openTypeOS2WinDescent).
     #[serde(rename = "openTypeOS2WinDescent")]
     pub open_type_os2_win_descent: Option<NonNegativeInteger>,
+    /// Caret offset value (openTypeVheaCaretOffset).
     pub open_type_vhea_caret_offset: Option<Integer>,
+    /// Caret slope rise value (openTypeVheaCaretSlopeRise).
     pub open_type_vhea_caret_slope_rise: Option<Integer>,
+    /// Caret slope run value (openTypeVheaCaretSlopeRun).
     pub open_type_vhea_caret_slope_run: Option<Integer>,
+    /// Ascender value (openTypeVheaVertTypoAscender).
     pub open_type_vhea_vert_typo_ascender: Option<Integer>,
+    /// Descender value (openTypeVheaVertTypoDescender).
     pub open_type_vhea_vert_typo_descender: Option<Integer>,
+    /// Line gap value (openTypeVheaVertTypoLineGap).
     pub open_type_vhea_vert_typo_line_gap: Option<Integer>,
+    /// Postscript BlueFuzz value (postscriptBlueFuzz).
     pub postscript_blue_fuzz: Option<IntegerOrFloat>,
+    /// Postscript BlueScale value (postscriptBlueScale).
     pub postscript_blue_scale: Option<Float>,
+    /// Postscript BlueShift value (postscriptBlueShift).
     pub postscript_blue_shift: Option<IntegerOrFloat>,
+    /// A collection of values that should be in the
+    /// Type 1/CFF BlueValues field (postscriptBlueValues).
     pub postscript_blue_values: Option<Vec<IntegerOrFloat>>,
+    /// Name of default glyph in PFM files (postscriptDefaultCharacter).
     pub postscript_default_character: Option<String>,
+    /// Default glyph width (postscriptDefaultWidthX).
     pub postscript_default_width_x: Option<IntegerOrFloat>,
+    /// A collection of values that should be in the Type 1/CFF
+    /// FamilyBlues field (postscriptFamilyBlues).
     pub postscript_family_blues: Option<Vec<IntegerOrFloat>>,
+    /// A collection of values that should be in the Type 1/CFF
+    /// FamilyOtherBlues field (postscriptFamilyOtherBlues).
     pub postscript_family_other_blues: Option<Vec<IntegerOrFloat>>,
+    /// Type 1/CFF table FontName field (postscriptFontName).
     pub postscript_font_name: Option<String>,
+    /// Boolean value that indicates how Type 1/CFF ForceBold should
+    /// be set (postscriptForceBold).
     pub postscript_force_bold: Option<bool>,
+    /// Type 1/CFF table FullName field (postscriptFullName).
     pub postscript_full_name: Option<String>,
+    /// Boolean that indicates if a font is monospaced
+    /// (postscriptIsFixedPitch).
     pub postscript_is_fixed_pitch: Option<bool>,
+    /// Glyph nominal width (postscriptNominalWidthX).
     pub postscript_nominal_width_x: Option<IntegerOrFloat>,
+    /// A collection of values that should be in the Type 1/CFF
+    /// OtherBlues field (postscriptOtherBlues).
     pub postscript_other_blues: Option<Vec<IntegerOrFloat>>,
+    /// Slant angle in counter-clockwise degrees from the vertical
+    /// (postscriptSlantAngle).
     pub postscript_slant_angle: Option<IntegerOrFloat>,
+    /// A collection of horizontal stems sorted in the order specified
+    /// in the Type 1/CFF specification (postscriptStemSnapH).
     pub postscript_stem_snap_h: Option<Vec<IntegerOrFloat>>,
+    /// A collection of vertical stems sorted in the order specified
+    /// in the Type 1/CFF specification (postscriptStemSnapV).
     pub postscript_stem_snap_v: Option<Vec<IntegerOrFloat>>,
+    /// Underline position value (postscriptUnderlinePosition).
     pub postscript_underline_position: Option<IntegerOrFloat>,
+    /// Underline thickness value (postscriptUnderlineThickness).
     pub postscript_underline_thickness: Option<IntegerOrFloat>,
+    /// Unique ID as specified by the Type 1/CFF specification
+    /// (postscriptUniqueID).
     #[serde(rename = "postscriptUniqueID")]
     pub postscript_unique_id: Option<Integer>,
+    /// Overall font weight (postscriptWeightName).
     pub postscript_weight_name: Option<String>,
+    /// Windows character set (postscriptWindowsCharacterSet).
     pub postscript_windows_character_set: Option<PostscriptWindowsCharacterSet>,
+    /// Family name in bold, italic, bold italic style mapping
+    /// (styleMapFamilyName).
     pub style_map_family_name: Option<String>,
+    /// Style map style (styleMapStyleName).
     pub style_map_style_name: Option<StyleMapStyle>,
+    /// Style name (styleName).
     pub style_name: Option<String>,
+    /// Trademark statement (trademark).
     pub trademark: Option<String>,
+    /// Units per em (unitsPerEm).
     pub units_per_em: Option<NonNegativeIntegerOrFloat>,
+    /// Major version number (versionMajor).
     pub version_major: Option<Integer>,
+    /// Minor version number (versionMinor).
     pub version_minor: Option<NonNegativeInteger>,
+    /// Major version number (woffMajorVersion).
     pub woff_major_version: Option<NonNegativeInteger>,
+    /// Font copyright (woffMetadataCopyright).
     pub woff_metadata_copyright: Option<WoffMetadataCopyright>,
+    /// Font credits (woffMetadataCredits).
     pub woff_metadata_credits: Option<WoffMetadataCredits>,
+    /// Font description (woffMetadataDescription).
     pub woff_metadata_description: Option<WoffMetadataDescription>,
+    /// A collection of metadata extension records (woffMetadataExtensions).
     pub woff_metadata_extensions: Option<Vec<WoffMetadataExtensionRecord>>,
+    /// Font license (woffMetadataLicense).
     pub woff_metadata_license: Option<WoffMetadataLicense>,
+    /// Font licensee (woffMetadataLicensee).
     pub woff_metadata_licensee: Option<WoffMetadataLicensee>,
+    /// Font trademark (woffMetadataTrademark).
     pub woff_metadata_trademark: Option<WoffMetadataTrademark>,
+    /// Font unique ID (woffMetadataUniqueID).
     #[serde(rename = "woffMetadataUniqueID")]
     pub woff_metadata_unique_id: Option<WoffMetadataUniqueId>,
+    /// Font vendor (woffMetadataVendor).
     pub woff_metadata_vendor: Option<WoffMetadataVendor>,
+    /// Minor version number (woffMinorVersion).
     pub woff_minor_version: Option<NonNegativeInteger>,
+    /// x-height value (xHeight).
     pub x_height: Option<IntegerOrFloat>,
+    /// Year that the font was created (year).
     pub year: Option<Integer>,
 }
 
@@ -325,7 +447,7 @@ struct FontInfoV1 {
 }
 
 impl FontInfo {
-    /// Create FontInfo from a file, upgrading from the supplied format_version to the highest
+    /// Returns [`FontInfo`] from a file, upgrading from the supplied `format_version` to the highest
     /// internally supported version.
     ///
     /// The conversion follows what ufoLib and defcon are doing, e.g. various fields that were
@@ -610,7 +732,7 @@ impl FontInfo {
         }
     }
 
-    /// Returns `false` if this FontInfo has any non-default value, and `true` otherwise.
+    /// Returns `false` if this [`FontInfo`] has any non-default value, and `true` otherwise.
     pub fn is_empty(&self) -> bool {
         self == &Self::default()
     }
@@ -794,7 +916,7 @@ impl FontInfo {
         Ok(())
     }
 
-    /// Dump guideline libs into a Plist.
+    /// Dump guideline libs into a [`Plist`].
     pub(crate) fn dump_object_libs(&self) -> Plist {
         let mut object_libs = Plist::default();
 
@@ -816,8 +938,10 @@ impl FontInfo {
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct GaspRangeRecord {
+    /// Range max PPEM.
     #[serde(rename = "rangeMaxPPEM")]
     pub range_max_ppem: NonNegativeInteger,
+    /// Range gasp behavior.
     pub range_gasp_behavior: Vec<GaspBehavior>,
 }
 
@@ -825,9 +949,13 @@ pub struct GaspRangeRecord {
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum GaspBehavior {
+    /// Use grid fitting.
     Gridfit = 0,
+    /// Use gray scale rendering.
     DoGray = 1,
+    /// Use grid fitting with symmetric smoothing.
     SymmetricGridfit = 2,
+    /// Use multi-axis smoothing.
     SymmetricSmoothing = 3,
 }
 
@@ -835,36 +963,53 @@ pub enum GaspBehavior {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NameRecord {
+    /// Name ID.
     #[serde(rename = "nameID")]
     pub name_id: NonNegativeInteger,
+    /// Platform ID.
     #[serde(rename = "platformID")]
     pub platform_id: NonNegativeInteger,
+    /// Platform encoding ID.
     #[serde(rename = "encodingID")]
     pub encoding_id: NonNegativeInteger,
+    /// Language ID.
     #[serde(rename = "languageID")]
     pub language_id: NonNegativeInteger,
+    /// Name record string value.
     pub string: String,
 }
 
-/// Corresponds to the allowed values for [openTypeOS2WidthClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
+/// Corresponds to the allowed values for
+/// [openTypeOS2WidthClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum Os2WidthClass {
+    /// Ultra-condensed width.
     UltraCondensed = 1,
+    /// Extra-condensed width.
     ExtraCondensed = 2,
+    /// Condensed width.
     Condensed = 3,
+    /// Semi-condensed width.
     SemiCondensed = 4,
+    /// Medium (normal) width.
     Normal = 5,
+    /// Semi-expanded width.
     SemiExpanded = 6,
+    /// Expanded width.
     Expanded = 7,
+    /// Extra-expanded width.
     ExtraExpanded = 8,
+    /// Ultra-expanded width.
     UltraExpanded = 9,
 }
 
 /// Corresponds to [openTypeOS2FamilyClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Os2FamilyClass {
+    /// Class ID.
     pub class_id: u8,
+    /// Sub-class ID.
     pub subclass_id: u8,
 }
 
@@ -907,15 +1052,25 @@ impl<'de> Deserialize<'de> for Os2FamilyClass {
 /// Corresponds to [openTypeOS2Panose](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Os2Panose {
+    /// Panose family type.
     pub family_type: NonNegativeInteger,
+    /// Panose serif style.
     pub serif_style: NonNegativeInteger,
+    /// Panose weight.
     pub weight: NonNegativeInteger,
+    /// Panose proportion.
     pub proportion: NonNegativeInteger,
+    /// Panose contrast.
     pub contrast: NonNegativeInteger,
+    /// Panose stroke variation.
     pub stroke_variation: NonNegativeInteger,
+    /// Panose arm style.
     pub arm_style: NonNegativeInteger,
+    /// Panose letterform.
     pub letterform: NonNegativeInteger,
+    /// Panose midline.
     pub midline: NonNegativeInteger,
+    /// Panose x-height.
     pub x_height: NonNegativeInteger,
 }
 
@@ -1030,128 +1185,193 @@ impl<'de> Deserialize<'de> for Os2PanoseV2 {
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum PostscriptWindowsCharacterSet {
+    /// ANSI character set.
     Ansi = 1,
+    /// Default character set.
     Default = 2,
+    /// Symbol character set.
     Symbol = 3,
+    /// Macintosh character set.
     Macintosh = 4,
+    /// Shift JIS character set.
     ShiftJis = 5,
+    /// Hangul character set.
     Hangul = 6,
+    /// Hangul (Johab) character set.
     HangulJohab = 7,
+    /// GB2312 character set.
     Gb2312 = 8,
+    /// Chinese BIG5 character set.
     ChineseBig5 = 9,
+    /// Greek character set.
     Greek = 10,
+    /// Turkish character set.
     Turkish = 11,
+    /// Vietnamese character set.
     Vietnamese = 12,
+    /// Hebrew character set.
     Hebrew = 13,
+    /// Arabic character set.
     Arabic = 14,
+    /// Baltic character set.
     Baltic = 15,
+    /// Bitstream character set.
     Bitstream = 16,
+    /// Cyrillic character set.
     Cyrillic = 17,
+    /// Thai character set.
     Thai = 18,
+    /// Eastern European character set.
     EasternEuropean = 19,
+    /// OEM character set.
     Oem = 20,
 }
 
 /// Corresponds to woffMetadataCopyright in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCopyright {
+    /// WOFF Metadata Copyright Record
     pub text: Vec<WoffMetadataTextRecord>,
 }
 
 /// Corresponds to woffMetadataCredits in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCredits {
+    /// A collection of WOFF Metadata Credit Records
     pub credits: Vec<WoffMetadataCredit>,
 }
 
+/// A WOFF Metadata Credits Record data structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataCredit {
+    /// Name.
     pub name: String,
+    /// URL.
     pub url: Option<String>,
+    /// Role.
     pub role: Option<String>,
+    /// Writing direction.
     pub dir: Option<WoffAttributeDirection>,
+    /// Class.
     pub class: Option<String>,
 }
 
 /// Corresponds to woffMetadataDescription in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataDescription {
+    /// Description URL.
     pub url: Option<String>,
+    /// Description Text.
     pub text: Vec<WoffMetadataTextRecord>,
 }
 
+/// A WOFF Metadata Text Record data structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataTextRecord {
+    /// Text.
     pub text: String,
+    /// Language.
     pub language: Option<String>,
+    /// Writing direction.
     pub dir: Option<WoffAttributeDirection>,
+    /// Class.
     pub class: Option<String>,
 }
 
+/// A WOFF Metadata Extension Record data structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionRecord {
+    /// Identifier.
     pub id: Option<String>,
+    /// Extension names.
     pub names: Vec<WoffMetadataExtensionNameRecord>,
+    /// Extension items.
     pub items: Vec<WoffMetadataExtensionItemRecord>,
 }
 
+/// A WOFF Metadata Extension Name Record data structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionNameRecord {
+    /// Text.
     pub text: String,
+    /// Language.
     pub language: Option<String>,
+    /// Writing direction.
     pub dir: Option<WoffAttributeDirection>,
+    /// Class.
     pub class: Option<String>,
 }
 
+/// A WOFF Metadata Extension Item Record data structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionItemRecord {
+    /// Identifier.
     pub id: Option<String>, // XXX: Spec does not specify if required, assume optional.
+    /// Extension names.
     pub names: Vec<WoffMetadataExtensionNameRecord>,
+    /// Extension values.
     pub values: Vec<WoffMetadataExtensionValueRecord>,
 }
 
+/// A WOFF Metadata Extension Value Record data structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataExtensionValueRecord {
+    /// Text.
     pub text: String,
+    /// Language.
     pub language: Option<String>,
+    /// Writing direction.
     pub dir: Option<WoffAttributeDirection>,
+    /// Class.
     pub class: Option<String>,
 }
 
 /// Corresponds to woffMetadataLicense in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataLicense {
+    /// License URL.
     pub url: Option<String>,
+    /// License identifier.
     pub id: Option<String>,
+    /// License text.
     pub text: Vec<WoffMetadataTextRecord>,
 }
 
 /// Corresponds to woffMetadataLicensee in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataLicensee {
+    /// Licensee name.
     pub name: String,
+    /// Writing direction.
     pub dir: Option<WoffAttributeDirection>,
+    /// Class.
     pub class: Option<String>,
 }
 
 /// Corresponds to woffMetadataTrademark in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataTrademark {
+    /// Trademark text.
     pub text: Vec<WoffMetadataTextRecord>,
 }
 
 /// Corresponds to woffMetadataUniqueID in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataUniqueId {
+    /// Unique identifier.
     pub id: String,
 }
 
 /// Corresponds to woffMetadataVendor in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct WoffMetadataVendor {
+    /// Vendor name.
     pub name: String,
+    /// Vendor URL.
     pub url: String,
+    /// Writing direction.
     pub dir: Option<WoffAttributeDirection>,
+    /// Class.
     pub class: Option<String>,
 }
 
@@ -1159,7 +1379,9 @@ pub struct WoffMetadataVendor {
 /// If present, is either "ltr" or "rtl".
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum WoffAttributeDirection {
+    /// Left to Right writing direction.
     LeftToRight,
+    /// Right to Left writing direction.
     RightToLeft,
 }
 
@@ -1193,9 +1415,13 @@ impl<'de> Deserialize<'de> for WoffAttributeDirection {
 /// If present, is either "regular", "italic", "bold" or "bold italic".
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum StyleMapStyle {
+    /// Regular style.
     Regular,
+    /// Italic style.
     Italic,
+    /// Bold style.
     Bold,
+    /// Bold Italic style.
     BoldItalic,
 }
 

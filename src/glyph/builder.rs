@@ -28,7 +28,7 @@ use crate::{
 /// constraints about how often a Glyph field or "element" can appear in a `.glif` file. For
 /// example, calling `outline()` twice results in an error.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```ignore
 /// use std::str::FromStr;

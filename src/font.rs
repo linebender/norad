@@ -32,18 +32,44 @@ pub(crate) static DATA_DIR: &str = "data";
 pub(crate) static IMAGES_DIR: &str = "images";
 
 /// A Unified Font Object.
+///
+/// See the [UFO specification] for a description of the underlying data.
+///
+/// [UFO specification]: https://unifiedfontobject.org/versions/ufo3/
 #[derive(Clone, Debug, Default, PartialEq)]
 #[non_exhaustive]
 pub struct Font {
+    /// [metainfo.plist][mi] parsed data field
+    ///
+    /// [mi]: https://unifiedfontobject.org/versions/ufo3/metainfo.plist/
     pub meta: MetaInfo,
+    /// [fontinfo.plist][fi] parsed data field
+    ///
+    /// [fi]: https://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
     pub font_info: FontInfo,
+    /// font layers, each containing an independent set of glyphs.
     pub layers: LayerSet,
+    /// [lib.plist][l] parsed data field
+    ///
+    /// [l]: https://unifiedfontobject.org/versions/ufo3/lib.plist/
     pub lib: Plist,
+    /// [groups.plist][g] parsed data field
+    ///
+    /// [g]: https://unifiedfontobject.org/versions/ufo3/groups.plist/
     pub groups: Groups,
+    /// [kerning.plist][k] parsed data field
+    ///
+    /// [k]: https://unifiedfontobject.org/versions/ufo3/kerning.plist/
     pub kerning: Kerning,
+    /// [features.fea][fea] file data field
+    ///
+    /// [fea]: https://unifiedfontobject.org/versions/ufo3/features.fea/
     pub features: String,
+    /// [`DataRequest`] field
     pub data_request: DataRequest,
+    /// [`DataStore`] field
     pub data: DataStore,
+    /// [`ImageStore`] field
     pub images: ImageStore,
 }
 
@@ -53,8 +79,11 @@ pub struct Font {
 #[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum FormatVersion {
+    /// UFO specification major version 1. Only reading (and upconversion) is supported.
     V1 = 1,
+    /// UFO specfication major version 2. Only reading (and upconversion) is supported.
     V2 = 2,
+    /// UFO specification major version 3
     V3 = 3,
 }
 
@@ -64,8 +93,11 @@ pub enum FormatVersion {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MetaInfo {
+    /// Creator field
     pub creator: Option<String>,
+    /// UFO specification major version field
     pub format_version: FormatVersion,
+    /// UFO specification minor version field
     #[serde(default, skip_serializing_if = "is_zero")]
     pub format_version_minor: u32,
 }
@@ -85,28 +117,75 @@ impl Default for MetaInfo {
 }
 
 impl Font {
-    /// Create a new, empty `Font` object.
+    /// Returns a new, empty [`Font`] object.
     pub fn new() -> Self {
         Font::default()
     }
 
-    /// Attempt to load a font object from a file.
+    /// Returns a [`Font`] object with data from a UFO directory `path`.
     ///
     /// `path` must point to a directory with the structure described in
     /// [v3 of the Unified Font Object][v3] spec.
     ///
-    /// # Note
+    /// # Examples
     ///
-    /// This will consume the `public.objectLibs` key in the global lib
+    /// ```no_run
+    /// use norad::Font;
+    ///
+    /// let ufo = Font::load("path/to/font.ufo").expect("failed to load");
+    /// ```
+    ///
+    /// Note: This will consume the `public.objectLibs` key in the global lib
     /// and in glyph libs and assign object libs found therein to global
     /// guidelines and glyph objects with the matching identifier, respectively.
+    ///
+    /// See [Font::load_requested_data] for a load method that supports customization
+    /// of the data inclusion / exclusion criteria.
     ///
     /// [v3]: http://unifiedfontobject.org/versions/ufo3/
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Font, Error> {
         Self::load_requested_data(path, &DataRequest::default())
     }
 
-    /// Attempt to load the requested elements of a font object from a file.
+    /// Returns a [`Font`] object with custom data inclusion/exclusion
+    /// criteria from a UFO directory `path`.  
+    ///
+    /// UFO data inclusion and exclusion criteria are defined with a [`DataRequest`] parameter.
+    ///
+    /// # Examples
+    ///
+    /// A font object that excludes all layer, glyph and kerning data:
+    ///
+    /// ```no_run
+    /// use norad::DataRequest;
+    /// use norad::Font;
+    ///
+    /// let datareq = DataRequest::default().layers(false).kerning(false);
+    ///
+    /// let ufo = Font::load_requested_data("path/to/font.ufo", &datareq).expect("failed to load");
+    /// ```
+    ///
+    /// A font object that excludes all data and images:
+    ///
+    /// ```no_run
+    /// use norad::DataRequest;
+    /// use norad::Font;
+    ///
+    /// let datareq = DataRequest::default().data(false).images(false);
+    ///
+    /// let ufo = Font::load_requested_data("path/to/font.ufo", &datareq).expect("failed to load");
+    /// ```
+    ///
+    /// A font object that includes only parsed lib.plist data:
+    ///
+    /// ```no_run
+    /// use norad::DataRequest;
+    /// use norad::Font;
+    ///
+    /// let datareq = DataRequest::none().lib(true);
+    ///
+    /// let ufo = Font::load_requested_data("path/to/font.ufo", &datareq).expect("failed to load");
+    /// ```
     pub fn load_requested_data(
         path: impl AsRef<Path>,
         request: &DataRequest,
@@ -217,20 +296,103 @@ impl Font {
         })
     }
 
-    /// Attempt to save this UFO to the given path, overriding any existing contents.
+    /// Serialize a [`Font`] to the given `path`, overwriting any existing contents.
     ///
-    /// This may fail; instead of saving directly to the target path, it is a good
+    /// # Examples
+    ///
+    /// With a [`Font`] object such as:
+    ///
+    /// ```no_run
+    /// use norad::Font;
+    ///
+    /// let ufo = Font::load("path/to/in-font.ufo").expect("failed to load");
+    /// # ufo.save("path/to/out-font.ufo").expect("failed to save");
+    /// ```
+    ///
+    /// do things with the [`Font`], then serialize to disk with:
+    ///
+    /// ```no_run
+    /// # use norad::Font;
+    /// # let ufo = Font::load("path/to/in-font.ufo").expect("failed to load");
+    /// ufo.save("path/to/out-font.ufo").expect("failed to save");
+    /// ```
+    ///
+    /// Note: This may fail; instead of saving directly to the target path, it is a good
     /// idea to save to a temporary location and then move that to the target path
     /// if the save is successful.
     ///
     /// This _will_ fail if either the global or any glyph lib contains the
-    /// `public.objectLibs` key, as object lib management is done automatically.
+    /// `public.objectLibs` key, as object lib management must currently be done
+    /// by norad.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
         let path = path.as_ref();
         self.save_impl(path, &Default::default())
     }
 
-    /// Attempt to save the UFO, using the provided [`WriteOptions`].
+    /// Serialize a [`Font`] to the given `path`, overwriting any existing contents,
+    /// with custom [`WriteOptions`] serialization format settings.
+    ///
+    /// # Examples
+    ///
+    /// With a [`Font`] object:
+    ///
+    /// ```no_run
+    /// use norad::{Font, QuoteChar, WriteOptions};
+    ///
+    /// let ufo = Font::load("path/to/in-font.ufo").expect("failed to load");
+    /// ```
+    ///
+    /// define the serialization format with a [`WriteOptions`] type:
+    ///
+    /// ```no_run
+    /// # use norad::{Font, QuoteChar, WriteOptions};
+    /// # let ufo = Font::load("path/to/in-font.ufo").expect("failed to load");
+    /// let single_tab = WriteOptions::default();
+    ///
+    /// let two_tabs = WriteOptions::default()
+    ///     .whitespace("\t\t");
+    ///
+    /// let spaces = WriteOptions::default()
+    ///     .whitespace("  ");
+    ///
+    /// let spaces_and_singlequotes = WriteOptions::default()
+    ///     .whitespace("  ")
+    ///     .quote_char(QuoteChar::Single);
+    /// ```
+    ///
+    /// and serialize to disk with the respective [`WriteOptions`] configuration:
+    ///
+    /// ```no_run
+    /// # use norad::{Font, QuoteChar, WriteOptions};
+    /// # let ufo = Font::load("path/to/in-font.ufo").expect("failed to load");
+    /// # let single_tab = WriteOptions::default();
+    /// # let two_tabs = WriteOptions::default()
+    /// #   .whitespace("\t\t");
+    /// # let spaces = WriteOptions::default()
+    /// #    .whitespace("  ");
+    /// # let spaces_and_singlequotes = WriteOptions::default()
+    /// #   .whitespace("  ")
+    /// #   .quote_char(QuoteChar::Single);
+    /// // with single tab indentation (default)
+    /// ufo.save_with_options("path/to/out-font1.ufo", &single_tab);
+    ///
+    /// // with two tab indentation
+    /// ufo.save_with_options("path/to/out-font2.ufo", &two_tabs);
+    ///
+    /// // with two space indentation
+    /// ufo.save_with_options("path/to/out-font3.ufo", &spaces);
+    ///
+    /// // with two space indentation and single quote XML declarations
+    /// ufo.save_with_options("path/to/out-font4.ufo", &spaces_and_singlequotes);
+    /// ```
+    ///
+    /// Note: This may fail; instead of saving directly to the target path, it is a good
+    /// idea to save to a temporary location and then move that to the target path
+    /// if the save is successful.
+    ///
+    /// This _will_ fail if either the global or any glyph lib contains the
+    /// `public.objectLibs` key, as object lib management must currently be done
+    /// by norad.
     pub fn save_with_options(
         &self,
         path: impl AsRef<Path>,
@@ -363,12 +525,13 @@ impl Font {
         self.layers.iter()
     }
 
-    /// Returns an iterator over all the glyphs in the default layer.
+    /// Returns an iterator over all the glyph names _in the default layer_.
     pub fn iter_names(&self) -> impl Iterator<Item = GlyphName> + '_ {
         self.layers.default_layer().glyphs.keys().cloned()
     }
 
-    /// Returns a reference to the glyph with the given name (in the default layer).
+    /// Returns a reference to the glyph with the given name _in the default
+    /// layer_.
     pub fn get_glyph<K>(&self, key: &K) -> Option<&Arc<Glyph>>
     where
         GlyphName: Borrow<K>,
@@ -377,8 +540,8 @@ impl Font {
         self.default_layer().get_glyph(key)
     }
 
-    /// Returns a mutable reference to the glyph with the given name,
-    /// IN THE DEFAULT LAYER, if it exists.
+    /// Returns a mutable reference to the glyph with the given name
+    /// _in the default layer_, if it exists.
     pub fn get_glyph_mut<K>(&mut self, key: &K) -> Option<&mut Glyph>
     where
         GlyphName: Borrow<K>,
@@ -387,7 +550,7 @@ impl Font {
         self.default_layer_mut().get_glyph_mut(key)
     }
 
-    /// Returns the total number of glyphs in the default layer.
+    /// Returns the total number of glyphs _in the default layer_.
     pub fn glyph_count(&self) -> usize {
         self.default_layer().len()
     }

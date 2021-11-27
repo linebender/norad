@@ -27,6 +27,11 @@ impl Glyph {
         self.encode_xml_with_options(&options)
     }
 
+    /// Serialize the glyph into an XML byte stream with custom string formatting.
+    ///
+    /// The order of elements and attributes follows [ufonormalizer] where possible.
+    ///
+    /// [ufonormalizer]: https://github.com/unified-font-object/ufoNormalizer/
     pub fn encode_xml_with_options(&self, opts: &WriteOptions) -> Result<Vec<u8>, GlifWriteError> {
         self.encode_xml_impl(opts)
             .map_err(|inner| GlifWriteError { name: self.name.clone(), inner })

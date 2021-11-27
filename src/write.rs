@@ -64,8 +64,8 @@ impl WriteOptions {
     /// not contain multiple different characters. As an example, "\t\t" is
     /// fine, but "\t  \t" is not, because it contains both tabs and spaces.
     ///
-    /// This is not good API, but is a work around for the fact that the quick-xml
-    /// and plist crates both represent whitespace in different ways.
+    // This is not good API, but is a work around for the fact that the quick-xml
+    // and plist crates both represent whitespace in different ways.
     ///
     /// # Panics
     ///
@@ -109,7 +109,7 @@ pub enum QuoteChar {
     Double,
 }
 
-/// Write a `plist::Value` to file, providing custom options.
+/// Write a [`plist::Value`] to file, providing custom options.
 pub fn write_plist_value_to_file(
     path: &Path,
     value: &plist::Value,
@@ -137,6 +137,7 @@ pub fn write_xml_to_file(
     Ok(())
 }
 
+/// Write XML declarations with custom quote formatting options.
 pub fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), Error> {
     // Optionally modify the XML declaration quote style
     match options.quote_style {

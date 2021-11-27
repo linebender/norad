@@ -2,21 +2,54 @@
 
 /// A type that describes which components of a UFO should be loaded.
 ///
-/// By default, we load all components of the UFO file; however if you only
-/// need some subset of these, you can pass this struct to [`Ufo::with_fields`]
-/// in order to only load the fields specified in this object. This can help a
-/// lot with performance with large UFO files if you don't need the glyph data.
+/// By default, all components of the UFO file are loaded; however, if you only
+/// need a subset of them, you can pass this struct to [`Ufo::with_fields`] in
+/// order to only load the fields you specify. This can improve performance in
+/// large projects.
+///
+/// # Examples
+///
+/// A [DataRequest] that excludes all layer, glyph and kerning data:
+///
+/// ```
+/// use norad::DataRequest;
+///
+/// let datareq = DataRequest::default().layers(false).kerning(false);
+/// ```
+///
+/// A [DataRequest] that excludes all UFO data and images:
+///
+/// ```
+/// use norad::DataRequest;
+///
+/// let datareq = DataRequest::default().data(false).images(false);
+/// ```
+///
+/// A [DataRequest] that only includes parsed lib.plist data:
+///
+/// ```
+/// use norad::DataRequest;
+///
+/// let datareq = DataRequest::none().lib(true);
+/// ```
 ///
 /// [`Ufo::with_fields`]: struct.Ufo.html#method.with_fields
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct DataRequest {
+    /// Load and parse all layers and glyphs.
     pub layers: bool,
+    /// Load parsed lib.plist data
     pub lib: bool,
+    /// Load parsed groups.plist data
     pub groups: bool,
+    /// Load parsed kerning.plist data
     pub kerning: bool,
+    /// Load Adobe .fea format feature file data
     pub features: bool,
+    /// Load data
     pub data: bool,
+    /// Load images
     pub images: bool,
 }
 
@@ -25,17 +58,17 @@ impl DataRequest {
         DataRequest { layers: b, lib: b, groups: b, kerning: b, features: b, data: b, images: b }
     }
 
-    /// Returns a `DataRequest` requesting all UFO data.
+    /// Returns a [`DataRequest`] requesting all UFO data.
     pub fn all() -> Self {
         DataRequest::from_bool(true)
     }
 
-    /// Returns a `DataRequest` requesting no UFO data.
+    /// Returns a [`DataRequest`] requesting no UFO data.
     pub fn none() -> Self {
         DataRequest::from_bool(false)
     }
 
-    /// Request that returned UFO data include the glyph layers and points.
+    /// Request that returned UFO data include layers and their glyph data.
     pub fn layers(mut self, b: bool) -> Self {
         self.layers = b;
         self
@@ -59,8 +92,8 @@ impl DataRequest {
         self
     }
 
-    /// Request that returned UFO data include OpenType Layout features in Adobe
-    /// .fea format.
+    /// Request that returned UFO data include [OpenType Layout features in Adobe
+    /// .fea format](https://unifiedfontobject.org/versions/ufo3/features.fea/).
     pub fn features(mut self, b: bool) -> Self {
         self.features = b;
         self

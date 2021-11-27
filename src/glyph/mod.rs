@@ -26,24 +26,40 @@ pub type GlyphName = Arc<str>;
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Lens))]
 pub struct Glyph {
+    /// Glyph name.
+    ///
+    /// Must be at least one character long. Names must not contain control characters.
     pub name: GlyphName,
+    /// Glif file format version.
     pub format: GlifVersion,
+    /// Glyph height.
     pub height: f64,
+    /// Glyph width.
     pub width: f64,
+    /// A collection of glyph Unicode code points.
+    ///
+    /// The first entry defines the primary Unicode value for this glyph.
     pub codepoints: Vec<char>,
+    /// Arbitrary glyph note.
     pub note: Option<String>,
+    /// A collection of glyph guidelines.
     pub guidelines: Vec<Guideline>,
+    /// A collection of glyph anchors.
     pub anchors: Vec<Anchor>,
+    /// A collection of glyph components.
     pub components: Vec<Component>,
+    /// A collection of glyph contours.
     pub contours: Vec<Contour>,
+    /// Glyph image data.
     pub image: Option<Image>,
+    /// Glyph library data.
     pub lib: Plist,
 }
 
 impl Glyph {
-    /// Load the glyph at this path.
+    /// Returns a [`Glyph`] at this `path`.
     ///
-    /// When loading glyphs in bulk, `load_with_names` should be preferred,
+    /// When loading glyphs in bulk, [`Glyph::load_with_names`] should be preferred,
     /// since it will allow glyph names (in glyphs and components) to be shared
     /// between instances.
     pub fn load(path: impl AsRef<Path>) -> Result<Self, Error> {
@@ -52,6 +68,8 @@ impl Glyph {
         Glyph::load_with_names(path, &names)
     }
 
+    /// Returns a [`Glyph`] at this `path` with glyph and component glyph name sharing
+    /// between instances.
     pub fn load_with_names(path: &Path, names: &NameList) -> Result<Self, Error> {
         let data = std::fs::read(path)?;
         parse::GlifParser::from_xml(&data, Some(names)).map_err(|e| match e {
@@ -82,7 +100,7 @@ impl Glyph {
         Ok(())
     }
 
-    /// Create a new glyph with the given name.
+    /// Returns a new, "empty" [`Glyph`] with the given `name`.
     pub fn new_named<S: Into<GlyphName>>(name: S) -> Self {
         Glyph::new(name.into(), GlifVersion::V2)
     }
@@ -104,24 +122,23 @@ impl Glyph {
         }
     }
 
-    /// Returns boolean value indicating whether [`Glyph`] is defined with one or
-    /// more [`Component`].
+    /// Returns true if [`Glyph`] contains one or more [`Component`]s.
     pub fn has_component(&self) -> bool {
         !self.components.is_empty()
     }
 
-    /// Returns a usize that represents the number of [`Component`] defined on the Glyph.
+    /// Returns the number of [`Component`]s in the Glyph.
     pub fn component_count(&self) -> usize {
         self.components.len()
     }
 
-    /// Returns boolean indicating the presence of one or more [`Component`] with base
+    /// Returns true if the Glyph contains one or more [`Component`]s with base
     /// glyph name `basename`.
     pub fn has_component_with_base(&self, basename: &str) -> bool {
         self.components.iter().any(|x| *x.base == *basename)
     }
 
-    /// Return a iterator over immutable [`Component`] references filtered by base glyph name.
+    /// Returns an iterator over immutable [`Component`] references filtered by base glyph name.
     pub fn get_components_with_base<'b, 'a: 'b>(
         &'a self,
         basename: &'b str,
@@ -241,50 +258,62 @@ impl Data for Glyph {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub enum GlifVersion {
+    /// Glif file format version 1. Saving this version is not supported.
     V1 = 1,
+    /// Glif file format version 2.
     V2 = 2,
 }
 
-/// An reference position in a glyph, such as for attaching accents.
+/// A reference position in a glyph, such as for attaching accents.
 ///
 /// See the [Anchor section] of the UFO spec for more information.
 ///
 /// [Anchor section]: https://unifiedfontobject.org/versions/ufo3/glyphs/glif/#anchor
 #[derive(Debug, Clone, PartialEq)]
 pub struct Anchor {
+    /// Anchor x coordinate value.
     pub x: f64,
+    /// Anchor y coordinate value.
     pub y: f64,
-    /// An arbitrary name for the anchor.
+    /// Optional arbitrary name for the anchor.
     pub name: Option<String>,
+    /// Optional anchor color.
     pub color: Option<Color>,
-    /// Unique identifier for the anchor within the glyph. This attribute is only required
-    /// when a lib is present and should otherwise only be added as needed.
+    /// Optional unique identifier for the anchor within the glyph.
+    ///
+    /// This attribute is only required when a lib is present and should otherwise only be added as needed.
     identifier: Option<Identifier>,
-    /// The anchor's lib for arbitary data.
+    /// Optional anchor lib for arbitary data.
     lib: Option<Plist>,
 }
 
 /// A reference to another glyph, to be included in this glyph's outline.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
-    /// The name of the base glyph.
+    /// The name of the base glyph used in the component.
     pub base: GlyphName,
+    /// Component affine transormation definition.
     pub transform: AffineTransform,
-    /// Unique identifier for the component within the glyph. This attribute is only required
-    /// when a lib is present and should otherwise only be added as needed.
+    /// Optional unique identifier for the component within the glyph.
+    ///
+    /// This attribute is only required when a lib is present and should otherwise only
+    /// be added as needed.
     identifier: Option<Identifier>,
-    /// The component's lib for arbitary data.
+    ///  Optional lib for arbitary component data.
     lib: Option<Plist>,
 }
 
 /// A single open or closed bezier path segment.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Contour {
+    /// A collection of contour points.
     pub points: Vec<ContourPoint>,
-    /// Unique identifier for the contour within the glyph. This attribute is only required
-    /// when a lib is present and should otherwise only be added as needed.
+    /// Unique identifier for the contour within the glyph.
+    ///
+    /// This attribute is only required when a lib is present and should otherwise only
+    /// be added as needed.
     identifier: Option<Identifier>,
-    /// The contour's lib for arbitary data.
+    /// Optional lib for arbitary contour data.
     lib: Option<Plist>,
 }
 
@@ -348,15 +377,21 @@ impl Contour {
 /// A single point in a [`Contour`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct ContourPoint {
+    /// Contour point x coordinate value.
     pub x: f64,
+    /// Contour point y coordinate value.
     pub y: f64,
+    /// Contour point type.
     pub typ: PointType,
+    /// Whether a smooth curvature should be maintained at this point. Must not be set for off-curve points.
     pub smooth: bool,
+    /// Optional contour point name.
     pub name: Option<String>,
-    /// Unique identifier for the point within the glyph. This attribute is only required
-    /// when a lib is present and should otherwise only be added as needed.
+    /// Optional unique identifier for the point within the glyph.
+    ///
+    /// This attribute is only required when a lib is present and should otherwise only be added as needed.
     identifier: Option<Identifier>,
-    /// The point's lib for arbitary data.
+    /// Optional lib for arbitary contour point data.
     lib: Option<Plist>,
 }
 
@@ -423,15 +458,22 @@ impl std::fmt::Display for PointType {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub struct AffineTransform {
+    /// x-scale value.
     pub x_scale: f64,
+    /// xy-scale value.
     pub xy_scale: f64,
+    /// yx-scale value.
     pub yx_scale: f64,
+    /// y-scale value.
     pub y_scale: f64,
+    /// x-offset value.
     pub x_offset: f64,
+    /// y-offset value.
     pub y_offset: f64,
 }
 
 impl Anchor {
+    /// Returns a new [`Anchor`] given `x` and `y` coordinate values.
     pub fn new(
         x: f64,
         y: f64,
@@ -450,7 +492,7 @@ impl Anchor {
         this
     }
 
-    /// Returns an immutable reference to the anchor's lib.
+    /// Returns a reference to the anchor's lib.
     pub fn lib(&self) -> Option<&Plist> {
         self.lib.as_ref()
     }
@@ -474,7 +516,7 @@ impl Anchor {
         self.lib.take()
     }
 
-    /// Returns an immutable reference to the anchor's identifier.
+    /// Returns a reference to the anchor's identifier.
     pub fn identifier(&self) -> Option<&Identifier> {
         self.identifier.as_ref()
     }
@@ -487,6 +529,7 @@ impl Anchor {
 }
 
 impl Contour {
+    /// Returns a new [`Contour`] given a vector of contour points.
     pub fn new(
         points: Vec<ContourPoint>,
         identifier: Option<Identifier>,
@@ -502,7 +545,7 @@ impl Contour {
         this
     }
 
-    /// Returns an immutable reference to the contour's lib.
+    /// Returns a reference to the contour's lib.
     pub fn lib(&self) -> Option<&Plist> {
         self.lib.as_ref()
     }
@@ -526,7 +569,7 @@ impl Contour {
         self.lib.take()
     }
 
-    /// Returns an immutable reference to the contour's identifier.
+    /// Returns a reference to the contour's identifier.
     pub fn identifier(&self) -> Option<&Identifier> {
         self.identifier.as_ref()
     }
@@ -539,6 +582,8 @@ impl Contour {
 }
 
 impl ContourPoint {
+    /// Returns a new [`ContourPoint`] given an `x` coordinate value,
+    /// `y` coordinate value, point type, and smooth definition.
     pub fn new(
         x: f64,
         y: f64,
@@ -558,7 +603,7 @@ impl ContourPoint {
         this
     }
 
-    /// Returns an immutable reference to the contour's lib.
+    /// Returns a reference to the contour's lib.
     pub fn lib(&self) -> Option<&Plist> {
         self.lib.as_ref()
     }
@@ -582,7 +627,7 @@ impl ContourPoint {
         self.lib.take()
     }
 
-    /// Returns an immutable reference to the contour's identifier.
+    /// Returns a reference to the contour's identifier.
     pub fn identifier(&self) -> Option<&Identifier> {
         self.identifier.as_ref()
     }
@@ -609,6 +654,7 @@ impl ContourPoint {
 }
 
 impl Component {
+    /// Returns a new [`Component`] given a base glyph name and affine transformation definition.
     pub fn new(
         base: GlyphName,
         transform: AffineTransform,
@@ -625,7 +671,7 @@ impl Component {
         this
     }
 
-    /// Returns an immutable reference to the component's lib.
+    /// Returns a reference to the component's lib.
     pub fn lib(&self) -> Option<&Plist> {
         self.lib.as_ref()
     }
@@ -649,7 +695,7 @@ impl Component {
         self.lib.take()
     }
 
-    /// Returns an immutable reference to the component's identifier.
+    /// Returns a reference to the component's identifier.
     pub fn identifier(&self) -> Option<&Identifier> {
         self.identifier.as_ref()
     }
@@ -684,9 +730,11 @@ impl std::default::Default for AffineTransform {
 /// An image included in a glyph.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Image {
-    /// Not an absolute / relative path, but the name of the image file.
+    /// The name of the image file. Must be a base file name, no subdirectories involved.
     pub file_name: PathBuf,
+    /// Optional image color.
     pub color: Option<Color>,
+    /// Affine transformation.
     pub transform: AffineTransform,
 }
 

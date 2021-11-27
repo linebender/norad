@@ -27,13 +27,21 @@ pub enum Line {
     Vertical(f64),
     /// A horizontal line, passing through a given `y` coordinate.
     Horizontal(f64),
-    /// An angled line passing through `(x, y)` at `degrees` degrees counteer-clockwise
+    /// An angled line passing through `(x, y)` at `degrees` degrees counter-clockwise
     /// to the horizontal.
     // TODO: make a Degrees newtype that checks `0 <= degrees <= 360`.
-    Angle { x: f64, y: f64, degrees: f64 },
+    Angle {
+        /// x coordinate.
+        x: f64,
+        /// y coordinate.
+        y: f64,
+        /// angle degrees.
+        degrees: f64,
+    },
 }
 
 impl Guideline {
+    /// Returns a new [`Guideline`] struct.
     pub fn new(
         line: Line,
         name: Option<String>,
@@ -51,7 +59,7 @@ impl Guideline {
         this
     }
 
-    /// Returns an immutable reference to the Guideline's lib.
+    /// Returns a reference to the Guideline's lib.
     pub fn lib(&self) -> Option<&Plist> {
         self.lib.as_ref()
     }
@@ -75,7 +83,7 @@ impl Guideline {
         self.lib.take()
     }
 
-    /// Returns an immutable reference to the Guideline's identifier.
+    /// Returns a reference to the Guideline's identifier.
     pub fn identifier(&self) -> Option<&Identifier> {
         self.identifier.as_ref()
     }

@@ -17,13 +17,17 @@ pub static PUBLIC_OBJECT_LIBS_KEY: &str = "public.objectLibs";
 /// A Plist dictionary.
 pub type Plist = plist::Dictionary;
 
-/// A color.
+/// A color in RGBA (Red-Green-Blue-Alpha) format.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
 pub struct Color {
+    /// Red channel value. Must be in the range 0 to 1, inclusive.
     pub red: f64,
+    /// Green channel value. Must be in the range 0 to 1, inclusive.
     pub green: f64,
+    /// Blue channel value. Must be in the range 0 to 1, inclusive.
     pub blue: f64,
+    /// Alpha (transparency) channel value. Must be in the range 0 to 1, inclusive.
     pub alpha: f64,
 }
 
@@ -76,23 +80,27 @@ pub type Bitlist = Vec<u8>;
 
 /// A number that may be either an integer or float.
 ///
-/// It should serialize to an integer if it effectively represents one.
+/// It serializes to an integer if it effectively represents one.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IntegerOrFloat(f64);
 
 impl IntegerOrFloat {
+    /// Returns a new [`IntegerOrFloat`] with the given `value`.
     pub fn new(value: f64) -> Self {
         IntegerOrFloat(value)
     }
 
+    /// Returns the value.
     pub fn get(&self) -> f64 {
         self.0
     }
 
+    /// Sets the value.
     pub fn set(&mut self, value: f64) {
         self.0 = value
     }
 
+    /// Returns `true` if the value is an integer.
     pub fn is_integer(&self) -> bool {
         (self.0 - self.round()).abs() < std::f64::EPSILON
     }
@@ -143,11 +151,13 @@ impl<'de> Deserialize<'de> for IntegerOrFloat {
 
 /// A number that can be a non-negative integer or float.
 ///
-/// It should serialize to an integer if it effectively represents one.
+/// It serializes to an integer if it effectively represents one.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NonNegativeIntegerOrFloat(f64);
 
 impl NonNegativeIntegerOrFloat {
+    /// Returns a new [`NonNegativeIntegerOrFloat`] with the given `value` or `None`
+    /// if the value is less than or equal to zero.
     pub fn new(value: f64) -> Option<Self> {
         if value.is_sign_positive() {
             Some(NonNegativeIntegerOrFloat(value))
@@ -156,10 +166,14 @@ impl NonNegativeIntegerOrFloat {
         }
     }
 
+    /// Returns the value.
     pub fn get(&self) -> f64 {
         self.0
     }
 
+    /// Sets the value.
+    ///
+    /// An error is raised if `value` is less than or equal to zero.
     pub fn try_set(&mut self, value: f64) -> Result<(), Error> {
         if value.is_sign_positive() {
             self.0 = value;
@@ -169,6 +183,7 @@ impl NonNegativeIntegerOrFloat {
         }
     }
 
+    /// Returns `true` if the value is an integer.
     pub fn is_integer(&self) -> bool {
         (self.0 - self.round()).abs() < std::f64::EPSILON
     }
