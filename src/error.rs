@@ -460,6 +460,16 @@ impl std::error::Error for GlifWriteError {
     }
 }
 
+impl std::error::Error for GlifLoadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            GlifLoadError::Io(e) => Some(e),
+            GlifLoadError::Xml(e) => Some(e),
+            GlifLoadError::Parse(_) => None,
+        }
+    }
+}
+
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
