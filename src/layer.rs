@@ -403,7 +403,7 @@ impl Layer {
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
     {
-        self.glyphs.get_mut(glyph).map(|g| Arc::make_mut(g))
+        self.glyphs.get_mut(glyph).map(Arc::make_mut)
     }
 
     /// Returns `true` if this layer contains a glyph with this `name`.
