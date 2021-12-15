@@ -203,7 +203,7 @@ impl Font {
             return Err(Error::MissingFile(meta_path.display().to_string()));
         }
         let mut meta: MetaInfo = plist::from_file(&meta_path)
-            .map_err(|error| Error::PlistLoadError { path: meta_path, error })?;
+            .map_err(|error| Error::PlistLoad { path: meta_path, error })?;
 
         let lib_path = path.join(LIB_FILE);
         let mut lib =
@@ -571,7 +571,7 @@ impl Font {
 
 fn load_lib(lib_path: &Path) -> Result<plist::Dictionary, Error> {
     plist::Value::from_file(lib_path)
-        .map_err(|error| Error::PlistLoadError { path: lib_path.to_owned(), error })?
+        .map_err(|error| Error::PlistLoad { path: lib_path.to_owned(), error })?
         .into_dictionary()
         .ok_or_else(|| Error::ExpectedPlistDictionary(lib_path.to_string_lossy().into_owned()))
 }
@@ -587,14 +587,14 @@ fn load_fontinfo(
 
 fn load_groups(groups_path: &Path) -> Result<Groups, Error> {
     let groups: Groups = plist::from_file(groups_path)
-        .map_err(|error| Error::PlistLoadError { path: groups_path.to_owned(), error })?;
+        .map_err(|error| Error::PlistLoad { path: groups_path.to_owned(), error })?;
     validate_groups(&groups).map_err(Error::InvalidGroups)?;
     Ok(groups)
 }
 
 fn load_kerning(kerning_path: &Path) -> Result<Kerning, Error> {
     let kerning: Kerning = plist::from_file(kerning_path)
-        .map_err(|error| Error::PlistLoadError { path: kerning_path.to_owned(), error })?;
+        .map_err(|error| Error::PlistLoad { path: kerning_path.to_owned(), error })?;
     Ok(kerning)
 }
 
