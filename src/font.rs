@@ -417,9 +417,10 @@ impl Font {
         for _ in self.images.iter() {}
 
         if path.exists() {
-            fs::remove_dir_all(path)?;
+            fs::remove_dir_all(path)
+                .map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
         }
-        fs::create_dir(path)?;
+        fs::create_dir(path).map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
 
         // we want to always set ourselves as the creator when serializing,
         // but we also don't have mutable access to self.
@@ -464,10 +465,13 @@ impl Font {
         if !self.features.is_empty() {
             // Normalize feature files with line feed line endings
             // This is consistent with the line endings serialized in glif and plist files
+            let feature_file_path = path.join(FEATURES_FILE);
             if self.features.as_bytes().contains(&b'\r') {
-                fs::write(path.join(FEATURES_FILE), self.features.replace("\r\n", "\n"))?;
+                fs::write(&feature_file_path, self.features.replace("\r\n", "\n"))
+                    .map_err(|inner| Error::UfoWrite { path: feature_file_path, inner })?;
             } else {
-                fs::write(path.join(FEATURES_FILE), &self.features)?;
+                fs::write(&feature_file_path, &self.features)
+                    .map_err(|inner| Error::UfoWrite { path: feature_file_path, inner })?;
             }
         }
 
@@ -486,8 +490,12 @@ impl Font {
                 match contents {
                     Ok(data) => {
                         let destination = data_dir.join(data_path);
-                        fs::create_dir_all(&destination.parent().unwrap())?;
-                        fs::write(destination, &*data)?;
+                        let destination_parent = destination.parent().unwrap();
+                        fs::create_dir_all(&destination_parent).map_err(|inner| {
+                            Error::UfoWrite { path: destination_parent.into(), inner }
+                        })?;
+                        fs::write(&destination, &*data)
+                            .map_err(|inner| Error::UfoWrite { path: destination, inner })?;
                     }
                     Err(e) => return Err(Error::InvalidStoreEntry(data_path.clone(), e)),
                 }
@@ -496,12 +504,14 @@ impl Font {
 
         if !self.images.is_empty() {
             let images_dir = path.join(IMAGES_DIR);
-            fs::create_dir(&images_dir)?; // Only a flat directory.
+            fs::create_dir(&images_dir) // Only a flat directory.
+                .map_err(|inner| Error::UfoWrite { path: images_dir.to_owned(), inner })?;
             for (image_path, contents) in self.images.iter() {
                 match contents {
                     Ok(data) => {
                         let destination = images_dir.join(image_path);
-                        fs::write(destination, &*data)?;
+                        fs::write(&destination, &*data)
+                            .map_err(|inner| Error::UfoWrite { path: destination, inner })?;
                     }
                     Err(e) => return Err(Error::InvalidStoreEntry(image_path.clone(), e)),
                 }
@@ -599,7 +609,8 @@ fn load_kerning(kerning_path: &Path) -> Result<Kerning, Error> {
 }
 
 fn load_features(features_path: &Path) -> Result<String, Error> {
-    let features = fs::read_to_string(features_path)?;
+    let features = fs::read_to_string(features_path)
+        .map_err(|inner| Error::UfoLoad { path: features_path.into(), inner })?;
     Ok(features)
 }
 
@@ -839,7 +850,7 @@ mod tests {
     fn save_with_options_with_writeoptions_parameter() -> Result<(), Error> {
         let opt = WriteOptions::default();
         let ufo = Font::default();
-        let tmp = TempDir::new("test")?;
+        let tmp = TempDir::new("test").unwrap();
         ufo.save_with_options(tmp, &opt)
     }
 }

@@ -39,8 +39,20 @@ pub enum Error {
         /// The glyph name.
         glyph: String,
     },
-    /// An error returned when there is an input/output problem during processing
-    Io(IoError),
+    /// An error returned when there is an input problem during processing
+    UfoLoad {
+        /// The path of the relevant file.
+        path: PathBuf,
+        /// The underlying error.
+        inner: IoError,
+    },
+    /// An error returned when there is an output problem during processing
+    UfoWrite {
+        /// The path of the relevant file.
+        path: PathBuf,
+        /// The underlying error.
+        inner: IoError,
+    },
     /// A `.glif` file could not be loaded.
     GlifLoad {
         /// The path of the relevant `.glif` file.
@@ -286,10 +298,15 @@ impl std::fmt::Display for Error {
             Error::MissingGlyph { layer, glyph } => {
                 write!(f, "Glyph '{}' missing from layer '{}'", glyph, layer)
             }
-            Error::Io(e) => e.fmt(f),
+            Error::UfoLoad { path, inner } => {
+                write!(f, "Error reading UFO file or directory '{}': '{}'", path.display(), inner)
+            }
+            Error::UfoWrite { path, inner } => {
+                write!(f, "Error writing UFO file or directory '{}': '{}'", path.display(), inner)
+            }
             Error::InvalidColor(e) => e.fmt(f),
             Error::GlifLoad { path, inner } => {
-                write!(f, "Error reading glif '{}': '{}'", path.display(), inner)
+                write!(f, "Error reading glif file '{}': '{}'", path.display(), inner)
             }
             Error::GlifWrite(GlifWriteError { name, inner }) => {
                 write!(f, "Failed to save glyph {}, error: '{}'", name, inner)
@@ -473,9 +490,12 @@ impl std::error::Error for GlifLoadError {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Error::Io(inner) => Some(inner),
-            Error::PlistLoad { error, .. } => Some(error),
+            Error::GlifLoad { inner, .. } => Some(inner),
             Error::GlifWrite(inner) => Some(&inner.inner),
+            Error::PlistLoad { error, .. } => Some(error),
+            Error::PlistWrite { error, .. } => Some(error),
+            Error::UfoLoad { inner, .. } => Some(inner),
+            Error::UfoWrite { inner, .. } => Some(inner),
             _ => None,
         }
     }
@@ -500,13 +520,6 @@ impl From<InvalidColorString> for Error {
 impl From<GlifWriteError> for Error {
     fn from(src: GlifWriteError) -> Error {
         Error::GlifWrite(src)
-    }
-}
-
-#[doc(hidden)]
-impl From<IoError> for Error {
-    fn from(src: IoError) -> Error {
-        Error::Io(src)
     }
 }
 

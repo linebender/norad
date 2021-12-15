@@ -346,7 +346,7 @@ impl Layer {
     ///
     /// The path should not exist.
     pub fn save_with_options(&self, path: &Path, opts: &WriteOptions) -> Result<(), Error> {
-        fs::create_dir(&path)?;
+        fs::create_dir(&path).map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
         crate::write::write_xml_to_file(&path.join(CONTENTS_FILE), &self.contents, opts)?;
 
         self.layerinfo_to_file_if_needed(path, opts)?;

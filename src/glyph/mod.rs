@@ -94,7 +94,8 @@ impl Glyph {
         }
 
         let data = self.encode_xml_with_options(opts)?;
-        std::fs::write(path, &data)?;
+        std::fs::write(path, &data)
+            .map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
         Ok(())
     }
 
