@@ -9,7 +9,7 @@ use norad::Font;
 
 static HELP: &str = "
 USAGE:
-    open_ufo PATH [OUTPATH]
+    load_save PATH [OUTPATH]
 
 If an OUTPATH is provided, the UFO will be saved after opening.
 ";
