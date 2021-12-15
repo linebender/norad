@@ -150,7 +150,7 @@ pub(crate) fn upconvert_ufov1_robofab_data(
 
     // Read lib.plist again because it is easier than pulling out the data manually.
     let lib_data: LibData = plist::from_file(lib_path)
-        .map_err(|error| Error::PlistLoadError { path: lib_path.to_owned(), error })?;
+        .map_err(|error| Error::PlistLoad { path: lib_path.to_owned(), error })?;
 
     // Convert features.
     let mut features = String::new();

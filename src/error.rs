@@ -40,7 +40,7 @@ pub enum Error {
         glyph: String,
     },
     /// An error returned when there is an input/output problem during processing
-    IoError(IoError),
+    Io(IoError),
     /// A `.glif` file could not be loaded.
     GlifLoad {
         /// The path of the relevant `.glif` file.
@@ -53,14 +53,14 @@ pub enum Error {
     /// [`Glyph`]: crate::Glyph
     GlifWrite(GlifWriteError),
     /// A plist file could not be read.
-    PlistLoadError {
+    PlistLoad {
         /// The path of the relevant file.
         path: PathBuf,
         /// The underlying error.
         error: PlistError,
     },
     /// A plist file could not be written.
-    PlistWriteError {
+    PlistWrite {
         /// The path of the relevant file.
         path: PathBuf,
         /// The underlying error.
@@ -286,7 +286,7 @@ impl std::fmt::Display for Error {
             Error::MissingGlyph { layer, glyph } => {
                 write!(f, "Glyph '{}' missing from layer '{}'", glyph, layer)
             }
-            Error::IoError(e) => e.fmt(f),
+            Error::Io(e) => e.fmt(f),
             Error::InvalidColor(e) => e.fmt(f),
             Error::GlifLoad { path, inner } => {
                 write!(f, "Error reading glif '{}': '{}'", path.display(), inner)
@@ -294,10 +294,10 @@ impl std::fmt::Display for Error {
             Error::GlifWrite(GlifWriteError { name, inner }) => {
                 write!(f, "Failed to save glyph {}, error: '{}'", name, inner)
             }
-            Error::PlistLoadError { path, error } => {
+            Error::PlistLoad { path, error } => {
                 write!(f, "Error reading plist at path '{}': {}", path.display(), error)
             }
-            Error::PlistWriteError { path, error } => {
+            Error::PlistWrite { path, error } => {
                 write!(f, "Error writing plist to path '{}': {}", path.display(), error)
             }
             Error::InvalidFontInfo => write!(f, "FontInfo contains invalid data"),
@@ -463,8 +463,8 @@ impl std::error::Error for GlifWriteError {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Error::IoError(inner) => Some(inner),
-            Error::PlistLoadError { error, .. } => Some(error),
+            Error::Io(inner) => Some(inner),
+            Error::PlistLoad { error, .. } => Some(error),
             Error::GlifWrite(inner) => Some(&inner.inner),
             _ => None,
         }
@@ -496,7 +496,7 @@ impl From<GlifWriteError> for Error {
 #[doc(hidden)]
 impl From<IoError> for Error {
     fn from(src: IoError) -> Error {
-        Error::IoError(src)
+        Error::Io(src)
     }
 }
 
