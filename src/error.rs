@@ -170,17 +170,6 @@ impl InvalidColorString {
     }
 }
 
-/// An error representing a failure during .glif file parsing.
-#[derive(Debug)]
-pub struct GlifError {
-    /// The glif file path.
-    pub path: Option<PathBuf>,
-    /// The buffer position.
-    pub position: usize,
-    /// The kind of error.
-    pub kind: ErrorKind,
-}
-
 /// An error when attempting to write a .glif file.
 #[derive(Debug)]
 pub struct GlifWriteError {
