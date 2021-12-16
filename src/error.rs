@@ -298,24 +298,24 @@ impl std::fmt::Display for Error {
             Error::MissingGlyph { layer, glyph } => {
                 write!(f, "Glyph '{}' missing from layer '{}'", glyph, layer)
             }
-            Error::UfoLoad { path, inner } => {
-                write!(f, "Error reading UFO file or directory '{}': '{}'", path.display(), inner)
-            }
-            Error::UfoWrite { path, inner } => {
-                write!(f, "Error writing UFO file or directory '{}': '{}'", path.display(), inner)
-            }
             Error::InvalidColor(e) => e.fmt(f),
-            Error::GlifLoad { path, inner } => {
-                write!(f, "Error reading glif file '{}': '{}'", path.display(), inner)
+            Error::UfoLoad { path, .. } => {
+                write!(f, "Failed to read file or directory '{}'", path.display())
             }
-            Error::GlifWrite(GlifWriteError { name, inner }) => {
-                write!(f, "Failed to save glyph {}, error: '{}'", name, inner)
+            Error::UfoWrite { path, .. } => {
+                write!(f, "Failed to write file or directory '{}'", path.display())
             }
-            Error::PlistLoad { path, error } => {
-                write!(f, "Error reading plist at path '{}': {}", path.display(), error)
+            Error::GlifLoad { path, .. } => {
+                write!(f, "Failed to read glyph file from '{}'", path.display())
             }
-            Error::PlistWrite { path, error } => {
-                write!(f, "Error writing plist to path '{}': {}", path.display(), error)
+            Error::GlifWrite(GlifWriteError { name, .. }) => {
+                write!(f, "Failed to write out glyph '{}'", name)
+            }
+            Error::PlistLoad { path, .. } => {
+                write!(f, "Failed to read Plist file from '{}'", path.display())
+            }
+            Error::PlistWrite { path, .. } => {
+                write!(f, "Failed to write Plist file to '{}'", path.display())
             }
             Error::InvalidFontInfo => write!(f, "FontInfo contains invalid data"),
             Error::FontInfoUpconversion => {
@@ -338,8 +338,8 @@ impl std::fmt::Display for Error {
             Error::MissingUfoDir(path) => {
                 write!(f, "{} directory was not found", path)
             }
-            Error::InvalidStoreEntry(path, e) => {
-                write!(f, "Store entry '{}' error: {}", path.display(), e)
+            Error::InvalidStoreEntry(path, _) => {
+                write!(f, "Store entry '{}' is invalid", path.display())
             }
             #[cfg(feature = "kurbo")]
             Error::ConvertContour(cause) => write!(f, "Failed to convert contour: '{}'", cause),
@@ -350,9 +350,9 @@ impl std::fmt::Display for Error {
 impl std::fmt::Display for GlifLoadError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            GlifLoadError::Xml(err) => err.fmt(f),
-            GlifLoadError::Io(err) => err.fmt(f),
-            GlifLoadError::Parse(err) => err.fmt(f),
+            GlifLoadError::Xml(_) => write!(f, "Failed to read or parse XML structure"),
+            GlifLoadError::Io(_) => write!(f, "Failed to read file"),
+            GlifLoadError::Parse(e) => write!(f, "Failed to parse glyph data: {}", e),
         }
     }
 }
@@ -373,9 +373,18 @@ impl std::fmt::Display for StoreError {
             NotPlainFile => write!(f, "Only plain files are allowed, no symlinks."),
             Subdir => write!(f, "Subdirectories are not allowed in the image store."),
             InvalidImage => write!(f, "An image must be a valid PNG."),
-            Io(e) => {
-                write!(f, "Encountered an IO error while trying to load content: {}.", e)
+            Io(_) => {
+                write!(f, "Encountered an IO error while trying to load content")
             }
+        }
+    }
+}
+
+impl std::error::Error for StoreError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            StoreError::Io(e) => Some(e),
+            _ => None,
         }
     }
 }
@@ -444,9 +453,9 @@ impl std::fmt::Display for ErrorKind {
 impl std::fmt::Display for WriteError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            WriteError::Io(err) => err.fmt(f),
-            WriteError::Xml(err) => err.fmt(f),
-            WriteError::Plist(err) => err.fmt(f),
+            WriteError::Io(_) => write!(f, "Error writing to disk"),
+            WriteError::Xml(_) => write!(f, "Error writing an XML file to disk"),
+            WriteError::Plist(_) => write!(f, "Error writing a Plist file to disk"),
             WriteError::InternalLibWriteError => {
                 write!(f, "Internal error while writing lib data. Please open an issue.")
             }
@@ -456,7 +465,7 @@ impl std::fmt::Display for WriteError {
 
 impl std::fmt::Display for GlifWriteError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Failed to write glyph '{}': {}", self.name, self.inner)
+        write!(f, "Failed to write glyph '{}'", self.name)
     }
 }
 
@@ -496,6 +505,7 @@ impl std::error::Error for Error {
             Error::PlistWrite { error, .. } => Some(error),
             Error::UfoLoad { inner, .. } => Some(inner),
             Error::UfoWrite { inner, .. } => Some(inner),
+            Error::InvalidStoreEntry(_, e) => Some(e),
             _ => None,
         }
     }
