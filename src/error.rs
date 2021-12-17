@@ -91,8 +91,6 @@ pub enum Error {
     ///
     /// The string is the dictionary key.
     ExpectedPlistDictionary(String),
-    /// An error returned when there is an unexpected plist string.
-    ExpectedPlistString,
     /// An error returned when there is an inappropriate negative sign on a value.
     ExpectedPositiveValue,
     /// An error returned when there is a problem with kurbo contour conversion.
@@ -317,7 +315,6 @@ impl std::fmt::Display for Error {
             Error::ExpectedPlistDictionary(key) => {
                 write!(f, "Expected a Plist dictionary at '{}'", key)
             }
-            Error::ExpectedPlistString => write!(f, "Expected a Plist string."),
             Error::ExpectedPositiveValue => {
                 write!(f, "PositiveIntegerOrFloat expects a positive value.")
             }
