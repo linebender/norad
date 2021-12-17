@@ -2,7 +2,6 @@ use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use std::sync::Arc;
 
 #[cfg(feature = "rayon")]
@@ -271,42 +270,28 @@ impl Layer {
 
         let layerinfo_path = path.join(LAYER_INFO_FILE);
         let (color, lib) = if layerinfo_path.exists() {
-            Self::layerinfo_from_file(&layerinfo_path)?
+            Self::parse_layer_info(&layerinfo_path)?
         } else {
             (None, Plist::new())
         };
-        // for us to get this far, this mut have a file name
+
+        // for us to get this far, the path must have a file name
         let path = path.file_name().unwrap().into();
 
         Ok(Layer { glyphs, name, path, contents, color, lib })
     }
 
-    // Problem: layerinfo.plist contains a nested plist dictionary and the plist crate
-    // cannot adequately handle that, as ser/de is not implemented for plist::Value.
-    // Ser/de must be done manually...
-    fn layerinfo_from_file(path: &Path) -> Result<(Option<Color>, Plist), Error> {
-        let mut info_content = plist::Value::from_file(path)
-            .map_err(|error| Error::PlistLoad { path: path.to_owned(), error })?
-            .into_dictionary()
-            .ok_or_else(|| Error::ExpectedPlistDictionary(path.to_string_lossy().into_owned()))?;
-
-        let mut color = None;
-        let color_str = info_content.remove("color");
-        if let Some(v) = color_str {
-            match v.into_string() {
-                Some(s) => color.replace(Color::from_str(&s).map_err(Error::InvalidColor)?),
-                None => return Err(Error::ExpectedPlistString),
-            };
-        };
-
-        let lib = match info_content.remove("lib") {
-            Some(v) => v.into_dictionary().ok_or_else(|| {
-                Error::ExpectedPlistDictionary(format!("{} (lib)", path.to_string_lossy()))
-            })?,
-            None => Plist::new(),
-        };
-
-        Ok((color, lib))
+    fn parse_layer_info(path: &Path) -> Result<(Option<Color>, Plist), Error> {
+        // Pluck apart the data found in the file, as we want to insert it into `Layer`.
+        #[derive(Deserialize)]
+        struct LayerInfoHelper {
+            color: Option<Color>,
+            #[serde(default)]
+            lib: Plist,
+        }
+        let layerinfo: LayerInfoHelper = plist::from_file(path)
+            .map_err(|error| Error::PlistLoad { path: path.into(), error })?;
+        Ok((layerinfo.color, layerinfo.lib))
     }
 
     fn layerinfo_to_file_if_needed(
