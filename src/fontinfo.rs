@@ -9,11 +9,19 @@ use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 
-use crate::shared_types::{
-    Bitlist, Float, Integer, IntegerOrFloat, NonNegativeInteger, NonNegativeIntegerOrFloat,
-    PUBLIC_OBJECT_LIBS_KEY,
-};
+use crate::shared_types::{IntegerOrFloat, NonNegativeIntegerOrFloat, PUBLIC_OBJECT_LIBS_KEY};
 use crate::{Error, FormatVersion, Guideline, Identifier, Plist};
+
+/// A signed integer.
+pub type Integer = i32;
+/// An unsigned integer.
+pub type NonNegativeInteger = u32;
+/// A floating-point number.
+pub type Float = f64;
+/// a list of ["bit numbers"].
+///
+/// ["bit numbers"]: https://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#bit-numbers
+pub type Bitlist = Vec<u8>;
 
 /// The contents of the [`fontinfo.plist`][] file. This structure is hard-wired to the
 /// available attributes in UFO version 3.
