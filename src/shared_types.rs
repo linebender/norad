@@ -31,21 +31,28 @@ pub struct Color {
     pub alpha: f64,
 }
 
-/// A number that can be a non-negative integer or float.
+/// A non-negative number.
 ///
-/// It serializes to an integer if it effectively represents one.
+/// This is a detail of the spec. If the fractional part of this number is
+/// 0, it will be serialized as an integer, else as a float.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NonNegativeIntegerOrFloat(f64);
 
-/// A number that may be either an integer or float.
+/// A number.
 ///
-/// It serializes to an integer if it effectively represents one.
+/// This is a detail of the spec. If the fractional part of this number is
+/// 0, it will be serialized as an integer, else as a float.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IntegerOrFloat(f64);
 
 impl NonNegativeIntegerOrFloat {
-    /// Returns a new [`NonNegativeIntegerOrFloat`] with the given `value` or `None`
-    /// if the value is less than or equal to zero.
+    /// A validating constructor.
+    ///
+    /// Returns a new [`NonNegativeIntegerOrFloat`] with the given `value`,
+    /// or `None` if the value is less than or equal to zero.
+    ///
+    /// In addition to this constructor, this type also implements `TryFrom` for
+    /// `f64`, and `From` for `u32`.
     pub fn new(value: f64) -> Option<Self> {
         if value.is_sign_positive() {
             Some(NonNegativeIntegerOrFloat(value))
@@ -54,48 +61,34 @@ impl NonNegativeIntegerOrFloat {
         }
     }
 
-    /// Returns the value.
-    pub fn get(&self) -> f64 {
+    /// Returns the value as an `f64`.
+    pub fn as_f64(&self) -> f64 {
         self.0
     }
 
-    /// Sets the value.
-    ///
-    /// An error is raised if `value` is less than or equal to zero.
-    pub fn try_set(&mut self, value: f64) -> Result<(), Error> {
-        if value.is_sign_positive() {
-            self.0 = value;
-            Ok(())
-        } else {
-            Err(Error::ExpectedPositiveValue)
-        }
-    }
-
     /// Returns `true` if the value is an integer.
-    pub fn is_integer(&self) -> bool {
-        (self.0 - self.round()).abs() < std::f64::EPSILON
+    pub(crate) fn is_integer(&self) -> bool {
+        self.0.fract().abs() < std::f64::EPSILON
     }
 }
 
 impl IntegerOrFloat {
     /// Returns a new [`IntegerOrFloat`] with the given `value`.
+    ///
+    /// In addition to this constructor, this type also implements `From` for
+    /// `f64` and `i32`.
     pub fn new(value: f64) -> Self {
         IntegerOrFloat(value)
     }
 
-    /// Returns the value.
-    pub fn get(&self) -> f64 {
+    /// Returns the value as an `f64`.
+    pub fn as_f64(&self) -> f64 {
         self.0
     }
 
-    /// Sets the value.
-    pub fn set(&mut self, value: f64) {
-        self.0 = value
-    }
-
     /// Returns `true` if the value is an integer.
-    pub fn is_integer(&self) -> bool {
-        (self.0 - self.round()).abs() < std::f64::EPSILON
+    pub(crate) fn is_integer(&self) -> bool {
+        self.0.fract().abs() < std::f64::EPSILON
     }
 }
 
@@ -190,17 +183,6 @@ impl Deref for NonNegativeIntegerOrFloat {
     }
 }
 
-impl TryFrom<i32> for NonNegativeIntegerOrFloat {
-    type Error = Error;
-
-    fn try_from(value: i32) -> Result<Self, Self::Error> {
-        match NonNegativeIntegerOrFloat::new(value as f64) {
-            Some(v) => Ok(v),
-            _ => Err(Error::ExpectedPositiveValue),
-        }
-    }
-}
-
 impl TryFrom<f64> for NonNegativeIntegerOrFloat {
     type Error = Error;
 
@@ -212,14 +194,9 @@ impl TryFrom<f64> for NonNegativeIntegerOrFloat {
     }
 }
 
-impl TryFrom<IntegerOrFloat> for NonNegativeIntegerOrFloat {
-    type Error = Error;
-
-    fn try_from(value: IntegerOrFloat) -> Result<Self, Self::Error> {
-        match NonNegativeIntegerOrFloat::new(*value) {
-            Some(v) => Ok(v),
-            _ => Err(Error::ExpectedPositiveValue),
-        }
+impl From<u32> for NonNegativeIntegerOrFloat {
+    fn from(src: u32) -> NonNegativeIntegerOrFloat {
+        NonNegativeIntegerOrFloat(src as f64)
     }
 }
 
@@ -347,9 +324,6 @@ mod tests {
     #[test]
     fn test_positive_int_or_float() {
         assert!(NonNegativeIntegerOrFloat::try_from(-1.0).is_err());
-
-        let mut v = NonNegativeIntegerOrFloat::try_from(1.0).unwrap();
-        assert!(v.try_set(-1.0).is_err());
-        assert!(v.try_set(1.0).is_ok());
+        assert!(NonNegativeIntegerOrFloat::try_from(1.0).is_ok());
     }
 }
