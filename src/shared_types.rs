@@ -31,6 +31,74 @@ pub struct Color {
     pub alpha: f64,
 }
 
+/// A number that can be a non-negative integer or float.
+///
+/// It serializes to an integer if it effectively represents one.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NonNegativeIntegerOrFloat(f64);
+
+/// A number that may be either an integer or float.
+///
+/// It serializes to an integer if it effectively represents one.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct IntegerOrFloat(f64);
+
+impl NonNegativeIntegerOrFloat {
+    /// Returns a new [`NonNegativeIntegerOrFloat`] with the given `value` or `None`
+    /// if the value is less than or equal to zero.
+    pub fn new(value: f64) -> Option<Self> {
+        if value.is_sign_positive() {
+            Some(NonNegativeIntegerOrFloat(value))
+        } else {
+            None
+        }
+    }
+
+    /// Returns the value.
+    pub fn get(&self) -> f64 {
+        self.0
+    }
+
+    /// Sets the value.
+    ///
+    /// An error is raised if `value` is less than or equal to zero.
+    pub fn try_set(&mut self, value: f64) -> Result<(), Error> {
+        if value.is_sign_positive() {
+            self.0 = value;
+            Ok(())
+        } else {
+            Err(Error::ExpectedPositiveValue)
+        }
+    }
+
+    /// Returns `true` if the value is an integer.
+    pub fn is_integer(&self) -> bool {
+        (self.0 - self.round()).abs() < std::f64::EPSILON
+    }
+}
+
+impl IntegerOrFloat {
+    /// Returns a new [`IntegerOrFloat`] with the given `value`.
+    pub fn new(value: f64) -> Self {
+        IntegerOrFloat(value)
+    }
+
+    /// Returns the value.
+    pub fn get(&self) -> f64 {
+        self.0
+    }
+
+    /// Sets the value.
+    pub fn set(&mut self, value: f64) {
+        self.0 = value
+    }
+
+    /// Returns `true` if the value is an integer.
+    pub fn is_integer(&self) -> bool {
+        (self.0 - self.round()).abs() < std::f64::EPSILON
+    }
+}
+
 impl FromStr for Color {
     type Err = InvalidColorString;
 
@@ -68,41 +136,6 @@ impl<'de> Deserialize<'de> for Color {
     {
         let string = String::deserialize(deserializer)?;
         Color::from_str(&string).map_err(|_| serde::de::Error::custom("Malformed color string."))
-    }
-}
-
-// Types used in fontinfo.plist.
-
-pub type Integer = i32;
-pub type NonNegativeInteger = u32;
-pub type Float = f64;
-pub type Bitlist = Vec<u8>;
-
-/// A number that may be either an integer or float.
-///
-/// It serializes to an integer if it effectively represents one.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct IntegerOrFloat(f64);
-
-impl IntegerOrFloat {
-    /// Returns a new [`IntegerOrFloat`] with the given `value`.
-    pub fn new(value: f64) -> Self {
-        IntegerOrFloat(value)
-    }
-
-    /// Returns the value.
-    pub fn get(&self) -> f64 {
-        self.0
-    }
-
-    /// Sets the value.
-    pub fn set(&mut self, value: f64) {
-        self.0 = value
-    }
-
-    /// Returns `true` if the value is an integer.
-    pub fn is_integer(&self) -> bool {
-        (self.0 - self.round()).abs() < std::f64::EPSILON
     }
 }
 
@@ -146,46 +179,6 @@ impl<'de> Deserialize<'de> for IntegerOrFloat {
     {
         let value: f64 = Deserialize::deserialize(deserializer)?;
         Ok(IntegerOrFloat(value))
-    }
-}
-
-/// A number that can be a non-negative integer or float.
-///
-/// It serializes to an integer if it effectively represents one.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct NonNegativeIntegerOrFloat(f64);
-
-impl NonNegativeIntegerOrFloat {
-    /// Returns a new [`NonNegativeIntegerOrFloat`] with the given `value` or `None`
-    /// if the value is less than or equal to zero.
-    pub fn new(value: f64) -> Option<Self> {
-        if value.is_sign_positive() {
-            Some(NonNegativeIntegerOrFloat(value))
-        } else {
-            None
-        }
-    }
-
-    /// Returns the value.
-    pub fn get(&self) -> f64 {
-        self.0
-    }
-
-    /// Sets the value.
-    ///
-    /// An error is raised if `value` is less than or equal to zero.
-    pub fn try_set(&mut self, value: f64) -> Result<(), Error> {
-        if value.is_sign_positive() {
-            self.0 = value;
-            Ok(())
-        } else {
-            Err(Error::ExpectedPositiveValue)
-        }
-    }
-
-    /// Returns `true` if the value is an integer.
-    pub fn is_integer(&self) -> bool {
-        (self.0 - self.round()).abs() < std::f64::EPSILON
     }
 }
 
