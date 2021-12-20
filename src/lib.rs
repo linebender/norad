@@ -84,7 +84,7 @@ mod layer;
 mod names;
 mod shared_types;
 mod upconversion;
-pub mod util;
+pub(crate) mod util;
 mod write;
 
 pub use data_request::DataRequest;

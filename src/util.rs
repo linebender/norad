@@ -3,7 +3,7 @@
 /// Given a `plist::Dictionary`, recursively sort keys.
 ///
 /// This ensures we have a consistent serialization order.
-pub fn recursive_sort_plist_keys(plist: &mut plist::Dictionary) {
+pub(crate) fn recursive_sort_plist_keys(plist: &mut plist::Dictionary) {
     plist.sort_keys();
     for val in plist.values_mut() {
         if let Some(dict) = val.as_dictionary_mut() {
@@ -15,13 +15,13 @@ pub fn recursive_sort_plist_keys(plist: &mut plist::Dictionary) {
 //NOTE: this is hacky, and intended mostly as a placeholder. It was adapted from
 // https://github.com/unified-font-object/ufoLib/blob/master/Lib/ufoLib/filenames.py
 /// Given a glyph `name`, return an appropriate file name.
-pub fn default_file_name_for_glyph_name(name: impl AsRef<str>) -> String {
+pub(crate) fn default_file_name_for_glyph_name(name: impl AsRef<str>) -> String {
     let name = name.as_ref();
     user_name_to_file_name(name, "", ".glif")
 }
 
 /// Given a layer `name`, return an appropriate file name.
-pub fn default_file_name_for_layer_name(name: &str) -> String {
+pub(crate) fn default_file_name_for_layer_name(name: &str) -> String {
     user_name_to_file_name(name, "glyphs.", "")
 }
 
