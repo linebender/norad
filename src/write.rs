@@ -116,14 +116,14 @@ pub fn write_plist_value_to_file(
     options: &WriteOptions,
 ) -> Result<(), Error> {
     let mut file =
-        File::create(path).map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
+        File::create(path).map_err(|source| Error::UfoWrite { path: path.into(), source })?;
     let writer = BufWriter::new(&mut file);
     value
         .to_writer_xml_with_options(writer, options.xml_options())
-        .map_err(|error| Error::PlistWrite { path: path.to_owned(), error })?;
+        .map_err(|source| Error::PlistWrite { path: path.to_owned(), source })?;
     write_quote_style(&file, options)
-        .map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
-    file.sync_all().map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
+        .map_err(|source| Error::UfoWrite { path: path.into(), source })?;
+    file.sync_all().map_err(|source| Error::UfoWrite { path: path.into(), source })?;
     Ok(())
 }
 
@@ -134,13 +134,13 @@ pub fn write_xml_to_file(
     options: &WriteOptions,
 ) -> Result<(), Error> {
     let mut file =
-        File::create(path).map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
+        File::create(path).map_err(|source| Error::UfoWrite { path: path.into(), source })?;
     let buf_writer = BufWriter::new(&mut file);
     plist::to_writer_xml_with_options(buf_writer, value, options.xml_options())
-        .map_err(|error| Error::PlistWrite { path: path.to_owned(), error })?;
+        .map_err(|source| Error::PlistWrite { path: path.to_owned(), source })?;
     write_quote_style(&file, options)
-        .map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
-    file.sync_all().map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
+        .map_err(|source| Error::UfoWrite { path: path.into(), source })?;
+    file.sync_all().map_err(|source| Error::UfoWrite { path: path.into(), source })?;
     Ok(())
 }
 

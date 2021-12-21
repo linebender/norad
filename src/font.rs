@@ -203,7 +203,7 @@ impl Font {
             return Err(Error::MissingFile(meta_path.display().to_string()));
         }
         let mut meta: MetaInfo = plist::from_file(&meta_path)
-            .map_err(|error| Error::PlistLoad { path: meta_path, error })?;
+            .map_err(|source| Error::PlistLoad { path: meta_path, source })?;
 
         let lib_path = path.join(LIB_FILE);
         let mut lib =
@@ -418,9 +418,9 @@ impl Font {
 
         if path.exists() {
             fs::remove_dir_all(path)
-                .map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
+                .map_err(|source| Error::UfoWrite { path: path.into(), source })?;
         }
-        fs::create_dir(path).map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
+        fs::create_dir(path).map_err(|source| Error::UfoWrite { path: path.into(), source })?;
 
         // we want to always set ourselves as the creator when serializing,
         // but we also don't have mutable access to self.
@@ -468,10 +468,10 @@ impl Font {
             let feature_file_path = path.join(FEATURES_FILE);
             if self.features.as_bytes().contains(&b'\r') {
                 fs::write(&feature_file_path, self.features.replace("\r\n", "\n"))
-                    .map_err(|inner| Error::UfoWrite { path: feature_file_path, inner })?;
+                    .map_err(|source| Error::UfoWrite { path: feature_file_path, source })?;
             } else {
                 fs::write(&feature_file_path, &self.features)
-                    .map_err(|inner| Error::UfoWrite { path: feature_file_path, inner })?;
+                    .map_err(|source| Error::UfoWrite { path: feature_file_path, source })?;
             }
         }
 
@@ -491,11 +491,11 @@ impl Font {
                     Ok(data) => {
                         let destination = data_dir.join(data_path);
                         let destination_parent = destination.parent().unwrap();
-                        fs::create_dir_all(&destination_parent).map_err(|inner| {
-                            Error::UfoWrite { path: destination_parent.into(), inner }
+                        fs::create_dir_all(&destination_parent).map_err(|source| {
+                            Error::UfoWrite { path: destination_parent.into(), source }
                         })?;
                         fs::write(&destination, &*data)
-                            .map_err(|inner| Error::UfoWrite { path: destination, inner })?;
+                            .map_err(|source| Error::UfoWrite { path: destination, source })?;
                     }
                     Err(e) => return Err(Error::InvalidStoreEntry(data_path.clone(), e)),
                 }
@@ -505,13 +505,13 @@ impl Font {
         if !self.images.is_empty() {
             let images_dir = path.join(IMAGES_DIR);
             fs::create_dir(&images_dir) // Only a flat directory.
-                .map_err(|inner| Error::UfoWrite { path: images_dir.to_owned(), inner })?;
+                .map_err(|source| Error::UfoWrite { path: images_dir.to_owned(), source })?;
             for (image_path, contents) in self.images.iter() {
                 match contents {
                     Ok(data) => {
                         let destination = images_dir.join(image_path);
                         fs::write(&destination, &*data)
-                            .map_err(|inner| Error::UfoWrite { path: destination, inner })?;
+                            .map_err(|source| Error::UfoWrite { path: destination, source })?;
                     }
                     Err(e) => return Err(Error::InvalidStoreEntry(image_path.clone(), e)),
                 }
@@ -581,7 +581,7 @@ impl Font {
 
 fn load_lib(lib_path: &Path) -> Result<plist::Dictionary, Error> {
     plist::Value::from_file(lib_path)
-        .map_err(|error| Error::PlistLoad { path: lib_path.to_owned(), error })?
+        .map_err(|source| Error::PlistLoad { path: lib_path.to_owned(), source })?
         .into_dictionary()
         .ok_or_else(|| Error::ExpectedPlistDictionary(lib_path.to_string_lossy().into_owned()))
 }
@@ -597,20 +597,20 @@ fn load_fontinfo(
 
 fn load_groups(groups_path: &Path) -> Result<Groups, Error> {
     let groups: Groups = plist::from_file(groups_path)
-        .map_err(|error| Error::PlistLoad { path: groups_path.to_owned(), error })?;
+        .map_err(|source| Error::PlistLoad { path: groups_path.to_owned(), source })?;
     validate_groups(&groups).map_err(Error::InvalidGroups)?;
     Ok(groups)
 }
 
 fn load_kerning(kerning_path: &Path) -> Result<Kerning, Error> {
     let kerning: Kerning = plist::from_file(kerning_path)
-        .map_err(|error| Error::PlistLoad { path: kerning_path.to_owned(), error })?;
+        .map_err(|source| Error::PlistLoad { path: kerning_path.to_owned(), source })?;
     Ok(kerning)
 }
 
 fn load_features(features_path: &Path) -> Result<String, Error> {
     let features = fs::read_to_string(features_path)
-        .map_err(|inner| Error::UfoLoad { path: features_path.into(), inner })?;
+        .map_err(|source| Error::UfoLoad { path: features_path.into(), source })?;
     Ok(features)
 }
 

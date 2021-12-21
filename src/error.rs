@@ -5,27 +5,35 @@ use std::path::PathBuf;
 
 use plist::Error as PlistError;
 use quick_xml::Error as XmlError;
+use thiserror::Error;
 
 use crate::GlyphName;
 
 /// Errors that occur while working with font objects.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {
     /// An error returned when trying to save an UFO in anything less than the latest version.
+    #[error("downgrading below UFO v3 is not currently supported")]
     DowngradeUnsupported,
     /// An error returned when trying to save a Glyph that contains a `public.objectLibs`
     /// lib key already (the key is automatically managed by Norad).
+    #[error("the `public.objectLibs` lib key is managed by Norad and must not be set manually")]
     PreexistingPublicObjectLibsKey,
     /// An error returned when there is no default layer in the UFO directory.
+    #[error("missing default ('glyphs') layer")]
     MissingDefaultLayer,
     /// An error returned when an expected layer is missing.
+    #[error("layer name '{0}' does not exist")]
     MissingLayer(String),
     /// An error returned when a layer is duplicated.
+    #[error("layer name '{0}' already exists")]
     DuplicateLayer(String),
     /// An error returned when there is an invalid color definition.
+    #[error(transparent)]
     InvalidColor(InvalidColorString),
     /// An error returned when there is a duplicate glyph.
+    #[error("glyph named '{glyph}' already exists in layer '{layer}'")]
     DuplicateGlyph {
         /// The layer name.
         layer: String,
@@ -33,6 +41,7 @@ pub enum Error {
         glyph: String,
     },
     /// An error returned when there is a missing expected glyph
+    #[error("glyph '{glyph}' missing from layer '{layer}'")]
     MissingGlyph {
         /// The layer name.
         layer: String,
@@ -40,111 +49,140 @@ pub enum Error {
         glyph: String,
     },
     /// An error returned when there is an input problem during processing
+    #[error("failed to read file or directory '{path}'")]
     UfoLoad {
         /// The path of the relevant file.
         path: PathBuf,
         /// The underlying error.
-        inner: IoError,
+        source: IoError,
     },
     /// An error returned when there is an output problem during processing
+    #[error("failed to write file or directory '{path}'")]
     UfoWrite {
         /// The path of the relevant file.
         path: PathBuf,
         /// The underlying error.
-        inner: IoError,
+        source: IoError,
     },
     /// A `.glif` file could not be loaded.
+    #[error("failed to read glyph file from '{path}'")]
     GlifLoad {
         /// The path of the relevant `.glif` file.
         path: PathBuf,
         /// The underlying error.
-        inner: GlifLoadError,
+        source: GlifLoadError,
     },
     /// An error that occurs when attempting to write a [`Glyph`] to disk.
     ///
     /// [`Glyph`]: crate::Glyph
-    GlifWrite(GlifWriteError),
+    #[error("failed to write out glyph '{}'", .0.name)]
+    GlifWrite(#[from] GlifWriteError),
     /// A plist file could not be read.
+    #[error("failed to read Plist file from '{path}'")]
     PlistLoad {
         /// The path of the relevant file.
         path: PathBuf,
         /// The underlying error.
-        error: PlistError,
+        source: PlistError,
     },
     /// A plist file could not be written.
+    #[error("failed to write Plist file to '{path}'")]
     PlistWrite {
         /// The path of the relevant file.
         path: PathBuf,
         /// The underlying error.
-        error: PlistError,
+        source: PlistError,
     },
     /// An error returned when there is invalid fontinfo.plist data.
+    #[error("fontInfo contains invalid data")]
     InvalidFontInfo,
     /// An error returned when there is a problem during fontinfo.plist version up-conversion.
+    #[error("fontInfo contains invalid data after upconversion")]
     FontInfoUpconversion,
     /// An error returned when there is invalid groups.plist data.
-    InvalidGroups(GroupsValidationError),
+    #[error(transparent)]
+    InvalidGroups(#[from] GroupsValidationError),
     /// An error returned when there is a problem during groups.plist version up-conversion.
+    #[error("upconverting UFO v1 or v2 kerning data to v3 failed")]
     GroupsUpconversionFailure(GroupsValidationError),
     /// An error returned when there is a problem parsing plist data into
     /// [`plist::Dictionary`] types.
     ///
     /// The string is the dictionary key.
+    #[error("expected a Plist dictionary at '{0}'")]
     ExpectedPlistDictionary(String),
     /// An error returned when there is an inappropriate negative sign on a value.
+    #[error("positiveIntegerOrFloat expects a positive value")]
     ExpectedPositiveValue,
     /// An error returned when there is a problem with kurbo contour conversion.
     #[cfg(feature = "kurbo")]
+    #[error("failed to convert contour: '{0}'")]
     ConvertContour(ErrorKind),
     /// An error returned when there is a missing mandatory file.
+    #[error("missing required {0} file")]
     MissingFile(String),
     /// An error returned when the requested UFO directory path is not present.
+    #[error("{0} directory was not found")]
     MissingUfoDir(String),
     /// An error returned when there is an invalid entry in an image or data store.
     ///
     /// This error wraps a [`StoreError`] type and provides additional path data.
-    InvalidStoreEntry(PathBuf, StoreError),
+    #[error("store entry '{0}' is invalid")]
+    InvalidStoreEntry(PathBuf, #[source] StoreError),
 }
 
 /// An error that occurs while attempting to read a .glif file from disk.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum GlifLoadError {
     /// An [`std::io::Error`].
-    Io(IoError),
+    #[error("failed to read file")]
+    Io(#[from] IoError),
     /// A [`quick_xml::Error`].
-    Xml(XmlError),
+    #[error("failed to read or parse XML structure")]
+    Xml(#[from] XmlError),
     /// The .glif file was malformed.
-    Parse(ErrorKind),
+    #[error("failed to parse glyph data: {0}")]
+    Parse(#[from] ErrorKind),
 }
 
 /// An error representing a failure to insert content into a [`crate::datastore::Store`].
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Error)]
 #[non_exhaustive]
 pub enum StoreError {
     /// Tried to insert a path whose ancestor is in the store already, implying nesting a file under a file.
+    #[error("the parent of the file is a file itself")]
     DirUnderFile,
     /// The path was empty.
+    #[error("an empty path cannot be used as a key in the store")]
     EmptyPath,
     /// The path was neither plain file nor directory, but e.g. a symlink.
+    #[error("only plain files and directories are allowed, no symlinks")]
     NotPlainFileOrDir,
     /// The path was absolute; only relative paths are allowed.
+    #[error("the path must be relative")]
     PathIsAbsolute,
     /// The path was not a plain file, but e.g. a directory or symlink.
+    #[error("only plain files are allowed, no symlinks")]
     NotPlainFile,
     /// The path contained a subdirectory; `images` is a flat directory.
+    #[error("subdirectories are not allowed in the image store")]
     Subdir,
     /// The image did not have a valid PNG header.
+    #[error("an image must be a valid PNG")]
     InvalidImage,
     /// Encountered an IO error while trying to load data
-    Io(std::sync::Arc<std::io::Error>),
+    #[error("encountered an IO error while trying to load content")]
+    Io(#[from] std::sync::Arc<std::io::Error>),
 }
 
 /// An error representing a failure to validate UFO groups.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum GroupsValidationError {
     /// An error returned when there is an invalid groups name.
+    #[error("a kerning group name must have at least one character after the common 'public.kernN.' prefix.")]
     InvalidName,
     /// An error returned when there are overlapping kerning groups.
+    #[error("the glyph '{glyph_name}' appears in more than one kerning group. Last found in '{group_name}'")]
     OverlappingKerningGroups {
         /// The glyph name.
         glyph_name: String,
@@ -156,393 +194,158 @@ pub enum GroupsValidationError {
 /// An error representing an invalid [`Color`] string.
 ///
 /// [`Color`]: crate::Color
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("invalid color string '{string}'")]
 pub struct InvalidColorString {
     /// The source string that caused the error.
-    source: String,
+    string: String,
 }
 
 impl InvalidColorString {
     pub(crate) fn new(source: String) -> Self {
-        InvalidColorString { source }
+        InvalidColorString { string: source }
     }
 }
 
 /// An error when attempting to write a .glif file.
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("failed to write glyph '{name}'")]
 pub struct GlifWriteError {
     /// The name of the glif where the error occured.
     pub name: GlyphName,
     /// The actual error.
-    pub inner: WriteError,
+    pub source: WriteError,
 }
 
 /// The possible inner error types that can occur when attempting to write
 /// out a .glif type.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum WriteError {
-    /// XML serialzation error. Wraps a [XmlError].
-    Xml(XmlError),
     /// When writing out the 'lib' section, we use the plist crate to generate
     /// the plist xml, and then strip the preface and closing </plist> tag.
     ///
     /// If for some reason the implementation of that crate changes, we could
     /// be affected, although this is very unlikely.
+    #[error("internal error while writing lib data, please open an issue")]
     InternalLibWriteError,
     /// An error originating in [`std::io`].
-    Io(IoError),
+    #[error("error writing to disk")]
+    Io(#[from] IoError),
     /// Plist serialization error. Wraps a [PlistError].
-    Plist(PlistError),
+    #[error("error writing a Plist file to disk")]
+    Plist(#[from] PlistError),
+    /// XML serialzation error. Wraps a [XmlError].
+    #[error("error writing an XML file to disk")]
+    Xml(#[from] XmlError),
 }
 
 /// The reason for a glif parse failure.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Error)]
 pub enum ErrorKind {
     /// The glif version is not supported by this library.
+    #[error("unsupported glif version")]
     UnsupportedGlifVersion,
     /// An unknown point type.
+    #[error("unknown point type")]
     UnknownPointType,
     /// The first XML element of a glif file is invalid.
+    #[error("wrong first XML element in glif file")]
     WrongFirstElement,
     /// Missing a close tag.
+    #[error("missing close tag")]
     MissingCloseTag,
     /// Has an unexpected tag.
+    #[error("unexpected tag")]
     UnexpectedTag,
     /// Has an invalid hexadecimal value.
+    #[error("bad hex value")]
     BadHexValue,
     /// Has an invalid numeric value.
+    #[error("bad number")]
     BadNumber,
     /// Has an invalid color value.
+    #[error("bad color")]
     BadColor,
     /// Has an invalid anchor definition.
+    #[error("bad anchor")]
     BadAnchor,
     /// Has an invalid point definition.
+    #[error("bad point")]
     BadPoint,
     /// Has an invalid guideline definition.
+    #[error("bad guideline")]
     BadGuideline,
     /// Has an invalid component definition.
+    #[error("bad component")]
     BadComponent,
     /// Has an invalid image definition.
+    #[error("bad image")]
     BadImage,
     /// Has an invalid identifier.
+    #[error("bad identifier")]
     BadIdentifier,
     /// Has an invalid lib.
+    #[error("bad lib")]
     BadLib,
     /// Has an unexected duplicate value.
+    #[error("unexpected duplicate")]
     UnexpectedDuplicate,
     /// Has an unexpected move definition.
+    #[error("unexpected move point, can only occur at start of contour")]
     UnexpectedMove,
     /// Has an unexpected smooth definition.
+    #[error("unexpected smooth attribute on an off-curve point")]
     UnexpectedSmooth,
     /// Has an unexpected element definition.
+    #[error("unexpected element")]
     UnexpectedElement,
     /// Has an unexpected attribute definition.
+    #[error("unexpected attribute")]
     UnexpectedAttribute,
     /// Has an unexpected end of file definition.
+    #[error("unexpected EOF")]
     UnexpectedEof,
     /// Has an unexpected point following an off curve point definition.
+    #[error("an off-curve point must be followed by a curve or qcurve")]
     UnexpectedPointAfterOffCurve,
     /// Has too many off curve points in sequence.
+    #[error("at most two off-curve points can precede a curve")]
     TooManyOffCurves,
     /// The contour pen path was not started
+    #[error("must call begin_path() before calling add_point() or end_path()")]
     PenPathNotStarted,
     /// Has trailing off curve points defined.
+    #[error("open contours must not have trailing off-curves")]
     TrailingOffCurves,
     /// Has duplicate identifiers.
+    #[error("duplicate identifier")]
     DuplicateIdentifier,
     /// Has unexepected drawing data.
+    #[error("unexpected drawing without an outline")]
     UnexpectedDrawing,
     /// Has incomplete drawing data.
+    #[error("unfinished drawing, you must call end_path")]
     UnfinishedDrawing,
     /// Has an unexpected point field.
+    #[error("unexpected point field")]
     UnexpectedPointField,
     /// Has an unexpected component field.
+    #[error("unexpected component field")]
     UnexpectedComponentField,
     /// Has an unexpected anchor field.
+    #[error("unexpected anchor field")]
     UnexpectedAnchorField,
     /// Has an unexpected guideline field.
+    #[error("unexpected guideline field")]
     UnexpectedGuidelineField,
     /// Has an unexpected image field.
+    #[error("unexpected image field")]
     UnexpectedImageField,
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Error::DowngradeUnsupported => {
-                write!(f, "Downgrading below UFO v3 is not currently supported.")
-            }
-            Error::PreexistingPublicObjectLibsKey => write!(
-                f,
-                "The `public.objectLibs` lib key is managed by Norad and must not be set manually."
-            ),
-            Error::MissingDefaultLayer => write!(f, "Missing default ('glyphs') layer."),
-            Error::DuplicateLayer(name) => write!(f, "Layer name '{}' already exists.", name),
-            Error::MissingLayer(name) => write!(f, "Layer name '{}' does not exist.", name),
-            Error::DuplicateGlyph { layer, glyph } => {
-                write!(f, "Glyph named '{}' already exists in layer '{}'", glyph, layer)
-            }
-            Error::MissingGlyph { layer, glyph } => {
-                write!(f, "Glyph '{}' missing from layer '{}'", glyph, layer)
-            }
-            Error::InvalidColor(e) => e.fmt(f),
-            Error::UfoLoad { path, .. } => {
-                write!(f, "Failed to read file or directory '{}'", path.display())
-            }
-            Error::UfoWrite { path, .. } => {
-                write!(f, "Failed to write file or directory '{}'", path.display())
-            }
-            Error::GlifLoad { path, .. } => {
-                write!(f, "Failed to read glyph file from '{}'", path.display())
-            }
-            Error::GlifWrite(GlifWriteError { name, .. }) => {
-                write!(f, "Failed to write out glyph '{}'", name)
-            }
-            Error::PlistLoad { path, .. } => {
-                write!(f, "Failed to read Plist file from '{}'", path.display())
-            }
-            Error::PlistWrite { path, .. } => {
-                write!(f, "Failed to write Plist file to '{}'", path.display())
-            }
-            Error::InvalidFontInfo => write!(f, "FontInfo contains invalid data"),
-            Error::FontInfoUpconversion => {
-                write!(f, "FontInfo contains invalid data after upconversion")
-            }
-            Error::InvalidGroups(ge) => ge.fmt(f),
-            Error::GroupsUpconversionFailure(ge) => {
-                write!(f, "Upconverting UFO v1 or v2 kerning data to v3 failed: {}", ge)
-            }
-            Error::ExpectedPlistDictionary(key) => {
-                write!(f, "Expected a Plist dictionary at '{}'", key)
-            }
-            Error::ExpectedPositiveValue => {
-                write!(f, "PositiveIntegerOrFloat expects a positive value.")
-            }
-            Error::MissingFile(path) => {
-                write!(f, "missing required {} file", path)
-            }
-            Error::MissingUfoDir(path) => {
-                write!(f, "{} directory was not found", path)
-            }
-            Error::InvalidStoreEntry(path, _) => {
-                write!(f, "Store entry '{}' is invalid", path.display())
-            }
-            #[cfg(feature = "kurbo")]
-            Error::ConvertContour(cause) => write!(f, "Failed to convert contour: '{}'", cause),
-        }
-    }
-}
-
-impl std::fmt::Display for GlifLoadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            GlifLoadError::Xml(_) => write!(f, "Failed to read or parse XML structure"),
-            GlifLoadError::Io(_) => write!(f, "Failed to read file"),
-            GlifLoadError::Parse(e) => write!(f, "Failed to parse glyph data: {}", e),
-        }
-    }
-}
-
-impl std::fmt::Display for StoreError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use StoreError::*;
-
-        match self {
-            DirUnderFile => write!(f, "The parent of the file is a file itself."),
-            NotPlainFileOrDir => {
-                write!(f, "Only plain files and directories are allowed, no symlinks.")
-            }
-            PathIsAbsolute => write!(f, "The path must be relative."),
-            EmptyPath => {
-                write!(f, "An empty path cannot be used as a key in the store.")
-            }
-            NotPlainFile => write!(f, "Only plain files are allowed, no symlinks."),
-            Subdir => write!(f, "Subdirectories are not allowed in the image store."),
-            InvalidImage => write!(f, "An image must be a valid PNG."),
-            Io(_) => {
-                write!(f, "Encountered an IO error while trying to load content")
-            }
-        }
-    }
-}
-
-impl std::error::Error for StoreError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            StoreError::Io(e) => Some(e),
-            _ => None,
-        }
-    }
-}
-
-impl std::fmt::Display for GroupsValidationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            GroupsValidationError::InvalidName => write!(f, "A kerning group name must have at least one character after the common 'public.kernN.' prefix."),
-            GroupsValidationError::OverlappingKerningGroups {glyph_name, group_name} => write!(f, "The glyph '{}' appears in more than one kerning group. Last found in '{}'", glyph_name, group_name)
-        }
-    }
-}
-
-impl std::fmt::Display for ErrorKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            ErrorKind::UnsupportedGlifVersion => write!(f, "Unsupported glif version"),
-            ErrorKind::UnknownPointType => write!(f, "Unknown point type"),
-            ErrorKind::WrongFirstElement => write!(f, "Wrong first XML element in glif file"),
-            ErrorKind::MissingCloseTag => write!(f, "Missing close tag"),
-            ErrorKind::UnexpectedTag => write!(f, "Unexpected tag"),
-            ErrorKind::BadHexValue => write!(f, "Bad hex value"),
-            ErrorKind::BadNumber => write!(f, "Bad number"),
-            ErrorKind::BadColor => write!(f, "Bad color"),
-            ErrorKind::BadAnchor => write!(f, "Bad anchor"),
-            ErrorKind::BadPoint => write!(f, "Bad point"),
-            ErrorKind::BadGuideline => write!(f, "Bad guideline"),
-            ErrorKind::BadComponent => write!(f, "Bad component"),
-            ErrorKind::BadImage => write!(f, "Bad image"),
-            ErrorKind::BadIdentifier => write!(f, "Bad identifier"),
-            ErrorKind::BadLib => write!(f, "Bad lib"),
-            ErrorKind::UnexpectedDuplicate => write!(f, "Unexpected duplicate"),
-            ErrorKind::UnexpectedMove => {
-                write!(f, "Unexpected move point, can only occur at start of contour")
-            }
-            ErrorKind::UnexpectedSmooth => {
-                write!(f, "Unexpected smooth attribute on an off-curve point")
-            }
-            ErrorKind::UnexpectedElement => write!(f, "Unexpected element"),
-            ErrorKind::UnexpectedAttribute => write!(f, "Unexpected attribute"),
-            ErrorKind::UnexpectedEof => write!(f, "Unexpected EOF"),
-            ErrorKind::UnexpectedPointAfterOffCurve => {
-                write!(f, "An off-curve point must be followed by a curve or qcurve")
-            }
-            ErrorKind::TooManyOffCurves => {
-                write!(f, "At most two off-curve points can precede a curve")
-            }
-            ErrorKind::PenPathNotStarted => {
-                write!(f, "Must call begin_path() before calling add_point() or end_path()")
-            }
-            ErrorKind::TrailingOffCurves => {
-                write!(f, "Open contours must not have trailing off-curves")
-            }
-            ErrorKind::DuplicateIdentifier => write!(f, "Duplicate identifier"),
-            ErrorKind::UnexpectedDrawing => write!(f, "Unexpected drawing without an outline"),
-            ErrorKind::UnfinishedDrawing => write!(f, "Unfinished drawing, you must call end_path"),
-            ErrorKind::UnexpectedPointField => write!(f, "Unexpected point field"),
-            ErrorKind::UnexpectedComponentField => write!(f, "Unexpected component field "),
-            ErrorKind::UnexpectedAnchorField => write!(f, "Unexpected anchor field "),
-            ErrorKind::UnexpectedGuidelineField => write!(f, "Unexpected guideline field "),
-            ErrorKind::UnexpectedImageField => write!(f, "Unexpected image field "),
-        }
-    }
-}
-
-impl std::fmt::Display for WriteError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            WriteError::Io(_) => write!(f, "Error writing to disk"),
-            WriteError::Xml(_) => write!(f, "Error writing an XML file to disk"),
-            WriteError::Plist(_) => write!(f, "Error writing a Plist file to disk"),
-            WriteError::InternalLibWriteError => {
-                write!(f, "Internal error while writing lib data. Please open an issue.")
-            }
-        }
-    }
-}
-
-impl std::fmt::Display for GlifWriteError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Failed to write glyph '{}'", self.name)
-    }
-}
-
-impl std::error::Error for WriteError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            WriteError::Io(inner) => Some(inner),
-            WriteError::Xml(inner) => Some(inner),
-            WriteError::Plist(inner) => Some(inner),
-            WriteError::InternalLibWriteError => None,
-        }
-    }
-}
-
-impl std::error::Error for GlifWriteError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.inner.source()
-    }
-}
-
-impl std::error::Error for GlifLoadError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            GlifLoadError::Io(e) => Some(e),
-            GlifLoadError::Xml(e) => Some(e),
-            GlifLoadError::Parse(_) => None,
-        }
-    }
-}
-
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Error::GlifLoad { inner, .. } => Some(inner),
-            Error::GlifWrite(inner) => Some(&inner.inner),
-            Error::PlistLoad { error, .. } => Some(error),
-            Error::PlistWrite { error, .. } => Some(error),
-            Error::UfoLoad { inner, .. } => Some(inner),
-            Error::UfoWrite { inner, .. } => Some(inner),
-            Error::InvalidStoreEntry(_, e) => Some(e),
-            _ => None,
-        }
-    }
-}
-
-impl std::fmt::Display for InvalidColorString {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Invalid color string '{}'", self.source)
-    }
-}
-
-impl std::error::Error for InvalidColorString {}
-
-#[doc(hidden)]
-impl From<InvalidColorString> for Error {
-    fn from(src: InvalidColorString) -> Error {
-        Error::InvalidColor(src)
-    }
-}
-
-#[doc(hidden)]
-impl From<GlifWriteError> for Error {
-    fn from(src: GlifWriteError) -> Error {
-        Error::GlifWrite(src)
-    }
-}
-
-#[doc(hidden)]
-impl From<XmlError> for WriteError {
-    fn from(src: XmlError) -> WriteError {
-        WriteError::Xml(src)
-    }
-}
-
-#[doc(hidden)]
-impl From<IoError> for WriteError {
-    fn from(src: IoError) -> WriteError {
-        WriteError::Io(src)
-    }
 }
 
 #[doc(hidden)]
 impl From<IoError> for StoreError {
     fn from(src: IoError) -> StoreError {
         StoreError::Io(std::sync::Arc::new(src))
-    }
-}
-
-#[doc(hidden)]
-impl From<PlistError> for WriteError {
-    fn from(src: PlistError) -> WriteError {
-        WriteError::Plist(src)
     }
 }

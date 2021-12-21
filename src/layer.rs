@@ -44,7 +44,7 @@ impl LayerSet {
         let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
         let to_load: Vec<(LayerName, PathBuf)> = if layer_contents_path.exists() {
             plist::from_file(&layer_contents_path)
-                .map_err(|error| Error::PlistLoad { path: layer_contents_path, error })?
+                .map_err(|source| Error::PlistLoad { path: layer_contents_path, source })?
         } else {
             vec![(Arc::from(DEFAULT_LAYER_NAME), PathBuf::from(DEFAULT_GLYPHS_DIRNAME))]
         };
@@ -247,7 +247,7 @@ impl Layer {
         // these keys are never used; a future optimization would be to skip the
         // names and deserialize to a vec; that would not be a one-liner, though.
         let contents: BTreeMap<GlyphName, PathBuf> = plist::from_file(&contents_path)
-            .map_err(|error| Error::PlistLoad { path: contents_path, error })?;
+            .map_err(|source| Error::PlistLoad { path: contents_path, source })?;
 
         #[cfg(feature = "rayon")]
         let iter = contents.par_iter();
@@ -264,7 +264,7 @@ impl Layer {
                         glyph.name = name.clone();
                         (name, Arc::new(glyph))
                     })
-                    .map_err(|e| Error::GlifLoad { path: glyph_path, inner: e })
+                    .map_err(|source| Error::GlifLoad { path: glyph_path, source })
             })
             .collect::<Result<_, _>>()?;
 
@@ -290,7 +290,7 @@ impl Layer {
             lib: Plist,
         }
         let layerinfo: LayerInfoHelper = plist::from_file(path)
-            .map_err(|error| Error::PlistLoad { path: path.into(), error })?;
+            .map_err(|source| Error::PlistLoad { path: path.into(), source })?;
         Ok((layerinfo.color, layerinfo.lib))
     }
 
@@ -331,7 +331,7 @@ impl Layer {
     ///
     /// The path should not exist.
     pub fn save_with_options(&self, path: &Path, opts: &WriteOptions) -> Result<(), Error> {
-        fs::create_dir(&path).map_err(|inner| Error::UfoWrite { path: path.into(), inner })?;
+        fs::create_dir(&path).map_err(|source| Error::UfoWrite { path: path.into(), source })?;
         crate::write::write_xml_to_file(&path.join(CONTENTS_FILE), &self.contents, opts)?;
 
         self.layerinfo_to_file_if_needed(path, opts)?;
