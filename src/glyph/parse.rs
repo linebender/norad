@@ -12,7 +12,7 @@ use crate::names::NameList;
 
 use quick_xml::{
     events::{BytesStart, Event},
-    Error as XmlError, Reader,
+    Reader,
 };
 
 #[cfg(test)]
@@ -514,16 +514,5 @@ impl FromStr for GlifVersion {
             "2" => Ok(GlifVersion::V2),
             _other => Err(ErrorKind::UnsupportedGlifVersion),
         }
-    }
-}
-
-impl From<ErrorKind> for GlifLoadError {
-    fn from(src: ErrorKind) -> GlifLoadError {
-        GlifLoadError::Parse(src)
-    }
-}
-impl From<XmlError> for GlifLoadError {
-    fn from(src: XmlError) -> GlifLoadError {
-        GlifLoadError::Xml(src)
     }
 }
