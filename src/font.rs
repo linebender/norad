@@ -71,7 +71,7 @@ pub struct Font {
     pub groups: Groups,
     /// Horizontal kerning pairs, corresponding to the [`kerning.plist`][k] file.
     ///
-    /// This file is otional, and will not be serialized if no pairs are specified.
+    /// This file is optional, and will not be serialized if no pairs are specified.
     ///
     /// [k]: https://unifiedfontobject.org/versions/ufo3/kerning.plist/
     pub kerning: Kerning,
