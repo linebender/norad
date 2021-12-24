@@ -31,46 +31,63 @@ static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
 pub(crate) static DATA_DIR: &str = "data";
 pub(crate) static IMAGES_DIR: &str = "images";
 
+/// A font object, corresponding to a [UFO directory].
 /// A Unified Font Object.
 ///
 /// See the [UFO specification] for a description of the underlying data.
 ///
 /// [UFO specification]: https://unifiedfontobject.org/versions/ufo3/
+/// [UFO directory]: https://unifiedfontobject.org/versions/ufo3/index.html#directory-structure
 #[derive(Clone, Debug, Default, PartialEq)]
 #[non_exhaustive]
 pub struct Font {
-    /// [metainfo.plist][mi] parsed data field
+    /// The font's metainfo, corresponding to the [`metainfo.plist`][mi] file.
     ///
     /// [mi]: https://unifiedfontobject.org/versions/ufo3/metainfo.plist/
     pub meta: MetaInfo,
-    /// [fontinfo.plist][fi] parsed data field
+    /// The font info, corresponding to the [`fontinfo.plist`][fi] file.
     ///
     /// [fi]: https://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
     pub font_info: FontInfo,
-    /// font layers, each containing an independent set of glyphs.
+    ///  The font's layers.
+    ///
+    ///  Each layer contains some number of [`Glyph`]s, and corresponds to a
+    ///  [glyph directory][] on disk.
+    ///
+    ///  [glyph directory]: https://unifiedfontobject.org/versions/ufo3/glyphs/
     pub layers: LayerSet,
-    /// [lib.plist][l] parsed data field
+    /// Arbitrary user-supplied data.
+    ///
+    /// This corresponds to the [`lib.plist`][l] file on disk. This file is
+    /// optional; an empty lib will not be serialized.
     ///
     /// [l]: https://unifiedfontobject.org/versions/ufo3/lib.plist/
     pub lib: Plist,
-    /// [groups.plist][g] parsed data field
+    /// Glyph groups, corresponding to the [`groups.plist`][g] file.
+    ///
+    /// This file is optional; if no groups are specified it will not be serialized.
     ///
     /// [g]: https://unifiedfontobject.org/versions/ufo3/groups.plist/
     pub groups: Groups,
-    /// [kerning.plist][k] parsed data field
+    /// Horizontal kerning pairs, corresponding to the [`kerning.plist`][k] file.
+    ///
+    /// This file is optional, and will not be serialized if no pairs are specified.
     ///
     /// [k]: https://unifiedfontobject.org/versions/ufo3/kerning.plist/
     pub kerning: Kerning,
-    /// [features.fea][fea] file data field
+    /// The contents of the [`features.fea`][fea] file, if one exists.
     ///
     /// [fea]: https://unifiedfontobject.org/versions/ufo3/features.fea/
     pub features: String,
-    /// [`DataRequest`] field
-    pub data_request: DataRequest,
-    /// [`DataStore`] field
+    /// The contents of the font's [`data` directory][dir].
+    ///
+    /// [dir]: https://unifiedfontobject.org/versions/ufo3/data/
     pub data: DataStore,
-    /// [`ImageStore`] field
+    /// The contents of the font's [`images` directory][dir].
+    ///
+    /// [dir]: https://unifiedfontobject.org/versions/ufo3/images/
     pub images: ImageStore,
+    data_request: DataRequest,
 }
 
 /// A version of the [UFO spec].
@@ -148,7 +165,7 @@ impl Font {
     }
 
     /// Returns a [`Font`] object with custom data inclusion/exclusion
-    /// criteria from a UFO directory `path`.  
+    /// criteria from a UFO directory `path`.
     ///
     /// UFO data inclusion and exclusion criteria are defined with a [`DataRequest`] parameter.
     ///
