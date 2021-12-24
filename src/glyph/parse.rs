@@ -53,7 +53,7 @@ impl<'names> GlifParser<'names> {
                     let tag_name = reader.decode(start.name())?;
                     match tag_name.borrow() {
                         "outline" => self.parse_outline(reader, buf)?,
-                        "lib" => self.parse_lib(reader, raw_xml, buf)?, // do this at some point?
+                        "lib" => self.parse_lib(reader, raw_xml, buf)?,
                         "note" => self.parse_note(reader, buf)?,
                         _other => return Err(ErrorKind::UnexpectedTag.into()),
                     }

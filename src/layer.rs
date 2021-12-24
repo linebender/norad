@@ -1,8 +1,8 @@
-use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::{borrow::Borrow, fs::File};
 
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
@@ -49,20 +49,36 @@ impl LayerSet {
             vec![(Arc::from(DEFAULT_LAYER_NAME), PathBuf::from(DEFAULT_GLYPHS_DIRNAME))]
         };
 
+        let (tx, rx) = crossbeam_channel::unbounded();
+        let _ = std::thread::spawn(move || {
+            loop {
+                match rx.recv() {
+                    Err(_) => return,
+                    Ok(handle) => {
+                        //eprintln!("droping {:?}", &handle);
+                        std::mem::drop(handle);
+                    }
+                }
+            }
+        });
+
         let mut layers: Vec<_> = to_load
             .into_iter()
             .map(|(name, path)| {
                 let layer_path = base_dir.join(&path);
-                Layer::load_impl(&layer_path, name, glyph_names)
+                Layer::load_impl(&layer_path, name, glyph_names, Some(&tx))
             })
             .collect::<Result<_, _>>()?;
 
+        // this closes the rx side, finishing the thread
+        std::mem::drop(tx);
         // move the default layer to the front
         let default_idx = layers
             .iter()
             .position(|l| l.path.to_str() == Some(DEFAULT_GLYPHS_DIRNAME))
             .ok_or(Error::MissingDefaultLayer)?;
         layers.rotate_left(default_idx);
+        //handle.join().unwrap();
 
         Ok(LayerSet { layers })
     }
@@ -228,7 +244,7 @@ impl Layer {
     pub fn load(path: impl AsRef<Path>, name: LayerName) -> Result<Layer, Error> {
         let path = path.as_ref();
         let names = NameList::default();
-        Layer::load_impl(path, name, &names)
+        Layer::load_impl(path, name, &names, None)
     }
 
     /// The actual loading logic.
@@ -239,6 +255,7 @@ impl Layer {
         path: &Path,
         name: LayerName,
         names: &NameList,
+        drop_thread: Option<&crossbeam_channel::Sender<File>>,
     ) -> Result<Layer, Error> {
         let contents_path = path.join(CONTENTS_FILE);
         if !contents_path.exists() {
@@ -259,12 +276,17 @@ impl Layer {
                 let name = names.get(name);
                 let glyph_path = path.join(glyph_path);
 
-                Glyph::load_with_names(&glyph_path, names)
-                    .map(|mut glyph| {
-                        glyph.name = name.clone();
-                        (name, Arc::new(glyph))
-                    })
-                    .map_err(|source| Error::GlifLoad { path: glyph_path, source })
+                Glyph::load_impl(&glyph_path, Some(names), |file| {
+                    if let Some(drop_chan) = drop_thread.as_ref() {
+                        //println!("sending {:?}", &file);
+                        drop_chan.send(file).unwrap();
+                    }
+                })
+                .map(|mut glyph| {
+                    glyph.name = name.clone();
+                    (name, Arc::new(glyph))
+                })
+                .map_err(|source| Error::GlifLoad { path: glyph_path, source })
             })
             .collect::<Result<_, _>>()?;
 

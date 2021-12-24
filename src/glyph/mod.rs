@@ -6,6 +6,7 @@ mod serialize;
 #[cfg(test)]
 mod tests;
 
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -64,18 +65,20 @@ impl Glyph {
     /// between instances.
     pub fn load(path: impl AsRef<Path>) -> Result<Self, GlifLoadError> {
         let path = path.as_ref();
-        let names = NameList::default();
-        Glyph::load_with_names(path, &names)
+        Glyph::load_impl(path, None, |_| ())
     }
 
-    /// Attempt to load the glyph at `path`, reusing names from the `NameList`.
-    ///
-    /// This uses string interning to reuse allocations when a glyph name
-    /// occurs multiple times (such as in components or in different layers).
-    pub fn load_with_names(path: &Path, names: &NameList) -> Result<Self, GlifLoadError> {
-        std::fs::read(path)
-            .map_err(GlifLoadError::Io)
-            .and_then(|data| parse::GlifParser::from_xml(&data, Some(names)))
+    pub(crate) fn load_impl(
+        path: &Path,
+        names: Option<&NameList>,
+        drop_file_handle_fn: impl FnOnce(std::fs::File),
+    ) -> Result<Self, GlifLoadError> {
+        let mut file = std::fs::File::open(path).map_err(GlifLoadError::Io)?;
+        let mut buf = String::new();
+        file.read_to_string(&mut buf).map_err(GlifLoadError::Io)?;
+        let result = parse::GlifParser::from_xml(buf.as_bytes(), names);
+        drop_file_handle_fn(file);
+        result
     }
 
     #[doc(hidden)]
