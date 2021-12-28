@@ -34,20 +34,24 @@ pub struct FontInfo {
     // INFO: Keep this struct sorted alphabetically, serde serializes it in the order you see
     // here and Plist files should be sorted.
     /// Ascender value (ascender).
-    pub ascender: Option<IntegerOrFloat>,
+    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    pub ascender: Option<f64>,
     /// Cap height value (capHeight).
-    pub cap_height: Option<IntegerOrFloat>,
+    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    pub cap_height: Option<f64>,
     /// Copyright statement (copyright).
     pub copyright: Option<String>,
     /// Descender value (descender).
-    pub descender: Option<IntegerOrFloat>,
+    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    pub descender: Option<f64>,
     /// Family name (familyName).
     pub family_name: Option<String>,
     /// Guideline definitions that apply to all glyphs in
     /// all layers (guidelines).
     pub guidelines: Option<Vec<Guideline>>,
     /// Italic angle in counter-clockwise degrees (italicAngle).
-    pub italic_angle: Option<IntegerOrFloat>,
+    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    pub italic_angle: Option<f64>,
     /// Family ID number (macintoshFONDFamilyID).
     #[serde(rename = "macintoshFONDFamilyID")]
     pub macintosh_fond_family_id: Option<Integer>,
@@ -202,18 +206,21 @@ pub struct FontInfo {
     /// Line gap value (openTypeVheaVertTypoLineGap).
     pub open_type_vhea_vert_typo_line_gap: Option<Integer>,
     /// Postscript BlueFuzz value (postscriptBlueFuzz).
-    pub postscript_blue_fuzz: Option<IntegerOrFloat>,
+    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    pub postscript_blue_fuzz: Option<f64>,
     /// Postscript BlueScale value (postscriptBlueScale).
     pub postscript_blue_scale: Option<Float>,
     /// Postscript BlueShift value (postscriptBlueShift).
-    pub postscript_blue_shift: Option<IntegerOrFloat>,
+    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    pub postscript_blue_shift: Option<f64>,
     /// A collection of values that should be in the
     /// Type 1/CFF BlueValues field (postscriptBlueValues).
     pub postscript_blue_values: Option<Vec<IntegerOrFloat>>,
     /// Name of default glyph in PFM files (postscriptDefaultCharacter).
     pub postscript_default_character: Option<String>,
     /// Default glyph width (postscriptDefaultWidthX).
-    pub postscript_default_width_x: Option<IntegerOrFloat>,
+    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    pub postscript_default_width_x: Option<f64>,
     /// A collection of values that should be in the Type 1/CFF
     /// FamilyBlues field (postscriptFamilyBlues).
     pub postscript_family_blues: Option<Vec<IntegerOrFloat>>,
@@ -231,13 +238,15 @@ pub struct FontInfo {
     /// (postscriptIsFixedPitch).
     pub postscript_is_fixed_pitch: Option<bool>,
     /// Glyph nominal width (postscriptNominalWidthX).
-    pub postscript_nominal_width_x: Option<IntegerOrFloat>,
+    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    pub postscript_nominal_width_x: Option<f64>,
     /// A collection of values that should be in the Type 1/CFF
     /// OtherBlues field (postscriptOtherBlues).
     pub postscript_other_blues: Option<Vec<IntegerOrFloat>>,
     /// Slant angle in counter-clockwise degrees from the vertical
     /// (postscriptSlantAngle).
-    pub postscript_slant_angle: Option<IntegerOrFloat>,
+    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    pub postscript_slant_angle: Option<f64>,
     /// A collection of horizontal stems sorted in the order specified
     /// in the Type 1/CFF specification (postscriptStemSnapH).
     pub postscript_stem_snap_h: Option<Vec<IntegerOrFloat>>,
@@ -245,9 +254,11 @@ pub struct FontInfo {
     /// in the Type 1/CFF specification (postscriptStemSnapV).
     pub postscript_stem_snap_v: Option<Vec<IntegerOrFloat>>,
     /// Underline position value (postscriptUnderlinePosition).
-    pub postscript_underline_position: Option<IntegerOrFloat>,
+    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    pub postscript_underline_position: Option<f64>,
     /// Underline thickness value (postscriptUnderlineThickness).
-    pub postscript_underline_thickness: Option<IntegerOrFloat>,
+    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    pub postscript_underline_thickness: Option<f64>,
     /// Unique ID as specified by the Type 1/CFF specification
     /// (postscriptUniqueID).
     #[serde(rename = "postscriptUniqueID")]
@@ -295,7 +306,8 @@ pub struct FontInfo {
     /// Minor version number (woffMinorVersion).
     pub woff_minor_version: Option<NonNegativeInteger>,
     /// x-height value (xHeight).
-    pub x_height: Option<IntegerOrFloat>,
+    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    pub x_height: Option<f64>,
     /// Year that the font was created (year).
     pub year: Option<Integer>,
 }
@@ -308,24 +320,24 @@ pub struct FontInfo {
 #[serde(deny_unknown_fields)]
 #[allow(non_snake_case)]
 struct FontInfoV2 {
-    ascender: Option<IntegerOrFloat>,
-    capHeight: Option<IntegerOrFloat>,
+    ascender: Option<f64>,
+    capHeight: Option<f64>,
     copyright: Option<String>,
-    descender: Option<IntegerOrFloat>,
+    descender: Option<f64>,
     familyName: Option<String>,
-    italicAngle: Option<IntegerOrFloat>,
+    italicAngle: Option<f64>,
     macintoshFONDFamilyID: Option<Integer>,
     macintoshFONDName: Option<String>,
     note: Option<String>,
     openTypeHeadCreated: Option<String>,
     openTypeHeadFlags: Option<Bitlist>,
-    openTypeHeadLowestRecPPEM: Option<IntegerOrFloat>,
-    openTypeHheaAscender: Option<IntegerOrFloat>,
-    openTypeHheaCaretOffset: Option<IntegerOrFloat>,
+    openTypeHeadLowestRecPPEM: Option<f64>,
+    openTypeHheaAscender: Option<f64>,
+    openTypeHheaCaretOffset: Option<f64>,
     openTypeHheaCaretSlopeRise: Option<Integer>,
     openTypeHheaCaretSlopeRun: Option<Integer>,
-    openTypeHheaDescender: Option<IntegerOrFloat>,
-    openTypeHheaLineGap: Option<IntegerOrFloat>,
+    openTypeHheaDescender: Option<f64>,
+    openTypeHheaLineGap: Option<f64>,
     openTypeNameCompatibleFullName: Option<String>,
     openTypeNameDescription: Option<String>,
     openTypeNameDesigner: Option<String>,
@@ -345,51 +357,51 @@ struct FontInfoV2 {
     openTypeOS2FamilyClass: Option<Os2FamilyClass>,
     openTypeOS2Panose: Option<Os2PanoseV2>,
     openTypeOS2Selection: Option<Bitlist>,
-    openTypeOS2StrikeoutPosition: Option<IntegerOrFloat>,
-    openTypeOS2StrikeoutSize: Option<IntegerOrFloat>,
-    openTypeOS2SubscriptXOffset: Option<IntegerOrFloat>,
-    openTypeOS2SubscriptXSize: Option<IntegerOrFloat>,
-    openTypeOS2SubscriptYOffset: Option<IntegerOrFloat>,
-    openTypeOS2SubscriptYSize: Option<IntegerOrFloat>,
-    openTypeOS2SuperscriptXOffset: Option<IntegerOrFloat>,
-    openTypeOS2SuperscriptXSize: Option<IntegerOrFloat>,
-    openTypeOS2SuperscriptYOffset: Option<IntegerOrFloat>,
-    openTypeOS2SuperscriptYSize: Option<IntegerOrFloat>,
+    openTypeOS2StrikeoutPosition: Option<f64>,
+    openTypeOS2StrikeoutSize: Option<f64>,
+    openTypeOS2SubscriptXOffset: Option<f64>,
+    openTypeOS2SubscriptXSize: Option<f64>,
+    openTypeOS2SubscriptYOffset: Option<f64>,
+    openTypeOS2SubscriptYSize: Option<f64>,
+    openTypeOS2SuperscriptXOffset: Option<f64>,
+    openTypeOS2SuperscriptXSize: Option<f64>,
+    openTypeOS2SuperscriptYOffset: Option<f64>,
+    openTypeOS2SuperscriptYSize: Option<f64>,
     openTypeOS2Type: Option<Bitlist>,
-    openTypeOS2TypoAscender: Option<IntegerOrFloat>,
-    openTypeOS2TypoDescender: Option<IntegerOrFloat>,
-    openTypeOS2TypoLineGap: Option<IntegerOrFloat>,
+    openTypeOS2TypoAscender: Option<f64>,
+    openTypeOS2TypoDescender: Option<f64>,
+    openTypeOS2TypoLineGap: Option<f64>,
     openTypeOS2UnicodeRanges: Option<Bitlist>,
     openTypeOS2VendorID: Option<String>,
     openTypeOS2WeightClass: Option<NonNegativeInteger>,
     openTypeOS2WidthClass: Option<Os2WidthClass>,
-    openTypeOS2WinAscent: Option<IntegerOrFloat>,
-    openTypeOS2WinDescent: Option<IntegerOrFloat>,
-    openTypeVheaCaretOffset: Option<IntegerOrFloat>,
+    openTypeOS2WinAscent: Option<f64>,
+    openTypeOS2WinDescent: Option<f64>,
+    openTypeVheaCaretOffset: Option<f64>,
     openTypeVheaCaretSlopeRise: Option<Integer>,
     openTypeVheaCaretSlopeRun: Option<Integer>,
-    openTypeVheaVertTypoAscender: Option<IntegerOrFloat>,
-    openTypeVheaVertTypoDescender: Option<IntegerOrFloat>,
-    openTypeVheaVertTypoLineGap: Option<IntegerOrFloat>,
-    postscriptBlueFuzz: Option<IntegerOrFloat>,
+    openTypeVheaVertTypoAscender: Option<f64>,
+    openTypeVheaVertTypoDescender: Option<f64>,
+    openTypeVheaVertTypoLineGap: Option<f64>,
+    postscriptBlueFuzz: Option<f64>,
     postscriptBlueScale: Option<Float>,
-    postscriptBlueShift: Option<IntegerOrFloat>,
+    postscriptBlueShift: Option<f64>,
     postscriptBlueValues: Option<Vec<IntegerOrFloat>>,
     postscriptDefaultCharacter: Option<String>,
-    postscriptDefaultWidthX: Option<IntegerOrFloat>,
+    postscriptDefaultWidthX: Option<f64>,
     postscriptFamilyBlues: Option<Vec<IntegerOrFloat>>,
     postscriptFamilyOtherBlues: Option<Vec<IntegerOrFloat>>,
     postscriptFontName: Option<String>,
     postscriptForceBold: Option<bool>,
     postscriptFullName: Option<String>,
     postscriptIsFixedPitch: Option<bool>,
-    postscriptNominalWidthX: Option<IntegerOrFloat>,
+    postscriptNominalWidthX: Option<f64>,
     postscriptOtherBlues: Option<Vec<IntegerOrFloat>>,
-    postscriptSlantAngle: Option<IntegerOrFloat>,
+    postscriptSlantAngle: Option<f64>,
     postscriptStemSnapH: Option<Vec<IntegerOrFloat>>,
     postscriptStemSnapV: Option<Vec<IntegerOrFloat>>,
-    postscriptUnderlinePosition: Option<IntegerOrFloat>,
-    postscriptUnderlineThickness: Option<IntegerOrFloat>,
+    postscriptUnderlinePosition: Option<f64>,
+    postscriptUnderlineThickness: Option<f64>,
     postscriptUniqueID: Option<Integer>,
     postscriptWeightName: Option<String>,
     postscriptWindowsCharacterSet: Option<PostscriptWindowsCharacterSet>,
@@ -397,10 +409,10 @@ struct FontInfoV2 {
     styleMapStyleName: Option<StyleMapStyle>,
     styleName: Option<String>,
     trademark: Option<String>,
-    unitsPerEm: Option<IntegerOrFloat>,
+    unitsPerEm: Option<f64>,
     versionMajor: Option<Integer>,
     versionMinor: Option<Integer>,
-    xHeight: Option<IntegerOrFloat>,
+    xHeight: Option<f64>,
     year: Option<Integer>,
 }
 
@@ -412,12 +424,12 @@ struct FontInfoV2 {
 #[serde(deny_unknown_fields)]
 #[allow(non_snake_case)]
 struct FontInfoV1 {
-    ascender: Option<IntegerOrFloat>,
-    capHeight: Option<IntegerOrFloat>,
+    ascender: Option<f64>,
+    capHeight: Option<f64>,
     copyright: Option<String>,
     createdBy: Option<String>,
-    defaultWidth: Option<IntegerOrFloat>,
-    descender: Option<IntegerOrFloat>,
+    defaultWidth: Option<f64>,
+    descender: Option<f64>,
     designer: Option<String>,
     designerURL: Option<String>,
     familyName: Option<String>,
@@ -426,7 +438,7 @@ struct FontInfoV1 {
     fontName: Option<String>,
     fontStyle: Option<Integer>,
     fullName: Option<String>,
-    italicAngle: Option<IntegerOrFloat>,
+    italicAngle: Option<f64>,
     license: Option<String>,
     licenseURL: Option<String>,
     menuName: Option<String>,
@@ -436,22 +448,22 @@ struct FontInfoV1 {
     otFamilyName: Option<String>,
     otMacName: Option<String>,
     otStyleName: Option<String>,
-    slantAngle: Option<IntegerOrFloat>,
+    slantAngle: Option<f64>,
     styleName: Option<String>,
     trademark: Option<String>,
     ttUniqueID: Option<String>,
     ttVendor: Option<String>,
     ttVersion: Option<String>,
     uniqueID: Option<Integer>,
-    unitsPerEm: Option<IntegerOrFloat>,
+    unitsPerEm: Option<f64>,
     vendorURL: Option<String>,
     versionMajor: Option<Integer>,
     versionMinor: Option<Integer>,
     weightName: Option<String>,
     weightValue: Option<Integer>,
     widthName: Option<String>,
-    xHeight: Option<IntegerOrFloat>, // Does not appear in spec but ufoLib.
-    year: Option<Integer>,           // Does not appear in spec but ufoLib.
+    xHeight: Option<f64>,  // Does not appear in spec but ufoLib.
+    year: Option<Integer>, // Does not appear in spec but ufoLib.
 }
 
 impl FontInfo {
@@ -942,6 +954,51 @@ impl FontInfo {
         }
 
         object_libs
+    }
+}
+
+mod serde_impls {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    struct IntegerOrFloat(f64);
+
+    impl Serialize for IntegerOrFloat {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            if self.0.fract().abs() <= f64::EPSILON {
+                serializer.serialize_i32(self.0 as i32)
+            } else {
+                serializer.serialize_f64(self.0)
+            }
+        }
+    }
+
+    impl<'de> Deserialize<'de> for IntegerOrFloat {
+        fn deserialize<D>(deserializer: D) -> Result<IntegerOrFloat, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            f64::deserialize(deserializer).map(IntegerOrFloat)
+        }
+    }
+
+    pub(crate) mod opt_int_or_float {
+        use super::*;
+
+        pub(crate) fn serialize<S: Serializer>(
+            value: &Option<f64>,
+            serializer: S,
+        ) -> Result<S::Ok, S::Error> {
+            value.map(IntegerOrFloat).serialize(serializer)
+        }
+
+        pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
+            deserializer: D,
+        ) -> Result<Option<f64>, D::Error> {
+            Option::<IntegerOrFloat>::deserialize(deserializer).map(|r| r.map(|v| v.0))
+        }
     }
 }
 

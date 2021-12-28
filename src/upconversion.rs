@@ -136,9 +136,9 @@ pub(crate) fn upconvert_ufov1_robofab_data(
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct PsHintingData {
-        blue_fuzz: Option<IntegerOrFloat>,
+        blue_fuzz: Option<f64>,
         blue_scale: Option<f64>,
-        blue_shift: Option<IntegerOrFloat>,
+        blue_shift: Option<f64>,
         blue_values: Option<Vec<Vec<IntegerOrFloat>>>,
         family_blues: Option<Vec<Vec<IntegerOrFloat>>>,
         family_other_blues: Option<Vec<Vec<IntegerOrFloat>>>,
