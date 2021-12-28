@@ -748,9 +748,9 @@ mod tests {
         assert_eq!(font.meta.format_version, FormatVersion::V3);
 
         let font_info = font.font_info;
-        assert_eq!(font_info.postscript_blue_fuzz, Some(IntegerOrFloat::from(1)));
+        assert_eq!(font_info.postscript_blue_fuzz, Some(1.));
         assert_eq!(font_info.postscript_blue_scale, Some(0.039625));
-        assert_eq!(font_info.postscript_blue_shift, Some(IntegerOrFloat::from(7)));
+        assert_eq!(font_info.postscript_blue_shift, Some(7.));
         assert_eq!(
             font_info.postscript_blue_values,
             Some(vec![
