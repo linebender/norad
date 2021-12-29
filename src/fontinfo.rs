@@ -9,15 +9,24 @@ use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 
-use crate::shared_types::{IntegerOrFloat, NonNegativeIntegerOrFloat, PUBLIC_OBJECT_LIBS_KEY};
+use crate::shared_types::{NonNegativeIntegerOrFloat, PUBLIC_OBJECT_LIBS_KEY};
 use crate::{Error, FormatVersion, Guideline, Identifier, Plist};
 
 /// A signed integer.
 pub type Integer = i32;
+
 /// An unsigned integer.
 pub type NonNegativeInteger = u32;
+
+/// A number that may be be an integer or a float.
+///
+/// This is basically an implementation detail: it is more economical to serialize
+/// an integer where possible.
+pub type IntegerOrFloat = f64;
+
 /// A floating-point number.
 pub type Float = f64;
+
 /// a list of ["bit numbers"].
 ///
 /// ["bit numbers"]: https://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#bit-numbers
@@ -34,24 +43,24 @@ pub struct FontInfo {
     // INFO: Keep this struct sorted alphabetically, serde serializes it in the order you see
     // here and Plist files should be sorted.
     /// Ascender value (ascender).
-    #[serde(default, with = "serde_impls::opt_int_or_float")]
+    #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
     pub ascender: Option<f64>,
     /// Cap height value (capHeight).
-    #[serde(default, with = "serde_impls::opt_int_or_float")]
-    pub cap_height: Option<f64>,
+    #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
+    pub cap_height: Option<IntegerOrFloat>,
     /// Copyright statement (copyright).
     pub copyright: Option<String>,
     /// Descender value (descender).
-    #[serde(default, with = "serde_impls::opt_int_or_float")]
-    pub descender: Option<f64>,
+    #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
+    pub descender: Option<IntegerOrFloat>,
     /// Family name (familyName).
     pub family_name: Option<String>,
     /// Guideline definitions that apply to all glyphs in
     /// all layers (guidelines).
     pub guidelines: Option<Vec<Guideline>>,
     /// Italic angle in counter-clockwise degrees (italicAngle).
-    #[serde(default, with = "serde_impls::opt_int_or_float")]
-    pub italic_angle: Option<f64>,
+    #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
+    pub italic_angle: Option<IntegerOrFloat>,
     /// Family ID number (macintoshFONDFamilyID).
     #[serde(rename = "macintoshFONDFamilyID")]
     pub macintosh_fond_family_id: Option<Integer>,
@@ -206,26 +215,29 @@ pub struct FontInfo {
     /// Line gap value (openTypeVheaVertTypoLineGap).
     pub open_type_vhea_vert_typo_line_gap: Option<Integer>,
     /// Postscript BlueFuzz value (postscriptBlueFuzz).
-    #[serde(default, with = "serde_impls::opt_int_or_float")]
-    pub postscript_blue_fuzz: Option<f64>,
+    #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
+    pub postscript_blue_fuzz: Option<IntegerOrFloat>,
     /// Postscript BlueScale value (postscriptBlueScale).
     pub postscript_blue_scale: Option<Float>,
     /// Postscript BlueShift value (postscriptBlueShift).
-    #[serde(default, with = "serde_impls::opt_int_or_float")]
-    pub postscript_blue_shift: Option<f64>,
+    #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
+    pub postscript_blue_shift: Option<IntegerOrFloat>,
     /// A collection of values that should be in the
     /// Type 1/CFF BlueValues field (postscriptBlueValues).
+    #[serde(serialize_with = "serde_impls::ser_opt_vec_int_or_float")]
     pub postscript_blue_values: Option<Vec<IntegerOrFloat>>,
     /// Name of default glyph in PFM files (postscriptDefaultCharacter).
     pub postscript_default_character: Option<String>,
     /// Default glyph width (postscriptDefaultWidthX).
-    #[serde(default, with = "serde_impls::opt_int_or_float")]
-    pub postscript_default_width_x: Option<f64>,
+    #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
+    pub postscript_default_width_x: Option<IntegerOrFloat>,
     /// A collection of values that should be in the Type 1/CFF
     /// FamilyBlues field (postscriptFamilyBlues).
+    #[serde(serialize_with = "serde_impls::ser_opt_vec_int_or_float")]
     pub postscript_family_blues: Option<Vec<IntegerOrFloat>>,
     /// A collection of values that should be in the Type 1/CFF
     /// FamilyOtherBlues field (postscriptFamilyOtherBlues).
+    #[serde(serialize_with = "serde_impls::ser_opt_vec_int_or_float")]
     pub postscript_family_other_blues: Option<Vec<IntegerOrFloat>>,
     /// Type 1/CFF table FontName field (postscriptFontName).
     pub postscript_font_name: Option<String>,
@@ -238,27 +250,30 @@ pub struct FontInfo {
     /// (postscriptIsFixedPitch).
     pub postscript_is_fixed_pitch: Option<bool>,
     /// Glyph nominal width (postscriptNominalWidthX).
-    #[serde(default, with = "serde_impls::opt_int_or_float")]
-    pub postscript_nominal_width_x: Option<f64>,
+    #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
+    pub postscript_nominal_width_x: Option<IntegerOrFloat>,
     /// A collection of values that should be in the Type 1/CFF
     /// OtherBlues field (postscriptOtherBlues).
+    #[serde(serialize_with = "serde_impls::ser_opt_vec_int_or_float")]
     pub postscript_other_blues: Option<Vec<IntegerOrFloat>>,
     /// Slant angle in counter-clockwise degrees from the vertical
     /// (postscriptSlantAngle).
-    #[serde(default, with = "serde_impls::opt_int_or_float")]
-    pub postscript_slant_angle: Option<f64>,
+    #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
+    pub postscript_slant_angle: Option<IntegerOrFloat>,
     /// A collection of horizontal stems sorted in the order specified
     /// in the Type 1/CFF specification (postscriptStemSnapH).
+    #[serde(serialize_with = "serde_impls::ser_opt_vec_int_or_float")]
     pub postscript_stem_snap_h: Option<Vec<IntegerOrFloat>>,
     /// A collection of vertical stems sorted in the order specified
     /// in the Type 1/CFF specification (postscriptStemSnapV).
+    #[serde(serialize_with = "serde_impls::ser_opt_vec_int_or_float")]
     pub postscript_stem_snap_v: Option<Vec<IntegerOrFloat>>,
     /// Underline position value (postscriptUnderlinePosition).
-    #[serde(default, with = "serde_impls::opt_int_or_float")]
-    pub postscript_underline_position: Option<f64>,
+    #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
+    pub postscript_underline_position: Option<IntegerOrFloat>,
     /// Underline thickness value (postscriptUnderlineThickness).
-    #[serde(default, with = "serde_impls::opt_int_or_float")]
-    pub postscript_underline_thickness: Option<f64>,
+    #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
+    pub postscript_underline_thickness: Option<IntegerOrFloat>,
     /// Unique ID as specified by the Type 1/CFF specification
     /// (postscriptUniqueID).
     #[serde(rename = "postscriptUniqueID")]
@@ -306,8 +321,8 @@ pub struct FontInfo {
     /// Minor version number (woffMinorVersion).
     pub woff_minor_version: Option<NonNegativeInteger>,
     /// x-height value (xHeight).
-    #[serde(default, with = "serde_impls::opt_int_or_float")]
-    pub x_height: Option<f64>,
+    #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
+    pub x_height: Option<IntegerOrFloat>,
     /// Year that the font was created (year).
     pub year: Option<Integer>,
 }
@@ -958,7 +973,7 @@ impl FontInfo {
 }
 
 mod serde_impls {
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
 
     struct IntegerOrFloat(f64);
 
@@ -984,20 +999,26 @@ mod serde_impls {
         }
     }
 
-    pub(crate) mod opt_int_or_float {
-        use super::*;
+    pub(crate) fn ser_opt_int_or_float<S: Serializer>(
+        value: &Option<f64>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        value.map(IntegerOrFloat).serialize(serializer)
+    }
 
-        pub(crate) fn serialize<S: Serializer>(
-            value: &Option<f64>,
-            serializer: S,
-        ) -> Result<S::Ok, S::Error> {
-            value.map(IntegerOrFloat).serialize(serializer)
-        }
-
-        pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
-            deserializer: D,
-        ) -> Result<Option<f64>, D::Error> {
-            Option::<IntegerOrFloat>::deserialize(deserializer).map(|r| r.map(|v| v.0))
+    pub(crate) fn ser_opt_vec_int_or_float<S: Serializer>(
+        value: &Option<Vec<f64>>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        match value {
+            None => serializer.serialize_none(),
+            Some(items) => {
+                let mut seq = serializer.serialize_seq(Some(items.len()))?;
+                for item in items {
+                    seq.serialize_element(&IntegerOrFloat(*item))?;
+                }
+                seq.end()
+            }
         }
     }
 }

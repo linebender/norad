@@ -38,13 +38,6 @@ pub struct Color {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NonNegativeIntegerOrFloat(f64);
 
-/// A number.
-///
-/// This is a detail of the spec. If the fractional part of this number is
-/// 0, it will be serialized as an integer, else as a float.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct IntegerOrFloat(f64);
-
 impl NonNegativeIntegerOrFloat {
     /// A validating constructor.
     ///
@@ -59,26 +52,6 @@ impl NonNegativeIntegerOrFloat {
         } else {
             None
         }
-    }
-
-    /// Returns the value as an `f64`.
-    pub fn as_f64(&self) -> f64 {
-        self.0
-    }
-
-    /// Returns `true` if the value is an integer.
-    pub(crate) fn is_integer(&self) -> bool {
-        self.0.fract().abs() < std::f64::EPSILON
-    }
-}
-
-impl IntegerOrFloat {
-    /// Returns a new [`IntegerOrFloat`] with the given `value`.
-    ///
-    /// In addition to this constructor, this type also implements `From` for
-    /// `f64` and `i32`.
-    pub fn new(value: f64) -> Self {
-        IntegerOrFloat(value)
     }
 
     /// Returns the value as an `f64`.
@@ -129,49 +102,6 @@ impl<'de> Deserialize<'de> for Color {
     {
         let string = String::deserialize(deserializer)?;
         Color::from_str(&string).map_err(|_| serde::de::Error::custom("Malformed color string."))
-    }
-}
-
-impl Deref for IntegerOrFloat {
-    type Target = f64;
-
-    fn deref(&self) -> &f64 {
-        &self.0
-    }
-}
-
-impl From<i32> for IntegerOrFloat {
-    fn from(value: i32) -> Self {
-        IntegerOrFloat(value as f64)
-    }
-}
-
-impl From<f64> for IntegerOrFloat {
-    fn from(value: f64) -> Self {
-        IntegerOrFloat(value)
-    }
-}
-
-impl Serialize for IntegerOrFloat {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if self.is_integer() {
-            serializer.serialize_i32(self.0 as i32)
-        } else {
-            serializer.serialize_f64(self.0)
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for IntegerOrFloat {
-    fn deserialize<D>(deserializer: D) -> Result<IntegerOrFloat, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value: f64 = Deserialize::deserialize(deserializer)?;
-        Ok(IntegerOrFloat(value))
     }
 }
 
@@ -232,7 +162,7 @@ mod tests {
 
     use serde_test::{assert_de_tokens, assert_ser_tokens, assert_tokens, Token};
 
-    use crate::{Color, Guideline, Identifier, IntegerOrFloat, Line, NonNegativeIntegerOrFloat};
+    use crate::{Color, Guideline, Identifier, Line, NonNegativeIntegerOrFloat};
 
     #[test]
     fn color_parsing() {
@@ -302,23 +232,6 @@ mod tests {
                 Token::StructEnd,
             ],
         );
-    }
-
-    #[test]
-    fn test_integer_or_float_type() {
-        let n1 = IntegerOrFloat::new(1.1);
-        assert_tokens(&n1, &[Token::F64(1.1)]);
-        let n1 = IntegerOrFloat::new(1.0);
-        assert_tokens(&n1, &[Token::I32(1)]);
-        let n1 = IntegerOrFloat::new(-1.1);
-        assert_tokens(&n1, &[Token::F64(-1.1)]);
-        let n1 = IntegerOrFloat::new(-1.0);
-        assert_tokens(&n1, &[Token::I32(-1)]);
-
-        let n1 = NonNegativeIntegerOrFloat::new(1.1).unwrap();
-        assert_tokens(&n1, &[Token::F64(1.1)]);
-        let n1 = NonNegativeIntegerOrFloat::new(1.0).unwrap();
-        assert_tokens(&n1, &[Token::I32(1)]);
     }
 
     #[test]
