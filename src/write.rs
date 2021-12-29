@@ -109,26 +109,8 @@ pub enum QuoteChar {
     Double,
 }
 
-/// Write a [`plist::Value`] to file, providing custom options.
-pub fn write_plist_value_to_file(
-    path: &Path,
-    value: &plist::Value,
-    options: &WriteOptions,
-) -> Result<(), Error> {
-    let mut file =
-        File::create(path).map_err(|source| Error::UfoWrite { path: path.into(), source })?;
-    let writer = BufWriter::new(&mut file);
-    value
-        .to_writer_xml_with_options(writer, options.xml_options())
-        .map_err(|source| Error::PlistWrite { path: path.to_owned(), source })?;
-    write_quote_style(&file, options)
-        .map_err(|source| Error::UfoWrite { path: path.into(), source })?;
-    file.sync_all().map_err(|source| Error::UfoWrite { path: path.into(), source })?;
-    Ok(())
-}
-
 /// Write any `Serialize` to file, providing custom options.
-pub fn write_xml_to_file(
+pub(crate) fn write_xml_to_file(
     path: &Path,
     value: &impl serde::Serialize,
     options: &WriteOptions,
@@ -145,7 +127,7 @@ pub fn write_xml_to_file(
 }
 
 /// Write XML declarations with custom quote formatting options.
-pub fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), std::io::Error> {
+fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), std::io::Error> {
     // Optionally modify the XML declaration quote style
     match options.quote_style {
         QuoteChar::Single => {
@@ -175,7 +157,7 @@ mod tests {
             .expect("failed to read plist");
         let tmp = TempDir::new("test").unwrap();
         let filepath = tmp.path().join("lib.plist");
-        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        write_xml_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath).unwrap();
         let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
@@ -193,7 +175,7 @@ mod tests {
             .expect("failed to read plist");
         let tmp = TempDir::new("test").unwrap();
         let filepath = tmp.path().join("lib.plist");
-        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        write_xml_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath).unwrap();
         let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
@@ -211,7 +193,7 @@ mod tests {
             .expect("failed to read plist");
         let tmp = TempDir::new("test").unwrap();
         let filepath = tmp.path().join("lib.plist");
-        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        write_xml_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath).unwrap();
         let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version='1.0' encoding='UTF-8'?>"); // should use single quotes
@@ -229,7 +211,7 @@ mod tests {
             .expect("failed to read plist");
         let tmp = TempDir::new("test").unwrap();
         let filepath = tmp.path().join("lib.plist");
-        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        write_xml_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath).unwrap();
         assert!(plist_write.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"));
         tmp.close().unwrap();
@@ -243,7 +225,7 @@ mod tests {
             .expect("failed to read plist");
         let tmp = TempDir::new("test").unwrap();
         let filepath = tmp.path().join("fontinfo.plist");
-        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        write_xml_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath).unwrap();
         let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
@@ -260,7 +242,7 @@ mod tests {
             .expect("failed to read plist");
         let tmp = TempDir::new("test").unwrap();
         let filepath = tmp.path().join("fontinfo.plist");
-        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        write_xml_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath).unwrap();
         let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
@@ -277,7 +259,7 @@ mod tests {
             .expect("failed to read plist");
         let tmp = TempDir::new("test").unwrap();
         let filepath = tmp.path().join("fontinfo.plist");
-        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        write_xml_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath).unwrap();
         let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version='1.0' encoding='UTF-8'?>"); // should use single quotes
@@ -295,7 +277,7 @@ mod tests {
                 .expect("failed to read plist");
         let tmp = TempDir::new("test").unwrap();
         let filepath = tmp.path().join("fontinfo.plist");
-        write_plist_value_to_file(&filepath, &plist_read, &opt)?;
+        write_xml_to_file(&filepath, &plist_read, &opt)?;
         let plist_write = fs::read_to_string(filepath).unwrap();
         assert!(plist_write.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"));
         tmp.close().unwrap();

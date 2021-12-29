@@ -466,7 +466,7 @@ impl Font {
         }
         if !lib.is_empty() {
             crate::util::recursive_sort_plist_keys(&mut lib);
-            write::write_plist_value_to_file(&path.join(LIB_FILE), &lib.into(), options)?;
+            write::write_xml_to_file(&path.join(LIB_FILE), &lib, options)?;
         }
 
         if !self.groups.is_empty() {
