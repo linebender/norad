@@ -2,14 +2,14 @@
 //!
 //! [`fontinfo.plist`]: https://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
 
-use std::collections::HashSet;
 use std::path::Path;
+use std::{collections::HashSet, convert::TryFrom, ops::Deref};
 
 use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 
-use crate::shared_types::{NonNegativeIntegerOrFloat, PUBLIC_OBJECT_LIBS_KEY};
+use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{Error, FormatVersion, Guideline, Identifier, Plist};
 
 /// A signed integer.
@@ -23,6 +23,13 @@ pub type NonNegativeInteger = u32;
 /// This is basically an implementation detail: it is more economical to serialize
 /// an integer where possible.
 pub type IntegerOrFloat = f64;
+
+/// A non-negative number.
+///
+/// This is a detail of the spec. If the fractional part of this number is
+/// 0, it will be serialized as an integer, else as a float.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NonNegativeIntegerOrFloat(f64);
 
 /// A floating-point number.
 pub type Float = f64;
@@ -335,24 +342,24 @@ pub struct FontInfo {
 #[serde(deny_unknown_fields)]
 #[allow(non_snake_case)]
 struct FontInfoV2 {
-    ascender: Option<f64>,
-    capHeight: Option<f64>,
+    ascender: Option<IntegerOrFloat>,
+    capHeight: Option<IntegerOrFloat>,
     copyright: Option<String>,
-    descender: Option<f64>,
+    descender: Option<IntegerOrFloat>,
     familyName: Option<String>,
-    italicAngle: Option<f64>,
+    italicAngle: Option<IntegerOrFloat>,
     macintoshFONDFamilyID: Option<Integer>,
     macintoshFONDName: Option<String>,
     note: Option<String>,
     openTypeHeadCreated: Option<String>,
     openTypeHeadFlags: Option<Bitlist>,
-    openTypeHeadLowestRecPPEM: Option<f64>,
-    openTypeHheaAscender: Option<f64>,
-    openTypeHheaCaretOffset: Option<f64>,
+    openTypeHeadLowestRecPPEM: Option<IntegerOrFloat>,
+    openTypeHheaAscender: Option<IntegerOrFloat>,
+    openTypeHheaCaretOffset: Option<IntegerOrFloat>,
     openTypeHheaCaretSlopeRise: Option<Integer>,
     openTypeHheaCaretSlopeRun: Option<Integer>,
-    openTypeHheaDescender: Option<f64>,
-    openTypeHheaLineGap: Option<f64>,
+    openTypeHheaDescender: Option<IntegerOrFloat>,
+    openTypeHheaLineGap: Option<IntegerOrFloat>,
     openTypeNameCompatibleFullName: Option<String>,
     openTypeNameDescription: Option<String>,
     openTypeNameDesigner: Option<String>,
@@ -372,51 +379,51 @@ struct FontInfoV2 {
     openTypeOS2FamilyClass: Option<Os2FamilyClass>,
     openTypeOS2Panose: Option<Os2PanoseV2>,
     openTypeOS2Selection: Option<Bitlist>,
-    openTypeOS2StrikeoutPosition: Option<f64>,
-    openTypeOS2StrikeoutSize: Option<f64>,
-    openTypeOS2SubscriptXOffset: Option<f64>,
-    openTypeOS2SubscriptXSize: Option<f64>,
-    openTypeOS2SubscriptYOffset: Option<f64>,
-    openTypeOS2SubscriptYSize: Option<f64>,
-    openTypeOS2SuperscriptXOffset: Option<f64>,
-    openTypeOS2SuperscriptXSize: Option<f64>,
-    openTypeOS2SuperscriptYOffset: Option<f64>,
-    openTypeOS2SuperscriptYSize: Option<f64>,
+    openTypeOS2StrikeoutPosition: Option<IntegerOrFloat>,
+    openTypeOS2StrikeoutSize: Option<IntegerOrFloat>,
+    openTypeOS2SubscriptXOffset: Option<IntegerOrFloat>,
+    openTypeOS2SubscriptXSize: Option<IntegerOrFloat>,
+    openTypeOS2SubscriptYOffset: Option<IntegerOrFloat>,
+    openTypeOS2SubscriptYSize: Option<IntegerOrFloat>,
+    openTypeOS2SuperscriptXOffset: Option<IntegerOrFloat>,
+    openTypeOS2SuperscriptXSize: Option<IntegerOrFloat>,
+    openTypeOS2SuperscriptYOffset: Option<IntegerOrFloat>,
+    openTypeOS2SuperscriptYSize: Option<IntegerOrFloat>,
     openTypeOS2Type: Option<Bitlist>,
-    openTypeOS2TypoAscender: Option<f64>,
-    openTypeOS2TypoDescender: Option<f64>,
-    openTypeOS2TypoLineGap: Option<f64>,
+    openTypeOS2TypoAscender: Option<IntegerOrFloat>,
+    openTypeOS2TypoDescender: Option<IntegerOrFloat>,
+    openTypeOS2TypoLineGap: Option<IntegerOrFloat>,
     openTypeOS2UnicodeRanges: Option<Bitlist>,
     openTypeOS2VendorID: Option<String>,
     openTypeOS2WeightClass: Option<NonNegativeInteger>,
     openTypeOS2WidthClass: Option<Os2WidthClass>,
-    openTypeOS2WinAscent: Option<f64>,
-    openTypeOS2WinDescent: Option<f64>,
-    openTypeVheaCaretOffset: Option<f64>,
+    openTypeOS2WinAscent: Option<IntegerOrFloat>,
+    openTypeOS2WinDescent: Option<IntegerOrFloat>,
+    openTypeVheaCaretOffset: Option<IntegerOrFloat>,
     openTypeVheaCaretSlopeRise: Option<Integer>,
     openTypeVheaCaretSlopeRun: Option<Integer>,
-    openTypeVheaVertTypoAscender: Option<f64>,
-    openTypeVheaVertTypoDescender: Option<f64>,
-    openTypeVheaVertTypoLineGap: Option<f64>,
-    postscriptBlueFuzz: Option<f64>,
+    openTypeVheaVertTypoAscender: Option<IntegerOrFloat>,
+    openTypeVheaVertTypoDescender: Option<IntegerOrFloat>,
+    openTypeVheaVertTypoLineGap: Option<IntegerOrFloat>,
+    postscriptBlueFuzz: Option<IntegerOrFloat>,
     postscriptBlueScale: Option<Float>,
-    postscriptBlueShift: Option<f64>,
+    postscriptBlueShift: Option<IntegerOrFloat>,
     postscriptBlueValues: Option<Vec<IntegerOrFloat>>,
     postscriptDefaultCharacter: Option<String>,
-    postscriptDefaultWidthX: Option<f64>,
+    postscriptDefaultWidthX: Option<IntegerOrFloat>,
     postscriptFamilyBlues: Option<Vec<IntegerOrFloat>>,
     postscriptFamilyOtherBlues: Option<Vec<IntegerOrFloat>>,
     postscriptFontName: Option<String>,
     postscriptForceBold: Option<bool>,
     postscriptFullName: Option<String>,
     postscriptIsFixedPitch: Option<bool>,
-    postscriptNominalWidthX: Option<f64>,
+    postscriptNominalWidthX: Option<IntegerOrFloat>,
     postscriptOtherBlues: Option<Vec<IntegerOrFloat>>,
-    postscriptSlantAngle: Option<f64>,
+    postscriptSlantAngle: Option<IntegerOrFloat>,
     postscriptStemSnapH: Option<Vec<IntegerOrFloat>>,
     postscriptStemSnapV: Option<Vec<IntegerOrFloat>>,
-    postscriptUnderlinePosition: Option<f64>,
-    postscriptUnderlineThickness: Option<f64>,
+    postscriptUnderlinePosition: Option<IntegerOrFloat>,
+    postscriptUnderlineThickness: Option<IntegerOrFloat>,
     postscriptUniqueID: Option<Integer>,
     postscriptWeightName: Option<String>,
     postscriptWindowsCharacterSet: Option<PostscriptWindowsCharacterSet>,
@@ -424,10 +431,10 @@ struct FontInfoV2 {
     styleMapStyleName: Option<StyleMapStyle>,
     styleName: Option<String>,
     trademark: Option<String>,
-    unitsPerEm: Option<f64>,
+    unitsPerEm: Option<IntegerOrFloat>,
     versionMajor: Option<Integer>,
     versionMinor: Option<Integer>,
-    xHeight: Option<f64>,
+    xHeight: Option<IntegerOrFloat>,
     year: Option<Integer>,
 }
 
@@ -439,12 +446,12 @@ struct FontInfoV2 {
 #[serde(deny_unknown_fields)]
 #[allow(non_snake_case)]
 struct FontInfoV1 {
-    ascender: Option<f64>,
-    capHeight: Option<f64>,
+    ascender: Option<IntegerOrFloat>,
+    capHeight: Option<IntegerOrFloat>,
     copyright: Option<String>,
     createdBy: Option<String>,
-    defaultWidth: Option<f64>,
-    descender: Option<f64>,
+    defaultWidth: Option<IntegerOrFloat>,
+    descender: Option<IntegerOrFloat>,
     designer: Option<String>,
     designerURL: Option<String>,
     familyName: Option<String>,
@@ -453,7 +460,7 @@ struct FontInfoV1 {
     fontName: Option<String>,
     fontStyle: Option<Integer>,
     fullName: Option<String>,
-    italicAngle: Option<f64>,
+    italicAngle: Option<IntegerOrFloat>,
     license: Option<String>,
     licenseURL: Option<String>,
     menuName: Option<String>,
@@ -463,22 +470,22 @@ struct FontInfoV1 {
     otFamilyName: Option<String>,
     otMacName: Option<String>,
     otStyleName: Option<String>,
-    slantAngle: Option<f64>,
+    slantAngle: Option<IntegerOrFloat>,
     styleName: Option<String>,
     trademark: Option<String>,
     ttUniqueID: Option<String>,
     ttVendor: Option<String>,
     ttVersion: Option<String>,
     uniqueID: Option<Integer>,
-    unitsPerEm: Option<f64>,
+    unitsPerEm: Option<IntegerOrFloat>,
     vendorURL: Option<String>,
     versionMajor: Option<Integer>,
     versionMinor: Option<Integer>,
     weightName: Option<String>,
     weightValue: Option<Integer>,
     widthName: Option<String>,
-    xHeight: Option<f64>,  // Does not appear in spec but ufoLib.
-    year: Option<Integer>, // Does not appear in spec but ufoLib.
+    xHeight: Option<IntegerOrFloat>, // Does not appear in spec but ufoLib.
+    year: Option<Integer>,           // Does not appear in spec but ufoLib.
 }
 
 impl FontInfo {
@@ -972,8 +979,86 @@ impl FontInfo {
     }
 }
 
+impl NonNegativeIntegerOrFloat {
+    /// A validating constructor.
+    ///
+    /// Returns a new [`NonNegativeIntegerOrFloat`] with the given `value`,
+    /// or `None` if the value is less than or equal to zero.
+    ///
+    /// In addition to this constructor, this type also implements `TryFrom` for
+    /// `f64`, and `From` for `u32`.
+    pub fn new(value: f64) -> Option<Self> {
+        if value.is_sign_positive() {
+            Some(NonNegativeIntegerOrFloat(value))
+        } else {
+            None
+        }
+    }
+
+    /// Returns the value as an `f64`.
+    pub fn as_f64(&self) -> f64 {
+        self.0
+    }
+
+    /// Returns `true` if the value is an integer.
+    pub(crate) fn is_integer(&self) -> bool {
+        self.0.fract().abs() < std::f64::EPSILON
+    }
+}
+
+impl Deref for NonNegativeIntegerOrFloat {
+    type Target = f64;
+
+    fn deref(&self) -> &f64 {
+        &self.0
+    }
+}
+
+impl TryFrom<f64> for NonNegativeIntegerOrFloat {
+    type Error = Error;
+
+    fn try_from(value: f64) -> Result<Self, Self::Error> {
+        match NonNegativeIntegerOrFloat::new(value) {
+            Some(v) => Ok(v),
+            _ => Err(Error::ExpectedPositiveValue),
+        }
+    }
+}
+
+impl From<u32> for NonNegativeIntegerOrFloat {
+    fn from(src: u32) -> NonNegativeIntegerOrFloat {
+        NonNegativeIntegerOrFloat(src as f64)
+    }
+}
+
+impl Serialize for NonNegativeIntegerOrFloat {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.is_integer() {
+            serializer.serialize_i32(self.0 as i32)
+        } else {
+            serializer.serialize_f64(self.0)
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for NonNegativeIntegerOrFloat {
+    fn deserialize<D>(deserializer: D) -> Result<NonNegativeIntegerOrFloat, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value: f64 = Deserialize::deserialize(deserializer)?;
+        match NonNegativeIntegerOrFloat::try_from(value) {
+            Ok(v) => Ok(v),
+            Err(_) => Err(serde::de::Error::custom("Value must be positive.")),
+        }
+    }
+}
+
 mod serde_impls {
-    use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{ser::SerializeSeq, Serialize, Serializer};
 
     struct IntegerOrFloat(f64);
 
@@ -987,15 +1072,6 @@ mod serde_impls {
             } else {
                 serializer.serialize_f64(self.0)
             }
-        }
-    }
-
-    impl<'de> Deserialize<'de> for IntegerOrFloat {
-        fn deserialize<D>(deserializer: D) -> Result<IntegerOrFloat, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            f64::deserialize(deserializer).map(IntegerOrFloat)
         }
     }
 
@@ -1800,5 +1876,11 @@ mod tests {
             ),
         ]);
         assert!(fi.validate().is_err());
+    }
+
+    #[test]
+    fn test_positive_int_or_float() {
+        assert!(NonNegativeIntegerOrFloat::try_from(-1.0).is_err());
+        assert!(NonNegativeIntegerOrFloat::try_from(1.0).is_ok());
     }
 }

@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-use std::ops::Deref;
 use std::str::FromStr;
 
 use serde::de::Deserializer;
@@ -10,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use druid::Data;
 
 use crate::error::InvalidColorString;
-use crate::Error;
 
 pub static PUBLIC_OBJECT_LIBS_KEY: &str = "public.objectLibs";
 
@@ -29,40 +26,6 @@ pub struct Color {
     pub blue: f64,
     /// Alpha (transparency) channel value. Must be in the range 0 to 1, inclusive.
     pub alpha: f64,
-}
-
-/// A non-negative number.
-///
-/// This is a detail of the spec. If the fractional part of this number is
-/// 0, it will be serialized as an integer, else as a float.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct NonNegativeIntegerOrFloat(f64);
-
-impl NonNegativeIntegerOrFloat {
-    /// A validating constructor.
-    ///
-    /// Returns a new [`NonNegativeIntegerOrFloat`] with the given `value`,
-    /// or `None` if the value is less than or equal to zero.
-    ///
-    /// In addition to this constructor, this type also implements `TryFrom` for
-    /// `f64`, and `From` for `u32`.
-    pub fn new(value: f64) -> Option<Self> {
-        if value.is_sign_positive() {
-            Some(NonNegativeIntegerOrFloat(value))
-        } else {
-            None
-        }
-    }
-
-    /// Returns the value as an `f64`.
-    pub fn as_f64(&self) -> f64 {
-        self.0
-    }
-
-    /// Returns `true` if the value is an integer.
-    pub(crate) fn is_integer(&self) -> bool {
-        self.0.fract().abs() < std::f64::EPSILON
-    }
 }
 
 impl FromStr for Color {
@@ -105,64 +68,11 @@ impl<'de> Deserialize<'de> for Color {
     }
 }
 
-impl Deref for NonNegativeIntegerOrFloat {
-    type Target = f64;
-
-    fn deref(&self) -> &f64 {
-        &self.0
-    }
-}
-
-impl TryFrom<f64> for NonNegativeIntegerOrFloat {
-    type Error = Error;
-
-    fn try_from(value: f64) -> Result<Self, Self::Error> {
-        match NonNegativeIntegerOrFloat::new(value) {
-            Some(v) => Ok(v),
-            _ => Err(Error::ExpectedPositiveValue),
-        }
-    }
-}
-
-impl From<u32> for NonNegativeIntegerOrFloat {
-    fn from(src: u32) -> NonNegativeIntegerOrFloat {
-        NonNegativeIntegerOrFloat(src as f64)
-    }
-}
-
-impl Serialize for NonNegativeIntegerOrFloat {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if self.is_integer() {
-            serializer.serialize_i32(self.0 as i32)
-        } else {
-            serializer.serialize_f64(self.0)
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for NonNegativeIntegerOrFloat {
-    fn deserialize<D>(deserializer: D) -> Result<NonNegativeIntegerOrFloat, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value: f64 = Deserialize::deserialize(deserializer)?;
-        match NonNegativeIntegerOrFloat::try_from(value) {
-            Ok(v) => Ok(v),
-            Err(_) => Err(serde::de::Error::custom("Value must be positive.")),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use std::convert::TryFrom;
-
     use serde_test::{assert_de_tokens, assert_ser_tokens, assert_tokens, Token};
 
-    use crate::{Color, Guideline, Identifier, Line, NonNegativeIntegerOrFloat};
+    use crate::{Color, Guideline, Identifier, Line};
 
     #[test]
     fn color_parsing() {
@@ -232,11 +142,5 @@ mod tests {
                 Token::StructEnd,
             ],
         );
-    }
-
-    #[test]
-    fn test_positive_int_or_float() {
-        assert!(NonNegativeIntegerOrFloat::try_from(-1.0).is_err());
-        assert!(NonNegativeIntegerOrFloat::try_from(1.0).is_ok());
     }
 }
