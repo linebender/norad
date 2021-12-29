@@ -314,7 +314,7 @@ impl Layer {
 
         util::recursive_sort_plist_keys(&mut dict);
 
-        crate::write::write_plist_value_to_file(&path.join(LAYER_INFO_FILE), &dict.into(), options)
+        crate::write::write_xml_to_file(&path.join(LAYER_INFO_FILE), &dict, options)
     }
 
     /// Serialize this layer to the given path with the default
