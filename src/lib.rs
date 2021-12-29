@@ -101,5 +101,5 @@ pub use guideline::{Guideline, Line};
 pub use identifier::Identifier;
 pub use kerning::Kerning;
 pub use layer::{Layer, LayerSet};
-pub use shared_types::{Color, IntegerOrFloat, NonNegativeIntegerOrFloat, Plist};
+pub use shared_types::{Color, NonNegativeIntegerOrFloat, Plist};
 pub use write::{QuoteChar, WriteOptions};

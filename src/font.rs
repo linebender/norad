@@ -631,7 +631,6 @@ mod tests {
     use tempdir::TempDir;
 
     use super::*;
-    use crate::shared_types::IntegerOrFloat;
 
     #[test]
     fn new_is_v3() {
@@ -753,38 +752,14 @@ mod tests {
         assert_eq!(font_info.postscript_blue_shift, Some(7.));
         assert_eq!(
             font_info.postscript_blue_values,
-            Some(vec![
-                IntegerOrFloat::from(-10),
-                IntegerOrFloat::from(0),
-                IntegerOrFloat::from(482),
-                IntegerOrFloat::from(492),
-                IntegerOrFloat::from(694),
-                IntegerOrFloat::from(704),
-                IntegerOrFloat::from(739),
-                IntegerOrFloat::from(749)
-            ])
+            Some(vec![-10., 0., 482., 492., 694., 704., 739., 749.])
         );
-        assert_eq!(
-            font_info.postscript_other_blues,
-            Some(vec![IntegerOrFloat::from(-260), IntegerOrFloat::from(-250)])
-        );
-        assert_eq!(
-            font_info.postscript_family_blues,
-            Some(vec![IntegerOrFloat::from(500.0), IntegerOrFloat::from(510.0)])
-        );
-        assert_eq!(
-            font_info.postscript_family_other_blues,
-            Some(vec![IntegerOrFloat::from(-260), IntegerOrFloat::from(-250)])
-        );
+        assert_eq!(font_info.postscript_other_blues, Some(vec![-260., -250.]));
+        assert_eq!(font_info.postscript_family_blues, Some(vec![500.0, 510.0]));
+        assert_eq!(font_info.postscript_family_other_blues, Some(vec![-260., -250.]));
         assert_eq!(font_info.postscript_force_bold, Some(true));
-        assert_eq!(
-            font_info.postscript_stem_snap_h,
-            Some(vec![IntegerOrFloat::from(100), IntegerOrFloat::from(120)])
-        );
-        assert_eq!(
-            font_info.postscript_stem_snap_v,
-            Some(vec![IntegerOrFloat::from(80), IntegerOrFloat::from(90)])
-        );
+        assert_eq!(font_info.postscript_stem_snap_h, Some(vec![100., 120.]));
+        assert_eq!(font_info.postscript_stem_snap_v, Some(vec![80., 90.]));
 
         assert_eq!(font.lib.keys().collect::<Vec<&String>>(), vec!["org.robofab.testFontLibData"]);
 

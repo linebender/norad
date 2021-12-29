@@ -5,7 +5,6 @@ use crate::fontinfo::FontInfo;
 use crate::groups::Groups;
 use crate::kerning::Kerning;
 use crate::names::NameList;
-use crate::shared_types::IntegerOrFloat;
 use crate::Error;
 
 /// Convert kerning groups and pairs from v1 and v2 informal conventions to
@@ -139,13 +138,13 @@ pub(crate) fn upconvert_ufov1_robofab_data(
         blue_fuzz: Option<f64>,
         blue_scale: Option<f64>,
         blue_shift: Option<f64>,
-        blue_values: Option<Vec<Vec<IntegerOrFloat>>>,
-        family_blues: Option<Vec<Vec<IntegerOrFloat>>>,
-        family_other_blues: Option<Vec<Vec<IntegerOrFloat>>>,
+        blue_values: Option<Vec<Vec<f64>>>,
+        family_blues: Option<Vec<Vec<f64>>>,
+        family_other_blues: Option<Vec<Vec<f64>>>,
         force_bold: Option<bool>,
-        other_blues: Option<Vec<Vec<IntegerOrFloat>>>,
-        h_stems: Option<Vec<IntegerOrFloat>>,
-        v_stems: Option<Vec<IntegerOrFloat>>,
+        other_blues: Option<Vec<Vec<f64>>>,
+        h_stems: Option<Vec<f64>>,
+        v_stems: Option<Vec<f64>>,
     }
 
     // Read lib.plist again because it is easier than pulling out the data manually.
