@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::datastore::{DataStore, ImageStore};
-use crate::error::{LayerSetLoadError, UfoLoadError, UfoWriteError};
+use crate::error::{UfoLoadError, UfoWriteError};
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::groups::{validate_groups, Groups};
@@ -257,7 +257,7 @@ impl Font {
 
         let glyph_names = NameList::default();
         let layers = if request.layers {
-            load_layer_set(path, &meta, &glyph_names).map_err(UfoLoadError::LoadingLayerSet)?
+            load_layer_set(path, &meta, &glyph_names)?
         } else {
             LayerSet::default()
         };
@@ -645,10 +645,10 @@ fn load_layer_set(
     ufo_path: &Path,
     meta: &MetaInfo,
     glyph_names: &NameList,
-) -> Result<LayerSet, LayerSetLoadError> {
+) -> Result<LayerSet, UfoLoadError> {
     let layercontents_path = ufo_path.join(LAYER_CONTENTS_FILE);
     if meta.format_version == FormatVersion::V3 && !layercontents_path.exists() {
-        return Err(LayerSetLoadError::MissingLayerContentsFile);
+        return Err(UfoLoadError::MissingLayerContentsFile);
     }
     LayerSet::load(ufo_path, glyph_names)
 }
@@ -737,9 +737,7 @@ mod tests {
         let font_load_res = Font::load(path);
         assert!(matches!(
             font_load_res,
-            Err(Error::UfoLoad(UfoLoadError::LoadingLayerSet(
-                LayerSetLoadError::MissingLayerContentsFile
-            )))
+            Err(Error::UfoLoad(UfoLoadError::MissingLayerContentsFile))
         ));
     }
 
@@ -751,11 +749,11 @@ mod tests {
         let font_load_res = Font::load(path);
         assert!(matches!(
             font_load_res,
-            Err(Error::UfoLoad(UfoLoadError::LoadingLayerSet(LayerSetLoadError::LoadingLayer(
+            Err(Error::UfoLoad(UfoLoadError::LoadingLayer(
                 _,
                 _,
                 LayerLoadError::MissingContentsFile
-            ))))
+            )))
         ));
     }
 
@@ -767,11 +765,11 @@ mod tests {
         let font_load_res = Font::load(path);
         assert!(matches!(
             font_load_res,
-            Err(Error::UfoLoad(UfoLoadError::LoadingLayerSet(LayerSetLoadError::LoadingLayer(
+            Err(Error::UfoLoad(UfoLoadError::LoadingLayer(
                 _,
                 _,
                 LayerLoadError::MissingContentsFile
-            ))))
+            )))
         ));
     }
 

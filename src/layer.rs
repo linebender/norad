@@ -7,7 +7,7 @@ use std::sync::Arc;
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
-use crate::error::{LayerLoadError, LayerSetLoadError, LayerWriteError};
+use crate::error::{LayerLoadError, LayerWriteError, UfoLoadError};
 use crate::glyph::GlyphName;
 use crate::names::NameList;
 use crate::shared_types::Color;
@@ -41,14 +41,11 @@ impl LayerSet {
     ///
     /// The `glyph_names` argument allows norad to reuse glyph name strings,
     /// reducing memory use.
-    pub(crate) fn load(
-        base_dir: &Path,
-        glyph_names: &NameList,
-    ) -> Result<LayerSet, LayerSetLoadError> {
+    pub(crate) fn load(base_dir: &Path, glyph_names: &NameList) -> Result<LayerSet, UfoLoadError> {
         let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
         let to_load: Vec<(LayerName, PathBuf)> = if layer_contents_path.exists() {
             plist::from_file(&layer_contents_path)
-                .map_err(LayerSetLoadError::ParsingLayerContentsFile)?
+                .map_err(UfoLoadError::ParsingLayerContentsFile)?
         } else {
             vec![(Arc::from(DEFAULT_LAYER_NAME), PathBuf::from(DEFAULT_GLYPHS_DIRNAME))]
         };
@@ -58,7 +55,7 @@ impl LayerSet {
             .map(|(name, path)| {
                 let layer_path = base_dir.join(&path);
                 Layer::load_impl(&layer_path, name.clone(), glyph_names).map_err(|source| {
-                    LayerSetLoadError::LoadingLayer(name.to_string(), layer_path, source)
+                    UfoLoadError::LoadingLayer(name.to_string(), layer_path, source)
                 })
             })
             .collect::<Result<_, _>>()?;
@@ -67,7 +64,7 @@ impl LayerSet {
         let default_idx = layers
             .iter()
             .position(|l| l.path.to_str() == Some(DEFAULT_GLYPHS_DIRNAME))
-            .ok_or(LayerSetLoadError::MissingDefaultLayer)?;
+            .ok_or(UfoLoadError::MissingDefaultLayer)?;
         layers.rotate_left(default_idx);
 
         Ok(LayerSet { layers })

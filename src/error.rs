@@ -121,14 +121,6 @@ pub enum UfoLoadError {
     #[error("failed to load images store")]
     LoadingImagesStore(#[source] StoreEntryError),
     /// ...
-    #[error("failed to load layer set")]
-    LoadingLayerSet(#[source] LayerSetLoadError),
-}
-
-/// ...
-#[derive(Debug, Error)]
-pub enum LayerSetLoadError {
-    /// ...
     #[error("cannot find the layercontents.plist file")]
     MissingLayerContentsFile,
     /// ...
