@@ -324,7 +324,7 @@ impl Layer {
         util::recursive_sort_plist_keys(&mut dict);
 
         crate::write::write_xml_to_file(&path.join(LAYER_INFO_FILE), &dict, options)
-            .map_err(|source| LayerWriteError::WriteLayerInfo(source.into()))
+            .map_err(LayerWriteError::WriteLayerInfo)
     }
 
     /// Serialize this layer to the given path with the default
@@ -348,7 +348,7 @@ impl Layer {
     ) -> Result<(), LayerWriteError> {
         fs::create_dir(&path).map_err(LayerWriteError::CreateDir)?;
         crate::write::write_xml_to_file(&path.join(CONTENTS_FILE), &self.contents, opts)
-            .map_err(|source| LayerWriteError::WriteContents(source.into()))?;
+            .map_err(LayerWriteError::WriteContents)?;
 
         self.layerinfo_to_file_if_needed(path, opts)?;
 

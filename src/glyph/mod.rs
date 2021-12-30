@@ -9,10 +9,13 @@ mod tests;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+#[cfg(feature = "kurbo")]
+use crate::Error;
+
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
 
-use crate::error::{Error, ErrorKind, GlifLoadError, GlifWriteError};
+use crate::error::{ErrorKind, GlifLoadError, GlifWriteError};
 use crate::names::NameList;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
@@ -79,10 +82,10 @@ impl Glyph {
     }
 
     #[doc(hidden)]
-    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), GlifWriteError> {
         let path = path.as_ref();
         let opts = WriteOptions::default();
-        self.save_with_options(path, &opts).map_err(|source| Error::UfoWrite(source.into()))
+        self.save_with_options(path, &opts)
     }
 
     pub(crate) fn save_with_options(

@@ -208,7 +208,7 @@ impl Font {
         path: impl AsRef<Path>,
         request: &DataRequest,
     ) -> Result<Font, Error> {
-        Self::load_impl(path.as_ref(), request).map_err(|e| Error::UfoLoad(e.into()))
+        Self::load_impl(path.as_ref(), request).map_err(Error::UfoLoad)
     }
 
     fn load_impl(path: &Path, request: &DataRequest) -> Result<Font, UfoLoadError> {
@@ -345,7 +345,7 @@ impl Font {
     /// by norad.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
         let path = path.as_ref();
-        self.save_impl(path, &Default::default()).map_err(|source| Error::UfoWrite(source.into()))
+        self.save_impl(path, &Default::default()).map_err(Error::UfoWrite)
     }
 
     /// Serialize a [`Font`] to the given `path`, overwriting any existing contents,
@@ -418,7 +418,7 @@ impl Font {
         options: &WriteOptions,
     ) -> Result<(), Error> {
         let path = path.as_ref();
-        self.save_impl(path, options).map_err(|source| Error::UfoWrite(source.into()))
+        self.save_impl(path, options).map_err(Error::UfoWrite)
     }
 
     fn save_impl(&self, path: &Path, options: &WriteOptions) -> Result<(), UfoWriteError> {
@@ -657,6 +657,8 @@ fn load_layer_set(
 mod tests {
     use tempdir::TempDir;
 
+    use crate::error::LayerLoadError;
+
     use super::*;
 
     #[test]
@@ -715,7 +717,7 @@ mod tests {
     fn loading_invalid_ufo_dir_path() {
         let path = "totally/bogus/filepath/font.ufo";
         let font_load_res = Font::load(path);
-        assert!(matches!(font_load_res, Err(Error::MissingUfoDir(_))));
+        assert!(matches!(font_load_res, Err(Error::UfoLoad(UfoLoadError::MissingUfoDir))));
     }
 
     #[test]
@@ -724,7 +726,7 @@ mod tests {
         // This should raise an error
         let path = "testdata/ufo/Tester-MissingMetaInfo.ufo";
         let font_load_res = Font::load(path);
-        assert!(matches!(font_load_res, Err(Error::MissingFile(_))));
+        assert!(matches!(font_load_res, Err(Error::UfoLoad(UfoLoadError::MissingMetaInfoFile))));
     }
 
     #[test]
@@ -733,7 +735,12 @@ mod tests {
         // This should raise an error
         let path = "testdata/ufo/Tester-MissingLayerContents.ufo";
         let font_load_res = Font::load(path);
-        assert!(matches!(font_load_res, Err(Error::MissingFile(_))));
+        assert!(matches!(
+            font_load_res,
+            Err(Error::UfoLoad(UfoLoadError::LoadingLayerSet(
+                LayerSetLoadError::MissingLayerContentsFile
+            )))
+        ));
     }
 
     #[test]
@@ -742,7 +749,14 @@ mod tests {
         // directory. This should raise an error
         let path = "testdata/ufo/Tester-MissingGlyphsContents.ufo";
         let font_load_res = Font::load(path);
-        assert!(matches!(font_load_res, Err(Error::MissingFile(_))));
+        assert!(matches!(
+            font_load_res,
+            Err(Error::UfoLoad(UfoLoadError::LoadingLayerSet(LayerSetLoadError::LoadingLayer(
+                _,
+                _,
+                LayerLoadError::MissingContentsFile
+            ))))
+        ));
     }
 
     #[test]
@@ -751,7 +765,14 @@ mod tests {
         // but not in the glyphs.background directory. This should raise an error
         let path = "testdata/ufo/Tester-MissingGlyphsContents-BackgroundLayer.ufo";
         let font_load_res = Font::load(path);
-        assert!(matches!(font_load_res, Err(Error::MissingFile(_))));
+        assert!(matches!(
+            font_load_res,
+            Err(Error::UfoLoad(UfoLoadError::LoadingLayerSet(LayerSetLoadError::LoadingLayer(
+                _,
+                _,
+                LayerLoadError::MissingContentsFile
+            ))))
+        ));
     }
 
     #[test]
@@ -849,10 +870,10 @@ mod tests {
     }
 
     #[test]
-    fn save_with_options_with_writeoptions_parameter() -> Result<(), Error> {
+    fn save_with_options_with_writeoptions_parameter() {
         let opt = WriteOptions::default();
         let ufo = Font::default();
         let tmp = TempDir::new("test").unwrap();
-        ufo.save_with_options(tmp, &opt)
+        ufo.save_with_options(tmp, &opt).unwrap()
     }
 }

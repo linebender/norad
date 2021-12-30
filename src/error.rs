@@ -40,16 +40,10 @@ pub enum Error {
     },
     /// An error returned when there is an input problem during processing
     #[error("failed to load font")]
-    UfoLoad(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    UfoLoad(#[source] UfoLoadError),
     /// An error returned when there is an output problem during processing
     #[error("failed to write font")]
-    UfoWrite(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
-    /// An error returned when there is a problem parsing plist data into
-    /// [`plist::Dictionary`] types.
-    ///
-    /// The string is the dictionary key.
-    #[error("expected a Plist dictionary at '{0}'")]
-    ExpectedPlistDictionary(String),
+    UfoWrite(#[source] UfoWriteError),
     /// An error returned when there is an inappropriate negative sign on a value.
     #[error("positiveIntegerOrFloat expects a positive value")]
     ExpectedPositiveValue,
@@ -61,6 +55,7 @@ pub enum Error {
 
 /// An error that occurs while attempting to read a .glif file from disk.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum GlifLoadError {
     /// An [`std::io::Error`].
     #[error("failed to read file")]
@@ -81,41 +76,58 @@ pub enum GlifLoadError {
 
 /// An error that occurs while attempting to read a UFO package from disk.
 #[derive(Debug, Error)]
-pub(crate) enum UfoLoadError {
+#[non_exhaustive]
+pub enum UfoLoadError {
+    /// ...
     #[error("cannot find a font package")]
     MissingUfoDir,
+    /// ...
     #[error("cannot find the metainfo.plist file")]
     MissingMetaInfoFile,
+    /// ...
     #[error("failed to parse metainfo.plist file")]
     ParsingMetaInfoFile(#[source] PlistError),
+    /// ...
     #[error("failed to parse lib.plist file")]
     ParsingLibFile(#[source] PlistError),
+    /// ...
     #[error("the lib.plist file must contain a dictionary (<dict>...</dict>)")]
     LibFileMustBeDictionary,
+    /// ...
     #[error("failed to load font info data")]
     LoadingFontInfo(#[source] FontInfoError),
+    /// ...
     #[error("failed to upgrade old lib.plist to current fontinfo.plist data: {0}")]
     FontInfoV1Upconversion(FontInfoErrorKind),
+    /// ...
     #[error("failed to parse groups.plist file")]
     ParsingGroupsFile(#[source] PlistError),
+    /// ...
     #[error("failed to load (kerning) groups")]
     InvalidGroups(#[source] GroupsValidationError),
+    /// ...
     #[error("failed to parse kerning.plist file")]
     ParsingKerningFile(#[source] PlistError),
+    /// ...
     #[error("failed to read features.fea file")]
     LoadingFeatureFile(#[source] IoError),
+    /// ...
     #[error("failed to upconvert groups to the latest supported format")]
     GroupsUpconversionFailure(#[source] GroupsValidationError),
+    /// ...
     #[error("failed to load data store")]
     LoadingDataStore(#[source] StoreEntryError),
+    /// ...
     #[error("failed to load images store")]
     LoadingImagesStore(#[source] StoreEntryError),
+    /// ...
     #[error("failed to load layer set")]
     LoadingLayerSet(#[source] LayerSetLoadError),
 }
 
+/// ...
 #[derive(Debug, Error)]
-pub(crate) enum LayerSetLoadError {
+pub enum LayerSetLoadError {
     /// ...
     #[error("cannot find the layercontents.plist file")]
     MissingLayerContentsFile,
@@ -130,8 +142,10 @@ pub(crate) enum LayerSetLoadError {
     MissingDefaultLayer,
 }
 
+/// ...
 #[derive(Debug, Error)]
-pub(crate) enum LayerLoadError {
+#[non_exhaustive]
+pub enum LayerLoadError {
     /// ...
     #[error("cannot find the contents.plist file")]
     MissingContentsFile,
@@ -146,9 +160,10 @@ pub(crate) enum LayerLoadError {
     LoadingGlyph(String, PathBuf, #[source] GlifLoadError),
 }
 
+/// ...
 #[derive(Debug, Error)]
 #[non_exhaustive]
-pub(crate) enum FontInfoError {
+pub enum FontInfoError {
     /// ...
     #[error("failed to parse fontinfo.plist file")]
     ParsingFontInfoFile(#[source] PlistError),
@@ -279,44 +294,65 @@ impl InvalidColorString {
     }
 }
 
+/// ...
 #[derive(Debug, Error)]
-pub(crate) enum UfoWriteError {
+#[non_exhaustive]
+pub enum UfoWriteError {
+    /// ...
     #[error("failed to remove target directory before overwriting")]
     Cleanup(#[source] IoError),
+    /// ...
     #[error("failed to create target data directory '{0}'")]
     CreateDataDir(PathBuf, #[source] IoError),
+    /// ...
     #[error("failed to create target font directory")]
     CreateUfoDir(#[source] IoError),
+    /// ...
     #[error("failed to create target image directory '{0}'")]
     CreateImageDir(PathBuf, #[source] IoError),
+    /// ...
     #[error("downgrading below UFO v3 is not currently supported")]
     Downgrade,
+    /// ...
     #[error("font info contains invalid data: {0}")]
     InvalidFontInfo(FontInfoErrorKind),
+    /// ...
     #[error("failed to write (kerning) groups")]
     InvalidGroups(#[source] GroupsValidationError),
+    /// ...
     #[error("store entry '{0}' is invalid")]
     InvalidStoreEntry(PathBuf, #[source] StoreError),
+    /// ...
     #[error("the `public.objectLibs` lib key is managed by norad and must not be set manually")]
     PreexistingPublicObjectLibsKey,
+    /// ...
     #[error("failed to write data file")]
     WriteData(PathBuf, #[source] IoError),
+    /// ...
     #[error("failed to write feature file")]
     WriteFeatureFile(#[source] IoError),
+    /// ...
     #[error("failed to write metainfo.plist file")]
     WriteMetaInfo(#[source] CustomSerializationError),
+    /// ...
     #[error("failed to write fontinfo.plist file")]
     WriteFontInfo(#[source] CustomSerializationError),
+    /// ...
     #[error("failed to write groups.plist file")]
     WriteGroups(#[source] CustomSerializationError),
+    /// ...
     #[error("failed to write image file")]
     WriteImage(PathBuf, #[source] IoError),
+    /// ...
     #[error("failed to write kerning.plist file")]
     WriteKerning(#[source] CustomSerializationError),
+    /// ...
     #[error("failed to write layer '{0}' to '{1}'")]
     WriteLayer(String, PathBuf, #[source] LayerWriteError),
+    /// ...
     #[error("failed to write lib.plist file")]
     WriteLib(#[source] CustomSerializationError),
+    /// ...
     #[error("failed to write layercontents.plist file")]
     WriteLayerContents(#[source] CustomSerializationError),
 }
@@ -330,13 +366,13 @@ pub enum LayerWriteError {
     CreateDir(#[source] IoError),
     /// ...
     #[error("failed to write contents.plist file")]
-    WriteContents(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    WriteContents(#[source] CustomSerializationError),
     /// ...
     #[error("failed to write glyph '{0}' to '{1}'")]
     WriteGlyph(String, PathBuf, #[source] GlifWriteError),
     /// ...
     #[error("failed to write layerinfo.plist file")]
-    WriteLayerInfo(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    WriteLayerInfo(#[source] CustomSerializationError),
 }
 
 /// An error when attempting to write a .glif file.

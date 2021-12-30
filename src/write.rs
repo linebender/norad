@@ -141,7 +141,7 @@ fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), std::io:
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
-pub(crate) enum CustomSerializationError {
+pub enum CustomSerializationError {
     #[error("failed to create file")]
     CreateFile(#[source] std::io::Error),
     #[error("failed to serialize Plist")]
