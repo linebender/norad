@@ -608,26 +608,14 @@ impl<'names> GlifParser<'names> {
         for attr in data.attributes() {
             let attr = attr.map_err(GlifParserError::Xml)?;
             let value = decode_value(&attr, reader)?;
-            let t_err = GlifParserError::InvalidImageTransformation;
+            let bad_transform = |e| GlifParserError::InvalidImageTransformation(value.into(), e);
             match attr.key {
-                b"xScale" => {
-                    transform.x_scale = value.parse().map_err(|e| t_err(value.into(), e))?
-                }
-                b"xyScale" => {
-                    transform.xy_scale = value.parse().map_err(|e| t_err(value.into(), e))?
-                }
-                b"yxScale" => {
-                    transform.yx_scale = value.parse().map_err(|e| t_err(value.into(), e))?
-                }
-                b"yScale" => {
-                    transform.y_scale = value.parse().map_err(|e| t_err(value.into(), e))?
-                }
-                b"xOffset" => {
-                    transform.x_offset = value.parse().map_err(|e| t_err(value.into(), e))?
-                }
-                b"yOffset" => {
-                    transform.y_offset = value.parse().map_err(|e| t_err(value.into(), e))?
-                }
+                b"xScale" => transform.x_scale = value.parse().map_err(bad_transform)?,
+                b"xyScale" => transform.xy_scale = value.parse().map_err(bad_transform)?,
+                b"yxScale" => transform.yx_scale = value.parse().map_err(bad_transform)?,
+                b"yScale" => transform.y_scale = value.parse().map_err(bad_transform)?,
+                b"xOffset" => transform.x_offset = value.parse().map_err(bad_transform)?,
+                b"yOffset" => transform.y_offset = value.parse().map_err(bad_transform)?,
                 b"color" => {
                     color = Some(value.parse().map_err(GlifParserError::InvalidImageColor)?)
                 }
