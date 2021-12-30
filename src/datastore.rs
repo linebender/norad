@@ -7,8 +7,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::error::StoreError;
-use crate::Error;
+use crate::error::{StoreEntryError, StoreError};
 
 /// A generic file store for UFO [data][spec_data] and [images][spec_images],
 /// mapping [`PathBuf`] keys to [`Vec<u8>`] values.
@@ -91,7 +90,7 @@ pub type ImageStore = Store<Image>;
 /// Defines custom behavior for data and images stores.
 #[doc(hidden)]
 pub trait DataType: Default {
-    fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, Error>;
+    fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, StoreEntryError>;
     fn try_load_item(&self, ufo_root: &Path, path: &Path) -> Result<Vec<u8>, StoreError>;
     fn validate_entry(
         &self,
@@ -135,21 +134,20 @@ impl<T: DataType> PartialEq for Store<T> {
 }
 
 impl DataType for Data {
-    fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, Error> {
+    fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, StoreEntryError> {
         let source_root = ufo_root.join(crate::font::DATA_DIR);
         let mut paths = Vec::new();
 
         let mut dir_queue: Vec<PathBuf> = vec![source_root.clone()];
         while let Some(dir_path) = dir_queue.pop() {
             for entry in std::fs::read_dir(&dir_path)
-                .map_err(|e| Error::InvalidStoreEntry(dir_path.clone(), e.into()))?
+                .map_err(|e| StoreEntryError::new(dir_path.clone(), e.into()))?
             {
-                let entry =
-                    entry.map_err(|e| Error::InvalidStoreEntry(dir_path.clone(), e.into()))?;
+                let entry = entry.map_err(|e| StoreEntryError::new(dir_path.clone(), e.into()))?;
                 let path = entry.path();
                 let attributes = entry
                     .metadata() // "will not traverse symlinks"
-                    .map_err(|e| Error::InvalidStoreEntry(entry.path(), e.into()))?;
+                    .map_err(|e| StoreEntryError::new(entry.path(), e.into()))?;
 
                 if attributes.is_file() {
                     let key = path.strip_prefix(&source_root).unwrap().to_path_buf();
@@ -158,7 +156,7 @@ impl DataType for Data {
                     dir_queue.push(path);
                 } else {
                     // The spec forbids symlinks.
-                    return Err(Error::InvalidStoreEntry(path, StoreError::NotPlainFileOrDir));
+                    return Err(StoreEntryError::new(path, StoreError::NotPlainFileOrDir));
                 }
             }
         }
@@ -193,29 +191,28 @@ impl DataType for Data {
 }
 
 impl DataType for Image {
-    fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, Error> {
+    fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, StoreEntryError> {
         let source_root = ufo_root.join(crate::font::IMAGES_DIR);
         let mut paths = Vec::new();
 
         for entry in std::fs::read_dir(&source_root)
-            .map_err(|e| Error::InvalidStoreEntry(source_root.clone(), e.into()))?
+            .map_err(|e| StoreEntryError::new(source_root.clone(), e.into()))?
         {
-            let entry =
-                entry.map_err(|e| Error::InvalidStoreEntry(source_root.clone(), e.into()))?;
+            let entry = entry.map_err(|e| StoreEntryError::new(source_root.clone(), e.into()))?;
             let path = entry.path();
             let attributes = entry
                 .metadata() // "will not traverse symlinks"
-                .map_err(|e| Error::InvalidStoreEntry(path.clone(), e.into()))?;
+                .map_err(|e| StoreEntryError::new(path.clone(), e.into()))?;
 
             if attributes.is_file() {
                 let key = path.strip_prefix(&source_root).unwrap().to_path_buf();
                 paths.push(key);
             } else if attributes.is_dir() {
                 // The spec forbids directories...
-                return Err(Error::InvalidStoreEntry(path, StoreError::Subdir));
+                return Err(StoreEntryError::new(path, StoreError::Subdir));
             } else {
                 // ... and symlinks.
-                return Err(Error::InvalidStoreEntry(path, StoreError::NotPlainFile));
+                return Err(StoreEntryError::new(path, StoreError::NotPlainFile));
             }
         }
 
@@ -251,7 +248,7 @@ impl DataType for Image {
 }
 
 impl<T: DataType> Store<T> {
-    pub(crate) fn new(ufo_root: &Path) -> Result<Self, Error> {
+    pub(crate) fn new(ufo_root: &Path) -> Result<Self, StoreEntryError> {
         let impl_type = T::default();
         let dir_contents = impl_type.try_list_contents(ufo_root)?;
         let items =

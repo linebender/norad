@@ -9,8 +9,9 @@ use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 
+use crate::error::{Error, FontInfoErrorKind, FontInfoLoadError};
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
-use crate::{Error, FormatVersion, Guideline, Identifier, Plist};
+use crate::{FormatVersion, Guideline, Identifier, Plist};
 
 /// A signed integer.
 pub type Integer = i32;
@@ -501,19 +502,19 @@ impl FontInfo {
         path: P,
         format_version: FormatVersion,
         lib: &mut Plist,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, FontInfoLoadError> {
         let path = path.as_ref();
         match format_version {
             FormatVersion::V3 => {
-                let mut fontinfo: FontInfo = plist::from_file(path)
-                    .map_err(|source| Error::PlistLoad { path: path.to_owned(), source })?;
-                fontinfo.validate()?;
+                let mut fontinfo: FontInfo =
+                    plist::from_file(path).map_err(FontInfoLoadError::ParsingFontInfoFile)?;
+                fontinfo.validate().map_err(FontInfoLoadError::InvalidData)?;
                 fontinfo.load_object_libs(lib)?;
                 Ok(fontinfo)
             }
             FormatVersion::V2 => {
-                let fontinfo_v2: FontInfoV2 = plist::from_file(path)
-                    .map_err(|source| Error::PlistLoad { path: path.to_owned(), source })?;
+                let fontinfo_v2: FontInfoV2 =
+                    plist::from_file(path).map_err(FontInfoLoadError::ParsingFontInfoFile)?;
                 let fontinfo = FontInfo {
                     ascender: fontinfo_v2.ascender,
                     cap_height: fontinfo_v2.capHeight,
@@ -663,12 +664,12 @@ impl FontInfo {
                     year: fontinfo_v2.year,
                     ..FontInfo::default()
                 };
-                fontinfo.validate().map_err(|_| Error::FontInfoUpconversion)?;
+                fontinfo.validate().map_err(FontInfoLoadError::FontInfoUpconversion)?;
                 Ok(fontinfo)
             }
             FormatVersion::V1 => {
-                let fontinfo_v1: FontInfoV1 = plist::from_file(path)
-                    .map_err(|source| Error::PlistLoad { path: path.to_owned(), source })?;
+                let fontinfo_v1: FontInfoV1 =
+                    plist::from_file(path).map_err(FontInfoLoadError::ParsingFontInfoFile)?;
                 let fontinfo = FontInfo {
                     ascender: fontinfo_v1.ascender,
                     cap_height: fontinfo_v1.capHeight,
@@ -714,7 +715,11 @@ impl FontInfo {
                             "Expanded" => Some(Os2WidthClass::Expanded),
                             "Extra-expanded" => Some(Os2WidthClass::ExtraExpanded),
                             "Ultra-expanded" => Some(Os2WidthClass::UltraExpanded),
-                            _ => return Err(Error::InvalidFontInfo),
+                            _ => {
+                                return Err(FontInfoLoadError::FontInfoUpconversion(
+                                    FontInfoErrorKind::UnknownWidthClass(v.clone()),
+                                ))
+                            }
                         },
                         None => None,
                     },
@@ -746,7 +751,11 @@ impl FontInfo {
                             222 => Some(PostscriptWindowsCharacterSet::Thai),
                             238 => Some(PostscriptWindowsCharacterSet::EasternEuropean),
                             255 => Some(PostscriptWindowsCharacterSet::Oem),
-                            _ => return Err(Error::InvalidFontInfo),
+                            _ => {
+                                return Err(FontInfoLoadError::FontInfoUpconversion(
+                                    FontInfoErrorKind::UnknownMsCharSet(v),
+                                ))
+                            }
                         },
                         None => None,
                     },
@@ -757,7 +766,11 @@ impl FontInfo {
                             1 => Some(StyleMapStyle::Italic),
                             32 => Some(StyleMapStyle::Bold),
                             33 => Some(StyleMapStyle::BoldItalic),
-                            _ => return Err(Error::InvalidFontInfo),
+                            _ => {
+                                return Err(FontInfoLoadError::FontInfoUpconversion(
+                                    FontInfoErrorKind::UnknownFontStyle(v),
+                                ))
+                            }
                         },
                         None => None,
                     },
@@ -772,7 +785,7 @@ impl FontInfo {
                     year: fontinfo_v1.year,
                     ..FontInfo::default()
                 };
-                fontinfo.validate().map_err(|_| Error::FontInfoUpconversion)?;
+                fontinfo.validate().map_err(FontInfoLoadError::FontInfoUpconversion)?;
                 Ok(fontinfo)
             }
         }
@@ -786,32 +799,47 @@ impl FontInfo {
     /// Validates various fields according to the [specification][].
     ///
     /// [specification]: http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
-    pub fn validate(&self) -> Result<(), Error> {
+    pub fn validate(&self) -> Result<(), FontInfoErrorKind> {
         // The date format is "YYYY/MM/DD HH:MM:SS". This does not validate that the
         // days ceiling is valid for the month, as this would probably need a specialist
         // datetime library.
         if let Some(v) = &self.open_type_head_created {
             const DATE_LENGTH: usize = 19;
             if v.len() != DATE_LENGTH {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::InvalidOpenTypeHeadCreatedDate);
             }
             if !v.chars().all(|b| b.is_ascii_digit() || b == ' ' || b == '/' || b == ':') {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::InvalidOpenTypeHeadCreatedDate);
             }
 
             if !(v[0..4].parse::<u16>().is_ok()
                 && &v[4..5] == "/"
-                && v[5..7].parse::<u8>().map_err(|_| Error::InvalidFontInfo)? <= 12
+                && v[5..7]
+                    .parse::<u8>()
+                    .map_err(|_| FontInfoErrorKind::InvalidOpenTypeHeadCreatedDate)?
+                    <= 12
                 && &v[7..8] == "/"
-                && v[8..10].parse::<u8>().map_err(|_| Error::InvalidFontInfo)? <= 31
+                && v[8..10]
+                    .parse::<u8>()
+                    .map_err(|_| FontInfoErrorKind::InvalidOpenTypeHeadCreatedDate)?
+                    <= 31
                 && &v[10..11] == " "
-                && v[11..13].parse::<u8>().map_err(|_| Error::InvalidFontInfo)? < 24
+                && v[11..13]
+                    .parse::<u8>()
+                    .map_err(|_| FontInfoErrorKind::InvalidOpenTypeHeadCreatedDate)?
+                    < 24
                 && &v[13..14] == ":"
-                && v[14..16].parse::<u8>().map_err(|_| Error::InvalidFontInfo)? < 60
+                && v[14..16]
+                    .parse::<u8>()
+                    .map_err(|_| FontInfoErrorKind::InvalidOpenTypeHeadCreatedDate)?
+                    < 60
                 && &v[16..17] == ":"
-                && v[17..19].parse::<u8>().map_err(|_| Error::InvalidFontInfo)? < 60)
+                && v[17..19]
+                    .parse::<u8>()
+                    .map_err(|_| FontInfoErrorKind::InvalidOpenTypeHeadCreatedDate)?
+                    < 60)
             {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::InvalidOpenTypeHeadCreatedDate);
             }
         }
 
@@ -826,7 +854,7 @@ impl FontInfo {
                 let mut last = vs_iter.next().unwrap();
                 for current in vs_iter {
                     if last > current {
-                        return Err(Error::InvalidFontInfo);
+                        return Err(FontInfoErrorKind::UnsortedGaspEntries);
                     }
                     last = current;
                 }
@@ -839,7 +867,7 @@ impl FontInfo {
             for guideline in guidelines {
                 if let Some(id) = guideline.identifier() {
                     if !identifiers.insert(id.clone()) {
-                        return Err(Error::InvalidFontInfo);
+                        return Err(FontInfoErrorKind::DuplicateGuidelineIdentifiers);
                     }
                 }
             }
@@ -848,84 +876,112 @@ impl FontInfo {
         // openTypeOS2Selection must not contain bits 0, 5 or 6.
         if let Some(v) = &self.open_type_os2_selection {
             if v.contains(&0) || v.contains(&5) || v.contains(&6) {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::DisallowedSelectionBits);
             }
         }
 
         if let Some(v) = &self.open_type_os2_family_class {
             if !v.is_valid() {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::InvalidOs2FamilyClass);
             }
         }
 
         // The Postscript blue zone and stem widths lists have a length limitation.
         if let Some(v) = &self.postscript_blue_values {
             if v.len() > 14 {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::InvalidPostscriptListLength(
+                    "postscriptBlueValues",
+                    14,
+                    v.len(),
+                ));
             }
         }
         if let Some(v) = &self.postscript_other_blues {
             if v.len() > 10 {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::InvalidPostscriptListLength(
+                    "postscriptOtherBlues",
+                    10,
+                    v.len(),
+                ));
             }
         }
         if let Some(v) = &self.postscript_family_blues {
             if v.len() > 14 {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::InvalidPostscriptListLength(
+                    "postscriptFamilyBlues",
+                    14,
+                    v.len(),
+                ));
             }
         }
         if let Some(v) = &self.postscript_family_other_blues {
             if v.len() > 10 {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::InvalidPostscriptListLength(
+                    "postscriptFamilyOtherBlues",
+                    10,
+                    v.len(),
+                ));
             }
         }
         if let Some(v) = &self.postscript_stem_snap_h {
             if v.len() > 12 {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::InvalidPostscriptListLength(
+                    "postscriptStemSnapH",
+                    12,
+                    v.len(),
+                ));
             }
         }
         if let Some(v) = &self.postscript_stem_snap_v {
             if v.len() > 12 {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::InvalidPostscriptListLength(
+                    "postscriptStemSnapV",
+                    12,
+                    v.len(),
+                ));
             }
         }
 
         // Certain WOFF attributes must contain at least one item if they are present.
         if let Some(v) = &self.woff_metadata_extensions {
             if v.is_empty() {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::EmptyWoffAttribute("woffMetadataExtensions"));
             }
 
             for record in v.iter() {
                 if record.items.is_empty() {
-                    return Err(Error::InvalidFontInfo);
+                    return Err(FontInfoErrorKind::EmptyWoffAttribute(
+                        "woffMetadataExtensions record, items",
+                    ));
                 }
 
                 for record_item in record.items.iter() {
                     if record_item.names.is_empty() || record_item.values.is_empty() {
-                        return Err(Error::InvalidFontInfo);
+                        return Err(FontInfoErrorKind::EmptyWoffAttribute(
+                            "woffMetadataExtensions record, item names or values",
+                        ));
                     }
                 }
             }
         }
         if let Some(v) = &self.woff_metadata_credits {
             if v.credits.is_empty() {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::EmptyWoffAttribute("woffMetadataCredits"));
             }
         }
         if let Some(v) = &self.woff_metadata_copyright {
             if v.text.is_empty() {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::EmptyWoffAttribute("woffMetadataCopyright"));
             }
         }
         if let Some(v) = &self.woff_metadata_description {
             if v.text.is_empty() {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::EmptyWoffAttribute("woffMetadataDescription, text"));
             }
         }
         if let Some(v) = &self.woff_metadata_trademark {
             if v.text.is_empty() {
-                return Err(Error::InvalidFontInfo);
+                return Err(FontInfoErrorKind::EmptyWoffAttribute("woffMetadataTrademark"));
             }
         }
 
@@ -934,27 +990,25 @@ impl FontInfo {
 
     /// Move libs from the font lib's `public.objectLibs` key into the actual objects.
     /// The key will be removed from the font lib.
-    fn load_object_libs(&mut self, lib: &mut Plist) -> Result<(), Error> {
+    fn load_object_libs(&mut self, lib: &mut Plist) -> Result<(), FontInfoLoadError> {
         let mut object_libs = match lib.remove(PUBLIC_OBJECT_LIBS_KEY) {
-            Some(lib) => lib
-                .into_dictionary()
-                .ok_or_else(|| Error::ExpectedPlistDictionary(PUBLIC_OBJECT_LIBS_KEY.into()))?,
+            Some(lib) => {
+                lib.into_dictionary().ok_or(FontInfoLoadError::PublicObjectLibsMustBeDictionary)?
+            }
             None => return Ok(()),
         };
 
         if let Some(guidelines) = &mut self.guidelines {
             for guideline in guidelines {
-                if let Some(lib) =
-                    guideline.identifier().and_then(|id| object_libs.remove(id.as_str()))
-                {
-                    let lib = lib.into_dictionary().ok_or_else(|| {
-                        Error::ExpectedPlistDictionary(format!(
-                            "{}, {}",
-                            PUBLIC_OBJECT_LIBS_KEY,
-                            guideline.identifier().unwrap().as_str(),
-                        ))
-                    })?;
-                    guideline.replace_lib(lib);
+                if let Some(id) = guideline.identifier() {
+                    if let Some(lib) = object_libs.remove(id.as_str()) {
+                        let lib = lib.into_dictionary().ok_or_else(|| {
+                            FontInfoLoadError::GlobalGuidelineLibMustBeDictionary(
+                                id.as_str().to_string(),
+                            )
+                        })?;
+                        guideline.replace_lib(lib);
+                    }
                 }
             }
         }
