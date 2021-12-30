@@ -12,7 +12,7 @@ use std::sync::Arc;
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
 
-use crate::error::{Error, ErrorKind, GlifLoadError};
+use crate::error::{Error, ErrorKind, GlifLoadError, GlifWriteError};
 use crate::names::NameList;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
@@ -82,20 +82,24 @@ impl Glyph {
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
         let path = path.as_ref();
         let opts = WriteOptions::default();
-        self.save_with_options(path, &opts)
+        self.save_with_options(path, &opts).map_err(|source| Error::UfoWrite(source.into()))
     }
 
-    pub(crate) fn save_with_options(&self, path: &Path, opts: &WriteOptions) -> Result<(), Error> {
+    pub(crate) fn save_with_options(
+        &self,
+        path: &Path,
+        opts: &WriteOptions,
+    ) -> Result<(), GlifWriteError> {
         if self.format != GlifVersion::V2 {
-            return Err(Error::DowngradeUnsupported);
+            return Err(GlifWriteError::Downgrade);
         }
         if self.lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
-            return Err(Error::PreexistingPublicObjectLibsKey);
+            return Err(GlifWriteError::PreexistingPublicObjectLibsKey);
         }
 
         let data = self.encode_xml_with_options(opts)?;
-        std::fs::write(path, &data)
-            .map_err(|source| Error::UfoWrite { path: path.into(), source })?;
+        std::fs::write(path, &data).map_err(GlifWriteError::Io)?;
+
         Ok(())
     }
 
@@ -147,13 +151,15 @@ impl Glyph {
 
     /// Move libs from the lib's `public.objectLibs` into the actual objects.
     /// The key will be removed from the glyph lib.
-    fn load_object_libs(&mut self) -> Result<(), ErrorKind> {
+    fn load_object_libs(&mut self) -> Result<(), GlifLoadError> {
         // Use a macro to reduce boilerplate, to avoid having to mess with the typing system.
         macro_rules! transfer_lib {
             ($object:expr, $object_libs:expr) => {
                 if let Some(id) = $object.identifier().map(|v| v.as_str()) {
                     if let Some(lib) = $object_libs.remove(id) {
-                        let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
+                        let lib = lib
+                            .into_dictionary()
+                            .ok_or(GlifLoadError::ObjectLibMustBeDictionary(id.into()))?;
                         $object.replace_lib(lib);
                     }
                 }
@@ -161,7 +167,9 @@ impl Glyph {
         }
 
         let mut object_libs = match self.lib.remove(PUBLIC_OBJECT_LIBS_KEY) {
-            Some(lib) => lib.into_dictionary().ok_or(ErrorKind::BadLib)?,
+            Some(lib) => {
+                lib.into_dictionary().ok_or(GlifLoadError::PublicObjectLibsMustBeDictionary)?
+            }
             None => return Ok(()),
         };
 
