@@ -2,6 +2,7 @@
 
 pub mod builder;
 mod parse;
+mod parse2;
 mod serialize;
 #[cfg(test)]
 mod tests;
