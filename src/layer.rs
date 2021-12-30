@@ -40,7 +40,7 @@ impl LayerSet {
     ///
     /// The `glyph_names` argument allows norad to reuse glyph name strings,
     /// reducing memory use.
-    pub fn load(base_dir: &Path, glyph_names: &NameList) -> Result<LayerSet, Error> {
+    pub(crate) fn load(base_dir: &Path, glyph_names: &NameList) -> Result<LayerSet, Error> {
         let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
         let to_load: Vec<(LayerName, PathBuf)> = if layer_contents_path.exists() {
             plist::from_file(&layer_contents_path)
@@ -225,7 +225,8 @@ impl Layer {
     ///
     /// You generally shouldn't need this; instead prefer to load all layers
     /// with [`LayerSet::load`] and then get the layer you need from there.
-    pub fn load(path: impl AsRef<Path>, name: LayerName) -> Result<Layer, Error> {
+    #[cfg(test)]
+    pub(crate) fn load(path: impl AsRef<Path>, name: LayerName) -> Result<Layer, Error> {
         let path = path.as_ref();
         let names = NameList::default();
         Layer::load_impl(path, name, &names)
@@ -321,7 +322,8 @@ impl Layer {
     /// [`WriteOptions`] serialization format configuration.
     ///
     /// The path should not exist.
-    pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+    #[cfg(test)]
+    pub(crate) fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
         let options = WriteOptions::default();
         self.save_with_options(path.as_ref(), &options)
     }
@@ -330,7 +332,7 @@ impl Layer {
     /// [`WriteOptions`] serialization format configuration.
     ///
     /// The path should not exist.
-    pub fn save_with_options(&self, path: &Path, opts: &WriteOptions) -> Result<(), Error> {
+    pub(crate) fn save_with_options(&self, path: &Path, opts: &WriteOptions) -> Result<(), Error> {
         fs::create_dir(&path).map_err(|source| Error::UfoWrite { path: path.into(), source })?;
         crate::write::write_xml_to_file(&path.join(CONTENTS_FILE), &self.contents, opts)?;
 

@@ -1,6 +1,6 @@
 //! Testing saving files.
 
-use norad::{Font, FormatVersion, Glyph, Identifier, Layer, Plist};
+use norad::{Font, FormatVersion, Glyph, Identifier, Plist};
 use plist::Value;
 
 #[test]
@@ -50,9 +50,8 @@ fn save_new_file() {
 #[test]
 fn save_fancy() {
     let mut my_ufo = Font::new();
-    let layer_path = "testdata/MutatorSansLightWide.ufo/glyphs";
-    let layer = Layer::load(layer_path, "foreground".into()).unwrap();
-    *my_ufo.default_layer_mut() = layer;
+    let other_ufo = Font::load("testdata/MutatorSansLightWide.ufo").unwrap();
+    *my_ufo.default_layer_mut() = other_ufo.layers.get("foreground").unwrap().clone();
 
     let dir = tempdir::TempDir::new("Fancy.ufo").unwrap();
     my_ufo.save(&dir).unwrap();

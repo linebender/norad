@@ -497,7 +497,7 @@ impl FontInfo {
     /// converted by taking their absolute value. Fields that could be floats before and are
     /// integers now are rounded. Fields that could be floats before and are unsigned integers
     /// now are rounded before taking their absolute value.
-    pub fn from_file<P: AsRef<Path>>(
+    pub(crate) fn from_file<P: AsRef<Path>>(
         path: P,
         format_version: FormatVersion,
         lib: &mut Plist,
