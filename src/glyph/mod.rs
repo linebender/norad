@@ -148,45 +148,37 @@ impl Glyph {
     /// Move libs from the lib's `public.objectLibs` into the actual objects.
     /// The key will be removed from the glyph lib.
     fn load_object_libs(&mut self) -> Result<(), ErrorKind> {
+        // Use a macro to reduce boilerplate, to avoid having to mess with the typing system.
+        macro_rules! transfer_lib {
+            ($object:expr, $object_libs:expr) => {
+                if let Some(id) = $object.identifier().map(|v| v.as_str()) {
+                    if let Some(lib) = $object_libs.remove(id) {
+                        let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
+                        $object.replace_lib(lib);
+                    }
+                }
+            };
+        }
+
         let mut object_libs = match self.lib.remove(PUBLIC_OBJECT_LIBS_KEY) {
             Some(lib) => lib.into_dictionary().ok_or(ErrorKind::BadLib)?,
             None => return Ok(()),
         };
 
         for anchor in &mut self.anchors {
-            if let Some(lib) = anchor.identifier().and_then(|id| object_libs.remove(id.as_str())) {
-                let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
-                anchor.replace_lib(lib);
-            }
+            transfer_lib!(anchor, object_libs);
         }
-
         for guideline in &mut self.guidelines {
-            if let Some(lib) = guideline.identifier().and_then(|id| object_libs.remove(id.as_str()))
-            {
-                let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
-                guideline.replace_lib(lib);
-            }
+            transfer_lib!(guideline, object_libs);
         }
-
         for contour in &mut self.contours {
-            if let Some(lib) = contour.identifier().and_then(|id| object_libs.remove(id.as_str())) {
-                let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
-                contour.replace_lib(lib);
-            }
+            transfer_lib!(contour, object_libs);
             for point in &mut contour.points {
-                if let Some(lib) = point.identifier().and_then(|id| object_libs.remove(id.as_str()))
-                {
-                    let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
-                    point.replace_lib(lib);
-                }
+                transfer_lib!(point, object_libs);
             }
         }
         for component in &mut self.components {
-            if let Some(lib) = component.identifier().and_then(|id| object_libs.remove(id.as_str()))
-            {
-                let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
-                component.replace_lib(lib);
-            }
+            transfer_lib!(component, object_libs);
         }
 
         Ok(())
