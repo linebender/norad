@@ -1,6 +1,7 @@
 //! Data related to individual glyphs.
 
 pub mod builder;
+pub mod builder2;
 mod parse;
 mod parse2;
 mod serialize;
