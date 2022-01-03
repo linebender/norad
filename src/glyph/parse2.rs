@@ -52,6 +52,15 @@ pub enum GlifParserError {
     #[error("invalid advance for '{0}': {1}")]
     InvalidAdvance(String, std::num::ParseFloatError),
     /// ...
+    #[error("an anchor needs at least an 'x' and 'y' attribute")]
+    InvalidAnchor,
+    /// ...
+    #[error("failed to parse angle '{0}': {1}")]
+    InvalidAngle(String, std::num::ParseFloatError),
+    /// ...
+    #[error("angle must be between 0 and 360°, inclusive")]
+    InvalidAngleBounds,
+    /// ...
     #[error("invalid color '{0}'")]
     InvalidColor(String),
     /// ...
@@ -61,17 +70,11 @@ pub enum GlifParserError {
     #[error("failed to parse point coordinate '{0}': {1}")]
     InvalidCoordinate(String, std::num::ParseFloatError),
     /// ...
-    #[error("failed to parse angle '{0}': {1}")]
-    InvalidAngle(String, std::num::ParseFloatError),
-    /// ...
-    #[error("angle must be between 0 and 360°, inclusive")]
-    InvalidAngleBounds,
+    #[error("a guideline must have either 'x' or 'y' or 'x' and 'y' and 'angle' attributes")]
+    InvalidGuideline,
     /// ...
     #[error("invalid identifier '{0}'")]
     InvalidIdentifier(String),
-    /// ...
-    #[error("a guideline must have either 'x' or 'y' or 'x' and 'y' and 'angle' attributes")]
-    InvalidGuideline,
     /// ...
     #[error("failed to parse image color")]
     InvalidImageColor(#[source] InvalidColorString),
@@ -81,9 +84,6 @@ pub enum GlifParserError {
     /// ...
     #[error("a point needs at least an 'x' and 'y' attribute")]
     InvalidPoint,
-    /// ...
-    #[error("an anchor needs at least an 'x' and 'y' attribute")]
-    InvalidAnchor,
     /// ...
     #[error("the glyph lib must be a dictionary")]
     LibMustBeDictionary,
@@ -112,11 +112,11 @@ pub enum GlifParserError {
     #[error("format 1 does not support attributes for element '{0}'")]
     UnexpectedV1Attributes(String),
     /// ...
-    #[error("format 1 does not support identifiers")]
-    UnexpectedV1Identifier,
-    /// ...
     #[error("format 1 does not support the '{0}' element")]
     UnexpectedV1Element(&'static str),
+    /// ...
+    #[error("format 1 does not support identifiers")]
+    UnexpectedV1Identifier,
     /// ...
     #[error("unrecognized point type '{0}'")]
     UnknownPointType(String),
@@ -292,6 +292,9 @@ impl<'names> GlifParser<'names> {
         buf: &mut Vec<u8>,
     ) -> Result<(), GlifParserError> {
         let mut outline_builder = OutlineBuilder::new();
+
+        // TODO: Not checking for attributes here because we'd need to pass through the
+        // element data, but that'd clash with the mutable borrow of buf. Better way?
 
         loop {
             match reader.read_event(buf).map_err(GlifParserError::Xml)? {
