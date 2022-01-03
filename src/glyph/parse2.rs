@@ -112,6 +112,12 @@ pub enum GlifParserError {
     #[error("format 1 does not support attributes for element '{0}'")]
     UnexpectedV1Attributes(String),
     /// ...
+    #[error("format 1 does not support identifiers")]
+    UnexpectedV1Identifier,
+    /// ...
+    #[error("format 1 does not support the '{0}' element")]
+    UnexpectedV1Element(&'static str),
+    /// ...
     #[error("unrecognized point type '{0}'")]
     UnknownPointType(String),
     /// ...
@@ -218,6 +224,9 @@ impl<'names> GlifParser<'names> {
                         self.parse_lib(reader, raw_xml, buf)?
                     }
                     b"note" => {
+                        if self.glyph.format == GlifVersion::V1 {
+                            return Err(GlifParserError::UnexpectedV1Element("note"));
+                        }
                         if seen_note {
                             return Err(GlifParserError::DuplicateElement(b2s(e.name())));
                         }
@@ -242,9 +251,22 @@ impl<'names> GlifParser<'names> {
                         self.parse_advance(reader, e)?
                     }
                     b"unicode" => self.parse_unicode(reader, e)?,
-                    b"anchor" => self.parse_anchor(reader, e)?,
-                    b"guideline" => self.parse_guideline(reader, e)?,
+                    b"anchor" => {
+                        if self.glyph.format == GlifVersion::V1 {
+                            return Err(GlifParserError::UnexpectedV1Element("anchor"));
+                        }
+                        self.parse_anchor(reader, e)?
+                    }
+                    b"guideline" => {
+                        if self.glyph.format == GlifVersion::V1 {
+                            return Err(GlifParserError::UnexpectedV1Element("guideline"));
+                        }
+                        self.parse_guideline(reader, e)?
+                    }
                     b"image" => {
+                        if self.glyph.format == GlifVersion::V1 {
+                            return Err(GlifParserError::UnexpectedV1Element("image"));
+                        }
                         if seen_image {
                             return Err(GlifParserError::DuplicateElement(b2s(e.name())));
                         }
@@ -263,8 +285,6 @@ impl<'names> GlifParser<'names> {
 
         Ok(self.glyph)
     }
-
-    // TODO: check identifiers in anchors, guidelines, contours, components, points
 
     fn parse_outline(
         &mut self,
@@ -309,7 +329,32 @@ impl<'names> GlifParser<'names> {
             }
         }
 
-        let (contours, components) = outline_builder.finish().map_err(GlifParserError::Draw)?;
+        let (mut contours, components) = outline_builder.finish().map_err(GlifParserError::Draw)?;
+
+        // Upgrade implicit anchors to explicit ones.
+        if self.glyph.format == GlifVersion::V1 {
+            for c in &mut contours {
+                if c.points.len() == 1
+                    && c.points[0].typ == PointType::Move
+                    && c.points[0].name.is_some()
+                {
+                    let anchor_point = c.points.remove(0);
+                    let anchor = Anchor::new(
+                        anchor_point.x,
+                        anchor_point.y,
+                        anchor_point.name,
+                        None,
+                        None,
+                        None,
+                    );
+                    self.glyph.anchors.push(anchor);
+                }
+            }
+
+            // Clean up now empty contours.
+            contours.retain(|c| !c.points.is_empty());
+        }
+
         self.glyph.contours.extend(contours);
         self.glyph.components.extend(components);
 
@@ -355,6 +400,10 @@ impl<'names> GlifParser<'names> {
     }
 
     fn parse_identifier(&mut self, value: &str) -> Result<Identifier, GlifParserError> {
+        if self.glyph.format == GlifVersion::V1 {
+            return Err(GlifParserError::UnexpectedV1Identifier);
+        }
+
         let id =
             Identifier::new(value).map_err(|_| GlifParserError::InvalidIdentifier(value.into()))?;
         if !self.seen_identifiers.insert(id.clone()) {
