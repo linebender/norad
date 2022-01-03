@@ -4,11 +4,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use super::*;
-use crate::error::{ErrorKind, InvalidColorString};
+use crate::error::InvalidColorString;
 use crate::glyph::builder2::{OutlineBuilder, OutlineBuilderError};
 use crate::names::NameList;
 
-use quick_xml::events::attributes::Attribute;
 use quick_xml::{
     events::{BytesStart, Event},
     Reader,
