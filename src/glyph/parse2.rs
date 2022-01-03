@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::path::PathBuf;
@@ -6,7 +5,7 @@ use std::sync::Arc;
 
 use super::*;
 use crate::error::{ErrorKind, InvalidColorString};
-use crate::glyph::builder::{Outline, OutlineBuilder};
+use crate::glyph::builder2::{OutlineBuilder, OutlineBuilderError};
 use crate::names::NameList;
 
 use quick_xml::events::attributes::Attribute;
@@ -23,6 +22,8 @@ pub(crate) struct GlifParser<'names> {
 }
 
 /// An error that occurs while attempting to read a .glif file.
+///
+/// No reliable line number information is available as of quick_xml 0.22.0.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum GlifParserError {
@@ -30,17 +31,47 @@ pub enum GlifParserError {
     #[error("failed to parse hexadecimal Unicode code point value '{0}'")]
     BadUnicodeValue(String),
     /// ...
+    #[error("a 'component' element has an empty 'base' attribute")]
+    ComponentEmptyBase,
+    /// ...
+    #[error("a 'component' element is missing a 'base' attribute")]
+    ComponentMissingBase,
+    /// ...
+    #[error("failed to draw glyph")]
+    Draw(#[source] OutlineBuilderError),
+    /// ...
     #[error("there must be only one '{0}' element")]
     DuplicateElement(String),
+    /// Found a duplicate identifier while parsing glyph data.
+    #[error("duplicate identifier '{0}'")]
+    DuplicateIdentifier(String),
     /// ...
     #[error("the 'image' element is missing a 'fileName' attribute")]
     ImageMissingFilename,
     /// ...
     #[error("invalid advance for '{0}': {1}")]
-    InvalidAdvance(String, String),
+    InvalidAdvance(String, std::num::ParseFloatError),
+    /// ...
+    #[error("invalid color '{0}'")]
+    InvalidColor(String),
+    /// ...
+    #[error("failed to parse component transformation value '{0}': {1}")]
+    InvalidComponentTransformation(String, std::num::ParseFloatError),
+    /// ...
+    #[error("failed to parse point coordinate '{0}': {1}")]
+    InvalidCoordinate(String, std::num::ParseFloatError),
+    /// ...
+    #[error("failed to parse angle '{0}': {1}")]
+    InvalidAngle(String, std::num::ParseFloatError),
+    /// ...
+    #[error("angle must be between 0 and 360°, inclusive")]
+    InvalidAngleBounds,
     /// ...
     #[error("invalid identifier '{0}'")]
     InvalidIdentifier(String),
+    /// ...
+    #[error("a guideline must have either 'x' or 'y' or 'x' and 'y' and 'angle' attributes")]
+    InvalidGuideline,
     /// ...
     #[error("failed to parse image color")]
     InvalidImageColor(#[source] InvalidColorString),
@@ -48,11 +79,17 @@ pub enum GlifParserError {
     #[error("failed to parse image transformation value '{0}': {1}")]
     InvalidImageTransformation(String, std::num::ParseFloatError),
     /// ...
+    #[error("a point needs at least an 'x' and 'y' attribute")]
+    InvalidPoint,
+    /// ...
+    #[error("an anchor needs at least an 'x' and 'y' attribute")]
+    InvalidAnchor,
+    /// ...
     #[error("the glyph lib must be a dictionary")]
     LibMustBeDictionary,
     /// ...
     #[error("missing the closing tag for element '{0}'")]
-    MissingCloseTag(String),
+    MissingCloseTag(&'static str),
     /// ...
     #[error("the glyph lib's 'public.objectLibs' entry for the object with identifier '{0}' must be a dictionary")]
     ObjectLibMustBeDictionary(String),
@@ -66,17 +103,17 @@ pub enum GlifParserError {
     #[error("unexpected '{0}' element attribute '{1}'")]
     UnexpectedAttribute(&'static str, String),
     /// ...
-    #[error("unrecognized element '{0}'")]
-    UnexpectedElement(String),
+    #[error("unrecognized element '{1}' inside '{0}' parent element")]
+    UnexpectedElement(&'static str, String),
     /// ...
     #[error("unexpected end of file")]
     UnexpectedEof,
     /// ...
-    #[error("unrecognized element '{0}' inside outline element")]
-    UnexpectedOutlineElement(String),
-    /// ...
     #[error("format 1 does not support attributes for element '{0}'")]
     UnexpectedV1Attributes(String),
+    /// ...
+    #[error("unrecognized point type '{0}'")]
+    UnknownPointType(String),
     /// ...
     #[error("unsupported glif format version '{0}'")]
     UnsupportedGlifVersion(String),
@@ -115,14 +152,11 @@ impl<'names> GlifParser<'names> {
                     let mut format: Option<GlifVersion> = None;
                     for attr in start.attributes() {
                         let attr = attr.map_err(GlifParserError::Xml)?;
+                        let value = attr.unescaped_value().map_err(GlifParserError::Xml)?;
+                        let value = reader.decode(&value).map_err(GlifParserError::Xml)?;
                         match attr.key {
-                            b"name" => {
-                                name = attr
-                                    .unescape_and_decode_value(reader)
-                                    .map_err(GlifParserError::Xml)?;
-                            }
+                            b"name" => name = value.into(),
                             b"format" => {
-                                let value = decode_value(&attr, reader)?;
                                 format = Some(Self::parse_format(value)?);
                             }
                             b"formatMinor" => (),
@@ -190,7 +224,7 @@ impl<'names> GlifParser<'names> {
                         seen_note = true;
                         self.parse_note(reader, buf)?
                     }
-                    _ => return Err(GlifParserError::UnexpectedElement(b2s(e.name()))),
+                    _ => return Err(GlifParserError::UnexpectedElement("glyph", b2s(e.name()))),
                 },
                 // The rest are expected to be empty element tags (exception: outline) with attributes.
                 Event::Empty(e) => match e.name() {
@@ -217,11 +251,11 @@ impl<'names> GlifParser<'names> {
                         seen_image = true;
                         self.parse_image(reader, e)?
                     }
-                    _ => return Err(GlifParserError::UnexpectedElement(b2s(e.name()))),
+                    _ => return Err(GlifParserError::UnexpectedElement("glyph", b2s(e.name()))),
                 },
                 Event::End(ref end) if end.name() == b"glyph" => break,
                 Event::Eof => return Err(GlifParserError::UnexpectedEof),
-                _ => return Err(GlifParserError::MissingCloseTag("glyph".into())),
+                _ => return Err(GlifParserError::MissingCloseTag("glyph")),
             }
         }
 
@@ -229,6 +263,8 @@ impl<'names> GlifParser<'names> {
 
         Ok(self.glyph)
     }
+
+    // TODO: check identifiers in anchors, guidelines, contours, components, points
 
     fn parse_outline(
         &mut self,
@@ -246,7 +282,8 @@ impl<'names> GlifParser<'names> {
                             self.parse_contour(start, reader, &mut new_buf, &mut outline_builder)?
                         }
                         _ => {
-                            return Err(GlifParserError::UnexpectedOutlineElement(
+                            return Err(GlifParserError::UnexpectedElement(
+                                "outline",
                                 b2s(start.name()),
                             ))
                         }
@@ -259,7 +296,8 @@ impl<'names> GlifParser<'names> {
                             self.parse_component(reader, start, &mut outline_builder)?
                         }
                         _ => {
-                            return Err(GlifParserError::UnexpectedOutlineElement(
+                            return Err(GlifParserError::UnexpectedElement(
+                                "outline",
                                 b2s(start.name()),
                             ))
                         }
@@ -267,12 +305,13 @@ impl<'names> GlifParser<'names> {
                 }
                 Event::End(ref end) if end.name() == b"outline" => break,
                 Event::Eof => return Err(GlifParserError::UnexpectedEof),
-                _ => return Err(GlifParserError::MissingCloseTag("outline".into())),
+                _ => return Err(GlifParserError::MissingCloseTag("outline")),
             }
         }
 
-        let (outline, identifiers) = outline_builder.finish()?;
-        self.builder.outline(outline, identifiers)?;
+        let (contours, components) = outline_builder.finish().map_err(GlifParserError::Draw)?;
+        self.glyph.contours.extend(contours);
+        self.glyph.components.extend(components);
 
         Ok(())
     }
@@ -291,20 +330,15 @@ impl<'names> GlifParser<'names> {
                 return Err(GlifParserError::UnexpectedV1Attributes("contour".into()));
             }
             let attr = attr.map_err(GlifParserError::Xml)?;
+            let value = attr.unescaped_value().map_err(GlifParserError::Xml)?;
+            let value = reader.decode(&value).map_err(GlifParserError::Xml)?;
             match attr.key {
-                b"identifier" => {
-                    let ident =
-                        attr.unescape_and_decode_value(reader).map_err(GlifParserError::Xml)?;
-                    identifier = Some(
-                        Identifier::new(ident)
-                            .map_err(|_| GlifParserError::InvalidIdentifier(ident))?,
-                    );
-                }
+                b"identifier" => identifier = Some(self.parse_identifier(&value)?),
                 _ => return Err(GlifParserError::UnexpectedAttribute("contour", b2s(attr.key))),
             }
         }
 
-        outline_builder.begin_path(identifier)?;
+        outline_builder.begin_path(identifier).map_err(GlifParserError::Draw)?;
         loop {
             match reader.read_event(buf).map_err(GlifParserError::Xml)? {
                 Event::End(ref end) if end.name() == b"contour" => break,
@@ -312,12 +346,21 @@ impl<'names> GlifParser<'names> {
                     self.parse_point(reader, start, outline_builder)?;
                 }
                 Event::Eof => return Err(GlifParserError::UnexpectedEof),
-                _ => return Err(ErrorKind::UnexpectedElement.into()),
+                _ => return Err(GlifParserError::MissingCloseTag("contour")),
             }
         }
-        outline_builder.end_path()?;
+        outline_builder.end_path().map_err(GlifParserError::Draw)?;
 
         Ok(())
+    }
+
+    fn parse_identifier(&mut self, value: &str) -> Result<Identifier, GlifParserError> {
+        let id =
+            Identifier::new(value).map_err(|_| GlifParserError::InvalidIdentifier(value.into()))?;
+        if !self.seen_identifiers.insert(id.clone()) {
+            return Err(GlifParserError::DuplicateIdentifier(value.into()));
+        }
+        Ok(id)
     }
 
     fn parse_component(
@@ -332,16 +375,21 @@ impl<'names> GlifParser<'names> {
 
         for attr in start.attributes() {
             let attr = attr.map_err(GlifParserError::Xml)?;
-            let value = decode_value(&attr, reader)?;
-            let kind = ErrorKind::BadNumber;
+            let value = attr.unescaped_value().map_err(GlifParserError::Xml)?;
+            let value = reader.decode(&value).map_err(GlifParserError::Xml)?;
+            let bad_transform =
+                |e| GlifParserError::InvalidComponentTransformation(value.into(), e);
             match attr.key {
-                b"xScale" => transform.x_scale = value.parse().map_err(|_| kind)?,
-                b"xyScale" => transform.xy_scale = value.parse().map_err(|_| kind)?,
-                b"yxScale" => transform.yx_scale = value.parse().map_err(|_| kind)?,
-                b"yScale" => transform.y_scale = value.parse().map_err(|_| kind)?,
-                b"xOffset" => transform.x_offset = value.parse().map_err(|_| kind)?,
-                b"yOffset" => transform.y_offset = value.parse().map_err(|_| kind)?,
+                b"xScale" => transform.x_scale = value.parse().map_err(bad_transform)?,
+                b"xyScale" => transform.xy_scale = value.parse().map_err(bad_transform)?,
+                b"yxScale" => transform.yx_scale = value.parse().map_err(bad_transform)?,
+                b"yScale" => transform.y_scale = value.parse().map_err(bad_transform)?,
+                b"xOffset" => transform.x_offset = value.parse().map_err(bad_transform)?,
+                b"yOffset" => transform.y_offset = value.parse().map_err(bad_transform)?,
                 b"base" => {
+                    if value.is_empty() {
+                        return Err(GlifParserError::ComponentEmptyBase);
+                    }
                     let name: Arc<str> = value.into();
                     let name = match self.names.as_ref() {
                         Some(names) => names.get(&name),
@@ -350,22 +398,19 @@ impl<'names> GlifParser<'names> {
                     base = Some(name);
                 }
                 b"identifier" => {
-                    identifier = Some(
-                        value
-                            .parse()
-                            .map_err(|_| GlifParserError::InvalidIdentifier(value.to_string()))?,
-                    );
+                    identifier = Some(self.parse_identifier(&value)?);
                 }
                 _ => return Err(GlifParserError::UnexpectedAttribute("component", b2s(attr.key))),
             }
         }
 
-        if base.is_none() {
-            return Err(ErrorKind::BadComponent.into());
+        match base {
+            Some(base) => {
+                outline_builder.add_component(base, transform, identifier);
+                Ok(())
+            }
+            None => return Err(GlifParserError::ComponentMissingBase),
         }
-
-        outline_builder.add_component(base.unwrap(), transform, identifier)?;
-        Ok(())
     }
 
     fn parse_lib(
@@ -431,31 +476,46 @@ impl<'names> GlifParser<'names> {
 
         for attr in data.attributes() {
             let attr = attr.map_err(GlifParserError::Xml)?;
-            let value = decode_value(&attr, reader)?;
+            let value = attr.unescaped_value().map_err(GlifParserError::Xml)?;
+            let value = reader.decode(&value).map_err(GlifParserError::Xml)?;
             match attr.key {
                 b"x" => {
-                    x = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
+                    x = Some(
+                        value
+                            .parse()
+                            .map_err(|e| GlifParserError::InvalidCoordinate(value.into(), e))?,
+                    );
                 }
                 b"y" => {
-                    y = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
+                    y = Some(
+                        value
+                            .parse()
+                            .map_err(|e| GlifParserError::InvalidCoordinate(value.into(), e))?,
+                    );
                 }
                 b"name" => name = Some(value.to_string()),
                 b"type" => {
-                    typ = value.parse()?;
+                    typ = value
+                        .parse()
+                        .map_err(|_| GlifParserError::UnknownPointType(value.into()))?;
                 }
                 b"smooth" => smooth = value == "yes",
                 b"identifier" => {
-                    identifier = Some(value.parse()?);
+                    identifier = Some(self.parse_identifier(&value)?);
                 }
-                _ => return Err(ErrorKind::UnexpectedPointField.into()),
+                _ => return Err(GlifParserError::UnexpectedAttribute("point", b2s(attr.key))),
             }
         }
-        if x.is_none() || y.is_none() {
-            return Err(ErrorKind::BadPoint.into());
-        }
-        outline_builder.add_point((x.unwrap(), y.unwrap()), typ, smooth, name, identifier)?;
 
-        Ok(())
+        match (x, y) {
+            (Some(x), Some(y)) => {
+                outline_builder
+                    .add_point((x, y), typ, smooth, name, identifier)
+                    .map_err(GlifParserError::Draw)?;
+                Ok(())
+            }
+            _ => return Err(GlifParserError::InvalidPoint),
+        }
     }
 
     fn parse_advance<'a>(
@@ -470,8 +530,11 @@ impl<'names> GlifParser<'names> {
             let attr = attr.map_err(GlifParserError::Xml)?;
             match attr.key {
                 b"width" | b"height" => {
-                    let value = decode_value(&attr, reader)?;
-                    let value: f64 = value.parse().map_err(|_| ErrorKind::BadNumber)?;
+                    let value = attr.unescaped_value().map_err(GlifParserError::Xml)?;
+                    let value = reader.decode(&value).map_err(GlifParserError::Xml)?;
+                    let value: f64 = value
+                        .parse()
+                        .map_err(|e| GlifParserError::InvalidAdvance(value.into(), e))?;
                     match attr.key {
                         b"width" => width = value,
                         b"height" => height = value,
@@ -496,7 +559,8 @@ impl<'names> GlifParser<'names> {
             let attr = attr.map_err(GlifParserError::Xml)?;
             match attr.key {
                 b"hex" => {
-                    let value = decode_value(&attr, reader)?;
+                    let value = attr.unescaped_value().map_err(GlifParserError::Xml)?;
+                    let value = reader.decode(&value).map_err(GlifParserError::Xml)?;
                     let chr = u32::from_str_radix(value, 16)
                         .map_err(|_| value.to_string())
                         .and_then(|n| char::try_from(n).map_err(|_| value.to_string()))
@@ -522,28 +586,43 @@ impl<'names> GlifParser<'names> {
 
         for attr in data.attributes() {
             let attr = attr.map_err(GlifParserError::Xml)?;
-            let value = decode_value(&attr, reader)?;
+            let value = attr.unescaped_value().map_err(GlifParserError::Xml)?;
+            let value = reader.decode(&value).map_err(GlifParserError::Xml)?;
             match attr.key {
                 b"x" => {
-                    x = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
+                    x = Some(
+                        value
+                            .parse()
+                            .map_err(|e| GlifParserError::InvalidCoordinate(value.into(), e))?,
+                    );
                 }
                 b"y" => {
-                    y = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
+                    y = Some(
+                        value
+                            .parse()
+                            .map_err(|e| GlifParserError::InvalidCoordinate(value.into(), e))?,
+                    );
                 }
                 b"name" => name = Some(value.to_string()),
-                b"color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
+                b"color" => {
+                    color = Some(
+                        value.parse().map_err(|_| GlifParserError::InvalidColor(value.into()))?,
+                    )
+                }
                 b"identifier" => {
-                    identifier = Some(value.parse()?);
+                    identifier = Some(self.parse_identifier(&value)?);
                 }
                 _ => return Err(GlifParserError::UnexpectedAttribute("anchor", b2s(attr.key))),
             }
         }
 
-        if x.is_none() || y.is_none() {
-            return Err(ErrorKind::BadAnchor.into());
+        match (x, y) {
+            (Some(x), Some(y)) => {
+                self.glyph.anchors.push(Anchor::new(x, y, name, color, identifier, None));
+                Ok(())
+            }
+            _ => return Err(GlifParserError::InvalidAnchor),
         }
-        self.builder.anchor(Anchor::new(x.unwrap(), y.unwrap(), name, color, identifier, None))?;
-        Ok(())
     }
 
     fn parse_guideline<'a>(
@@ -560,21 +639,40 @@ impl<'names> GlifParser<'names> {
 
         for attr in data.attributes() {
             let attr = attr.map_err(GlifParserError::Xml)?;
-            let value = decode_value(&attr, reader)?;
+            let value = attr.unescaped_value().map_err(GlifParserError::Xml)?;
+            let value = reader.decode(&value).map_err(GlifParserError::Xml)?;
             match attr.key {
                 b"x" => {
-                    x = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
+                    x = Some(
+                        value
+                            .parse()
+                            .map_err(|e| GlifParserError::InvalidCoordinate(value.into(), e))?,
+                    );
                 }
                 b"y" => {
-                    y = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
+                    y = Some(
+                        value
+                            .parse()
+                            .map_err(|e| GlifParserError::InvalidCoordinate(value.into(), e))?,
+                    );
                 }
                 b"angle" => {
-                    angle = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
+                    let angle_value = value
+                        .parse()
+                        .map_err(|e| GlifParserError::InvalidAngle(value.into(), e))?;
+                    if !(0.0..=360.0).contains(&angle_value) {
+                        return Err(GlifParserError::InvalidAngleBounds);
+                    }
+                    angle = Some(angle_value);
                 }
                 b"name" => name = Some(value.to_string()),
-                b"color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
+                b"color" => {
+                    color = Some(
+                        value.parse().map_err(|_| GlifParserError::InvalidColor(value.into()))?,
+                    )
+                }
                 b"identifier" => {
-                    identifier = Some(value.parse()?);
+                    identifier = Some(self.parse_identifier(&value)?);
                 }
                 _ => return Err(GlifParserError::UnexpectedAttribute("guideline", b2s(attr.key))),
             }
@@ -583,15 +681,10 @@ impl<'names> GlifParser<'names> {
         let line = match (x, y, angle) {
             (Some(x), None, None) => Line::Vertical(x),
             (None, Some(y), None) => Line::Horizontal(y),
-            (Some(x), Some(y), Some(degrees)) => {
-                if !(0.0..=360.0).contains(&degrees) {
-                    return Err(ErrorKind::BadGuideline.into());
-                }
-                Line::Angle { x, y, degrees }
-            }
-            _ => return Err(ErrorKind::BadGuideline.into()),
+            (Some(x), Some(y), Some(degrees)) => Line::Angle { x, y, degrees },
+            _ => return Err(GlifParserError::InvalidGuideline),
         };
-        self.builder.guideline(Guideline::new(line, name, color, identifier, None))?;
+        self.glyph.guidelines.push(Guideline::new(line, name, color, identifier, None));
 
         Ok(())
     }
@@ -607,7 +700,8 @@ impl<'names> GlifParser<'names> {
 
         for attr in data.attributes() {
             let attr = attr.map_err(GlifParserError::Xml)?;
-            let value = decode_value(&attr, reader)?;
+            let value = attr.unescaped_value().map_err(GlifParserError::Xml)?;
+            let value = reader.decode(&value).map_err(GlifParserError::Xml)?;
             let bad_transform = |e| GlifParserError::InvalidImageTransformation(value.into(), e);
             match attr.key {
                 b"xScale" => transform.x_scale = value.parse().map_err(bad_transform)?,
@@ -632,15 +726,6 @@ impl<'names> GlifParser<'names> {
             None => Err(GlifParserError::ImageMissingFilename),
         }
     }
-}
-
-fn decode_value<'a>(
-    attr: &'a Attribute,
-    reader: &Reader<&[u8]>,
-) -> Result<&'a str, GlifParserError> {
-    let value = attr.unescaped_value().map_err(GlifParserError::Xml)?;
-    let value = reader.decode(&value).map_err(GlifParserError::Xml)?;
-    Ok(value)
 }
 
 fn b2s(bytes: &[u8]) -> String {
