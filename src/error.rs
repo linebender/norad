@@ -328,17 +328,9 @@ pub enum FontWriteError {
     /// Cannot clean up previous UFO package before writing out new one.
     #[error("failed to remove target directory before overwriting")]
     Cleanup(#[source] IoError),
-    /// Failed to create the data directory.
-    #[error("failed to create target data directory '{path}'")]
-    CreateDataDir {
-        /// The path to the entry.
-        path: PathBuf,
-        /// The underlying error.
-        source: IoError,
-    },
     /// Failed to create the images directory.
-    #[error("failed to create target image directory '{path}'")]
-    CreateImageDir {
+    #[error("failed to create store directory '{path}'")]
+    CreateStoreDir {
         /// The path to the entry.
         path: PathBuf,
         /// The underlying error.

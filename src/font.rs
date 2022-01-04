@@ -527,7 +527,7 @@ impl Font {
                         let destination = data_dir.join(data_path);
                         let destination_parent = destination.parent().unwrap();
                         fs::create_dir_all(&destination_parent).map_err(|source| {
-                            FontWriteError::CreateDataDir {
+                            FontWriteError::CreateStoreDir {
                                 path: destination_parent.into(),
                                 source,
                             }
@@ -549,7 +549,7 @@ impl Font {
         if !self.images.is_empty() {
             let images_dir = path.join(IMAGES_DIR);
             fs::create_dir(&images_dir) // Only a flat directory.
-                .map_err(|source| FontWriteError::CreateImageDir {
+                .map_err(|source| FontWriteError::CreateStoreDir {
                     path: images_dir.clone(),
                     source,
                 })?;
