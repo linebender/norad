@@ -19,9 +19,6 @@ pub enum Error {
     /// An error returned when a layer is duplicated.
     #[error("layer name '{0}' already exists")]
     DuplicateLayer(String),
-    /// An error returned when there is an invalid color definition.
-    #[error(transparent)]
-    InvalidColor(InvalidColorString),
     /// An error returned when there is a duplicate glyph.
     #[error("glyph named '{glyph}' already exists in layer '{layer}'")]
     DuplicateGlyph {
