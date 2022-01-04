@@ -177,39 +177,70 @@ pub enum FontInfoLoadError {
 }
 
 /// An error pointing to invalid data in the font's info.
-#[derive(Debug, Error)]
+#[derive(Debug)]
 #[non_exhaustive]
 pub enum FontInfoErrorKind {
     /// openTypeOS2Selection contained bits 0, 5 or 6.
-    #[error("openTypeOS2Selection must not contain bits 0, 5 or 6")]
     DisallowedSelectionBits,
     /// Guideline identifiers were not unique within the fontinfo.plist file.
-    #[error("guideline identifiers must be unique within the fontinfo.plist file")]
     DuplicateGuidelineIdentifiers,
     /// Found an empty WOFF element or record. If you have them, you have to fill them all in.
-    #[error("a '{0}' element must not be empty")]
     EmptyWoffAttribute(&'static str),
     /// The openTypeHeadCreated had the wrong format.
-    #[error("openTypeHeadCreated must be of format 'YYYY/MM/DD HH:MM:SS'")]
     InvalidOpenTypeHeadCreatedDate,
     /// The openTypeOS2FamilyClass had out of range values.
-    #[error("openTypeOS2FamilyClass must be two numbers in the range 0-14 and 0-15, respectively")]
     InvalidOs2FamilyClass,
     /// A Postscript data list had more elements than the specification allows.
-    #[error("the Postscript field '{0}' must contain at most {1} items but found {2}")]
     InvalidPostscriptListLength(&'static str, u8, usize),
     /// Unrecognized UFO v1 fontStyle field.
-    #[error("unrecognized fontStyle '{0}'")]
     UnknownFontStyle(i32),
     /// Unrecognized UFO v1 msCharSet field.
-    #[error("unrecognized msCharSet '{0}'")]
     UnknownMsCharSet(i32),
     /// Unrecognized openTypeOS2WidthClass.
-    #[error("unrecognized OS/2 width class '{0}'")]
     UnknownWidthClass(String),
     /// The openTypeGaspRangeRecords field was unsorted.
-    #[error("openTypeGaspRangeRecords must be sorted by their rangeMaxPPEM values")]
     UnsortedGaspEntries,
+}
+
+impl std::fmt::Display for FontInfoErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FontInfoErrorKind::DisallowedSelectionBits => {
+                write!(f, "openTypeOS2Selection must not contain bits 0, 5 or 6")
+            }
+            FontInfoErrorKind::DuplicateGuidelineIdentifiers => {
+                write!(f, "guideline identifiers must be unique within the fontinfo.plist file")
+            }
+            FontInfoErrorKind::EmptyWoffAttribute(s) => {
+                write!(f, "a '{}' element must not be empty", s)
+            }
+            FontInfoErrorKind::InvalidOpenTypeHeadCreatedDate => {
+                write!(f, "openTypeHeadCreated must be of format 'YYYY/MM/DD HH:MM:SS'")
+            }
+            FontInfoErrorKind::InvalidOs2FamilyClass => {
+                write!(f, "openTypeOS2FamilyClass must be two numbers in the range 0-14 and 0-15, respectively")
+            }
+            FontInfoErrorKind::InvalidPostscriptListLength(s, l, m) => {
+                write!(
+                    f,
+                    "the Postscript field '{}' must contain at most {} items but found {}",
+                    s, l, m
+                )
+            }
+            FontInfoErrorKind::UnknownFontStyle(s) => {
+                write!(f, "unrecognized fontStyle '{}'", s)
+            }
+            FontInfoErrorKind::UnknownMsCharSet(c) => {
+                write!(f, "unrecognized msCharSet '{}'", c)
+            }
+            FontInfoErrorKind::UnknownWidthClass(w) => {
+                write!(f, "unrecognized OS/2 width class '{}'", w)
+            }
+            FontInfoErrorKind::UnsortedGaspEntries => {
+                write!(f, "openTypeGaspRangeRecords must be sorted by their rangeMaxPPEM values")
+            }
+        }
+    }
 }
 
 /// An error representing a failure with a particular [`crate::datastore::Store`] entry.
