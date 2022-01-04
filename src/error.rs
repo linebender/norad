@@ -35,10 +35,6 @@ pub enum Error {
         /// The glyph name.
         glyph: String,
     },
-    /// An error returned when there is a problem with kurbo contour conversion.
-    #[cfg(feature = "kurbo")]
-    #[error("failed to convert contour: '{0}'")]
-    ConvertContour(ErrorKind),
 }
 
 /// An error that occurs while attempting to read a .glif file from disk.
@@ -328,6 +324,19 @@ impl InvalidColorString {
 #[derive(Debug, Error)]
 #[error("expected a positive value")]
 pub struct ExpectedPositiveValue;
+
+/// An error returned when there is a problem with kurbo contour conversion.
+#[cfg(feature = "kurbo")]
+#[derive(Debug, Error)]
+#[error("failed to convert contour: '{0}'")]
+pub struct ConvertContourError(ErrorKind);
+
+#[cfg(feature = "kurbo")]
+impl ConvertContourError {
+    pub(crate) fn new(kind: ErrorKind) -> Self {
+        ConvertContourError(kind)
+    }
+}
 
 /// An error that occurs while attempting to write a UFO package to disk.
 #[derive(Debug, Error)]

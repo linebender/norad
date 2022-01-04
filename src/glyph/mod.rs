@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 #[cfg(feature = "kurbo")]
-use crate::Error;
+use crate::error::ConvertContourError;
 
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
@@ -326,7 +326,7 @@ impl Contour {
 
     /// Converts the `Contour` to a [`kurbo::BezPath`].
     #[cfg(feature = "kurbo")]
-    pub fn to_kurbo(&self) -> Result<kurbo::BezPath, Error> {
+    pub fn to_kurbo(&self) -> Result<kurbo::BezPath, ConvertContourError> {
         let mut path = kurbo::BezPath::new();
         let mut offs = std::collections::VecDeque::new();
         let mut points = if self.is_closed() {
@@ -352,10 +352,10 @@ impl Contour {
                 PointType::OffCurve => offs.push_back(kurbo_point),
                 PointType::Curve => {
                     match offs.make_contiguous() {
-                        [] => return Err(Error::ConvertContour(ErrorKind::BadPoint)),
+                        [] => return Err(ConvertContourError::new(ErrorKind::BadPoint)),
                         [p1] => path.quad_to(*p1, kurbo_point),
                         [p1, p2] => path.curve_to(*p1, *p2, kurbo_point),
-                        _ => return Err(Error::ConvertContour(ErrorKind::TooManyOffCurves)),
+                        _ => return Err(ConvertContourError::new(ErrorKind::TooManyOffCurves)),
                     };
                     offs.clear();
                 }
