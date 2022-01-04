@@ -40,10 +40,10 @@ pub enum Error {
     },
     /// An error returned when there is an input problem during processing
     #[error(transparent)]
-    UfoLoad(UfoLoadError),
+    FontLoad(FontLoadError),
     /// An error returned when there is an output problem during processing
     #[error(transparent)]
-    UfoWrite(UfoWriteError),
+    FontWrite(FontWriteError),
     /// An error returned when there is an inappropriate negative sign on a value.
     #[error("positiveIntegerOrFloat expects a positive value")]
     ExpectedPositiveValue,
@@ -77,7 +77,7 @@ pub enum GlifLoadError {
 /// An error that occurs while attempting to read a UFO package from disk.
 #[derive(Debug, Error)]
 #[non_exhaustive]
-pub enum UfoLoadError {
+pub enum FontLoadError {
     /// The UFO cannot be accessed.
     #[error("cannot access UFO package")]
     AccessingUfoDir(#[source] IoError),
@@ -323,7 +323,7 @@ impl InvalidColorString {
 /// An error that occurs while attempting to write a UFO package to disk.
 #[derive(Debug, Error)]
 #[non_exhaustive]
-pub enum UfoWriteError {
+pub enum FontWriteError {
     /// Cannot clean up previous UFO package before writing out new one.
     #[error("failed to remove target directory before overwriting")]
     Cleanup(#[source] IoError),

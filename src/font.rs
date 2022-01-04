@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::datastore::{DataStore, ImageStore};
-use crate::error::{UfoLoadError, UfoWriteError};
+use crate::error::{FontLoadError, FontWriteError};
 use crate::fontinfo::FontInfo;
 use crate::glyph::{Glyph, GlyphName};
 use crate::groups::{validate_groups, Groups};
@@ -208,21 +208,21 @@ impl Font {
         path: impl AsRef<Path>,
         request: &DataRequest,
     ) -> Result<Font, Error> {
-        Self::load_impl(path.as_ref(), request).map_err(Error::UfoLoad)
+        Self::load_impl(path.as_ref(), request).map_err(Error::FontLoad)
     }
 
-    fn load_impl(path: &Path, request: &DataRequest) -> Result<Font, UfoLoadError> {
-        let metadata = path.metadata().map_err(UfoLoadError::AccessingUfoDir)?;
+    fn load_impl(path: &Path, request: &DataRequest) -> Result<Font, FontLoadError> {
+        let metadata = path.metadata().map_err(FontLoadError::AccessingUfoDir)?;
         if !metadata.is_dir() {
-            return Err(UfoLoadError::UfoNotADir);
+            return Err(FontLoadError::UfoNotADir);
         }
 
         let meta_path = path.join(METAINFO_FILE);
         if !meta_path.exists() {
-            return Err(UfoLoadError::MissingMetaInfoFile);
+            return Err(FontLoadError::MissingMetaInfoFile);
         }
         let mut meta: MetaInfo =
-            plist::from_file(&meta_path).map_err(UfoLoadError::ParsingMetaInfoFile)?;
+            plist::from_file(&meta_path).map_err(FontLoadError::ParsingMetaInfoFile)?;
 
         let lib_path = path.join(LIB_FILE);
         let mut lib =
@@ -264,13 +264,13 @@ impl Font {
         };
 
         let data = if request.data && path.join(DATA_DIR).exists() {
-            DataStore::new(path).map_err(UfoLoadError::LoadingDataStore)?
+            DataStore::new(path).map_err(FontLoadError::LoadingDataStore)?
         } else {
             Default::default()
         };
 
         let images = if request.images && path.join(IMAGES_DIR).exists() {
-            ImageStore::new(path).map_err(UfoLoadError::LoadingImagesStore)?
+            ImageStore::new(path).map_err(FontLoadError::LoadingImagesStore)?
         } else {
             Default::default()
         };
@@ -283,7 +283,7 @@ impl Font {
             (_, Some(g), k) => {
                 let (groups, kerning) =
                     upconversion::upconvert_kerning(&g, &k.unwrap_or_default(), &glyph_names);
-                validate_groups(&groups).map_err(UfoLoadError::GroupsUpconversionFailure)?;
+                validate_groups(&groups).map_err(FontLoadError::GroupsUpconversionFailure)?;
                 (Some(groups), Some(kerning))
             }
         };
@@ -346,7 +346,7 @@ impl Font {
     /// by norad.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
         let path = path.as_ref();
-        self.save_impl(path, &Default::default()).map_err(Error::UfoWrite)
+        self.save_impl(path, &Default::default()).map_err(Error::FontWrite)
     }
 
     /// Serialize a [`Font`] to the given `path`, overwriting any existing contents,
@@ -419,16 +419,16 @@ impl Font {
         options: &WriteOptions,
     ) -> Result<(), Error> {
         let path = path.as_ref();
-        self.save_impl(path, options).map_err(Error::UfoWrite)
+        self.save_impl(path, options).map_err(Error::FontWrite)
     }
 
-    fn save_impl(&self, path: &Path, options: &WriteOptions) -> Result<(), UfoWriteError> {
+    fn save_impl(&self, path: &Path, options: &WriteOptions) -> Result<(), FontWriteError> {
         if self.meta.format_version != FormatVersion::V3 {
-            return Err(UfoWriteError::Downgrade);
+            return Err(FontWriteError::Downgrade);
         }
 
         if self.lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
-            return Err(UfoWriteError::PreexistingPublicObjectLibsKey);
+            return Err(FontWriteError::PreexistingPublicObjectLibsKey);
         }
 
         // Load all data and images before potentially deleting it from disk.
@@ -436,26 +436,26 @@ impl Font {
         for _ in self.images.iter() {}
 
         if path.exists() {
-            fs::remove_dir_all(path).map_err(UfoWriteError::Cleanup)?;
+            fs::remove_dir_all(path).map_err(FontWriteError::Cleanup)?;
         }
-        fs::create_dir(path).map_err(UfoWriteError::CreateUfoDir)?;
+        fs::create_dir(path).map_err(FontWriteError::CreateUfoDir)?;
 
         // we want to always set ourselves as the creator when serializing,
         // but we also don't have mutable access to self.
         let metainfo_path = path.join(METAINFO_FILE);
         if self.meta.creator == Some(DEFAULT_METAINFO_CREATOR.into()) {
             write::write_xml_to_file(&metainfo_path, &self.meta, options)
-                .map_err(UfoWriteError::WriteMetaInfo)?;
+                .map_err(FontWriteError::WriteMetaInfo)?;
         } else {
             write::write_xml_to_file(&metainfo_path, &MetaInfo::default(), options)
-                .map_err(UfoWriteError::WriteMetaInfo)?;
+                .map_err(FontWriteError::WriteMetaInfo)?;
         }
 
         if !self.font_info.is_empty() {
             // TODO: Pass on FontInfoError suberror
-            self.font_info.validate().map_err(UfoWriteError::InvalidFontInfo)?;
+            self.font_info.validate().map_err(FontWriteError::InvalidFontInfo)?;
             write::write_xml_to_file(&path.join(FONTINFO_FILE), &self.font_info, options)
-                .map_err(UfoWriteError::WriteFontInfo)?;
+                .map_err(FontWriteError::WriteFontInfo)?;
         }
 
         // Object libs are treated specially. The UFO v3 format won't allow us
@@ -473,19 +473,19 @@ impl Font {
         if !lib.is_empty() {
             crate::util::recursive_sort_plist_keys(&mut lib);
             write::write_xml_to_file(&path.join(LIB_FILE), &lib, options)
-                .map_err(UfoWriteError::WriteLib)?;
+                .map_err(FontWriteError::WriteLib)?;
         }
 
         if !self.groups.is_empty() {
-            validate_groups(&self.groups).map_err(UfoWriteError::InvalidGroups)?;
+            validate_groups(&self.groups).map_err(FontWriteError::InvalidGroups)?;
             write::write_xml_to_file(&path.join(GROUPS_FILE), &self.groups, options)
-                .map_err(UfoWriteError::WriteGroups)?;
+                .map_err(FontWriteError::WriteGroups)?;
         }
 
         if !self.kerning.is_empty() {
             let kerning_serializer = crate::kerning::KerningSerializer { kerning: &self.kerning };
             write::write_xml_to_file(&path.join(KERNING_FILE), &kerning_serializer, options)
-                .map_err(UfoWriteError::WriteKerning)?;
+                .map_err(FontWriteError::WriteKerning)?;
         }
 
         if !self.features.is_empty() {
@@ -494,22 +494,22 @@ impl Font {
             let feature_file_path = path.join(FEATURES_FILE);
             if self.features.as_bytes().contains(&b'\r') {
                 fs::write(&feature_file_path, self.features.replace("\r\n", "\n"))
-                    .map_err(UfoWriteError::WriteFeatureFile)?;
+                    .map_err(FontWriteError::WriteFeatureFile)?;
             } else {
                 fs::write(&feature_file_path, &self.features)
-                    .map_err(UfoWriteError::WriteFeatureFile)?;
+                    .map_err(FontWriteError::WriteFeatureFile)?;
             }
         }
 
         let contents: Vec<(&str, &PathBuf)> =
             self.layers.iter().map(|l| (l.name.as_ref(), &l.path)).collect();
         write::write_xml_to_file(&path.join(LAYER_CONTENTS_FILE), &contents, options)
-            .map_err(UfoWriteError::WriteLayerContents)?;
+            .map_err(FontWriteError::WriteLayerContents)?;
 
         for layer in self.layers.iter() {
             let layer_path = path.join(&layer.path);
             layer.save_with_options(&layer_path, options).map_err(|source| {
-                UfoWriteError::WriteLayer(layer.name.to_string(), layer_path, source)
+                FontWriteError::WriteLayer(layer.name.to_string(), layer_path, source)
             })?;
         }
 
@@ -521,12 +521,12 @@ impl Font {
                         let destination = data_dir.join(data_path);
                         let destination_parent = destination.parent().unwrap();
                         fs::create_dir_all(&destination_parent).map_err(|source| {
-                            UfoWriteError::CreateDataDir(destination_parent.into(), source)
+                            FontWriteError::CreateDataDir(destination_parent.into(), source)
                         })?;
                         fs::write(&destination, &*data)
-                            .map_err(|source| UfoWriteError::WriteData(destination, source))?;
+                            .map_err(|source| FontWriteError::WriteData(destination, source))?;
                     }
-                    Err(e) => return Err(UfoWriteError::InvalidStoreEntry(data_path.clone(), e)),
+                    Err(e) => return Err(FontWriteError::InvalidStoreEntry(data_path.clone(), e)),
                 }
             }
         }
@@ -534,15 +534,15 @@ impl Font {
         if !self.images.is_empty() {
             let images_dir = path.join(IMAGES_DIR);
             fs::create_dir(&images_dir) // Only a flat directory.
-                .map_err(|source| UfoWriteError::CreateImageDir(images_dir.clone(), source))?;
+                .map_err(|source| FontWriteError::CreateImageDir(images_dir.clone(), source))?;
             for (image_path, contents) in self.images.iter() {
                 match contents {
                     Ok(data) => {
                         let destination = images_dir.join(image_path);
                         fs::write(&destination, &*data)
-                            .map_err(|source| UfoWriteError::WriteImage(destination, source))?;
+                            .map_err(|source| FontWriteError::WriteImage(destination, source))?;
                     }
-                    Err(e) => return Err(UfoWriteError::InvalidStoreEntry(image_path.clone(), e)),
+                    Err(e) => return Err(FontWriteError::InvalidStoreEntry(image_path.clone(), e)),
                 }
             }
         }
@@ -608,37 +608,37 @@ impl Font {
     }
 }
 
-fn load_lib(lib_path: &Path) -> Result<plist::Dictionary, UfoLoadError> {
+fn load_lib(lib_path: &Path) -> Result<plist::Dictionary, FontLoadError> {
     plist::Value::from_file(lib_path)
-        .map_err(UfoLoadError::ParsingLibFile)?
+        .map_err(FontLoadError::ParsingLibFile)?
         .into_dictionary()
-        .ok_or(UfoLoadError::LibFileMustBeDictionary)
+        .ok_or(FontLoadError::LibFileMustBeDictionary)
 }
 
 fn load_fontinfo(
     fontinfo_path: &Path,
     meta: &MetaInfo,
     lib: &mut plist::Dictionary,
-) -> Result<FontInfo, UfoLoadError> {
+) -> Result<FontInfo, FontLoadError> {
     let font_info: FontInfo = FontInfo::from_file(fontinfo_path, meta.format_version, lib)
-        .map_err(UfoLoadError::LoadingFontInfo)?;
+        .map_err(FontLoadError::LoadingFontInfo)?;
     Ok(font_info)
 }
 
-fn load_groups(groups_path: &Path) -> Result<Groups, UfoLoadError> {
-    let groups: Groups = plist::from_file(groups_path).map_err(UfoLoadError::ParsingGroupsFile)?;
-    validate_groups(&groups).map_err(UfoLoadError::InvalidGroups)?;
+fn load_groups(groups_path: &Path) -> Result<Groups, FontLoadError> {
+    let groups: Groups = plist::from_file(groups_path).map_err(FontLoadError::ParsingGroupsFile)?;
+    validate_groups(&groups).map_err(FontLoadError::InvalidGroups)?;
     Ok(groups)
 }
 
-fn load_kerning(kerning_path: &Path) -> Result<Kerning, UfoLoadError> {
+fn load_kerning(kerning_path: &Path) -> Result<Kerning, FontLoadError> {
     let kerning: Kerning =
-        plist::from_file(kerning_path).map_err(UfoLoadError::ParsingKerningFile)?;
+        plist::from_file(kerning_path).map_err(FontLoadError::ParsingKerningFile)?;
     Ok(kerning)
 }
 
-fn load_features(features_path: &Path) -> Result<String, UfoLoadError> {
-    let features = fs::read_to_string(features_path).map_err(UfoLoadError::LoadingFeatureFile)?;
+fn load_features(features_path: &Path) -> Result<String, FontLoadError> {
+    let features = fs::read_to_string(features_path).map_err(FontLoadError::LoadingFeatureFile)?;
     Ok(features)
 }
 
@@ -646,10 +646,10 @@ fn load_layer_set(
     ufo_path: &Path,
     meta: &MetaInfo,
     glyph_names: &NameList,
-) -> Result<LayerSet, UfoLoadError> {
+) -> Result<LayerSet, FontLoadError> {
     let layercontents_path = ufo_path.join(LAYER_CONTENTS_FILE);
     if meta.format_version == FormatVersion::V3 && !layercontents_path.exists() {
-        return Err(UfoLoadError::MissingLayerContentsFile);
+        return Err(FontLoadError::MissingLayerContentsFile);
     }
     LayerSet::load(ufo_path, glyph_names)
 }
@@ -718,7 +718,7 @@ mod tests {
     fn loading_invalid_ufo_dir_path() {
         let path = "totally/bogus/filepath/font.ufo";
         let font_load_res = Font::load(path);
-        assert!(matches!(font_load_res, Err(Error::UfoLoad(UfoLoadError::AccessingUfoDir(_)))));
+        assert!(matches!(font_load_res, Err(Error::FontLoad(FontLoadError::AccessingUfoDir(_)))));
     }
 
     #[test]
@@ -727,7 +727,7 @@ mod tests {
         // This should raise an error
         let path = "testdata/ufo/Tester-MissingMetaInfo.ufo";
         let font_load_res = Font::load(path);
-        assert!(matches!(font_load_res, Err(Error::UfoLoad(UfoLoadError::MissingMetaInfoFile))));
+        assert!(matches!(font_load_res, Err(Error::FontLoad(FontLoadError::MissingMetaInfoFile))));
     }
 
     #[test]
@@ -738,7 +738,7 @@ mod tests {
         let font_load_res = Font::load(path);
         assert!(matches!(
             font_load_res,
-            Err(Error::UfoLoad(UfoLoadError::MissingLayerContentsFile))
+            Err(Error::FontLoad(FontLoadError::MissingLayerContentsFile))
         ));
     }
 
@@ -750,7 +750,7 @@ mod tests {
         let font_load_res = Font::load(path);
         assert!(matches!(
             font_load_res,
-            Err(Error::UfoLoad(UfoLoadError::LoadingLayer(
+            Err(Error::FontLoad(FontLoadError::LoadingLayer(
                 _,
                 _,
                 LayerLoadError::MissingContentsFile
@@ -766,7 +766,7 @@ mod tests {
         let font_load_res = Font::load(path);
         assert!(matches!(
             font_load_res,
-            Err(Error::UfoLoad(UfoLoadError::LoadingLayer(
+            Err(Error::FontLoad(FontLoadError::LoadingLayer(
                 _,
                 _,
                 LayerLoadError::MissingContentsFile
