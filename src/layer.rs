@@ -44,7 +44,8 @@ impl LayerSet {
     pub(crate) fn load(base_dir: &Path, glyph_names: &NameList) -> Result<LayerSet, FontLoadError> {
         let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
         let to_load: Vec<(LayerName, PathBuf)> = if layer_contents_path.exists() {
-            plist::from_file(&layer_contents_path).map_err(FontLoadError::ParseLayerContentsFile)?
+            plist::from_file(&layer_contents_path)
+                .map_err(|source| FontLoadError::ParsePlist { name: LAYER_CONTENTS_FILE, source })?
         } else {
             vec![(Arc::from(DEFAULT_LAYER_NAME), PathBuf::from(DEFAULT_GLYPHS_DIRNAME))]
         };
@@ -249,8 +250,8 @@ impl Layer {
         }
         // these keys are never used; a future optimization would be to skip the
         // names and deserialize to a vec; that would not be a one-liner, though.
-        let contents: BTreeMap<GlyphName, PathBuf> =
-            plist::from_file(&contents_path).map_err(LayerLoadError::ParseContentsFile)?;
+        let contents: BTreeMap<GlyphName, PathBuf> = plist::from_file(&contents_path)
+            .map_err(|source| LayerLoadError::ParsePlist { name: CONTENTS_FILE, source })?;
 
         #[cfg(feature = "rayon")]
         let iter = contents.par_iter();
@@ -296,8 +297,8 @@ impl Layer {
             #[serde(default)]
             lib: Plist,
         }
-        let layerinfo: LayerInfoHelper =
-            plist::from_file(path).map_err(LayerLoadError::ParseLayerInfoFile)?;
+        let layerinfo: LayerInfoHelper = plist::from_file(path)
+            .map_err(|source| LayerLoadError::ParsePlist { name: LAYER_INFO_FILE, source })?;
         Ok((layerinfo.color, layerinfo.lib))
     }
 

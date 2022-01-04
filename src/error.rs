@@ -124,21 +124,14 @@ pub enum FontLoadError {
     /// The UFO does not have a metainfo.plist layer.
     #[error("cannot find the metainfo.plist file")]
     MissingMetaInfoFile,
-    /// Failed to parse the groups.plist file.
-    #[error("failed to parse groups.plist file")]
-    ParseGroupsFile(#[source] PlistError),
-    /// Failed to parse the kerning.plist file.
-    #[error("failed to parse kerning.plist file")]
-    ParseKerningFile(#[source] PlistError),
-    /// Failed to parse the layercontents.plist file.
-    #[error("failed to parse layercontents.plist file")]
-    ParseLayerContentsFile(#[source] PlistError),
-    /// Failed to parse the lib.plist file.
-    #[error("failed to parse lib.plist file")]
-    ParseLibFile(#[source] PlistError),
-    /// Failed to parse the metainfo.plist file.
-    #[error("failed to parse metainfo.plist file")]
-    ParseMetaInfoFile(#[source] PlistError),
+    /// Failed to parse a .plist file.
+    #[error("failed to parse {name} file")]
+    ParsePlist {
+        /// The name of the file.
+        name: &'static str,
+        /// The underlying error.
+        source: PlistError,
+    },
     /// Norad can currently only open UFO (directory) packages.
     #[error("only UFO (directory) packages are supported")]
     UfoNotADir,
@@ -161,12 +154,14 @@ pub enum LayerLoadError {
     /// Could not find the layer's contents.plist.
     #[error("cannot find the contents.plist file")]
     MissingContentsFile,
-    /// Could not parse the layer's contents.plist.
-    #[error("failed to parse contents.plist file")]
-    ParseContentsFile(#[source] PlistError),
-    /// Could not parse the layer's layerinfo.plist.
-    #[error("failed to parse layerinfo.plist file")]
-    ParseLayerInfoFile(#[source] PlistError),
+    /// Failed to parse a .plist file.
+    #[error("failed to parse {name} file")]
+    ParsePlist {
+        /// The name of the file.
+        name: &'static str,
+        /// The underlying error.
+        source: PlistError,
+    },
 }
 
 /// An error that occurs while attempting to read a UFO fontinfo.plist file from disk.
@@ -387,6 +382,14 @@ pub enum FontWriteError {
     /// There exists a `public.objectLibs` lib key when it should be set only by norad.
     #[error("the `public.objectLibs` lib key is managed by norad and must not be set manually")]
     PreexistingPublicObjectLibsKey,
+    /// Failed to write out a customly-serialized file.
+    #[error("failed to write {name} file")]
+    WriteCustomFile {
+        /// The name of the file.
+        name: &'static str,
+        /// The underlying error.
+        source: CustomSerializationError,
+    },
     /// Failed to write data entry.
     #[error("failed to write data file")]
     WriteData {
@@ -398,12 +401,6 @@ pub enum FontWriteError {
     /// Failed to write out the feature.fea file.
     #[error("failed to write feature.fea file")]
     WriteFeatureFile(#[source] IoError),
-    /// Failed to write out the fontinfo.plist file.
-    #[error("failed to write fontinfo.plist file")]
-    WriteFontInfo(#[source] CustomSerializationError),
-    /// Failed to write out the groups.plist file.
-    #[error("failed to write groups.plist file")]
-    WriteGroups(#[source] CustomSerializationError),
     /// Failed to write out an image file.
     #[error("failed to write image file")]
     WriteImage {
@@ -412,9 +409,6 @@ pub enum FontWriteError {
         /// The underlying error.
         source: IoError,
     },
-    /// Failed to write out the kerning.plist file.
-    #[error("failed to write kerning.plist file")]
-    WriteKerning(#[source] CustomSerializationError),
     /// Failed to write out a layer.
     #[error("failed to write layer '{name}' to '{path}'")]
     WriteLayer {
@@ -425,15 +419,6 @@ pub enum FontWriteError {
         /// The underlying error.
         source: LayerWriteError,
     },
-    /// Failed to write out the layercontents.plist file.
-    #[error("failed to write layercontents.plist file")]
-    WriteLayerContents(#[source] CustomSerializationError),
-    /// Failed to write out the lib.plist file.
-    #[error("failed to write lib.plist file")]
-    WriteLib(#[source] CustomSerializationError),
-    /// Failed to write out the metainfo.plist file.
-    #[error("failed to write metainfo.plist file")]
-    WriteMetaInfo(#[source] CustomSerializationError),
 }
 
 /// An error that occurs while attempting to read a UFO layer from disk.

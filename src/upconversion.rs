@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
 use crate::error::FontLoadError;
+use crate::font::LIB_FILE;
 use crate::fontinfo::FontInfo;
 use crate::groups::Groups;
 use crate::kerning::Kerning;
@@ -148,7 +149,8 @@ pub(crate) fn upconvert_ufov1_robofab_data(
     }
 
     // Read lib.plist again because it is easier than pulling out the data manually.
-    let lib_data: LibData = plist::from_file(lib_path).map_err(FontLoadError::ParseLibFile)?;
+    let lib_data: LibData = plist::from_file(lib_path)
+        .map_err(|source| FontLoadError::ParsePlist { name: LIB_FILE, source })?;
 
     // Convert features.
     let mut features = String::new();

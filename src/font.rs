@@ -24,7 +24,7 @@ use crate::Error;
 
 static METAINFO_FILE: &str = "metainfo.plist";
 static FONTINFO_FILE: &str = "fontinfo.plist";
-static LIB_FILE: &str = "lib.plist";
+pub(crate) static LIB_FILE: &str = "lib.plist";
 static GROUPS_FILE: &str = "groups.plist";
 static KERNING_FILE: &str = "kerning.plist";
 static FEATURES_FILE: &str = "features.fea";
@@ -221,8 +221,8 @@ impl Font {
         if !meta_path.exists() {
             return Err(FontLoadError::MissingMetaInfoFile);
         }
-        let mut meta: MetaInfo =
-            plist::from_file(&meta_path).map_err(FontLoadError::ParseMetaInfoFile)?;
+        let mut meta: MetaInfo = plist::from_file(&meta_path)
+            .map_err(|source| FontLoadError::ParsePlist { name: METAINFO_FILE, source })?;
 
         let lib_path = path.join(LIB_FILE);
         let mut lib =
@@ -444,18 +444,20 @@ impl Font {
         // but we also don't have mutable access to self.
         let metainfo_path = path.join(METAINFO_FILE);
         if self.meta.creator == Some(DEFAULT_METAINFO_CREATOR.into()) {
-            write::write_xml_to_file(&metainfo_path, &self.meta, options)
-                .map_err(FontWriteError::WriteMetaInfo)?;
+            write::write_xml_to_file(&metainfo_path, &self.meta, options).map_err(|source| {
+                FontWriteError::WriteCustomFile { name: METAINFO_FILE, source }
+            })?;
         } else {
-            write::write_xml_to_file(&metainfo_path, &MetaInfo::default(), options)
-                .map_err(FontWriteError::WriteMetaInfo)?;
+            write::write_xml_to_file(&metainfo_path, &MetaInfo::default(), options).map_err(
+                |source| FontWriteError::WriteCustomFile { name: METAINFO_FILE, source },
+            )?;
         }
 
         if !self.font_info.is_empty() {
-            // TODO: Pass on FontInfoError suberror
             self.font_info.validate().map_err(FontWriteError::InvalidFontInfo)?;
-            write::write_xml_to_file(&path.join(FONTINFO_FILE), &self.font_info, options)
-                .map_err(FontWriteError::WriteFontInfo)?;
+            write::write_xml_to_file(&path.join(FONTINFO_FILE), &self.font_info, options).map_err(
+                |source| FontWriteError::WriteCustomFile { name: FONTINFO_FILE, source },
+            )?;
         }
 
         // Object libs are treated specially. The UFO v3 format won't allow us
@@ -473,19 +475,19 @@ impl Font {
         if !lib.is_empty() {
             crate::util::recursive_sort_plist_keys(&mut lib);
             write::write_xml_to_file(&path.join(LIB_FILE), &lib, options)
-                .map_err(FontWriteError::WriteLib)?;
+                .map_err(|source| FontWriteError::WriteCustomFile { name: LIB_FILE, source })?;
         }
 
         if !self.groups.is_empty() {
             validate_groups(&self.groups).map_err(FontWriteError::InvalidGroups)?;
             write::write_xml_to_file(&path.join(GROUPS_FILE), &self.groups, options)
-                .map_err(FontWriteError::WriteGroups)?;
+                .map_err(|source| FontWriteError::WriteCustomFile { name: GROUPS_FILE, source })?;
         }
 
         if !self.kerning.is_empty() {
             let kerning_serializer = crate::kerning::KerningSerializer { kerning: &self.kerning };
             write::write_xml_to_file(&path.join(KERNING_FILE), &kerning_serializer, options)
-                .map_err(FontWriteError::WriteKerning)?;
+                .map_err(|source| FontWriteError::WriteCustomFile { name: KERNING_FILE, source })?;
         }
 
         if !self.features.is_empty() {
@@ -503,8 +505,9 @@ impl Font {
 
         let contents: Vec<(&str, &PathBuf)> =
             self.layers.iter().map(|l| (l.name.as_ref(), &l.path)).collect();
-        write::write_xml_to_file(&path.join(LAYER_CONTENTS_FILE), &contents, options)
-            .map_err(FontWriteError::WriteLayerContents)?;
+        write::write_xml_to_file(&path.join(LAYER_CONTENTS_FILE), &contents, options).map_err(
+            |source| FontWriteError::WriteCustomFile { name: LAYER_CONTENTS_FILE, source },
+        )?;
 
         for layer in self.layers.iter() {
             let layer_path = path.join(&layer.path);
@@ -632,7 +635,7 @@ impl Font {
 
 fn load_lib(lib_path: &Path) -> Result<plist::Dictionary, FontLoadError> {
     plist::Value::from_file(lib_path)
-        .map_err(FontLoadError::ParseLibFile)?
+        .map_err(|source| FontLoadError::ParsePlist { name: LIB_FILE, source })?
         .into_dictionary()
         .ok_or(FontLoadError::LibFileMustBeDictionary)
 }
@@ -648,14 +651,15 @@ fn load_fontinfo(
 }
 
 fn load_groups(groups_path: &Path) -> Result<Groups, FontLoadError> {
-    let groups: Groups = plist::from_file(groups_path).map_err(FontLoadError::ParseGroupsFile)?;
+    let groups: Groups = plist::from_file(groups_path)
+        .map_err(|source| FontLoadError::ParsePlist { name: GROUPS_FILE, source })?;
     validate_groups(&groups).map_err(FontLoadError::InvalidGroups)?;
     Ok(groups)
 }
 
 fn load_kerning(kerning_path: &Path) -> Result<Kerning, FontLoadError> {
-    let kerning: Kerning =
-        plist::from_file(kerning_path).map_err(FontLoadError::ParseKerningFile)?;
+    let kerning: Kerning = plist::from_file(kerning_path)
+        .map_err(|source| FontLoadError::ParsePlist { name: KERNING_FILE, source })?;
     Ok(kerning)
 }
 
