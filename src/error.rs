@@ -39,11 +39,11 @@ pub enum Error {
         glyph: String,
     },
     /// An error returned when there is an input problem during processing
-    #[error("failed to load font")]
-    UfoLoad(#[source] UfoLoadError),
+    #[error(transparent)]
+    UfoLoad(UfoLoadError),
     /// An error returned when there is an output problem during processing
-    #[error("failed to write font")]
-    UfoWrite(#[source] UfoWriteError),
+    #[error(transparent)]
+    UfoWrite(UfoWriteError),
     /// An error returned when there is an inappropriate negative sign on a value.
     #[error("positiveIntegerOrFloat expects a positive value")]
     ExpectedPositiveValue,
