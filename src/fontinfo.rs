@@ -507,14 +507,14 @@ impl FontInfo {
         match format_version {
             FormatVersion::V3 => {
                 let mut fontinfo: FontInfo =
-                    plist::from_file(path).map_err(FontInfoLoadError::ParseFontInfoFile)?;
+                    plist::from_file(path).map_err(FontInfoLoadError::ParsePlist)?;
                 fontinfo.validate().map_err(FontInfoLoadError::InvalidData)?;
                 fontinfo.load_object_libs(lib)?;
                 Ok(fontinfo)
             }
             FormatVersion::V2 => {
                 let fontinfo_v2: FontInfoV2 =
-                    plist::from_file(path).map_err(FontInfoLoadError::ParseFontInfoFile)?;
+                    plist::from_file(path).map_err(FontInfoLoadError::ParsePlist)?;
                 let fontinfo = FontInfo {
                     ascender: fontinfo_v2.ascender,
                     cap_height: fontinfo_v2.capHeight,
@@ -669,7 +669,7 @@ impl FontInfo {
             }
             FormatVersion::V1 => {
                 let fontinfo_v1: FontInfoV1 =
-                    plist::from_file(path).map_err(FontInfoLoadError::ParseFontInfoFile)?;
+                    plist::from_file(path).map_err(FontInfoLoadError::ParsePlist)?;
                 let fontinfo = FontInfo {
                     ascender: fontinfo_v1.ascender,
                     cap_height: fontinfo_v1.capHeight,

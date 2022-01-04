@@ -48,33 +48,30 @@ pub enum FontLoadError {
     /// The UFO cannot be accessed.
     #[error("cannot access UFO package")]
     AccessUfoDir(#[source] IoError),
+    /// Failed to load a file from the data store.
+    #[error("failed to load data store")]
+    DataStore(#[source] StoreEntryError),
+    /// Failed to load the features.fea file.
+    #[error("failed to read features.fea file")]
+    FeatureFile(#[source] IoError),
+    /// Failed to load the fontinfo.plist file.
+    #[error("failed to load font info data")]
+    FontInfo(#[source] FontInfoLoadError),
     /// The upgrade process failed to move font info data from the old lib.plist schema to the new fontinfo.plist schema.
     #[error("failed to upgrade old lib.plist to current fontinfo.plist data: {0}")]
     FontInfoV1Upconversion(FontInfoErrorKind),
     /// The upgrade process failed to convert kerning groups from old to the new UFO v3 format.
     #[error("failed to upconvert groups to the latest supported format")]
     GroupsUpconversionFailure(#[source] GroupsValidationError),
+    /// Failed to load a file from the image store.
+    #[error("failed to load images store")]
+    ImagesStore(#[source] StoreEntryError),
     /// The (kerning) groups in kerning.plist fail validation.
     #[error("failed to load (kerning) groups")]
     InvalidGroups(#[source] GroupsValidationError),
-    /// The lib.plist file was something other than a dictionary.
-    #[error("the lib.plist file must contain a dictionary (<dict>...</dict>)")]
-    LibFileMustBeDictionary,
-    /// Failed to load a file from the data store.
-    #[error("failed to load data store")]
-    LoadDataStore(#[source] StoreEntryError),
-    /// Failed to load the features.fea file.
-    #[error("failed to read features.fea file")]
-    LoadFeatureFile(#[source] IoError),
-    /// Failed to load the fontinfo.plist file.
-    #[error("failed to load font info data")]
-    LoadFontInfo(#[source] FontInfoLoadError),
-    /// Failed to load a file from the image store.
-    #[error("failed to load images store")]
-    LoadImagesStore(#[source] StoreEntryError),
     /// Failed to load a specific layer.
     #[error("failed to load layer '{name}' from '{path}'")]
-    LoadLayer {
+    Layer {
         /// The layer name.
         name: String,
         /// The path to the layer.
@@ -82,6 +79,9 @@ pub enum FontLoadError {
         /// The underlying error.
         source: LayerLoadError,
     },
+    /// The lib.plist file was something other than a dictionary.
+    #[error("the lib.plist file must contain a dictionary (<dict>...</dict>)")]
+    LibFileMustBeDictionary,
     /// The UFO does not have a default layer.
     #[error("missing the default layer ('glyphs' subdirectory)")]
     MissingDefaultLayer,
@@ -110,7 +110,7 @@ pub enum FontLoadError {
 pub enum LayerLoadError {
     /// Loading a glyph from a path failed.
     #[error("failed to load glyph '{name}' from '{path}'")]
-    LoadGlyph {
+    Glyph {
         /// The glyph name.
         name: String,
         /// The path to the glif file.
@@ -146,7 +146,7 @@ pub enum FontInfoLoadError {
     InvalidData(FontInfoErrorKind),
     /// Could not parse the UFO's fontinfo.plist.
     #[error("failed to parse fontinfo.plist file")]
-    ParseFontInfoFile(#[source] PlistError),
+    ParsePlist(#[source] PlistError),
     /// The font lib's `public.objectLibs` value was something other than a dictionary.
     #[error("the lib.plist file's 'public.objectLibs' value must be a dictionary")]
     PublicObjectLibsMustBeDictionary,
@@ -339,9 +339,36 @@ pub enum FontWriteError {
     /// Failed to create the UFO package directory.
     #[error("failed to create target font directory")]
     CreateUfoDir(#[source] IoError),
+    /// Failed to write out a customly-serialized file.
+    #[error("failed to write {name} file")]
+    CustomFile {
+        /// The name of the file.
+        name: &'static str,
+        /// The underlying error.
+        source: CustomSerializationError,
+    },
+    /// Failed to write data entry.
+    #[error("failed to write data file")]
+    Data {
+        /// The path to the entry.
+        path: PathBuf,
+        /// The underlying error.
+        source: IoError,
+    },
     /// Norad does not currently support downgrading to older UFO formats.
     #[error("downgrading below UFO v3 is not currently supported")]
     Downgrade,
+    /// Failed to write out the feature.fea file.
+    #[error("failed to write feature.fea file")]
+    FeatureFile(#[source] IoError),
+    /// Failed to write out an image file.
+    #[error("failed to write image file")]
+    Image {
+        /// The path to the entry.
+        path: PathBuf,
+        /// The underlying error.
+        source: IoError,
+    },
     /// The font info contains invalid data.
     #[error("font info contains invalid data: {0}")]
     InvalidFontInfo(FontInfoErrorKind),
@@ -356,39 +383,9 @@ pub enum FontWriteError {
         /// The underlying error.
         source: StoreError,
     },
-    /// There exists a `public.objectLibs` lib key when it should be set only by norad.
-    #[error("the `public.objectLibs` lib key is managed by norad and must not be set manually")]
-    PreexistingPublicObjectLibsKey,
-    /// Failed to write out a customly-serialized file.
-    #[error("failed to write {name} file")]
-    WriteCustomFile {
-        /// The name of the file.
-        name: &'static str,
-        /// The underlying error.
-        source: CustomSerializationError,
-    },
-    /// Failed to write data entry.
-    #[error("failed to write data file")]
-    WriteData {
-        /// The path to the entry.
-        path: PathBuf,
-        /// The underlying error.
-        source: IoError,
-    },
-    /// Failed to write out the feature.fea file.
-    #[error("failed to write feature.fea file")]
-    WriteFeatureFile(#[source] IoError),
-    /// Failed to write out an image file.
-    #[error("failed to write image file")]
-    WriteImage {
-        /// The path to the entry.
-        path: PathBuf,
-        /// The underlying error.
-        source: IoError,
-    },
     /// Failed to write out a layer.
     #[error("failed to write layer '{name}' to '{path}'")]
-    WriteLayer {
+    Layer {
         /// The name of the layer.
         name: String,
         /// The path to the layer.
@@ -396,21 +393,24 @@ pub enum FontWriteError {
         /// The underlying error.
         source: LayerWriteError,
     },
+    /// There exists a `public.objectLibs` lib key when it should be set only by norad.
+    #[error("the `public.objectLibs` lib key is managed by norad and must not be set manually")]
+    PreexistingPublicObjectLibsKey,
 }
 
 /// An error that occurs while attempting to read a UFO layer from disk.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum LayerWriteError {
+    /// Failed to write out the contents.plist file
+    #[error("failed to write contents.plist file")]
+    Contents(#[source] CustomSerializationError),
     /// Failed to create the layer's directory.
     #[error("cannot create layer directory")]
     CreateDir(#[source] IoError),
-    /// Failed to write out the contents.plist file
-    #[error("failed to write contents.plist file")]
-    WriteContents(#[source] CustomSerializationError),
     /// Failed to write out a glyph.
     #[error("failed to write glyph '{name}' to '{path}'")]
-    WriteGlyph {
+    Glyph {
         /// The name of the glyph.
         name: String,
         /// The path to the glyph.
@@ -420,7 +420,7 @@ pub enum LayerWriteError {
     },
     /// Failed to write out the layerinfo.plist file
     #[error("failed to write layerinfo.plist file")]
-    WriteLayerInfo(#[source] CustomSerializationError),
+    LayerInfo(#[source] CustomSerializationError),
 }
 
 /// An error when attempting to write a .glif file.

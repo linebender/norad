@@ -55,7 +55,7 @@ impl LayerSet {
             .map(|(name, path)| {
                 let layer_path = base_dir.join(&path);
                 Layer::load_impl(&layer_path, name.clone(), glyph_names).map_err(|source| {
-                    FontLoadError::LoadLayer { name: name.to_string(), path: layer_path, source }
+                    FontLoadError::Layer { name: name.to_string(), path: layer_path, source }
                 })
             })
             .collect::<Result<_, _>>()?;
@@ -273,7 +273,7 @@ impl Layer {
                         glyph.name = name.clone();
                         (name.clone(), Arc::new(glyph))
                     })
-                    .map_err(|source| LayerLoadError::LoadGlyph {
+                    .map_err(|source| LayerLoadError::Glyph {
                         name: name.to_string(),
                         path: glyph_path,
                         source,
@@ -328,7 +328,7 @@ impl Layer {
         util::recursive_sort_plist_keys(&mut dict);
 
         crate::write::write_xml_to_file(&path.join(LAYER_INFO_FILE), &dict, options)
-            .map_err(LayerWriteError::WriteLayerInfo)
+            .map_err(LayerWriteError::LayerInfo)
     }
 
     /// Serialize this layer to the given path with the default
@@ -352,7 +352,7 @@ impl Layer {
     ) -> Result<(), LayerWriteError> {
         fs::create_dir(&path).map_err(LayerWriteError::CreateDir)?;
         crate::write::write_xml_to_file(&path.join(CONTENTS_FILE), &self.contents, opts)
-            .map_err(LayerWriteError::WriteContents)?;
+            .map_err(LayerWriteError::Contents)?;
 
         self.layerinfo_to_file_if_needed(path, opts)?;
 
@@ -364,12 +364,10 @@ impl Layer {
         iter.try_for_each(|(name, glyph_path)| {
             let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
             let glyph_path = path.join(glyph_path);
-            glyph.save_with_options(&glyph_path, opts).map_err(|source| {
-                LayerWriteError::WriteGlyph {
-                    name: glyph.name.to_string(),
-                    path: glyph_path,
-                    source,
-                }
+            glyph.save_with_options(&glyph_path, opts).map_err(|source| LayerWriteError::Glyph {
+                name: glyph.name.to_string(),
+                path: glyph_path,
+                source,
             })
         })
     }
