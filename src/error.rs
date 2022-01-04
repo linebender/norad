@@ -35,9 +35,6 @@ pub enum Error {
         /// The glyph name.
         glyph: String,
     },
-    /// An error returned when there is an inappropriate negative sign on a value.
-    #[error("positiveIntegerOrFloat expects a positive value")]
-    ExpectedPositiveValue,
     /// An error returned when there is a problem with kurbo contour conversion.
     #[cfg(feature = "kurbo")]
     #[error("failed to convert contour: '{0}'")]
@@ -326,6 +323,11 @@ impl InvalidColorString {
         InvalidColorString { string: source }
     }
 }
+
+/// An error returned when there is an inappropriate negative sign on a value.
+#[derive(Debug, Error)]
+#[error("expected a positive value")]
+pub struct ExpectedPositiveValue;
 
 /// An error that occurs while attempting to write a UFO package to disk.
 #[derive(Debug, Error)]

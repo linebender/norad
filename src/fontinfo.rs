@@ -9,7 +9,7 @@ use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 
-use crate::error::{Error, FontInfoErrorKind, FontInfoLoadError};
+use crate::error::{ExpectedPositiveValue, FontInfoErrorKind, FontInfoLoadError};
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{FormatVersion, Guideline, Identifier, Plist};
 
@@ -1069,12 +1069,12 @@ impl Deref for NonNegativeIntegerOrFloat {
 }
 
 impl TryFrom<f64> for NonNegativeIntegerOrFloat {
-    type Error = Error;
+    type Error = ExpectedPositiveValue;
 
     fn try_from(value: f64) -> Result<Self, Self::Error> {
         match NonNegativeIntegerOrFloat::new(value) {
             Some(v) => Ok(v),
-            _ => Err(Error::ExpectedPositiveValue),
+            _ => Err(ExpectedPositiveValue),
         }
     }
 }
