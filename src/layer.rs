@@ -44,8 +44,7 @@ impl LayerSet {
     pub(crate) fn load(base_dir: &Path, glyph_names: &NameList) -> Result<LayerSet, FontLoadError> {
         let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
         let to_load: Vec<(LayerName, PathBuf)> = if layer_contents_path.exists() {
-            plist::from_file(&layer_contents_path)
-                .map_err(FontLoadError::ParsingLayerContentsFile)?
+            plist::from_file(&layer_contents_path).map_err(FontLoadError::ParseLayerContentsFile)?
         } else {
             vec![(Arc::from(DEFAULT_LAYER_NAME), PathBuf::from(DEFAULT_GLYPHS_DIRNAME))]
         };
@@ -55,7 +54,7 @@ impl LayerSet {
             .map(|(name, path)| {
                 let layer_path = base_dir.join(&path);
                 Layer::load_impl(&layer_path, name.clone(), glyph_names).map_err(|source| {
-                    FontLoadError::LoadingLayer { name: name.to_string(), path: layer_path, source }
+                    FontLoadError::LoadLayer { name: name.to_string(), path: layer_path, source }
                 })
             })
             .collect::<Result<_, _>>()?;
@@ -251,7 +250,7 @@ impl Layer {
         // these keys are never used; a future optimization would be to skip the
         // names and deserialize to a vec; that would not be a one-liner, though.
         let contents: BTreeMap<GlyphName, PathBuf> =
-            plist::from_file(&contents_path).map_err(LayerLoadError::ParsingContentsFile)?;
+            plist::from_file(&contents_path).map_err(LayerLoadError::ParseContentsFile)?;
 
         #[cfg(feature = "rayon")]
         let iter = contents.par_iter();
@@ -268,7 +267,7 @@ impl Layer {
                         glyph.name = name.clone();
                         (name.clone(), Arc::new(glyph))
                     })
-                    .map_err(|source| LayerLoadError::LoadingGlyph {
+                    .map_err(|source| LayerLoadError::LoadGlyph {
                         name: name.to_string(),
                         path: glyph_path,
                         source,
@@ -298,7 +297,7 @@ impl Layer {
             lib: Plist,
         }
         let layerinfo: LayerInfoHelper =
-            plist::from_file(path).map_err(LayerLoadError::ParsingLayerInfoFile)?;
+            plist::from_file(path).map_err(LayerLoadError::ParseLayerInfoFile)?;
         Ok((layerinfo.color, layerinfo.lib))
     }
 
@@ -360,7 +359,11 @@ impl Layer {
             let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
             let glyph_path = path.join(glyph_path);
             glyph.save_with_options(&glyph_path, opts).map_err(|source| {
-                LayerWriteError::WriteGlyph { name: glyph.name.to_string(), path: glyph_path, source }
+                LayerWriteError::WriteGlyph {
+                    name: glyph.name.to_string(),
+                    path: glyph_path,
+                    source,
+                }
             })
         })
     }

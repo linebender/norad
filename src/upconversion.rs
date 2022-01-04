@@ -148,7 +148,7 @@ pub(crate) fn upconvert_ufov1_robofab_data(
     }
 
     // Read lib.plist again because it is easier than pulling out the data manually.
-    let lib_data: LibData = plist::from_file(lib_path).map_err(FontLoadError::ParsingLibFile)?;
+    let lib_data: LibData = plist::from_file(lib_path).map_err(FontLoadError::ParseLibFile)?;
 
     // Convert features.
     let mut features = String::new();

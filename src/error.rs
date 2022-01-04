@@ -80,7 +80,7 @@ pub enum GlifLoadError {
 pub enum FontLoadError {
     /// The UFO cannot be accessed.
     #[error("cannot access UFO package")]
-    AccessingUfoDir(#[source] IoError),
+    AccessUfoDir(#[source] IoError),
     /// The upgrade process failed to move font info data from the old lib.plist schema to the new fontinfo.plist schema.
     #[error("failed to upgrade old lib.plist to current fontinfo.plist data: {0}")]
     FontInfoV1Upconversion(FontInfoErrorKind),
@@ -95,19 +95,19 @@ pub enum FontLoadError {
     LibFileMustBeDictionary,
     /// Failed to load a file from the data store.
     #[error("failed to load data store")]
-    LoadingDataStore(#[source] StoreEntryError),
+    LoadDataStore(#[source] StoreEntryError),
     /// Failed to load the features.fea file.
     #[error("failed to read features.fea file")]
-    LoadingFeatureFile(#[source] IoError),
+    LoadFeatureFile(#[source] IoError),
     /// Failed to load the fontinfo.plist file.
     #[error("failed to load font info data")]
-    LoadingFontInfo(#[source] FontInfoLoadError),
+    LoadFontInfo(#[source] FontInfoLoadError),
     /// Failed to load a file from the image store.
     #[error("failed to load images store")]
-    LoadingImagesStore(#[source] StoreEntryError),
+    LoadImagesStore(#[source] StoreEntryError),
     /// Failed to load a specific layer.
     #[error("failed to load layer '{name}' from '{path}'")]
-    LoadingLayer {
+    LoadLayer {
         /// The layer name.
         name: String,
         /// The path to the layer.
@@ -126,19 +126,19 @@ pub enum FontLoadError {
     MissingMetaInfoFile,
     /// Failed to parse the groups.plist file.
     #[error("failed to parse groups.plist file")]
-    ParsingGroupsFile(#[source] PlistError),
+    ParseGroupsFile(#[source] PlistError),
     /// Failed to parse the kerning.plist file.
     #[error("failed to parse kerning.plist file")]
-    ParsingKerningFile(#[source] PlistError),
+    ParseKerningFile(#[source] PlistError),
     /// Failed to parse the layercontents.plist file.
     #[error("failed to parse layercontents.plist file")]
-    ParsingLayerContentsFile(#[source] PlistError),
+    ParseLayerContentsFile(#[source] PlistError),
     /// Failed to parse the lib.plist file.
     #[error("failed to parse lib.plist file")]
-    ParsingLibFile(#[source] PlistError),
+    ParseLibFile(#[source] PlistError),
     /// Failed to parse the metainfo.plist file.
     #[error("failed to parse metainfo.plist file")]
-    ParsingMetaInfoFile(#[source] PlistError),
+    ParseMetaInfoFile(#[source] PlistError),
     /// Norad can currently only open UFO (directory) packages.
     #[error("only UFO (directory) packages are supported")]
     UfoNotADir,
@@ -150,7 +150,7 @@ pub enum FontLoadError {
 pub enum LayerLoadError {
     /// Loading a glyph from a path failed.
     #[error("failed to load glyph '{name}' from '{path}'")]
-    LoadingGlyph {
+    LoadGlyph {
         /// The glyph name.
         name: String,
         /// The path to the glif file.
@@ -163,10 +163,10 @@ pub enum LayerLoadError {
     MissingContentsFile,
     /// Could not parse the layer's contents.plist.
     #[error("failed to parse contents.plist file")]
-    ParsingContentsFile(#[source] PlistError),
+    ParseContentsFile(#[source] PlistError),
     /// Could not parse the layer's layerinfo.plist.
     #[error("failed to parse layerinfo.plist file")]
-    ParsingLayerInfoFile(#[source] PlistError),
+    ParseLayerInfoFile(#[source] PlistError),
 }
 
 /// An error that occurs while attempting to read a UFO fontinfo.plist file from disk.
@@ -184,7 +184,7 @@ pub enum FontInfoLoadError {
     InvalidData(FontInfoErrorKind),
     /// Could not parse the UFO's fontinfo.plist.
     #[error("failed to parse fontinfo.plist file")]
-    ParsingFontInfoFile(#[source] PlistError),
+    ParseFontInfoFile(#[source] PlistError),
     /// The font lib's `public.objectLibs` value was something other than a dictionary.
     #[error("the lib.plist file's 'public.objectLibs' value must be a dictionary")]
     PublicObjectLibsMustBeDictionary,
