@@ -38,12 +38,6 @@ pub enum Error {
         /// The glyph name.
         glyph: String,
     },
-    /// An error returned when there is an input problem during processing
-    #[error(transparent)]
-    FontLoad(FontLoadError),
-    /// An error returned when there is an output problem during processing
-    #[error(transparent)]
-    FontWrite(FontWriteError),
     /// An error returned when there is an inappropriate negative sign on a value.
     #[error("positiveIntegerOrFloat expects a positive value")]
     ExpectedPositiveValue,

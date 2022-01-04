@@ -20,7 +20,6 @@ use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
 use crate::upconversion;
 use crate::write::{self, WriteOptions};
 use crate::DataRequest;
-use crate::Error;
 
 static METAINFO_FILE: &str = "metainfo.plist";
 static FONTINFO_FILE: &str = "fontinfo.plist";
@@ -161,7 +160,7 @@ impl Font {
     /// of the data inclusion / exclusion criteria.
     ///
     /// [v3]: http://unifiedfontobject.org/versions/ufo3/
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Font, Error> {
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Font, FontLoadError> {
         Self::load_requested_data(path, &DataRequest::default())
     }
 
@@ -207,8 +206,8 @@ impl Font {
     pub fn load_requested_data(
         path: impl AsRef<Path>,
         request: &DataRequest,
-    ) -> Result<Font, Error> {
-        Self::load_impl(path.as_ref(), request).map_err(Error::FontLoad)
+    ) -> Result<Font, FontLoadError> {
+        Self::load_impl(path.as_ref(), request)
     }
 
     fn load_impl(path: &Path, request: &DataRequest) -> Result<Font, FontLoadError> {
@@ -344,9 +343,9 @@ impl Font {
     /// This _will_ fail if either the global or any glyph lib contains the
     /// `public.objectLibs` key, as object lib management must currently be done
     /// by norad.
-    pub fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+    pub fn save(&self, path: impl AsRef<Path>) -> Result<(), FontWriteError> {
         let path = path.as_ref();
-        self.save_impl(path, &Default::default()).map_err(Error::FontWrite)
+        self.save_impl(path, &Default::default())
     }
 
     /// Serialize a [`Font`] to the given `path`, overwriting any existing contents,
@@ -417,9 +416,9 @@ impl Font {
         &self,
         path: impl AsRef<Path>,
         options: &WriteOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<(), FontWriteError> {
         let path = path.as_ref();
-        self.save_impl(path, options).map_err(Error::FontWrite)
+        self.save_impl(path, options)
     }
 
     fn save_impl(&self, path: &Path, options: &WriteOptions) -> Result<(), FontWriteError> {
@@ -744,7 +743,7 @@ mod tests {
     fn loading_invalid_ufo_dir_path() {
         let path = "totally/bogus/filepath/font.ufo";
         let font_load_res = Font::load(path);
-        assert!(matches!(font_load_res, Err(Error::FontLoad(FontLoadError::AccessUfoDir(_)))));
+        assert!(matches!(font_load_res, Err(FontLoadError::AccessUfoDir(_))));
     }
 
     #[test]
@@ -753,7 +752,7 @@ mod tests {
         // This should raise an error
         let path = "testdata/ufo/Tester-MissingMetaInfo.ufo";
         let font_load_res = Font::load(path);
-        assert!(matches!(font_load_res, Err(Error::FontLoad(FontLoadError::MissingMetaInfoFile))));
+        assert!(matches!(font_load_res, Err(FontLoadError::MissingMetaInfoFile)));
     }
 
     #[test]
@@ -762,10 +761,7 @@ mod tests {
         // This should raise an error
         let path = "testdata/ufo/Tester-MissingLayerContents.ufo";
         let font_load_res = Font::load(path);
-        assert!(matches!(
-            font_load_res,
-            Err(Error::FontLoad(FontLoadError::MissingLayerContentsFile))
-        ));
+        assert!(matches!(font_load_res, Err(FontLoadError::MissingLayerContentsFile)));
     }
 
     #[test]
@@ -776,11 +772,11 @@ mod tests {
         let font_load_res = Font::load(path);
         assert!(matches!(
             font_load_res,
-            Err(Error::FontLoad(FontLoadError::LoadLayer {
+            Err(FontLoadError::LoadLayer {
                 name: _,
                 path: _,
                 source: LayerLoadError::MissingContentsFile
-            }))
+            })
         ));
     }
 
@@ -792,11 +788,11 @@ mod tests {
         let font_load_res = Font::load(path);
         assert!(matches!(
             font_load_res,
-            Err(Error::FontLoad(FontLoadError::LoadLayer {
+            Err(FontLoadError::LoadLayer {
                 name: _,
                 path: _,
                 source: LayerLoadError::MissingContentsFile
-            }))
+            })
         ));
     }
 
