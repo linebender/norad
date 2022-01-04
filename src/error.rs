@@ -241,11 +241,11 @@ impl std::fmt::Display for FontInfoErrorKind {
             FontInfoErrorKind::InvalidOs2FamilyClass => {
                 write!(f, "openTypeOS2FamilyClass must be two numbers in the range 0-14 and 0-15, respectively")
             }
-            FontInfoErrorKind::InvalidPostscriptListLength { name: s, max_len: l, len: m } => {
+            FontInfoErrorKind::InvalidPostscriptListLength { name, max_len, len } => {
                 write!(
                     f,
                     "the Postscript field '{}' must contain at most {} items but found {}",
-                    s, l, m
+                    name, max_len, len
                 )
             }
             FontInfoErrorKind::UnknownFontStyle(s) => {
