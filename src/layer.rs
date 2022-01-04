@@ -7,11 +7,11 @@ use std::sync::Arc;
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
-use crate::error::{FontLoadError, LayerLoadError, LayerWriteError};
+use crate::error::{FontLoadError, LayerLoadError, LayerWriteError, NamingError};
 use crate::glyph::GlyphName;
 use crate::names::NameList;
 use crate::shared_types::Color;
-use crate::{util, Error, Glyph, Plist, WriteOptions};
+use crate::{util, Glyph, Plist, WriteOptions};
 
 static CONTENTS_FILE: &str = "contents.plist";
 static LAYER_INFO_FILE: &str = "layerinfo.plist";
@@ -131,9 +131,9 @@ impl LayerSet {
     }
 
     /// Returns a new layer with the given name.
-    pub fn new_layer(&mut self, name: &str) -> Result<(), Error> {
+    pub fn new_layer(&mut self, name: &str) -> Result<(), NamingError> {
         if self.layers.iter().any(|l| &*l.name == name) {
-            Err(Error::DuplicateLayer(name.into()))
+            Err(NamingError::Duplicate(name.into()))
         } else {
             let layer = Layer::new(name.into(), None);
             self.layers.push(layer);
@@ -159,11 +159,16 @@ impl LayerSet {
     ///
     /// Returns an error if `overwrite` is false but a layer with the new
     /// name exists, or if no layer with the old name exists.
-    pub fn rename_layer(&mut self, old: &str, new: &str, overwrite: bool) -> Result<(), Error> {
+    pub fn rename_layer(
+        &mut self,
+        old: &str,
+        new: &str,
+        overwrite: bool,
+    ) -> Result<(), NamingError> {
         if !overwrite && self.get(new).is_some() {
-            Err(Error::DuplicateLayer(new.into()))
+            Err(NamingError::Duplicate(new.into()))
         } else if self.get(old).is_none() {
-            Err(Error::MissingLayer(old.into()))
+            Err(NamingError::Missing(old.into()))
         } else {
             if overwrite {
                 self.layers.retain(|l| &*l.name != new)
@@ -450,11 +455,16 @@ impl Layer {
     ///
     /// Returns an error if `overwrite` is false but a glyph with the new
     /// name exists, or if no glyph with the old name exists
-    pub fn rename_glyph(&mut self, old: &str, new: &str, overwrite: bool) -> Result<(), Error> {
+    pub fn rename_glyph(
+        &mut self,
+        old: &str,
+        new: &str,
+        overwrite: bool,
+    ) -> Result<(), NamingError> {
         if !overwrite && self.glyphs.contains_key(new) {
-            Err(Error::DuplicateGlyph { glyph: new.into(), layer: self.name.to_string() })
+            Err(NamingError::Duplicate(new.into()))
         } else if !self.glyphs.contains_key(old) {
-            Err(Error::MissingGlyph { glyph: old.into(), layer: self.name.to_string() })
+            Err(NamingError::Missing(old.into()))
         } else {
             let mut g = self.remove_glyph(old).unwrap();
             Arc::make_mut(&mut g).name = new.into();

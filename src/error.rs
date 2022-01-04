@@ -9,32 +9,15 @@ use thiserror::Error;
 
 use crate::write::CustomSerializationError;
 
-/// Errors that occur while working with font objects.
+/// An error representing a failure to (re)name something.
 #[derive(Debug, Error)]
-#[non_exhaustive]
-pub enum Error {
-    /// An error returned when an expected layer is missing.
-    #[error("layer name '{0}' does not exist")]
-    MissingLayer(String),
-    /// An error returned when a layer is duplicated.
-    #[error("layer name '{0}' already exists")]
-    DuplicateLayer(String),
-    /// An error returned when there is a duplicate glyph.
-    #[error("glyph named '{glyph}' already exists in layer '{layer}'")]
-    DuplicateGlyph {
-        /// The layer name.
-        layer: String,
-        /// The glyph name.
-        glyph: String,
-    },
-    /// An error returned when there is a missing expected glyph
-    #[error("glyph '{glyph}' missing from layer '{layer}'")]
-    MissingGlyph {
-        /// The layer name.
-        layer: String,
-        /// The glyph name.
-        glyph: String,
-    },
+pub enum NamingError {
+    /// An error returned when an item is duplicated.
+    #[error("item '{0}' already exists")]
+    Duplicate(String),
+    /// An error returned when an expected item is missing.
+    #[error("item '{0}' does not exist")]
+    Missing(String),
 }
 
 /// An error that occurs while attempting to read a .glif file from disk.
