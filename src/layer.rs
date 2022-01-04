@@ -4,6 +4,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+#[cfg(feature = "druid")]
+use std::ops::Deref;
+
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
@@ -194,7 +197,10 @@ impl Default for LayerSet {
 /// [UFO layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
 #[derive(Debug, Clone, PartialEq)]
 pub struct Layer {
+    #[cfg(feature = "druid")]
     pub(crate) glyphs: BTreeMap<GlyphName, Arc<Glyph>>,
+    #[cfg(not(feature = "druid"))]
+    pub(crate) glyphs: BTreeMap<GlyphName, Glyph>,
     pub(crate) name: LayerName,
     pub(crate) path: PathBuf,
     contents: BTreeMap<GlyphName, PathBuf>,
@@ -265,18 +271,21 @@ impl Layer {
 
         let glyphs = iter
             .map(|(name, glyph_path)| {
-                let name = &names.get(name);
+                let name = names.get(name);
                 let glyph_path = path.join(glyph_path);
 
                 Glyph::load_with_names(&glyph_path, names)
-                    .map(|mut glyph| {
-                        glyph.name = name.clone();
-                        (name.clone(), Arc::new(glyph))
-                    })
                     .map_err(|source| LayerLoadError::Glyph {
                         name: name.to_string(),
                         path: glyph_path,
                         source,
+                    })
+                    .map(|mut glyph| {
+                        glyph.name = name.clone();
+                        #[cfg(feature = "druid")]
+                        return (name, Arc::new(glyph));
+                        #[cfg(not(feature = "druid"))]
+                        (name, glyph)
                     })
             })
             .collect::<Result<_, _>>()?;
@@ -399,7 +408,20 @@ impl Layer {
     }
 
     /// Returns a reference to the glyph with the given name, if it exists.
-    pub fn get_glyph<K>(&self, glyph: &K) -> Option<&Arc<Glyph>>
+    pub fn get_glyph<K>(&self, glyph: &K) -> Option<&Glyph>
+    where
+        GlyphName: Borrow<K>,
+        K: Ord + ?Sized,
+    {
+        #[cfg(feature = "druid")]
+        return self.glyphs.get(glyph).map(|g| g.deref());
+        #[cfg(not(feature = "druid"))]
+        self.glyphs.get(glyph)
+    }
+
+    /// Returns a reference to the given glyph, behind an `Arc`, if it exists.
+    #[cfg(feature = "druid")]
+    pub fn get_glyph_raw<K>(&self, glyph: &K) -> Option<&Arc<Glyph>>
     where
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
@@ -413,7 +435,10 @@ impl Layer {
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
     {
-        self.glyphs.get_mut(glyph).map(Arc::make_mut)
+        #[cfg(feature = "druid")]
+        return self.glyphs.get_mut(glyph).map(Arc::make_mut);
+        #[cfg(not(feature = "druid"))]
+        self.glyphs.get_mut(glyph)
     }
 
     /// Returns `true` if this layer contains a glyph with this `name`.
@@ -425,7 +450,11 @@ impl Layer {
     ///
     /// If the glyph does not previously exist, the filename is calculated from
     /// the glyph's name.
-    pub fn insert_glyph(&mut self, glyph: impl Into<Arc<Glyph>>) {
+    pub fn insert_glyph(
+        &mut self,
+        #[cfg(feature = "druid")] glyph: impl Into<Arc<Glyph>>,
+        #[cfg(not(feature = "druid"))] glyph: impl Into<Glyph>,
+    ) {
         let glyph = glyph.into();
         if !self.contents.contains_key(&glyph.name) {
             let path = crate::util::default_file_name_for_glyph_name(&glyph.name);
@@ -441,8 +470,22 @@ impl Layer {
     }
 
     /// Remove the named glyph from this layer and return it, if it exists.
-    pub fn remove_glyph(&mut self, name: &str) -> Option<Arc<Glyph>> {
+    ///
+    /// **Note**: If the `druid` feature is enabled, this will not return the
+    /// removed `Glyph` if there are any other outstanding references to it,
+    /// although it will still be removed. In this case, consider using the
+    /// `remove_glyph_raw` method instead.
+    pub fn remove_glyph(&mut self, name: &str) -> Option<Glyph> {
         self.contents.remove(name);
+        #[cfg(feature = "druid")]
+        return self.glyphs.remove(name).and_then(|g| Arc::try_unwrap(g).ok());
+        #[cfg(not(feature = "druid"))]
+        self.glyphs.remove(name)
+    }
+
+    /// Remove the named glyph and return it, including the containing `Arc`.
+    #[cfg(feature = "druid")]
+    pub fn remove_glyph_raw(&mut self, name: &str) -> Option<Arc<Glyph>> {
         self.glyphs.remove(name)
     }
 
@@ -464,21 +507,42 @@ impl Layer {
         } else if !self.glyphs.contains_key(old) {
             Err(NamingError::Missing(old.into()))
         } else {
-            let mut g = self.remove_glyph(old).unwrap();
-            Arc::make_mut(&mut g).name = new.into();
-            self.insert_glyph(g);
+            #[cfg(feature = "druid")]
+            {
+                let mut g = self.remove_glyph_raw(old).unwrap();
+                Arc::make_mut(&mut g).name = new.into();
+                self.insert_glyph(g);
+            }
+            #[cfg(not(feature = "druid"))]
+            {
+                let mut g = self.remove_glyph(old).unwrap();
+                g.name = new.into();
+                self.insert_glyph(g);
+            }
             Ok(())
         }
     }
 
     /// Returns an iterator over the glyphs in this layer.
-    pub fn iter(&self) -> impl Iterator<Item = &Arc<Glyph>> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = &Glyph> + '_ {
+        #[cfg(feature = "druid")]
+        return self.glyphs.values().map(|g| g.deref());
+        #[cfg(not(feature = "druid"))]
+        self.glyphs.values()
+    }
+
+    /// Returns an iterator over the glyphs in this layer.
+    #[cfg(feature = "druid")]
+    pub fn iter_raw(&self) -> impl Iterator<Item = &Arc<Glyph>> + '_ {
         self.glyphs.values()
     }
 
     /// Returns an iterator over the glyphs in this layer, mutably.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Glyph> {
-        self.glyphs.values_mut().map(Arc::make_mut)
+        #[cfg(feature = "druid")]
+        return self.glyphs.values_mut().map(Arc::make_mut);
+        #[cfg(not(feature = "druid"))]
+        self.glyphs.values_mut()
     }
 
     /// Returns the path to the .glif file of a given glyph `name`.
