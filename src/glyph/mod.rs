@@ -9,10 +9,13 @@ mod tests;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+#[cfg(feature = "kurbo")]
+use crate::error::ConvertContourError;
+
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
 
-use crate::error::{Error, ErrorKind, GlifLoadError};
+use crate::error::{ErrorKind, GlifLoadError, GlifWriteError};
 use crate::names::NameList;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
@@ -79,23 +82,27 @@ impl Glyph {
     }
 
     #[doc(hidden)]
-    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), GlifWriteError> {
         let path = path.as_ref();
         let opts = WriteOptions::default();
         self.save_with_options(path, &opts)
     }
 
-    pub(crate) fn save_with_options(&self, path: &Path, opts: &WriteOptions) -> Result<(), Error> {
+    pub(crate) fn save_with_options(
+        &self,
+        path: &Path,
+        opts: &WriteOptions,
+    ) -> Result<(), GlifWriteError> {
         if self.format != GlifVersion::V2 {
-            return Err(Error::DowngradeUnsupported);
+            return Err(GlifWriteError::Downgrade);
         }
         if self.lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
-            return Err(Error::PreexistingPublicObjectLibsKey);
+            return Err(GlifWriteError::PreexistingPublicObjectLibsKey);
         }
 
         let data = self.encode_xml_with_options(opts)?;
-        std::fs::write(path, &data)
-            .map_err(|source| Error::UfoWrite { path: path.into(), source })?;
+        std::fs::write(path, &data).map_err(GlifWriteError::Io)?;
+
         Ok(())
     }
 
@@ -147,13 +154,15 @@ impl Glyph {
 
     /// Move libs from the lib's `public.objectLibs` into the actual objects.
     /// The key will be removed from the glyph lib.
-    fn load_object_libs(&mut self) -> Result<(), ErrorKind> {
+    fn load_object_libs(&mut self) -> Result<(), GlifLoadError> {
         // Use a macro to reduce boilerplate, to avoid having to mess with the typing system.
         macro_rules! transfer_lib {
             ($object:expr, $object_libs:expr) => {
                 if let Some(id) = $object.identifier().map(|v| v.as_str()) {
                     if let Some(lib) = $object_libs.remove(id) {
-                        let lib = lib.into_dictionary().ok_or(ErrorKind::BadLib)?;
+                        let lib = lib
+                            .into_dictionary()
+                            .ok_or(GlifLoadError::ObjectLibMustBeDictionary(id.into()))?;
                         $object.replace_lib(lib);
                     }
                 }
@@ -161,7 +170,9 @@ impl Glyph {
         }
 
         let mut object_libs = match self.lib.remove(PUBLIC_OBJECT_LIBS_KEY) {
-            Some(lib) => lib.into_dictionary().ok_or(ErrorKind::BadLib)?,
+            Some(lib) => {
+                lib.into_dictionary().ok_or(GlifLoadError::PublicObjectLibsMustBeDictionary)?
+            }
             None => return Ok(()),
         };
 
@@ -315,7 +326,7 @@ impl Contour {
 
     /// Converts the `Contour` to a [`kurbo::BezPath`].
     #[cfg(feature = "kurbo")]
-    pub fn to_kurbo(&self) -> Result<kurbo::BezPath, Error> {
+    pub fn to_kurbo(&self) -> Result<kurbo::BezPath, ConvertContourError> {
         let mut path = kurbo::BezPath::new();
         let mut offs = std::collections::VecDeque::new();
         let mut points = if self.is_closed() {
@@ -341,10 +352,10 @@ impl Contour {
                 PointType::OffCurve => offs.push_back(kurbo_point),
                 PointType::Curve => {
                     match offs.make_contiguous() {
-                        [] => return Err(Error::ConvertContour(ErrorKind::BadPoint)),
+                        [] => return Err(ConvertContourError::new(ErrorKind::BadPoint)),
                         [p1] => path.quad_to(*p1, kurbo_point),
                         [p1, p2] => path.curve_to(*p1, *p2, kurbo_point),
-                        _ => return Err(Error::ConvertContour(ErrorKind::TooManyOffCurves)),
+                        _ => return Err(ConvertContourError::new(ErrorKind::TooManyOffCurves)),
                     };
                     offs.clear();
                 }

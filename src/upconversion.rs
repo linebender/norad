@@ -1,11 +1,12 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
+use crate::error::FontLoadError;
+use crate::font::LIB_FILE;
 use crate::fontinfo::FontInfo;
 use crate::groups::Groups;
 use crate::kerning::Kerning;
 use crate::names::NameList;
-use crate::Error;
 
 /// Convert kerning groups and pairs from v1 and v2 informal conventions to
 /// v3 formal conventions. Converted groups are added (duplicated) rather than
@@ -118,7 +119,7 @@ pub(crate) fn upconvert_ufov1_robofab_data(
     lib_path: &Path,
     lib: &mut plist::Dictionary,
     font_info: &mut FontInfo,
-) -> Result<Option<String>, Error> {
+) -> Result<Option<String>, FontLoadError> {
     #[derive(Debug, Deserialize)]
     struct LibData {
         #[serde(rename = "org.robofab.postScriptHintData")]
@@ -149,7 +150,7 @@ pub(crate) fn upconvert_ufov1_robofab_data(
 
     // Read lib.plist again because it is easier than pulling out the data manually.
     let lib_data: LibData = plist::from_file(lib_path)
-        .map_err(|source| Error::PlistLoad { path: lib_path.to_owned(), source })?;
+        .map_err(|source| FontLoadError::ParsePlist { name: LIB_FILE, source })?;
 
     // Convert features.
     let mut features = String::new();
@@ -197,7 +198,7 @@ pub(crate) fn upconvert_ufov1_robofab_data(
         font_info.postscript_stem_snap_h = ps_hinting_data.h_stems;
         font_info.postscript_stem_snap_v = ps_hinting_data.v_stems;
 
-        font_info.validate().map_err(|_| Error::FontInfoUpconversion)?;
+        font_info.validate().map_err(FontLoadError::FontInfoV1Upconversion)?;
     }
 
     lib.remove("org.robofab.postScriptHintData");

@@ -7,10 +7,11 @@ use std::sync::Arc;
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
+use crate::error::{FontLoadError, LayerLoadError, LayerWriteError, NamingError};
 use crate::glyph::GlyphName;
 use crate::names::NameList;
 use crate::shared_types::Color;
-use crate::{util, Error, Glyph, Plist, WriteOptions};
+use crate::{util, Glyph, Plist, WriteOptions};
 
 static CONTENTS_FILE: &str = "contents.plist";
 static LAYER_INFO_FILE: &str = "layerinfo.plist";
@@ -40,11 +41,11 @@ impl LayerSet {
     ///
     /// The `glyph_names` argument allows norad to reuse glyph name strings,
     /// reducing memory use.
-    pub(crate) fn load(base_dir: &Path, glyph_names: &NameList) -> Result<LayerSet, Error> {
+    pub(crate) fn load(base_dir: &Path, glyph_names: &NameList) -> Result<LayerSet, FontLoadError> {
         let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
         let to_load: Vec<(LayerName, PathBuf)> = if layer_contents_path.exists() {
             plist::from_file(&layer_contents_path)
-                .map_err(|source| Error::PlistLoad { path: layer_contents_path, source })?
+                .map_err(|source| FontLoadError::ParsePlist { name: LAYER_CONTENTS_FILE, source })?
         } else {
             vec![(Arc::from(DEFAULT_LAYER_NAME), PathBuf::from(DEFAULT_GLYPHS_DIRNAME))]
         };
@@ -53,7 +54,9 @@ impl LayerSet {
             .into_iter()
             .map(|(name, path)| {
                 let layer_path = base_dir.join(&path);
-                Layer::load_impl(&layer_path, name, glyph_names)
+                Layer::load_impl(&layer_path, name.clone(), glyph_names).map_err(|source| {
+                    FontLoadError::Layer { name: name.to_string(), path: layer_path, source }
+                })
             })
             .collect::<Result<_, _>>()?;
 
@@ -61,7 +64,7 @@ impl LayerSet {
         let default_idx = layers
             .iter()
             .position(|l| l.path.to_str() == Some(DEFAULT_GLYPHS_DIRNAME))
-            .ok_or(Error::MissingDefaultLayer)?;
+            .ok_or(FontLoadError::MissingDefaultLayer)?;
         layers.rotate_left(default_idx);
 
         Ok(LayerSet { layers })
@@ -128,9 +131,9 @@ impl LayerSet {
     }
 
     /// Returns a new layer with the given name.
-    pub fn new_layer(&mut self, name: &str) -> Result<(), Error> {
+    pub fn new_layer(&mut self, name: &str) -> Result<(), NamingError> {
         if self.layers.iter().any(|l| &*l.name == name) {
-            Err(Error::DuplicateLayer(name.into()))
+            Err(NamingError::Duplicate(name.into()))
         } else {
             let layer = Layer::new(name.into(), None);
             self.layers.push(layer);
@@ -156,11 +159,16 @@ impl LayerSet {
     ///
     /// Returns an error if `overwrite` is false but a layer with the new
     /// name exists, or if no layer with the old name exists.
-    pub fn rename_layer(&mut self, old: &str, new: &str, overwrite: bool) -> Result<(), Error> {
+    pub fn rename_layer(
+        &mut self,
+        old: &str,
+        new: &str,
+        overwrite: bool,
+    ) -> Result<(), NamingError> {
         if !overwrite && self.get(new).is_some() {
-            Err(Error::DuplicateLayer(new.into()))
+            Err(NamingError::Duplicate(new.into()))
         } else if self.get(old).is_none() {
-            Err(Error::MissingLayer(old.into()))
+            Err(NamingError::Missing(old.into()))
         } else {
             if overwrite {
                 self.layers.retain(|l| &*l.name != new)
@@ -226,7 +234,7 @@ impl Layer {
     /// You generally shouldn't need this; instead prefer to load all layers
     /// with [`LayerSet::load`] and then get the layer you need from there.
     #[cfg(test)]
-    pub(crate) fn load(path: impl AsRef<Path>, name: LayerName) -> Result<Layer, Error> {
+    pub(crate) fn load(path: impl AsRef<Path>, name: LayerName) -> Result<Layer, LayerLoadError> {
         let path = path.as_ref();
         let names = NameList::default();
         Layer::load_impl(path, name, &names)
@@ -240,15 +248,15 @@ impl Layer {
         path: &Path,
         name: LayerName,
         names: &NameList,
-    ) -> Result<Layer, Error> {
+    ) -> Result<Layer, LayerLoadError> {
         let contents_path = path.join(CONTENTS_FILE);
         if !contents_path.exists() {
-            return Err(Error::MissingFile(contents_path.display().to_string()));
+            return Err(LayerLoadError::MissingContentsFile);
         }
         // these keys are never used; a future optimization would be to skip the
         // names and deserialize to a vec; that would not be a one-liner, though.
         let contents: BTreeMap<GlyphName, PathBuf> = plist::from_file(&contents_path)
-            .map_err(|source| Error::PlistLoad { path: contents_path, source })?;
+            .map_err(|source| LayerLoadError::ParsePlist { name: CONTENTS_FILE, source })?;
 
         #[cfg(feature = "rayon")]
         let iter = contents.par_iter();
@@ -257,15 +265,19 @@ impl Layer {
 
         let glyphs = iter
             .map(|(name, glyph_path)| {
-                let name = names.get(name);
+                let name = &names.get(name);
                 let glyph_path = path.join(glyph_path);
 
                 Glyph::load_with_names(&glyph_path, names)
                     .map(|mut glyph| {
                         glyph.name = name.clone();
-                        (name, Arc::new(glyph))
+                        (name.clone(), Arc::new(glyph))
                     })
-                    .map_err(|source| Error::GlifLoad { path: glyph_path, source })
+                    .map_err(|source| LayerLoadError::Glyph {
+                        name: name.to_string(),
+                        path: glyph_path,
+                        source,
+                    })
             })
             .collect::<Result<_, _>>()?;
 
@@ -282,7 +294,7 @@ impl Layer {
         Ok(Layer { glyphs, name, path, contents, color, lib })
     }
 
-    fn parse_layer_info(path: &Path) -> Result<(Option<Color>, Plist), Error> {
+    fn parse_layer_info(path: &Path) -> Result<(Option<Color>, Plist), LayerLoadError> {
         // Pluck apart the data found in the file, as we want to insert it into `Layer`.
         #[derive(Deserialize)]
         struct LayerInfoHelper {
@@ -291,7 +303,7 @@ impl Layer {
             lib: Plist,
         }
         let layerinfo: LayerInfoHelper = plist::from_file(path)
-            .map_err(|source| Error::PlistLoad { path: path.into(), source })?;
+            .map_err(|source| LayerLoadError::ParsePlist { name: LAYER_INFO_FILE, source })?;
         Ok((layerinfo.color, layerinfo.lib))
     }
 
@@ -299,7 +311,7 @@ impl Layer {
         &self,
         path: &Path,
         options: &WriteOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<(), LayerWriteError> {
         if self.color.is_none() && self.lib.is_empty() {
             return Ok(());
         }
@@ -316,6 +328,7 @@ impl Layer {
         util::recursive_sort_plist_keys(&mut dict);
 
         crate::write::write_xml_to_file(&path.join(LAYER_INFO_FILE), &dict, options)
+            .map_err(LayerWriteError::LayerInfo)
     }
 
     /// Serialize this layer to the given path with the default
@@ -323,7 +336,7 @@ impl Layer {
     ///
     /// The path should not exist.
     #[cfg(test)]
-    pub(crate) fn save(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+    pub(crate) fn save(&self, path: impl AsRef<Path>) -> Result<(), LayerWriteError> {
         let options = WriteOptions::default();
         self.save_with_options(path.as_ref(), &options)
     }
@@ -332,9 +345,14 @@ impl Layer {
     /// [`WriteOptions`] serialization format configuration.
     ///
     /// The path should not exist.
-    pub(crate) fn save_with_options(&self, path: &Path, opts: &WriteOptions) -> Result<(), Error> {
-        fs::create_dir(&path).map_err(|source| Error::UfoWrite { path: path.into(), source })?;
-        crate::write::write_xml_to_file(&path.join(CONTENTS_FILE), &self.contents, opts)?;
+    pub(crate) fn save_with_options(
+        &self,
+        path: &Path,
+        opts: &WriteOptions,
+    ) -> Result<(), LayerWriteError> {
+        fs::create_dir(&path).map_err(LayerWriteError::CreateDir)?;
+        crate::write::write_xml_to_file(&path.join(CONTENTS_FILE), &self.contents, opts)
+            .map_err(LayerWriteError::Contents)?;
 
         self.layerinfo_to_file_if_needed(path, opts)?;
 
@@ -345,7 +363,12 @@ impl Layer {
 
         iter.try_for_each(|(name, glyph_path)| {
             let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
-            glyph.save_with_options(&path.join(glyph_path), opts)
+            let glyph_path = path.join(glyph_path);
+            glyph.save_with_options(&glyph_path, opts).map_err(|source| LayerWriteError::Glyph {
+                name: glyph.name.to_string(),
+                path: glyph_path,
+                source,
+            })
         })
     }
 
@@ -430,11 +453,16 @@ impl Layer {
     ///
     /// Returns an error if `overwrite` is false but a glyph with the new
     /// name exists, or if no glyph with the old name exists
-    pub fn rename_glyph(&mut self, old: &str, new: &str, overwrite: bool) -> Result<(), Error> {
+    pub fn rename_glyph(
+        &mut self,
+        old: &str,
+        new: &str,
+        overwrite: bool,
+    ) -> Result<(), NamingError> {
         if !overwrite && self.glyphs.contains_key(new) {
-            Err(Error::DuplicateGlyph { glyph: new.into(), layer: self.name.to_string() })
+            Err(NamingError::Duplicate(new.into()))
         } else if !self.glyphs.contains_key(old) {
-            Err(Error::MissingGlyph { glyph: old.into(), layer: self.name.to_string() })
+            Err(NamingError::Missing(old.into()))
         } else {
             let mut g = self.remove_glyph(old).unwrap();
             Arc::make_mut(&mut g).name = new.into();

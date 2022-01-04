@@ -88,7 +88,6 @@ pub(crate) mod util;
 mod write;
 
 pub use data_request::DataRequest;
-pub use error::Error;
 pub use font::{Font, FormatVersion, MetaInfo};
 pub use fontinfo::FontInfo;
 pub use glyph::{

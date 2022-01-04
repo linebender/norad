@@ -13,7 +13,7 @@ use crate::{
     Guideline, Image, Line, Plist, PointType, WriteOptions,
 };
 
-use crate::error::{GlifWriteError, WriteError};
+use crate::error::GlifWriteError;
 use crate::write::QuoteChar;
 
 impl Glyph {
@@ -34,26 +34,29 @@ impl Glyph {
     /// [ufonormalizer]: https://github.com/unified-font-object/ufoNormalizer/
     pub fn encode_xml_with_options(&self, opts: &WriteOptions) -> Result<Vec<u8>, GlifWriteError> {
         self.encode_xml_impl(opts)
-            .map_err(|source| GlifWriteError { name: self.name.clone(), source })
     }
 
-    fn encode_xml_impl(&self, options: &WriteOptions) -> Result<Vec<u8>, WriteError> {
+    fn encode_xml_impl(&self, options: &WriteOptions) -> Result<Vec<u8>, GlifWriteError> {
         let mut writer = Writer::new_with_indent(
             Cursor::new(Vec::new()),
             options.whitespace_char,
             options.whitespace_count,
         );
         match options.quote_style {
-            QuoteChar::Double => writer.write(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")?,
-            QuoteChar::Single => writer.write(b"<?xml version='1.0' encoding='UTF-8'?>\n")?,
+            QuoteChar::Double => writer
+                .write(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+                .map_err(GlifWriteError::Xml)?,
+            QuoteChar::Single => writer
+                .write(b"<?xml version='1.0' encoding='UTF-8'?>\n")
+                .map_err(GlifWriteError::Xml)?,
         }
         let mut start = BytesStart::borrowed_name(b"glyph");
         start.push_attribute(("name", &*self.name));
         start.push_attribute(("format", self.format.as_str()));
-        writer.write_event(Event::Start(start))?;
+        writer.write_event(Event::Start(start)).map_err(GlifWriteError::Xml)?;
 
         for codepoint in &self.codepoints {
-            writer.write_event(char_to_event(*codepoint))?;
+            writer.write_event(char_to_event(*codepoint)).map_err(GlifWriteError::Xml)?;
         }
 
         // Skip serializing advance if both values are zero, infinite, subnormal, or NaN.
@@ -65,30 +68,34 @@ impl Glyph {
             if self.width != 0. {
                 start.push_attribute(("width", self.width.to_string().as_str()));
             }
-            writer.write_event(Event::Empty(start))?;
+            writer.write_event(Event::Empty(start)).map_err(GlifWriteError::Xml)?;
         }
 
         if let Some(ref image) = self.image {
-            writer.write_event(image.to_event())?;
+            writer.write_event(image.to_event()).map_err(GlifWriteError::Xml)?;
         }
 
         if !self.contours.is_empty() || !self.components.is_empty() {
-            writer.write_event(Event::Start(BytesStart::borrowed_name(b"outline")))?;
+            writer
+                .write_event(Event::Start(BytesStart::borrowed_name(b"outline")))
+                .map_err(GlifWriteError::Xml)?;
             for contour in &self.contours {
-                contour.write_xml(&mut writer)?;
+                contour.write_xml(&mut writer).map_err(GlifWriteError::Xml)?;
             }
             for component in &self.components {
-                writer.write_event(component.to_event())?;
+                writer.write_event(component.to_event()).map_err(GlifWriteError::Xml)?;
             }
-            writer.write_event(Event::End(BytesEnd::borrowed(b"outline")))?;
+            writer
+                .write_event(Event::End(BytesEnd::borrowed(b"outline")))
+                .map_err(GlifWriteError::Xml)?;
         }
 
         for anchor in &self.anchors {
-            writer.write_event(anchor.to_event())?;
+            writer.write_event(anchor.to_event()).map_err(GlifWriteError::Xml)?;
         }
 
         for guide in &self.guidelines {
-            writer.write_event(guide.to_event())?;
+            writer.write_event(guide.to_event()).map_err(GlifWriteError::Xml)?;
         }
 
         // Object libs are treated specially. The UFO v3 format won't allow us
@@ -110,14 +117,22 @@ impl Glyph {
         }
 
         if let Some(ref note) = self.note {
-            writer.write_event(Event::Start(BytesStart::borrowed_name(b"note")))?;
-            writer.write_event(Event::Text(BytesText::from_plain_str(note)))?;
-            writer.write_event(Event::End(BytesEnd::borrowed(b"note")))?;
+            writer
+                .write_event(Event::Start(BytesStart::borrowed_name(b"note")))
+                .map_err(GlifWriteError::Xml)?;
+            writer
+                .write_event(Event::Text(BytesText::from_plain_str(note)))
+                .map_err(GlifWriteError::Xml)?;
+            writer
+                .write_event(Event::End(BytesEnd::borrowed(b"note")))
+                .map_err(GlifWriteError::Xml)?;
         }
 
-        writer.write_event(Event::End(BytesEnd::borrowed(b"glyph")))?;
-        writer.inner().write_all("\n".as_bytes())?;
-        writer.inner().flush()?;
+        writer
+            .write_event(Event::End(BytesEnd::borrowed(b"glyph")))
+            .map_err(GlifWriteError::Xml)?;
+        writer.inner().write_all("\n".as_bytes()).map_err(GlifWriteError::Buffer)?;
+        writer.inner().flush().map_err(GlifWriteError::Buffer)?;
 
         Ok(writer.into_inner().into_inner())
     }
@@ -134,28 +149,32 @@ fn write_lib_section<T: Write>(
     lib: Plist,
     writer: &mut Writer<T>,
     options: &WriteOptions,
-) -> Result<(), WriteError> {
+) -> Result<(), GlifWriteError> {
     let as_value: plist::Value = lib.into();
     let mut out_buffer = Vec::with_capacity(256); // a reasonable min size?
-    as_value.to_writer_xml_with_options(&mut out_buffer, options.xml_options())?;
+    as_value
+        .to_writer_xml_with_options(&mut out_buffer, options.xml_options())
+        .map_err(GlifWriteError::Plist)?;
     let lib_xml = String::from_utf8(out_buffer).expect("XML writer wrote invalid UTF-8");
     let header = "<plist version=\"1.0\">\n";
     let footer = "\n</plist>";
     let start_idx = lib_xml
         .find(header)
         .map(|pos| pos + header.len())
-        .ok_or(WriteError::InternalLibWriteError)?;
-    let end_idx = lib_xml.find(footer).ok_or(WriteError::InternalLibWriteError)?;
+        .ok_or(GlifWriteError::InternalLibWriteError)?;
+    let end_idx = lib_xml.find(footer).ok_or(GlifWriteError::InternalLibWriteError)?;
     let to_write = &lib_xml[start_idx..end_idx];
 
-    writer.write_event(Event::Start(BytesStart::borrowed_name(b"lib")))?;
+    writer
+        .write_event(Event::Start(BytesStart::borrowed_name(b"lib")))
+        .map_err(GlifWriteError::Xml)?;
     for line in to_write.lines() {
-        writer.inner().write_all("\n".as_bytes())?;
-        writer.inner().write_all(options.indent_str.as_bytes())?;
-        writer.inner().write_all(options.indent_str.as_bytes())?;
-        writer.inner().write_all(line.as_bytes())?;
+        writer.inner().write_all("\n".as_bytes()).map_err(GlifWriteError::Buffer)?;
+        writer.inner().write_all(options.indent_str.as_bytes()).map_err(GlifWriteError::Buffer)?;
+        writer.inner().write_all(options.indent_str.as_bytes()).map_err(GlifWriteError::Buffer)?;
+        writer.inner().write_all(line.as_bytes()).map_err(GlifWriteError::Buffer)?;
     }
-    writer.write_event(Event::End(BytesEnd::borrowed(b"lib")))?;
+    writer.write_event(Event::End(BytesEnd::borrowed(b"lib"))).map_err(GlifWriteError::Xml)?;
     Ok(())
 }
 
