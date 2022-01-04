@@ -509,7 +509,7 @@ impl Font {
         for layer in self.layers.iter() {
             let layer_path = path.join(&layer.path);
             layer.save_with_options(&layer_path, options).map_err(|source| {
-                FontWriteError::WriteLayer(layer.name.to_string(), layer_path, source)
+                FontWriteError::WriteLayer { name: layer.name.to_string(), path: layer_path, source }
             })?;
         }
 
@@ -521,12 +521,12 @@ impl Font {
                         let destination = data_dir.join(data_path);
                         let destination_parent = destination.parent().unwrap();
                         fs::create_dir_all(&destination_parent).map_err(|source| {
-                            FontWriteError::CreateDataDir(destination_parent.into(), source)
+                            FontWriteError::CreateDataDir { path: destination_parent.into(), source }
                         })?;
                         fs::write(&destination, &*data)
-                            .map_err(|source| FontWriteError::WriteData(destination, source))?;
+                            .map_err(|source| FontWriteError::WriteData { path: destination, source })?;
                     }
-                    Err(e) => return Err(FontWriteError::InvalidStoreEntry(data_path.clone(), e)),
+                    Err(e) => return Err(FontWriteError::InvalidStoreEntry { path: data_path.clone(), source: e }),
                 }
             }
         }
@@ -534,15 +534,15 @@ impl Font {
         if !self.images.is_empty() {
             let images_dir = path.join(IMAGES_DIR);
             fs::create_dir(&images_dir) // Only a flat directory.
-                .map_err(|source| FontWriteError::CreateImageDir(images_dir.clone(), source))?;
+                .map_err(|source| FontWriteError::CreateImageDir { path: images_dir.clone(), source })?;
             for (image_path, contents) in self.images.iter() {
                 match contents {
                     Ok(data) => {
                         let destination = images_dir.join(image_path);
                         fs::write(&destination, &*data)
-                            .map_err(|source| FontWriteError::WriteImage(destination, source))?;
+                            .map_err(|source| FontWriteError::WriteImage { path: destination, source })?;
                     }
-                    Err(e) => return Err(FontWriteError::InvalidStoreEntry(image_path.clone(), e)),
+                    Err(e) => return Err(FontWriteError::InvalidStoreEntry { path: image_path.clone(), source: e }),
                 }
             }
         }
@@ -750,11 +750,11 @@ mod tests {
         let font_load_res = Font::load(path);
         assert!(matches!(
             font_load_res,
-            Err(Error::FontLoad(FontLoadError::LoadingLayer(
-                _,
-                _,
-                LayerLoadError::MissingContentsFile
-            )))
+            Err(Error::FontLoad(FontLoadError::LoadingLayer {
+                name: _,
+                path: _,
+                source: LayerLoadError::MissingContentsFile
+            }))
         ));
     }
 
@@ -766,11 +766,11 @@ mod tests {
         let font_load_res = Font::load(path);
         assert!(matches!(
             font_load_res,
-            Err(Error::FontLoad(FontLoadError::LoadingLayer(
-                _,
-                _,
-                LayerLoadError::MissingContentsFile
-            )))
+            Err(Error::FontLoad(FontLoadError::LoadingLayer {
+                name: _,
+                path: _,
+                source: LayerLoadError::MissingContentsFile
+            }))
         ));
     }
 

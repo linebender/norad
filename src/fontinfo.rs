@@ -889,56 +889,56 @@ impl FontInfo {
         // The Postscript blue zone and stem widths lists have a length limitation.
         if let Some(v) = &self.postscript_blue_values {
             if v.len() > 14 {
-                return Err(FontInfoErrorKind::InvalidPostscriptListLength(
-                    "postscriptBlueValues",
-                    14,
-                    v.len(),
-                ));
+                return Err(FontInfoErrorKind::InvalidPostscriptListLength {
+                    name: "postscriptBlueValues",
+                    max_len: 14,
+                    len: v.len(),
+                });
             }
         }
         if let Some(v) = &self.postscript_other_blues {
             if v.len() > 10 {
-                return Err(FontInfoErrorKind::InvalidPostscriptListLength(
-                    "postscriptOtherBlues",
-                    10,
-                    v.len(),
-                ));
+                return Err(FontInfoErrorKind::InvalidPostscriptListLength {
+                    name: "postscriptOtherBlues",
+                    max_len: 10,
+                    len: v.len(),
+                });
             }
         }
         if let Some(v) = &self.postscript_family_blues {
             if v.len() > 14 {
-                return Err(FontInfoErrorKind::InvalidPostscriptListLength(
-                    "postscriptFamilyBlues",
-                    14,
-                    v.len(),
-                ));
+                return Err(FontInfoErrorKind::InvalidPostscriptListLength {
+                    name: "postscriptFamilyBlues",
+                    max_len: 14,
+                    len: v.len(),
+                });
             }
         }
         if let Some(v) = &self.postscript_family_other_blues {
             if v.len() > 10 {
-                return Err(FontInfoErrorKind::InvalidPostscriptListLength(
-                    "postscriptFamilyOtherBlues",
-                    10,
-                    v.len(),
-                ));
+                return Err(FontInfoErrorKind::InvalidPostscriptListLength {
+                    name: "postscriptFamilyOtherBlues",
+                    max_len: 10,
+                    len: v.len(),
+                });
             }
         }
         if let Some(v) = &self.postscript_stem_snap_h {
             if v.len() > 12 {
-                return Err(FontInfoErrorKind::InvalidPostscriptListLength(
-                    "postscriptStemSnapH",
-                    12,
-                    v.len(),
-                ));
+                return Err(FontInfoErrorKind::InvalidPostscriptListLength {
+                    name: "postscriptStemSnapH",
+                    max_len: 12,
+                    len: v.len(),
+                });
             }
         }
         if let Some(v) = &self.postscript_stem_snap_v {
             if v.len() > 12 {
-                return Err(FontInfoErrorKind::InvalidPostscriptListLength(
-                    "postscriptStemSnapV",
-                    12,
-                    v.len(),
-                ));
+                return Err(FontInfoErrorKind::InvalidPostscriptListLength {
+                    name: "postscriptStemSnapV",
+                    max_len: 12,
+                    len: v.len(),
+                });
             }
         }
 

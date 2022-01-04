@@ -106,8 +106,15 @@ pub enum FontLoadError {
     #[error("failed to load images store")]
     LoadingImagesStore(#[source] StoreEntryError),
     /// Failed to load a specific layer.
-    #[error("failed to load layer '{0}' from '{1}'")]
-    LoadingLayer(String, PathBuf, #[source] LayerLoadError),
+    #[error("failed to load layer '{name}' from '{path}'")]
+    LoadingLayer {
+        /// The layer name.
+        name: String,
+        /// The path to the layer.
+        path: PathBuf,
+        /// The underlying error.
+        source: LayerLoadError,
+    },
     /// The UFO does not have a default layer.
     #[error("missing the default layer ('glyphs' subdirectory)")]
     MissingDefaultLayer,
@@ -142,8 +149,15 @@ pub enum FontLoadError {
 #[non_exhaustive]
 pub enum LayerLoadError {
     /// Loading a glyph from a path failed.
-    #[error("failed to load glyph '{0}' from '{1}'")]
-    LoadingGlyph(String, PathBuf, #[source] GlifLoadError),
+    #[error("failed to load glyph '{name}' from '{path}'")]
+    LoadingGlyph {
+        /// The glyph name.
+        name: String,
+        /// The path to the glif file.
+        path: PathBuf,
+        /// The underlying error.
+        source: GlifLoadError,
+    },
     /// Could not find the layer's contents.plist.
     #[error("cannot find the contents.plist file")]
     MissingContentsFile,
@@ -191,7 +205,14 @@ pub enum FontInfoErrorKind {
     /// The openTypeOS2FamilyClass had out of range values.
     InvalidOs2FamilyClass,
     /// A Postscript data list had more elements than the specification allows.
-    InvalidPostscriptListLength(&'static str, u8, usize),
+    InvalidPostscriptListLength {
+        /// The name of the property.
+        name: &'static str,
+        /// The maximum allowed number of elements.
+        max_len: u8,
+        /// The found number of elements.
+        len: usize,
+    },
     /// Unrecognized UFO v1 fontStyle field.
     UnknownFontStyle(i32),
     /// Unrecognized UFO v1 msCharSet field.
@@ -220,7 +241,7 @@ impl std::fmt::Display for FontInfoErrorKind {
             FontInfoErrorKind::InvalidOs2FamilyClass => {
                 write!(f, "openTypeOS2FamilyClass must be two numbers in the range 0-14 and 0-15, respectively")
             }
-            FontInfoErrorKind::InvalidPostscriptListLength(s, l, m) => {
+            FontInfoErrorKind::InvalidPostscriptListLength { name: s, max_len: l, len: m } => {
                 write!(
                     f,
                     "the Postscript field '{}' must contain at most {} items but found {}",
@@ -328,11 +349,21 @@ pub enum FontWriteError {
     #[error("failed to remove target directory before overwriting")]
     Cleanup(#[source] IoError),
     /// Failed to create the data directory.
-    #[error("failed to create target data directory '{0}'")]
-    CreateDataDir(PathBuf, #[source] IoError),
+    #[error("failed to create target data directory '{path}'")]
+    CreateDataDir {
+        /// The path to the entry.
+        path: PathBuf,
+        /// The underlying error.
+        source: IoError,
+    },
     /// Failed to create the images directory.
-    #[error("failed to create target image directory '{0}'")]
-    CreateImageDir(PathBuf, #[source] IoError),
+    #[error("failed to create target image directory '{path}'")]
+    CreateImageDir {
+        /// The path to the entry.
+        path: PathBuf,
+        /// The underlying error.
+        source: IoError,
+    },
     /// Failed to create the UFO package directory.
     #[error("failed to create target font directory")]
     CreateUfoDir(#[source] IoError),
@@ -346,14 +377,24 @@ pub enum FontWriteError {
     #[error("failed to write (kerning) groups")]
     InvalidGroups(#[source] GroupsValidationError),
     /// The data or images store contains invalid data.
-    #[error("store entry '{0}' is invalid")]
-    InvalidStoreEntry(PathBuf, #[source] StoreError),
+    #[error("store entry '{path}' is invalid")]
+    InvalidStoreEntry {
+        /// The path to the entry.
+        path: PathBuf,
+        /// The underlying error.
+        source: StoreError,
+    },
     /// There exists a `public.objectLibs` lib key when it should be set only by norad.
     #[error("the `public.objectLibs` lib key is managed by norad and must not be set manually")]
     PreexistingPublicObjectLibsKey,
     /// Failed to write data entry.
     #[error("failed to write data file")]
-    WriteData(PathBuf, #[source] IoError),
+    WriteData {
+        /// The path to the entry.
+        path: PathBuf,
+        /// The underlying error.
+        source: IoError,
+    },
     /// Failed to write out the feature.fea file.
     #[error("failed to write feature.fea file")]
     WriteFeatureFile(#[source] IoError),
@@ -365,13 +406,25 @@ pub enum FontWriteError {
     WriteGroups(#[source] CustomSerializationError),
     /// Failed to write out an image file.
     #[error("failed to write image file")]
-    WriteImage(PathBuf, #[source] IoError),
+    WriteImage {
+        /// The path to the entry.
+        path: PathBuf,
+        /// The underlying error.
+        source: IoError,
+    },
     /// Failed to write out the kerning.plist file.
     #[error("failed to write kerning.plist file")]
     WriteKerning(#[source] CustomSerializationError),
     /// Failed to write out a layer.
-    #[error("failed to write layer '{0}' to '{1}'")]
-    WriteLayer(String, PathBuf, #[source] LayerWriteError),
+    #[error("failed to write layer '{name}' to '{path}'")]
+    WriteLayer {
+        /// The name of the layer.
+        name: String,
+        /// The path to the layer.
+        path: PathBuf,
+        /// The underlying error.
+        source: LayerWriteError,
+    },
     /// Failed to write out the layercontents.plist file.
     #[error("failed to write layercontents.plist file")]
     WriteLayerContents(#[source] CustomSerializationError),
@@ -394,8 +447,15 @@ pub enum LayerWriteError {
     #[error("failed to write contents.plist file")]
     WriteContents(#[source] CustomSerializationError),
     /// Failed to write out a glyph.
-    #[error("failed to write glyph '{0}' to '{1}'")]
-    WriteGlyph(String, PathBuf, #[source] GlifWriteError),
+    #[error("failed to write glyph '{name}' to '{path}'")]
+    WriteGlyph {
+        /// The name of the glyph.
+        name: String,
+        /// The path to the glyph.
+        path: PathBuf,
+        /// The underlying error.
+        source: GlifWriteError,
+    },
     /// Failed to write out the layerinfo.plist file
     #[error("failed to write layerinfo.plist file")]
     WriteLayerInfo(#[source] CustomSerializationError),

@@ -55,7 +55,7 @@ impl LayerSet {
             .map(|(name, path)| {
                 let layer_path = base_dir.join(&path);
                 Layer::load_impl(&layer_path, name.clone(), glyph_names).map_err(|source| {
-                    FontLoadError::LoadingLayer(name.to_string(), layer_path, source)
+                    FontLoadError::LoadingLayer { name: name.to_string(), path: layer_path, source }
                 })
             })
             .collect::<Result<_, _>>()?;
@@ -268,8 +268,10 @@ impl Layer {
                         glyph.name = name.clone();
                         (name.clone(), Arc::new(glyph))
                     })
-                    .map_err(|source| {
-                        LayerLoadError::LoadingGlyph(name.to_string(), glyph_path, source)
+                    .map_err(|source| LayerLoadError::LoadingGlyph {
+                        name: name.to_string(),
+                        path: glyph_path,
+                        source,
                     })
             })
             .collect::<Result<_, _>>()?;
@@ -358,7 +360,7 @@ impl Layer {
             let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
             let glyph_path = path.join(glyph_path);
             glyph.save_with_options(&glyph_path, opts).map_err(|source| {
-                LayerWriteError::WriteGlyph(glyph.name.to_string(), glyph_path, source)
+                LayerWriteError::WriteGlyph { name: glyph.name.to_string(), path: glyph_path, source }
             })
         })
     }
