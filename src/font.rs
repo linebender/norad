@@ -5,7 +5,6 @@
 use std::borrow::Borrow;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use crate::datastore::{DataStore, ImageStore};
 use crate::error::{FontLoadError, FontWriteError};
@@ -587,7 +586,7 @@ impl Font {
 
     /// Returns a reference to the glyph with the given name _in the default
     /// layer_.
-    pub fn get_glyph<K>(&self, key: &K) -> Option<&Arc<Glyph>>
+    pub fn get_glyph<K>(&self, key: &K) -> Option<&Glyph>
     where
         GlyphName: Borrow<K>,
         K: Ord + ?Sized,
