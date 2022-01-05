@@ -51,9 +51,7 @@ impl<'names> GlifParser<'names> {
         buf: &mut Vec<u8>,
     ) -> Result<Glyph, GlifLoadError> {
         let mut seen_advance = false;
-        let mut seen_image = false;
         let mut seen_lib = false;
-        let mut seen_note = false;
         let mut seen_outline = false;
 
         loop {
@@ -78,10 +76,9 @@ impl<'names> GlifParser<'names> {
                         if self.glyph.format == GlifVersion::V1 {
                             return Err(ErrorKind::UnexpectedV1Element("note").into());
                         }
-                        if seen_note {
+                        if self.glyph.note.is_some() {
                             return Err(ErrorKind::DuplicateElement("note").into());
                         }
-                        seen_note = true;
                         self.parse_note(reader, buf)?
                     }
                     _other => return Err(ErrorKind::UnexpectedElement.into()),
@@ -118,10 +115,9 @@ impl<'names> GlifParser<'names> {
                         if self.glyph.format == GlifVersion::V1 {
                             return Err(ErrorKind::UnexpectedV1Element("image").into());
                         }
-                        if seen_image {
+                        if self.glyph.image.is_some() {
                             return Err(ErrorKind::DuplicateElement("image").into());
                         }
-                        seen_image = true;
                         self.parse_image(reader, start)?
                     }
                     _other => return Err(ErrorKind::UnexpectedElement.into()),
