@@ -556,6 +556,27 @@ pub enum ErrorKind {
     /// Has an unexpected image field.
     #[error("unexpected image field")]
     UnexpectedImageField,
+    /// An element that can occur just once occured a second time.
+    #[error("there must be only one '{0}' element")]
+    DuplicateElement(&'static str),
+    /// An element that can occur just once occured a second time.
+    #[error("unexpected element in a format 1 glif: {0}")]
+    UnexpectedV1Element(&'static str),
+    /// An element that can occur just once occured a second time.
+    #[error("unexpected attribute in a format 1 glif: {0}")]
+    UnexpectedV1Attribute(&'static str),
+    /// A component had an empty `base` attribute.
+    #[error("a 'component' element has an empty 'base' attribute")]
+    ComponentEmptyBase,
+    /// A component was missing a `base` attribute.
+    #[error("a 'component' element is missing a 'base' attribute")]
+    ComponentMissingBase,
+    /// The glyph 'lib' element must contain a dictionary.
+    #[error("the glyph lib must be a dictionary")]
+    LibMustBeDictionary,
+    /// An angle was out of bounds.
+    #[error("an angle must be between 0 and 360°")]
+    BadAngle,
 }
 
 #[doc(hidden)]
