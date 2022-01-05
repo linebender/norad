@@ -35,6 +35,8 @@ pub struct Glyph {
     pub name: GlyphName,
     /// Glif file format version.
     pub format: GlifVersion,
+    /// Glif file minor format version.
+    pub format_minor: u32,
     /// Glyph height.
     pub height: f64,
     /// Glyph width.
@@ -115,6 +117,7 @@ impl Glyph {
         Glyph {
             name,
             format,
+            format_minor: 0,
             height: 0.0,
             width: 0.0,
             codepoints: Vec::new(),

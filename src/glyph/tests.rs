@@ -200,6 +200,43 @@ fn parse_v1_upgrade_anchors() {
 }
 
 #[test]
+fn parse_format_minor() {
+    let data = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="a" format="2" formatMinor="123">
+</glyph>
+    "#
+    .trim();
+    let mut glyph = parse_glyph(data.as_bytes()).unwrap();
+
+    assert_eq!(glyph.format, GlifVersion::V2);
+    assert_eq!(glyph.format_minor, 123);
+
+    let glif = glyph.encode_xml().unwrap();
+    assert_eq!(
+        std::str::from_utf8(&glif).unwrap().trim(),
+        r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="a" format="2" formatMinor="123">
+</glyph>
+    "#
+        .trim()
+    );
+
+    glyph.format_minor = 0;
+    let glif = glyph.encode_xml().unwrap();
+    assert_eq!(
+        std::str::from_utf8(&glif).unwrap().trim(),
+        r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="a" format="2">
+</glyph>
+    "#
+        .trim()
+    );
+}
+
+#[test]
 fn curve_types() {
     let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/D_.glif");
     let glyph = parse_glyph(bytes).unwrap();

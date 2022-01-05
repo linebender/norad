@@ -194,6 +194,7 @@ fn object_libs_reject_existing_key() {
     let glyph = Glyph {
         name: "test".into(),
         format: norad::GlifVersion::V2,
+        format_minor: 0,
         height: 0.,
         width: 0.,
         anchors: vec![],

@@ -53,6 +53,9 @@ impl Glyph {
         let mut start = BytesStart::borrowed_name(b"glyph");
         start.push_attribute(("name", &*self.name));
         start.push_attribute(("format", self.format.as_str()));
+        if self.format_minor > 0 {
+            start.push_attribute(("formatMinor", self.format_minor.to_string().as_str()));
+        }
         writer.write_event(Event::Start(start)).map_err(GlifWriteError::Xml)?;
 
         for codepoint in &self.codepoints {

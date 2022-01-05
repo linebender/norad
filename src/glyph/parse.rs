@@ -572,24 +572,30 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, GlifLoa
             Event::Start(ref start) if start.name() == b"glyph" => {
                 let mut name = String::new();
                 let mut format: Option<GlifVersion> = None;
-                //let mut pos
+                let mut format_minor: u32 = 0;
                 for attr in start.attributes() {
                     let attr = attr?;
-                    // XXX: support `formatMinor`
+                    let value = attr.unescaped_value()?;
+                    let value = reader.decode(&value)?;
                     match attr.key {
                         b"name" => {
-                            name = attr.unescape_and_decode_value(reader)?;
+                            name.push_str(value);
                         }
                         b"format" => {
-                            let value = attr.unescaped_value()?;
-                            let value = reader.decode(&value)?;
                             format = Some(value.parse()?);
+                        }
+                        b"formatMinor" => {
+                            format_minor = value.parse().map_err(|_| ErrorKind::BadNumber)?;
                         }
                         _other => return Err(ErrorKind::UnexpectedAttribute.into()),
                     }
                 }
                 if !name.is_empty() && format.is_some() {
-                    return Ok(Glyph::new(name.into(), format.take().unwrap()));
+                    let mut glyph = Glyph::new(name.into(), format.take().unwrap());
+                    // The formatMinor attribute is a UFO v3 thing, but it may not be
+                    // worth the hassle to be really pedantic about it.
+                    glyph.format_minor = format_minor;
+                    return Ok(glyph);
                 } else {
                     return Err(ErrorKind::WrongFirstElement.into());
                 }
