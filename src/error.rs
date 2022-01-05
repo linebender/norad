@@ -31,8 +31,8 @@ pub enum GlifLoadError {
     #[error("failed to read or parse XML structure")]
     Xml(#[from] XmlError),
     /// The .glif file was malformed.
-    #[error("failed to parse glyph data")]
-    Parse(#[from] ErrorKind),
+    #[error("failed to parse glyph data: {0}")]
+    Parse(ErrorKind),
     /// The glyph lib's `public.objectLibs` value was something other than a dictionary.
     #[error("the glyph lib's 'public.objectLibs' value must be a dictionary")]
     PublicObjectLibsMustBeDictionary,
@@ -455,125 +455,148 @@ pub enum GlifWriteError {
 }
 
 /// The reason for a glif parse failure.
-#[derive(Debug, Clone, Copy, Error)]
+#[derive(Debug, Clone, Copy)]
 pub enum ErrorKind {
     /// The glif version is not supported by this library.
-    #[error("unsupported glif version")]
     UnsupportedGlifVersion,
     /// An unknown point type.
-    #[error("unknown point type")]
     UnknownPointType,
     /// The first XML element of a glif file is invalid.
-    #[error("wrong first XML element in glif file")]
     WrongFirstElement,
     /// Missing a close tag.
-    #[error("missing close tag")]
     MissingCloseTag,
     /// Has an invalid hexadecimal value.
-    #[error("bad hex value")]
     BadHexValue,
     /// Has an invalid numeric value.
-    #[error("bad number")]
     BadNumber,
     /// Has an invalid color value.
-    #[error("bad color")]
     BadColor,
     /// Has an invalid anchor definition.
-    #[error("bad anchor")]
     BadAnchor,
     /// Has an invalid point definition.
-    #[error("bad point")]
     BadPoint,
     /// Has an invalid guideline definition.
-    #[error("bad guideline")]
     BadGuideline,
     /// Has an invalid component definition.
-    #[error("bad component")]
     BadComponent,
     /// Has an invalid image definition.
-    #[error("bad image")]
     BadImage,
     /// Has an invalid identifier.
-    #[error("bad identifier")]
     BadIdentifier,
     /// Has an invalid lib.
-    #[error("bad lib")]
     BadLib,
     /// Has an unexected duplicate value.
-    #[error("unexpected duplicate")]
     UnexpectedDuplicate,
     /// Has an unexpected move definition.
-    #[error("unexpected move point, can only occur at start of contour")]
     UnexpectedMove,
     /// Has an unexpected smooth definition.
-    #[error("unexpected smooth attribute on an off-curve point")]
     UnexpectedSmooth,
     /// Has an unexpected element definition.
-    #[error("unexpected element")]
     UnexpectedElement,
     /// Has an unexpected attribute definition.
-    #[error("unexpected attribute")]
     UnexpectedAttribute,
     /// Has an unexpected end of file definition.
-    #[error("unexpected EOF")]
     UnexpectedEof,
     /// Has an unexpected point following an off curve point definition.
-    #[error("an off-curve point must be followed by a curve or qcurve")]
     UnexpectedPointAfterOffCurve,
     /// Has too many off curve points in sequence.
-    #[error("at most two off-curve points can precede a curve")]
     TooManyOffCurves,
     /// The contour pen path was not started
-    #[error("must call begin_path() before calling add_point() or end_path()")]
     PenPathNotStarted,
     /// Has trailing off curve points defined.
-    #[error("open contours must not have trailing off-curves")]
     TrailingOffCurves,
     /// Has duplicate identifiers.
-    #[error("duplicate identifier")]
     DuplicateIdentifier,
     /// Has unexepected drawing data.
-    #[error("unexpected drawing without an outline")]
     UnexpectedDrawing,
     /// Has incomplete drawing data.
-    #[error("unfinished drawing, you must call end_path")]
     UnfinishedDrawing,
     /// Has an unexpected point field.
-    #[error("unexpected point field")]
     UnexpectedPointField,
     /// Has an unexpected component field.
-    #[error("unexpected component field")]
     UnexpectedComponentField,
     /// Has an unexpected anchor field.
-    #[error("unexpected anchor field")]
     UnexpectedAnchorField,
     /// Has an unexpected guideline field.
-    #[error("unexpected guideline field")]
     UnexpectedGuidelineField,
     /// Has an unexpected image field.
-    #[error("unexpected image field")]
     UnexpectedImageField,
     /// An element that can occur just once occured a second time.
-    #[error("there must be only one '{0}' element")]
     DuplicateElement(&'static str),
     /// An element that can occur just once occured a second time.
-    #[error("unexpected element in a format 1 glif: {0}")]
     UnexpectedV1Element(&'static str),
     /// An element that can occur just once occured a second time.
-    #[error("unexpected attribute in a format 1 glif: {0}")]
     UnexpectedV1Attribute(&'static str),
     /// A component had an empty `base` attribute.
-    #[error("a 'component' element has an empty 'base' attribute")]
     ComponentEmptyBase,
     /// A component was missing a `base` attribute.
-    #[error("a 'component' element is missing a 'base' attribute")]
     ComponentMissingBase,
     /// The glyph 'lib' element must contain a dictionary.
-    #[error("the glyph lib must be a dictionary")]
     LibMustBeDictionary,
     /// An angle was out of bounds.
-    #[error("an angle must be between 0 and 360°")]
     BadAngle,
+}
+
+impl std::fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use ErrorKind::*;
+        match self {
+            UnsupportedGlifVersion => write!(f, "unsupported glif version"),
+            UnknownPointType => write!(f, "unknown point type"),
+            WrongFirstElement => write!(f, "wrong first XML element in glif file"),
+            MissingCloseTag => write!(f, "missing close tag"),
+            BadHexValue => write!(f, "bad hex value"),
+            BadNumber => write!(f, "bad number"),
+            BadColor => write!(f, "bad color"),
+            BadAnchor => write!(f, "bad anchor"),
+            BadPoint => write!(f, "bad point"),
+            BadGuideline => write!(f, "bad guideline"),
+            BadComponent => write!(f, "bad component"),
+            BadImage => write!(f, "bad image"),
+            BadIdentifier => write!(f, "bad identifier"),
+            BadLib => write!(f, "bad lib"),
+            UnexpectedDuplicate => write!(f, "unexpected duplicate"),
+            UnexpectedMove => {
+                write!(f, "unexpected move point, can only occur at start of contour")
+            }
+            UnexpectedSmooth => write!(f, "unexpected smooth attribute on an off-curve point"),
+            UnexpectedElement => write!(f, "unexpected element"),
+            UnexpectedAttribute => write!(f, "unexpected attribute"),
+            UnexpectedEof => write!(f, "unexpected EOF"),
+            UnexpectedPointAfterOffCurve => {
+                write!(f, "an off-curve point must be followed by a curve or qcurve")
+            }
+            TooManyOffCurves => write!(f, "at most two off-curve points can precede a curve"),
+            PenPathNotStarted => {
+                write!(f, "must call begin_path() before calling add_point() or end_path()")
+            }
+            TrailingOffCurves => write!(f, "open contours must not have trailing off-curves"),
+            DuplicateIdentifier => write!(f, "duplicate identifier"),
+            UnexpectedDrawing => write!(f, "unexpected drawing without an outline"),
+            UnfinishedDrawing => write!(f, "unfinished drawing, you must call end_path"),
+            UnexpectedPointField => write!(f, "unexpected point field"),
+            UnexpectedComponentField => write!(f, "unexpected component field"),
+            UnexpectedAnchorField => write!(f, "unexpected anchor field"),
+            UnexpectedGuidelineField => write!(f, "unexpected guideline field"),
+            UnexpectedImageField => write!(f, "unexpected image field"),
+            DuplicateElement(s) => write!(f, "there must be only one '{}' element", s),
+            UnexpectedV1Element(s) => write!(f, "unexpected element in a format 1 glif: {}", s),
+            UnexpectedV1Attribute(s) => write!(f, "unexpected attribute in a format 1 glif: {}", s),
+            ComponentEmptyBase => write!(f, "a 'component' element has an empty 'base' attribute"),
+            ComponentMissingBase => {
+                write!(f, "a 'component' element is missing a 'base' attribute")
+            }
+            LibMustBeDictionary => write!(f, "the glyph lib must be a dictionary"),
+            BadAngle => write!(f, "an angle must be between 0 and 360°"),
+        }
+    }
+}
+
+#[doc(hidden)]
+impl From<ErrorKind> for GlifLoadError {
+    fn from(src: ErrorKind) -> Self {
+        Self::Parse(src)
+    }
 }
 
 #[doc(hidden)]
