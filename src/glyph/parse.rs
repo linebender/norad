@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::path::PathBuf;
@@ -7,7 +6,7 @@ use std::sync::Arc;
 
 use super::*;
 use crate::error::{ErrorKind, GlifLoadError};
-use crate::glyph::builder::{GlyphBuilder, Outline, OutlineBuilder};
+use crate::glyph::builder::OutlineBuilder;
 use crate::names::NameList;
 
 use quick_xml::{
@@ -21,7 +20,8 @@ pub(crate) fn parse_glyph(xml: &[u8]) -> Result<Glyph, GlifLoadError> {
 }
 
 pub(crate) struct GlifParser<'names> {
-    builder: GlyphBuilder,
+    glyph: Glyph,
+    seen_identifiers: HashSet<Identifier>,
     /// Optional set of glyph names to be reused between glyphs.
     names: Option<&'names NameList>,
 }
@@ -35,8 +35,12 @@ impl<'names> GlifParser<'names> {
         let mut buf = Vec::new();
         reader.trim_text(true);
 
-        start(&mut reader, &mut buf).and_then(|builder| {
-            GlifParser { builder, names }.parse_body(&mut reader, xml, &mut buf)
+        start(&mut reader, &mut buf).and_then(|glyph| {
+            GlifParser { glyph, seen_identifiers: HashSet::new(), names }.parse_body(
+                &mut reader,
+                xml,
+                &mut buf,
+            )
         })
     }
 
@@ -46,43 +50,79 @@ impl<'names> GlifParser<'names> {
         raw_xml: &[u8],
         buf: &mut Vec<u8>,
     ) -> Result<Glyph, GlifLoadError> {
+        let mut seen_advance = false;
+        let mut seen_lib = false;
+        let mut seen_outline = false;
+
         loop {
             match reader.read_event(buf)? {
                 // outline, lib and note are expected to be start element tags.
-                Event::Start(start) => {
-                    let tag_name = reader.decode(start.name())?;
-                    match tag_name.borrow() {
-                        "outline" => self.parse_outline(reader, buf)?,
-                        "lib" => self.parse_lib(reader, raw_xml, buf)?, // do this at some point?
-                        "note" => self.parse_note(reader, buf)?,
-                        _other => return Err(ErrorKind::UnexpectedTag.into()),
+                Event::Start(start) => match start.name() {
+                    b"outline" if seen_outline => {
+                        return Err(ErrorKind::DuplicateElement("outline").into());
                     }
-                }
+                    b"outline" => {
+                        seen_outline = true;
+                        self.parse_outline(reader, buf)?
+                    }
+                    b"lib" if seen_lib => {
+                        return Err(ErrorKind::DuplicateElement("lib").into());
+                    }
+                    b"lib" => {
+                        seen_lib = true;
+                        self.parse_lib(reader, raw_xml, buf)?
+                    }
+                    b"note" if self.glyph.format == GlifVersion::V1 => {
+                        return Err(ErrorKind::UnexpectedV1Element("note").into());
+                    }
+                    b"note" if self.glyph.note.is_some() => {
+                        return Err(ErrorKind::DuplicateElement("note").into());
+                    }
+                    b"note" => self.parse_note(reader, buf)?,
+                    _other => return Err(ErrorKind::UnexpectedElement.into()),
+                },
                 // The rest are expected to be empty element tags (exception: outline) with attributes.
-                Event::Empty(start) => {
-                    let tag_name = reader.decode(start.name())?;
-                    match tag_name.borrow() {
-                        "outline" => {
-                            // ufoLib parses `<outline/>` as an empty outline.
-                            self.builder.outline(Outline::default(), HashSet::new())?;
-                        }
-                        "advance" => self.parse_advance(reader, start)?,
-                        "unicode" => self.parse_unicode(reader, start)?,
-                        "anchor" => self.parse_anchor(reader, start)?,
-                        "guideline" => self.parse_guideline(reader, start)?,
-                        "image" => self.parse_image(reader, start)?,
-                        _other => return Err(ErrorKind::UnexpectedTag.into()),
+                Event::Empty(start) => match start.name() {
+                    b"outline" if seen_outline => {
+                        return Err(ErrorKind::DuplicateElement("outline").into());
                     }
-                }
+                    b"outline" => {
+                        seen_outline = true;
+                    }
+                    b"advance" if seen_advance => {
+                        return Err(ErrorKind::DuplicateElement("advance").into());
+                    }
+                    b"advance" => {
+                        seen_advance = true;
+                        self.parse_advance(reader, start)?
+                    }
+                    b"unicode" => self.parse_unicode(reader, start)?,
+                    b"anchor" if self.glyph.format == GlifVersion::V1 => {
+                        return Err(ErrorKind::UnexpectedV1Element("anchor").into());
+                    }
+                    b"anchor" => self.parse_anchor(reader, start)?,
+                    b"guideline" if self.glyph.format == GlifVersion::V1 => {
+                        return Err(ErrorKind::UnexpectedV1Element("guideline").into());
+                    }
+                    b"guideline" => self.parse_guideline(reader, start)?,
+                    b"image" if self.glyph.format == GlifVersion::V1 => {
+                        return Err(ErrorKind::UnexpectedV1Element("image").into());
+                    }
+                    b"image" if self.glyph.image.is_some() => {
+                        return Err(ErrorKind::DuplicateElement("image").into());
+                    }
+                    b"image" => self.parse_image(reader, start)?,
+                    _other => return Err(ErrorKind::UnexpectedElement.into()),
+                },
                 Event::End(ref end) if end.name() == b"glyph" => break,
                 _other => return Err(ErrorKind::MissingCloseTag.into()),
             }
         }
 
-        let mut glyph = self.builder.finish()?;
-        glyph.load_object_libs()?;
+        self.glyph.load_object_libs()?;
+        self.glyph.format = GlifVersion::V2;
 
-        Ok(glyph)
+        Ok(self.glyph)
     }
 
     fn parse_outline(
@@ -92,26 +132,28 @@ impl<'names> GlifParser<'names> {
     ) -> Result<(), GlifLoadError> {
         let mut outline_builder = OutlineBuilder::new();
 
+        // TODO: Not checking for (the absence of) attributes here because we'd need to
+        // pass through the element data, but that'd clash with the mutable borrow of
+        // buf. Better way?
+
         loop {
             match reader.read_event(buf)? {
                 Event::Start(start) => {
-                    let tag_name = reader.decode(start.name())?;
                     let mut new_buf = Vec::new(); // borrowck :/
-                    match tag_name.borrow() {
-                        "contour" => {
+                    match start.name() {
+                        b"contour" => {
                             self.parse_contour(start, reader, &mut new_buf, &mut outline_builder)?
                         }
-                        _other => return Err(ErrorKind::UnexpectedTag.into()),
+                        _other => return Err(ErrorKind::UnexpectedElement.into()),
                     }
                 }
                 Event::Empty(start) => {
-                    let tag_name = reader.decode(start.name())?;
-                    match tag_name.borrow() {
-                        // Skip empty contours as meaningless.
-                        // https://github.com/unified-font-object/ufo-spec/issues/150
-                        "contour" => (),
-                        "component" => self.parse_component(reader, start, &mut outline_builder)?,
-                        _other => return Err(ErrorKind::UnexpectedTag.into()),
+                    match start.name() {
+                        b"contour" => (), // Empty contours are meaningless.
+                        b"component" => {
+                            self.parse_component(reader, start, &mut outline_builder)?
+                        }
+                        _other => return Err(ErrorKind::UnexpectedElement.into()),
                     }
                 }
                 Event::End(ref end) if end.name() == b"outline" => break,
@@ -120,10 +162,49 @@ impl<'names> GlifParser<'names> {
             }
         }
 
-        let (outline, identifiers) = outline_builder.finish()?;
-        self.builder.outline(outline, identifiers)?;
+        let (mut contours, components) = outline_builder.finish()?;
+
+        // Upgrade implicit anchors to explicit ones.
+        if self.glyph.format == GlifVersion::V1 {
+            for c in &mut contours {
+                if c.points.len() == 1
+                    && c.points[0].typ == PointType::Move
+                    && c.points[0].name.is_some()
+                {
+                    let anchor_point = c.points.remove(0);
+                    let anchor = Anchor::new(
+                        anchor_point.x,
+                        anchor_point.y,
+                        anchor_point.name,
+                        None,
+                        None,
+                        None,
+                    );
+                    self.glyph.anchors.push(anchor);
+                }
+            }
+
+            // Clean up now empty contours.
+            contours.retain(|c| !c.points.is_empty());
+        }
+
+        self.glyph.contours.extend(contours);
+        self.glyph.components.extend(components);
 
         Ok(())
+    }
+
+    fn parse_identifier(&mut self, value: &str) -> Result<Identifier, GlifLoadError> {
+        if self.glyph.format == GlifVersion::V1 {
+            return Err(ErrorKind::UnexpectedV1Attribute("identifier").into());
+        }
+
+        let id =
+            Identifier::new(value).map_err(|_| GlifLoadError::Parse(ErrorKind::BadIdentifier))?;
+        if !self.seen_identifiers.insert(id.clone()) {
+            return Err(ErrorKind::DuplicateIdentifier.into());
+        }
+        Ok(id)
     }
 
     fn parse_contour(
@@ -135,15 +216,14 @@ impl<'names> GlifParser<'names> {
     ) -> Result<(), GlifLoadError> {
         let mut identifier = None;
         for attr in data.attributes() {
-            if self.builder.get_format() == &GlifVersion::V1 {
+            if self.glyph.format == GlifVersion::V1 {
                 return Err(ErrorKind::UnexpectedAttribute.into());
             }
             let attr = attr?;
+            let value = attr.unescaped_value()?;
+            let value = reader.decode(&value)?;
             match attr.key {
-                b"identifier" => {
-                    let ident = attr.unescape_and_decode_value(reader)?;
-                    identifier = Some(Identifier::new(ident)?);
-                }
+                b"identifier" => identifier = Some(self.parse_identifier(value)?),
                 _other => return Err(ErrorKind::UnexpectedAttribute.into()),
             }
         }
@@ -186,6 +266,9 @@ impl<'names> GlifParser<'names> {
                 b"yScale" => transform.y_scale = value.parse().map_err(|_| kind)?,
                 b"xOffset" => transform.x_offset = value.parse().map_err(|_| kind)?,
                 b"yOffset" => transform.y_offset = value.parse().map_err(|_| kind)?,
+                b"base" if value.is_empty() => {
+                    return Err(ErrorKind::ComponentEmptyBase.into());
+                }
                 b"base" => {
                     let name: Arc<str> = value.into();
                     let name = match self.names.as_ref() {
@@ -195,18 +278,19 @@ impl<'names> GlifParser<'names> {
                     base = Some(name);
                 }
                 b"identifier" => {
-                    identifier = Some(value.parse()?);
+                    identifier = Some(self.parse_identifier(value)?);
                 }
                 _other => return Err(ErrorKind::UnexpectedComponentField.into()),
             }
         }
 
-        if base.is_none() {
-            return Err(ErrorKind::BadComponent.into());
+        match base {
+            Some(base) => {
+                outline_builder.add_component(base, transform, identifier);
+                Ok(())
+            }
+            None => Err(ErrorKind::ComponentMissingBase.into()),
         }
-
-        outline_builder.add_component(base.unwrap(), transform, identifier)?;
-        Ok(())
     }
 
     fn parse_lib(
@@ -215,6 +299,9 @@ impl<'names> GlifParser<'names> {
         raw_xml: &[u8],
         buf: &mut Vec<u8>,
     ) -> Result<(), GlifLoadError> {
+        // The plist crate currently uses a different XML parsing library internally, so
+        // we can't pass over control to it directly. Instead, pass it the precise slice
+        // of the raw buffer to parse.
         let start = reader.buffer_position();
         let mut end = start;
         loop {
@@ -227,10 +314,11 @@ impl<'names> GlifParser<'names> {
 
         let plist_slice = &raw_xml[start..end];
         let dict = plist::Value::from_reader_xml(plist_slice)
-            .ok()
-            .and_then(plist::Value::into_dictionary)
-            .ok_or(ErrorKind::BadLib)?;
-        self.builder.lib(dict)?;
+            .map_err(|_| GlifLoadError::Parse(ErrorKind::BadLib))?
+            .into_dictionary()
+            .ok_or(GlifLoadError::Parse(ErrorKind::LibMustBeDictionary))?;
+
+        self.glyph.lib = dict;
         Ok(())
     }
 
@@ -243,7 +331,7 @@ impl<'names> GlifParser<'names> {
             match reader.read_event(buf)? {
                 Event::End(ref end) if end.name() == b"note" => break,
                 Event::Text(text) => {
-                    self.builder.note(text.unescape_and_decode(reader)?)?;
+                    self.glyph.note = Some(text.unescape_and_decode(reader)?);
                 }
                 Event::Eof => return Err(ErrorKind::UnexpectedEof.into()),
                 _other => (),
@@ -282,17 +370,19 @@ impl<'names> GlifParser<'names> {
                 }
                 b"smooth" => smooth = value == "yes",
                 b"identifier" => {
-                    identifier = Some(value.parse()?);
+                    identifier = Some(self.parse_identifier(value)?);
                 }
                 _other => return Err(ErrorKind::UnexpectedPointField.into()),
             }
         }
-        if x.is_none() || y.is_none() {
-            return Err(ErrorKind::BadPoint.into());
-        }
-        outline_builder.add_point((x.unwrap(), y.unwrap()), typ, smooth, name, identifier)?;
 
-        Ok(())
+        match (x, y) {
+            (Some(x), Some(y)) => {
+                outline_builder.add_point((x, y), typ, smooth, name, identifier)?;
+                Ok(())
+            }
+            _ => Err(ErrorKind::BadPoint.into()),
+        }
     }
 
     fn parse_advance<'a>(
@@ -318,7 +408,9 @@ impl<'names> GlifParser<'names> {
                 _other => return Err(ErrorKind::UnexpectedAttribute.into()),
             }
         }
-        self.builder.width(width)?.height(height)?;
+
+        self.glyph.width = width;
+        self.glyph.height = height;
         Ok(())
     }
 
@@ -337,7 +429,7 @@ impl<'names> GlifParser<'names> {
                         .map_err(|_| value.to_string())
                         .and_then(|n| char::try_from(n).map_err(|_| value.to_string()))
                         .map_err(|_| ErrorKind::BadHexValue)?;
-                    self.builder.unicode(chr);
+                    self.glyph.codepoints.push(chr);
                 }
                 _other => return Err(ErrorKind::UnexpectedAttribute.into()),
             }
@@ -370,17 +462,19 @@ impl<'names> GlifParser<'names> {
                 b"name" => name = Some(value.to_string()),
                 b"color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
                 b"identifier" => {
-                    identifier = Some(value.parse()?);
+                    identifier = Some(self.parse_identifier(value)?);
                 }
                 _other => return Err(ErrorKind::UnexpectedAnchorField.into()),
             }
         }
 
-        if x.is_none() || y.is_none() {
-            return Err(ErrorKind::BadAnchor.into());
+        match (x, y) {
+            (Some(x), Some(y)) => {
+                self.glyph.anchors.push(Anchor::new(x, y, name, color, identifier, None));
+                Ok(())
+            }
+            _ => Err(ErrorKind::BadAnchor.into()),
         }
-        self.builder.anchor(Anchor::new(x.unwrap(), y.unwrap(), name, color, identifier, None))?;
-        Ok(())
     }
 
     fn parse_guideline<'a>(
@@ -407,12 +501,16 @@ impl<'names> GlifParser<'names> {
                     y = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
                 }
                 b"angle" => {
-                    angle = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
+                    let angle_value = value.parse().map_err(|_| ErrorKind::BadNumber)?;
+                    if !(0.0..=360.0).contains(&angle_value) {
+                        return Err(ErrorKind::BadAngle.into());
+                    }
+                    angle = Some(angle_value);
                 }
                 b"name" => name = Some(value.to_string()),
                 b"color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
                 b"identifier" => {
-                    identifier = Some(value.parse()?);
+                    identifier = Some(self.parse_identifier(value)?);
                 }
                 _other => return Err(ErrorKind::UnexpectedGuidelineField.into()),
             }
@@ -421,15 +519,10 @@ impl<'names> GlifParser<'names> {
         let line = match (x, y, angle) {
             (Some(x), None, None) => Line::Vertical(x),
             (None, Some(y), None) => Line::Horizontal(y),
-            (Some(x), Some(y), Some(degrees)) => {
-                if !(0.0..=360.0).contains(&degrees) {
-                    return Err(ErrorKind::BadGuideline.into());
-                }
-                Line::Angle { x, y, degrees }
-            }
-            _other => return Err(ErrorKind::BadGuideline.into()),
+            (Some(x), Some(y), Some(degrees)) => Line::Angle { x, y, degrees },
+            _ => return Err(ErrorKind::BadGuideline.into()),
         };
-        self.builder.guideline(Guideline::new(line, name, color, identifier, None))?;
+        self.glyph.guidelines.push(Guideline::new(line, name, color, identifier, None));
 
         Ok(())
     }
@@ -461,17 +554,17 @@ impl<'names> GlifParser<'names> {
             }
         }
 
-        if filename.is_none() {
-            return Err(ErrorKind::BadImage.into());
+        match filename {
+            Some(file_name) => {
+                self.glyph.image = Some(Image { file_name, color, transform });
+                Ok(())
+            }
+            None => Err(ErrorKind::BadImage.into()),
         }
-
-        self.builder.image(Image { file_name: filename.unwrap(), color, transform })?;
-
-        Ok(())
     }
 }
 
-fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<GlyphBuilder, GlifLoadError> {
+fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, GlifLoadError> {
     loop {
         match reader.read_event(buf)? {
             Event::Comment(_) => (),
@@ -496,7 +589,7 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<GlyphBuilder, 
                     }
                 }
                 if !name.is_empty() && format.is_some() {
-                    return Ok(GlyphBuilder::new(name, format.take().unwrap()));
+                    return Ok(Glyph::new(name.into(), format.take().unwrap()));
                 } else {
                     return Err(ErrorKind::WrongFirstElement.into());
                 }

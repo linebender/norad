@@ -240,6 +240,132 @@ fn missing_close() {
 }
 
 #[test]
+#[should_panic(expected = "DuplicateElement")]
+fn duplicate_outline() {
+    let data = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="period" format="2">
+  <outline>
+  </outline>
+  <outline/>
+</glyph>
+"#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "ComponentMissingBase")]
+fn component_missing_base() {
+    let data = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="period" format="2">
+  <outline>
+    <component/>
+  </outline>
+</glyph>
+"#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "ComponentEmptyBase")]
+fn component_empty_base() {
+    let data = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="period" format="2">
+  <outline>
+    <component base=""/>
+  </outline>
+</glyph>
+"#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "BadAngle")]
+fn bad_angle() {
+    let data = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="period" format="2">
+  <guideline x="1" y="2" angle="-10"/>
+</glyph>
+"#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "LibMustBeDictionary")]
+fn lib_must_be_dict() {
+    let data = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="period" format="2">
+    <lib>
+        <string>I am a creative professional :)</string>
+    </lib>
+</glyph>
+"#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "PublicObjectLibsMustBeDictionary")]
+fn public_object_libs_must_be_dict() {
+    let data = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="period" format="2">
+    <lib>
+        <dict>
+            <key>public.objectLibs</key>
+            <string>0,1,0,0.5</string>
+        </dict>
+    </lib>
+</glyph>
+"#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "ObjectLibMustBeDictionary")]
+fn object_lib_must_be_dict() {
+    let data = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="period" format="2">
+	<anchor name="top" x="74" y="197" identifier="KN3WZjorob"/>
+    <lib>
+        <dict>
+            <key>public.objectLibs</key>
+            <dict>
+                <key>KN3WZjorob</key>
+                <string>0,1,0,0.5</string>
+            </dict>
+        </dict>
+    </lib>
+</glyph>
+"#;
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
+fn if_no_one_uses_your_lib_is_it_broken() {
+    let data = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="period" format="2">
+    <lib>
+        <dict>
+            <key>public.objectLibs</key>
+            <dict>
+                <key>KN3WZjorob</key>
+                <string>0,1,0,0.5</string>
+            </dict>
+        </dict>
+    </lib>
+</glyph>
+"#;
+    let glyph = parse_glyph(data.as_bytes()).unwrap();
+    assert!(glyph.lib.get("public.objectLibs").is_none());
+}
+
+#[test]
 fn parse_note() {
     let bytes = include_bytes!("../../testdata/note.glif");
     let glyph = parse_glyph(bytes).unwrap();
