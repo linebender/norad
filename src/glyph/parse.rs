@@ -58,68 +58,60 @@ impl<'names> GlifParser<'names> {
             match reader.read_event(buf)? {
                 // outline, lib and note are expected to be start element tags.
                 Event::Start(start) => match start.name() {
+                    b"outline" if seen_outline => {
+                        return Err(ErrorKind::DuplicateElement("outline").into());
+                    }
                     b"outline" => {
-                        if seen_outline {
-                            return Err(ErrorKind::DuplicateElement("outline").into());
-                        }
                         seen_outline = true;
                         self.parse_outline(reader, buf)?
                     }
+                    b"lib" if seen_lib => {
+                        return Err(ErrorKind::DuplicateElement("lib").into());
+                    }
                     b"lib" => {
-                        if seen_lib {
-                            return Err(ErrorKind::DuplicateElement("lib").into());
-                        }
                         seen_lib = true;
                         self.parse_lib(reader, raw_xml, buf)?
                     }
-                    b"note" => {
-                        if self.glyph.format == GlifVersion::V1 {
-                            return Err(ErrorKind::UnexpectedV1Element("note").into());
-                        }
-                        if self.glyph.note.is_some() {
-                            return Err(ErrorKind::DuplicateElement("note").into());
-                        }
-                        self.parse_note(reader, buf)?
+                    b"note" if self.glyph.format == GlifVersion::V1 => {
+                        return Err(ErrorKind::UnexpectedV1Element("note").into());
                     }
+                    b"note" if self.glyph.note.is_some() => {
+                        return Err(ErrorKind::DuplicateElement("note").into());
+                    }
+                    b"note" => self.parse_note(reader, buf)?,
                     _other => return Err(ErrorKind::UnexpectedElement.into()),
                 },
                 // The rest are expected to be empty element tags (exception: outline) with attributes.
                 Event::Empty(start) => match start.name() {
+                    b"outline" if seen_outline => {
+                        return Err(ErrorKind::DuplicateElement("outline").into());
+                    }
                     b"outline" => {
-                        if seen_outline {
-                            return Err(ErrorKind::DuplicateElement("outline").into());
-                        }
                         seen_outline = true;
                     }
+                    b"advance" if seen_advance => {
+                        return Err(ErrorKind::DuplicateElement("advance").into());
+                    }
                     b"advance" => {
-                        if seen_advance {
-                            return Err(ErrorKind::DuplicateElement("advance").into());
-                        }
                         seen_advance = true;
                         self.parse_advance(reader, start)?
                     }
                     b"unicode" => self.parse_unicode(reader, start)?,
-                    b"anchor" => {
-                        if self.glyph.format == GlifVersion::V1 {
-                            return Err(ErrorKind::UnexpectedV1Element("anchor").into());
-                        }
-                        self.parse_anchor(reader, start)?
+                    b"anchor" if self.glyph.format == GlifVersion::V1 => {
+                        return Err(ErrorKind::UnexpectedV1Element("anchor").into());
                     }
-                    b"guideline" => {
-                        if self.glyph.format == GlifVersion::V1 {
-                            return Err(ErrorKind::UnexpectedV1Element("guideline").into());
-                        }
-                        self.parse_guideline(reader, start)?
+                    b"anchor" => self.parse_anchor(reader, start)?,
+                    b"guideline" if self.glyph.format == GlifVersion::V1 => {
+                        return Err(ErrorKind::UnexpectedV1Element("guideline").into());
                     }
-                    b"image" => {
-                        if self.glyph.format == GlifVersion::V1 {
-                            return Err(ErrorKind::UnexpectedV1Element("image").into());
-                        }
-                        if self.glyph.image.is_some() {
-                            return Err(ErrorKind::DuplicateElement("image").into());
-                        }
-                        self.parse_image(reader, start)?
+                    b"guideline" => self.parse_guideline(reader, start)?,
+                    b"image" if self.glyph.format == GlifVersion::V1 => {
+                        return Err(ErrorKind::UnexpectedV1Element("image").into());
                     }
+                    b"image" if self.glyph.image.is_some() => {
+                        return Err(ErrorKind::DuplicateElement("image").into());
+                    }
+                    b"image" => self.parse_image(reader, start)?,
                     _other => return Err(ErrorKind::UnexpectedElement.into()),
                 },
                 Event::End(ref end) if end.name() == b"glyph" => break,
@@ -274,10 +266,10 @@ impl<'names> GlifParser<'names> {
                 b"yScale" => transform.y_scale = value.parse().map_err(|_| kind)?,
                 b"xOffset" => transform.x_offset = value.parse().map_err(|_| kind)?,
                 b"yOffset" => transform.y_offset = value.parse().map_err(|_| kind)?,
+                b"base" if value.is_empty() => {
+                    return Err(ErrorKind::ComponentEmptyBase.into());
+                }
                 b"base" => {
-                    if value.is_empty() {
-                        return Err(ErrorKind::ComponentEmptyBase.into());
-                    }
                     let name: Arc<str> = value.into();
                     let name = match self.names.as_ref() {
                         Some(names) => names.get(&name),
