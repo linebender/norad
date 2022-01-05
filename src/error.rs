@@ -469,9 +469,6 @@ pub enum ErrorKind {
     /// Missing a close tag.
     #[error("missing close tag")]
     MissingCloseTag,
-    /// Has an unexpected tag.
-    #[error("unexpected tag")]
-    UnexpectedTag,
     /// Has an invalid hexadecimal value.
     #[error("bad hex value")]
     BadHexValue,

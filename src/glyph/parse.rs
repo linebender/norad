@@ -84,7 +84,7 @@ impl<'names> GlifParser<'names> {
                         seen_note = true;
                         self.parse_note(reader, buf)?
                     }
-                    _other => return Err(ErrorKind::UnexpectedTag.into()),
+                    _other => return Err(ErrorKind::UnexpectedElement.into()),
                 },
                 // The rest are expected to be empty element tags (exception: outline) with attributes.
                 Event::Empty(start) => match start.name() {
@@ -124,7 +124,7 @@ impl<'names> GlifParser<'names> {
                         seen_image = true;
                         self.parse_image(reader, start)?
                     }
-                    _other => return Err(ErrorKind::UnexpectedTag.into()),
+                    _other => return Err(ErrorKind::UnexpectedElement.into()),
                 },
                 Event::End(ref end) if end.name() == b"glyph" => break,
                 _other => return Err(ErrorKind::MissingCloseTag.into()),
@@ -156,7 +156,7 @@ impl<'names> GlifParser<'names> {
                         b"contour" => {
                             self.parse_contour(start, reader, &mut new_buf, &mut outline_builder)?
                         }
-                        _other => return Err(ErrorKind::UnexpectedTag.into()),
+                        _other => return Err(ErrorKind::UnexpectedElement.into()),
                     }
                 }
                 Event::Empty(start) => {
@@ -165,7 +165,7 @@ impl<'names> GlifParser<'names> {
                         b"component" => {
                             self.parse_component(reader, start, &mut outline_builder)?
                         }
-                        _other => return Err(ErrorKind::UnexpectedTag.into()),
+                        _other => return Err(ErrorKind::UnexpectedElement.into()),
                     }
                 }
                 Event::End(ref end) if end.name() == b"outline" => break,
