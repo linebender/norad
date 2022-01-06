@@ -7,7 +7,6 @@ mod serialize;
 mod tests;
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 #[cfg(feature = "kurbo")]
 use crate::error::ConvertContourError;
@@ -16,12 +15,10 @@ use crate::error::ConvertContourError;
 use druid::{Data, Lens};
 
 use crate::error::{ErrorKind, GlifLoadError, GlifWriteError};
+use crate::name::Name;
 use crate::names::NameList;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
-
-/// The name of a glyph.
-pub type GlyphName = Arc<str>;
 
 /// A glyph, loaded from a [`.glif` file][glif].
 ///
@@ -29,10 +26,8 @@ pub type GlyphName = Arc<str>;
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Lens))]
 pub struct Glyph {
-    /// Glyph name.
-    ///
-    /// Must be at least one character long. Names must not contain control characters.
-    pub name: GlyphName,
+    /// The name of the glyph.
+    pub name: Name,
     /// Glif file format version.
     pub format: GlifVersion,
     /// Glyph height.
@@ -60,11 +55,9 @@ pub struct Glyph {
 }
 
 impl Glyph {
-    /// Returns a [`Glyph`] at this `path`.
+    /// Attempt to parse a `Glyph` from a [`.glif`] at the provided path.
     ///
-    /// When loading glyphs in bulk, [`Glyph::load_with_names`] should be preferred,
-    /// since it will allow glyph names (in glyphs and components) to be shared
-    /// between instances.
+    /// [`.glif`]: http://unifiedfontobject.org/versions/ufo3/glyphs/glif/
     pub fn load(path: impl AsRef<Path>) -> Result<Self, GlifLoadError> {
         let path = path.as_ref();
         let names = NameList::default();
@@ -75,7 +68,7 @@ impl Glyph {
     ///
     /// This uses string interning to reuse allocations when a glyph name
     /// occurs multiple times (such as in components or in different layers).
-    pub fn load_with_names(path: &Path, names: &NameList) -> Result<Self, GlifLoadError> {
+    pub(crate) fn load_with_names(path: &Path, names: &NameList) -> Result<Self, GlifLoadError> {
         std::fs::read(path)
             .map_err(GlifLoadError::Io)
             .and_then(|data| parse::GlifParser::from_xml(&data, Some(names)))
@@ -107,11 +100,17 @@ impl Glyph {
     }
 
     /// Returns a new, "empty" [`Glyph`] with the given `name`.
-    pub fn new_named<S: Into<GlyphName>>(name: S) -> Self {
-        Glyph::new(name.into(), GlifVersion::V2)
+    ///
+    /// # Panics
+    ///
+    /// panics if `name` is empty or if it contains any [control characters].
+    ///
+    /// [control characters]: https://unifiedfontobject.org/versions/ufo3/conventions/#controls
+    pub fn new_named(name: &str) -> Self {
+        Glyph::new(Name::new_raw(name), GlifVersion::V2)
     }
 
-    pub(crate) fn new(name: GlyphName, format: GlifVersion) -> Self {
+    pub(crate) fn new(name: Name, format: GlifVersion) -> Self {
         Glyph {
             name,
             format,
@@ -293,7 +292,7 @@ pub struct Anchor {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
     /// The name of the base glyph used in the component.
-    pub base: GlyphName,
+    pub base: Name,
     /// Component affine transormation definition.
     pub transform: AffineTransform,
     /// Optional unique identifier for the component within the glyph.
@@ -658,8 +657,10 @@ impl ContourPoint {
 
 impl Component {
     /// Returns a new [`Component`] given a base glyph name and affine transformation definition.
+    ///
+    /// The 'name' argument should be taken from an existing glyph in  the same layer.
     pub fn new(
-        base: GlyphName,
+        base: Name,
         transform: AffineTransform,
         identifier: Option<Identifier>,
         lib: Option<Plist>,

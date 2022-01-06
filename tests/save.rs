@@ -1,6 +1,6 @@
 //! Testing saving files.
 
-use norad::{Font, FormatVersion, Glyph, Identifier, Plist};
+use norad::{Font, FormatVersion, Glyph, Identifier, Name, Plist};
 use plist::Value;
 
 #[test]
@@ -192,7 +192,7 @@ fn object_libs_reject_existing_key() {
     ufo.lib.remove("public.objectLibs");
 
     let glyph = Glyph {
-        name: "test".into(),
+        name: Name::new("test").unwrap(),
         format: norad::GlifVersion::V2,
         height: 0.,
         width: 0.,

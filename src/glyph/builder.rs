@@ -10,7 +10,7 @@
 //! [fontTools point pen]: https://fonttools.readthedocs.io/en/latest/pens/basePen.html
 
 use crate::{
-    error::ErrorKind, AffineTransform, Component, Contour, ContourPoint, GlyphName, Identifier,
+    error::ErrorKind, AffineTransform, Component, Contour, ContourPoint, Identifier, Name,
     PointType,
 };
 
@@ -173,7 +173,7 @@ impl OutlineBuilder {
     /// Add a component to the glyph.
     pub(crate) fn add_component(
         &mut self,
-        base: GlyphName,
+        base: Name,
         transform: AffineTransform,
         identifier: Option<Identifier>,
     ) -> &mut Self {
@@ -216,7 +216,7 @@ mod tests {
             )?
             .end_path()?
             .add_component(
-                "hallo".into(),
+                Name::new_raw("hallo"),
                 AffineTransform::default(),
                 Some(Identifier::new("xyz").unwrap()),
             );
@@ -247,7 +247,7 @@ mod tests {
         assert_eq!(
             components,
             vec![Component::new(
-                "hallo".into(),
+                Name::new_raw("hallo"),
                 AffineTransform {
                     x_scale: 1.0,
                     xy_scale: 0.0,

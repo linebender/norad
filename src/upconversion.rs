@@ -218,9 +218,19 @@ mod tests {
     extern crate maplit;
 
     use super::*;
-    use crate::font::{Font, FormatVersion};
-    use crate::glyph::GlyphName;
+    use crate::{
+        font::{Font, FormatVersion},
+        Name,
+    };
     use maplit::btreemap;
+
+    // we don't want this in the crate because it can fail, but it is useful
+    // for creating test data.
+    impl<'a> From<&'a str> for Name {
+        fn from(src: &str) -> Self {
+            Name::new_raw(src)
+        }
+    }
 
     #[test]
     fn test_upconvert_kerning_just_groups() {
@@ -239,7 +249,8 @@ mod tests {
         let kerning: Kerning = Kerning::new();
         let glyph_set: NameList = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
             .iter()
-            .map(|s| GlyphName::from(*s))
+            .cloned()
+            .map(Name::from)
             .collect();
 
         let (groups_new, kerning_new) = upconvert_kerning(&groups, &kerning, &glyph_set);
