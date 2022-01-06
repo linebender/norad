@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use super::*;
 use crate::error::{ErrorKind, GlifLoadError};
@@ -250,7 +249,7 @@ impl<'names> GlifParser<'names> {
         start: BytesStart,
         outline_builder: &mut OutlineBuilder,
     ) -> Result<(), GlifLoadError> {
-        let mut base: Option<GlyphName> = None;
+        let mut base: Option<Name> = None;
         let mut identifier: Option<Identifier> = None;
         let mut transform = AffineTransform::default();
 
@@ -270,7 +269,8 @@ impl<'names> GlifParser<'names> {
                     return Err(ErrorKind::ComponentEmptyBase.into());
                 }
                 b"base" => {
-                    let name: Arc<str> = value.into();
+                    //FIXME: error if malformed
+                    let name = Name::new_raw(value);
                     let name = match self.names.as_ref() {
                         Some(names) => names.get(&name),
                         None => name,
@@ -589,7 +589,9 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, GlifLoa
                     }
                 }
                 if !name.is_empty() && format.is_some() {
-                    return Ok(Glyph::new(name.into(), format.take().unwrap()));
+                    //FIXME: error here
+                    return Ok(Glyph::new(Name::new_raw(&name), format.take().unwrap()));
+                    //return Ok(GlyphBuilder::new(Name::new_raw(&name), format.take().unwrap()));
                 } else {
                     return Err(ErrorKind::WrongFirstElement.into());
                 }

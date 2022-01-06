@@ -1,12 +1,12 @@
 use std::collections::{BTreeMap, HashSet};
 
 use crate::error::GroupsValidationError;
-use crate::GlyphName;
+use crate::Name;
 
 /// A map of group name to a list of glyph names.
 ///
 /// We use a [`BTreeMap`] because we need sorting for serialization.
-pub type Groups = BTreeMap<String, Vec<GlyphName>>;
+pub type Groups = BTreeMap<String, Vec<Name>>;
 
 /// Validate the contents of the groups.plist file according to the rules in the
 /// [Unified Font Object v3 specification for groups.plist](http://unifiedfontobject.org/versions/ufo3/groups.plist/#specification).

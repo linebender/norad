@@ -2,18 +2,18 @@
 
 #![deny(rustdoc::broken_intra_doc_links)]
 
-use std::borrow::Borrow;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::datastore::{DataStore, ImageStore};
 use crate::error::{FontLoadError, FontWriteError};
 use crate::fontinfo::FontInfo;
-use crate::glyph::{Glyph, GlyphName};
+use crate::glyph::Glyph;
 use crate::groups::{validate_groups, Groups};
 use crate::guideline::Guideline;
 use crate::kerning::Kerning;
 use crate::layer::{Layer, LayerSet, LAYER_CONTENTS_FILE};
+use crate::name::Name;
 use crate::names::NameList;
 use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
 use crate::upconversion;
@@ -580,27 +580,20 @@ impl Font {
     }
 
     /// Returns an iterator over all the glyph names _in the default layer_.
-    pub fn iter_names(&self) -> impl Iterator<Item = GlyphName> + '_ {
+    pub fn iter_names(&self) -> impl Iterator<Item = Name> + '_ {
+        //FIXME: why not &Name here?
         self.layers.default_layer().glyphs.keys().cloned()
     }
 
     /// Returns a reference to the glyph with the given name _in the default
     /// layer_.
-    pub fn get_glyph<K>(&self, key: &K) -> Option<&Glyph>
-    where
-        GlyphName: Borrow<K>,
-        K: Ord + ?Sized,
-    {
+    pub fn get_glyph(&self, key: &str) -> Option<&Glyph> {
         self.default_layer().get_glyph(key)
     }
 
     /// Returns a mutable reference to the glyph with the given name
     /// _in the default layer_, if it exists.
-    pub fn get_glyph_mut<K>(&mut self, key: &K) -> Option<&mut Glyph>
-    where
-        GlyphName: Borrow<K>,
-        K: Ord + ?Sized,
-    {
+    pub fn get_glyph_mut(&mut self, key: &str) -> Option<&mut Glyph> {
         self.default_layer_mut().get_glyph_mut(key)
     }
 
@@ -707,7 +700,7 @@ mod tests {
             font_obj.lib.get("com.typemytype.robofont.compileSettings.autohint"),
             Some(&plist::Value::Boolean(true))
         );
-        assert_eq!(font_obj.groups.get("public.kern1.@MMK_L_A"), Some(&vec!["A".into()]));
+        assert_eq!(font_obj.groups.get("public.kern1.@MMK_L_A"), Some(&vec![Name::new_raw("A")]));
 
         #[allow(clippy::float_cmp)]
         {

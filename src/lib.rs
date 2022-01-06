@@ -81,6 +81,7 @@ mod guideline;
 mod identifier;
 mod kerning;
 mod layer;
+mod name;
 mod names;
 mod shared_types;
 mod upconversion;
@@ -91,9 +92,10 @@ pub use data_request::DataRequest;
 pub use font::{Font, FormatVersion, MetaInfo};
 pub use fontinfo::FontInfo;
 pub use glyph::{
-    AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, GlyphName,
-    Image, PointType,
+    AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, Image, PointType,
 };
+
+pub use name::Name;
 
 pub use groups::Groups;
 pub use guideline::{Guideline, Line};

@@ -740,8 +740,8 @@ fn components_load() {
     let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_dieresis.glif");
     let glyph = parse_glyph(bytes).expect("initial load failed");
     // component order
-    assert_eq!(glyph.components[0].base, std::sync::Arc::<str>::from("A"));
-    assert_eq!(glyph.components[1].base, std::sync::Arc::<str>::from("dieresis"));
+    assert_eq!(glyph.components[0].base, "A");
+    assert_eq!(glyph.components[1].base, "dieresis");
     let error_margin = f64::EPSILON;
     // component affine transforms
     assert!(glyph.components[0].transform.x_scale - 1.0 < error_margin);
@@ -786,8 +786,8 @@ fn get_components_with_base() {
     let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/A_dieresis.glif");
     let glyph = parse_glyph(bytes).expect("initial load failed");
 
-    assert_eq!(glyph.components[0].base, std::sync::Arc::<str>::from("A"));
-    assert_eq!(glyph.components[1].base, std::sync::Arc::<str>::from("dieresis"));
+    assert_eq!(glyph.components[0].base, "A");
+    assert_eq!(glyph.components[1].base, "dieresis");
 
     let component_a_vec = glyph.get_components_with_base("A").collect::<Vec<&Component>>();
     assert!(component_a_vec.len() == 1);
@@ -804,9 +804,9 @@ fn get_components_with_base_multiple_same_base_components() {
     let bytes = include_bytes!("../../testdata/MutatorSansLightWide.ufo/glyphs/quotedblbase.glif");
     let glyph = parse_glyph(bytes).expect("initial load failed");
     let error_margin = f64::EPSILON;
-    assert_eq!(glyph.components[0].base, std::sync::Arc::<str>::from("comma"));
+    assert_eq!(glyph.components[0].base, "comma");
     assert!(glyph.components[0].transform.x_offset - 0.0 < error_margin);
-    assert_eq!(glyph.components[1].base, std::sync::Arc::<str>::from("comma"));
+    assert_eq!(glyph.components[1].base, "comma");
     assert!(glyph.components[1].transform.x_offset - 130.0 < error_margin);
 
     let component_comma_vec = glyph.get_components_with_base("comma").collect::<Vec<&Component>>();

@@ -12,7 +12,7 @@ use std::collections::HashSet;
 #[cfg(feature = "rayon")]
 use std::sync::RwLock;
 
-use crate::glyph::GlyphName;
+use crate::Name;
 
 /// Manages interned names
 ///
@@ -28,14 +28,14 @@ pub struct NameList {
 
 #[derive(Debug)]
 #[cfg(feature = "rayon")]
-struct ParNameList(RwLock<HashSet<GlyphName>>);
+struct ParNameList(RwLock<HashSet<Name>>);
 
 #[derive(Debug, Default)]
 #[cfg(not(feature = "rayon"))]
-struct SeqNameList(RefCell<HashSet<GlyphName>>);
+struct SeqNameList(RefCell<HashSet<Name>>);
 
 impl NameList {
-    pub(crate) fn get(&self, name: &GlyphName) -> GlyphName {
+    pub(crate) fn get(&self, name: &Name) -> Name {
         self.inner.get(name)
     }
 
@@ -46,7 +46,7 @@ impl NameList {
 
 #[cfg(feature = "rayon")]
 impl ParNameList {
-    pub(crate) fn get(&self, name: &GlyphName) -> GlyphName {
+    pub(crate) fn get(&self, name: &Name) -> Name {
         let existing = self.0.read().unwrap().get(name).cloned();
         match existing {
             Some(name) => name,
@@ -64,7 +64,7 @@ impl ParNameList {
 
 #[cfg(not(feature = "rayon"))]
 impl SeqNameList {
-    pub(crate) fn get(&self, name: &GlyphName) -> GlyphName {
+    pub(crate) fn get(&self, name: &Name) -> Name {
         let existing = self.0.borrow().get(name).cloned();
         match existing {
             Some(name) => name,
@@ -87,7 +87,7 @@ impl Default for ParNameList {
     }
 }
 
-impl<T: Into<GlyphName>> std::iter::FromIterator<T> for NameList {
+impl<T: Into<Name>> std::iter::FromIterator<T> for NameList {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let names = NameList::default();
 

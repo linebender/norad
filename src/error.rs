@@ -18,6 +18,11 @@ pub enum NamingError {
     /// An error returned when an expected item is missing.
     #[error("item '{0}' does not exist")]
     Missing(String),
+    /// A name is empty, or contains [control characters].
+    ///
+    /// [control characters]: https://unifiedfontobject.org/versions/ufo3/conventions/#controls
+    #[error("'{0}' is not a valid name")]
+    Invalid(String),
 }
 
 /// An error that occurs while attempting to read a .glif file from disk.
