@@ -320,7 +320,8 @@ pub struct Contour {
 }
 
 impl Contour {
-    fn is_closed(&self) -> bool {
+    /// Whether the contour is closed.
+    pub fn is_closed(&self) -> bool {
         self.points.first().map_or(true, |v| v.typ != PointType::Move)
     }
 
