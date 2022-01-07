@@ -79,6 +79,6 @@ impl<'de> Deserialize<'de> for Identifier {
         D: Deserializer<'de>,
     {
         let string = String::deserialize(deserializer)?;
-        Identifier::new(string).map_err(|_| de::Error::custom("Identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E."))
+        Identifier::new(string).map_err(de::Error::custom)
     }
 }
