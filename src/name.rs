@@ -2,6 +2,8 @@
 
 use std::sync::Arc;
 
+use serde::{Deserialize, Deserializer};
+
 use crate::error::NamingError;
 
 /// A name used to identify a [`Glyph`] or a [`Layer`].
@@ -15,7 +17,7 @@ use crate::error::NamingError;
 ///
 /// [`Glyph`]: crate::Glyph
 /// [`Layer`]: crate::Layer
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[cfg_attr(feature = "druid", derive(druid::Data))]
 pub struct Name(Arc<str>);
 
@@ -86,7 +88,21 @@ impl std::borrow::Borrow<str> for Name {
     }
 }
 
-//FIXME: custom deserialize that errors
+impl<'de> Deserialize<'de> for Name {
+    fn deserialize<D>(deserializer: D) -> Result<Name, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // we go directly to Arc<str> and validate manually so we don't need
+        // to allocate twice
+        let s: Arc<str> = Deserialize::deserialize(deserializer)?;
+        if is_valid(&s) {
+            Ok(Name(s))
+        } else {
+            Err(serde::de::Error::custom(NamingError::Invalid(s.to_string())))
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

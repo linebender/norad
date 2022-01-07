@@ -34,7 +34,7 @@ impl<'names> GlifParser<'names> {
         let mut buf = Vec::new();
         reader.trim_text(true);
 
-        start(&mut reader, &mut buf).and_then(|glyph| {
+        start(&mut reader, &mut buf, names).and_then(|glyph| {
             GlifParser { glyph, seen_identifiers: HashSet::new(), names }.parse_body(
                 &mut reader,
                 xml,
@@ -269,12 +269,8 @@ impl<'names> GlifParser<'names> {
                     return Err(ErrorKind::ComponentEmptyBase.into());
                 }
                 b"base" => {
-                    //FIXME: error if malformed
-                    let name = Name::new_raw(value);
-                    let name = match self.names.as_ref() {
-                        Some(names) => names.get(&name),
-                        None => name,
-                    };
+                    let name = Name::new(value).map_err(|_| ErrorKind::InvalidName)?;
+                    let name = self.names.as_ref().map(|n| n.get(&name)).unwrap_or(name);
                     base = Some(name);
                 }
                 b"identifier" => {
@@ -564,34 +560,37 @@ impl<'names> GlifParser<'names> {
     }
 }
 
-fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<Glyph, GlifLoadError> {
+fn start(
+    reader: &mut Reader<&[u8]>,
+    buf: &mut Vec<u8>,
+    names: Option<&NameList>,
+) -> Result<Glyph, GlifLoadError> {
     loop {
         match reader.read_event(buf)? {
             Event::Comment(_) => (),
             Event::Decl(_decl) => (),
             Event::Start(ref start) if start.name() == b"glyph" => {
-                let mut name = String::new();
+                let mut name: Option<Name> = None;
                 let mut format: Option<GlifVersion> = None;
                 //let mut pos
                 for attr in start.attributes() {
                     let attr = attr?;
+                    let value = attr.unescaped_value()?;
+                    let value = reader.decode(&value)?;
                     // XXX: support `formatMinor`
                     match attr.key {
                         b"name" => {
-                            name = attr.unescape_and_decode_value(reader)?;
+                            let value = Name::new(value).map_err(|_| ErrorKind::InvalidName)?;
+                            name = Some(names.as_ref().map(|n| n.get(&value)).unwrap_or(value));
                         }
                         b"format" => {
-                            let value = attr.unescaped_value()?;
-                            let value = reader.decode(&value)?;
                             format = Some(value.parse()?);
                         }
                         _other => return Err(ErrorKind::UnexpectedAttribute.into()),
                     }
                 }
-                if !name.is_empty() && format.is_some() {
-                    //FIXME: error here
-                    return Ok(Glyph::new(Name::new_raw(&name), format.take().unwrap()));
-                    //return Ok(GlyphBuilder::new(Name::new_raw(&name), format.take().unwrap()));
+                if let (Some(name), Some(format)) = (name.take(), format.take()) {
+                    return Ok(Glyph::new(name, format));
                 } else {
                     return Err(ErrorKind::WrongFirstElement.into());
                 }

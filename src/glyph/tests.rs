@@ -640,6 +640,22 @@ fn unexpected_line_after_offcurve2() {
 }
 
 #[test]
+#[should_panic(expected = "InvalidName")]
+fn invalid_name() {
+    let data = "
+        <?xml version=\"1.0\" encoding=\"UTF-8\"?>
+        <glyph name=\"\x01\" format=\"2\">
+            <outline>
+                <contour>
+                    <point x=\"572\" y=\"667\"/>
+                    <point x=\"479\" y=\"714\"/>
+                </contour>
+            </outline>
+        </glyph>
+    ";
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+#[test]
 #[should_panic(expected = "UnexpectedPointAfterOffCurve")]
 fn unexpected_line_after_offcurve3() {
     let data = r#"
