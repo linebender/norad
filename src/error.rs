@@ -553,7 +553,7 @@ impl std::fmt::Display for ErrorKind {
             BadGuideline => write!(f, "bad guideline"),
             BadComponent => write!(f, "bad component"),
             BadImage => write!(f, "bad image"),
-            BadIdentifier => write!(f, "bad identifier"),
+            BadIdentifier => write!(f, "an identifier must be at most 100 characters long and contain only ASCII characters in the range 0x20 to 0x7E"),
             BadLib => write!(f, "bad lib"),
             UnexpectedDuplicate => write!(f, "unexpected duplicate"),
             UnexpectedMove => {
