@@ -52,7 +52,8 @@ impl Glyph {
         }
         let mut start = BytesStart::borrowed_name(b"glyph");
         start.push_attribute(("name", &*self.name));
-        start.push_attribute(("format", self.format.as_str()));
+        start.push_attribute(("format", self.format.major_str()));
+        //TODO: write out formatMinor if we start to support glif 2.1?
         writer.write_event(Event::Start(start)).map_err(GlifWriteError::Xml)?;
 
         for codepoint in &self.codepoints {
@@ -179,10 +180,11 @@ fn write_lib_section<T: Write>(
 }
 
 impl GlifVersion {
-    fn as_str(&self) -> &str {
-        match self {
-            GlifVersion::V1 => "1",
-            GlifVersion::V2 => "2",
+    fn major_str(&self) -> &str {
+        match self.major {
+            1 => "1",
+            2 => "2",
+            n => panic!("unsupported major version {}", n),
         }
     }
 }
