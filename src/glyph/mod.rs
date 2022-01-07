@@ -256,13 +256,29 @@ impl Data for Glyph {
 /// Version of a `.glif` file, per the [UFO spec].
 ///
 /// [UFO spec]: https://unifiedfontobject.org/versions/ufo1/glyphs/glif/#specification
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Data))]
-pub enum GlifVersion {
-    /// Glif file format version 1. Saving this version is not supported.
-    V1 = 1,
-    /// Glif file format version 2.
-    V2 = 2,
+pub struct GlifVersion {
+    /// The major version
+    pub major: u16,
+    /// The minor version
+    //NOTE: this is in the spec, but 2.0 is the current max version,
+    //so this is ignored for now.
+    pub minor: u16,
+}
+
+impl GlifVersion {
+    /// Version 1.0
+    pub const V1: GlifVersion = GlifVersion { major: 1, minor: 0 };
+    /// Version 2.0
+    pub const V2: GlifVersion = GlifVersion { major: 2, minor: 0 };
+
+    // helper used during parsing
+    pub(crate) const ZEROS: GlifVersion = GlifVersion { major: 0, minor: 0 };
+
+    pub(crate) const fn is_supported(self) -> bool {
+        (self.major == 1 || self.major == 2) && self.minor == 0
+    }
 }
 
 /// A reference position in a glyph, such as for attaching accents.

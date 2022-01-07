@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use super::*;
 use crate::error::{ErrorKind, GlifLoadError};
@@ -119,7 +118,8 @@ impl<'names> GlifParser<'names> {
         }
 
         self.glyph.load_object_libs()?;
-        self.glyph.format = GlifVersion::V2;
+        // we upconvert 1->2, so set that here
+        self.glyph.format.major = 2;
 
         Ok(self.glyph)
     }
@@ -574,8 +574,7 @@ fn start(
             Event::Decl(_decl) => (),
             Event::Start(ref start) if start.name() == b"glyph" => {
                 let mut name: Option<Name> = None;
-                let mut format: Option<GlifVersion> = None;
-                //let mut pos
+                let mut format = GlifVersion::ZEROS;
                 for attr in start.attributes() {
                     let attr = attr?;
                     let value = attr.unescaped_value()?;
@@ -587,29 +586,23 @@ fn start(
                             name = Some(names.as_ref().map(|n| n.get(&value)).unwrap_or(value));
                         }
                         b"format" => {
-                            format = Some(value.parse()?);
+                            format.major = value.parse().map_err(|_| ErrorKind::BadNumber)?;
+                        }
+                        b"formatMinor" => {
+                            format.minor = value.parse().map_err(|_| ErrorKind::BadNumber)?;
                         }
                         _other => return Err(ErrorKind::UnexpectedAttribute.into()),
                     }
                 }
-                if let (Some(name), Some(format)) = (name.take(), format.take()) {
-                    return Ok(Glyph::new(name, format));
+                if let Some(name) = name.filter(|_| format.is_supported()) {
+                    return Ok(Glyph::new(name.into(), format));
+                } else if format != GlifVersion::ZEROS {
+                    return Err(ErrorKind::UnsupportedGlifVersion.into());
                 } else {
                     return Err(ErrorKind::WrongFirstElement.into());
                 }
             }
             _other => return Err(ErrorKind::WrongFirstElement.into()),
-        }
-    }
-}
-
-impl FromStr for GlifVersion {
-    type Err = ErrorKind;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "1" => Ok(GlifVersion::V1),
-            "2" => Ok(GlifVersion::V2),
-            _other => Err(ErrorKind::UnsupportedGlifVersion),
         }
     }
 }

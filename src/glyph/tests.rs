@@ -28,6 +28,42 @@ fn serialize_empty_glyph() {
 }
 
 #[test]
+fn parse_format_minor() {
+    let data = r#"
+ <?xml version="1.0" encoding="UTF-8"?>
+ <glyph name="a" format="2" formatMinor="0">
+ </glyph>
+     "#
+    .trim();
+    let glyph = parse_glyph(data.as_bytes()).unwrap();
+    assert_eq!(glyph.format, GlifVersion { major: 2, minor: 0 });
+}
+
+#[test]
+fn parse_format_no_minor() {
+    let data = r#"
+ <?xml version="1.0" encoding="UTF-8"?>
+ <glyph name="a" format="2">
+ </glyph>
+     "#
+    .trim();
+    let glyph = parse_glyph(data.as_bytes()).unwrap();
+    assert_eq!(glyph.format, GlifVersion { major: 2, minor: 0 });
+}
+
+#[test]
+#[should_panic(expected = "UnsupportedGlifVersion")]
+fn parse_format_unsupported_major() {
+    let data = r#"
+ <?xml version="1.0" encoding="UTF-8"?>
+ <glyph name="a" format="3">
+ </glyph>
+     "#
+    .trim();
+    let _ = parse_glyph(data.as_bytes()).unwrap();
+}
+
+#[test]
 fn serialize_empty_glyph_explicit_line_ending_check() {
     let glyph = Glyph::new_named("a");
     let glif = glyph.encode_xml().unwrap();
