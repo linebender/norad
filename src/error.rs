@@ -435,9 +435,6 @@ pub enum GlifWriteError {
     /// Failed to serialize a glyph to an internal buffer.
     #[error("failed to serialize glyph to an internal buffer")]
     Buffer(#[source] IoError),
-    /// Norad does not currently support downgrading format versions.
-    #[error("downgrading below glyph format version 2 is unsupported")]
-    Downgrade,
     /// When writing out the 'lib' section, we use the plist crate to generate
     /// the plist xml, and then strip the preface and closing </plist> tag.
     ///

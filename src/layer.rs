@@ -648,7 +648,7 @@ mod tests {
     fn set_glyph() {
         let layer_path = "testdata/MutatorSansLightWide.ufo/glyphs";
         let mut layer = Layer::load(layer_path, DEFAULT_LAYER_NAME).unwrap();
-        let mut glyph = Glyph::new_named("A");
+        let mut glyph = Glyph::new("A");
         glyph.width = 69.;
         layer.insert_glyph(glyph);
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
@@ -669,7 +669,7 @@ mod tests {
 
         let misc_layer = ufo.layers.get_or_create("misc");
         assert!(misc_layer.is_empty());
-        misc_layer.insert_glyph(Glyph::new_named("A"));
+        misc_layer.insert_glyph(Glyph::new("A"));
 
         assert!(ufo.default_layer().is_empty());
         assert!(ufo.layers.get("background").unwrap().is_empty());

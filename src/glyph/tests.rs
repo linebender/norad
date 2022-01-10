@@ -13,7 +13,7 @@ fn transform() {
 
 #[test]
 fn serialize_empty_glyph() {
-    let glyph = Glyph::new_named("a");
+    let glyph = Glyph::new("a");
     let glif = glyph.encode_xml().unwrap();
     let glif = std::str::from_utf8(&glif).unwrap();
     assert_eq!(
@@ -35,20 +35,8 @@ fn parse_format_minor() {
  </glyph>
      "#
     .trim();
-    let glyph = parse_glyph(data.as_bytes()).unwrap();
-    assert_eq!(glyph.format, GlifVersion { major: 2, minor: 0 });
-}
-
-#[test]
-fn parse_format_no_minor() {
-    let data = r#"
- <?xml version="1.0" encoding="UTF-8"?>
- <glyph name="a" format="2">
- </glyph>
-     "#
-    .trim();
-    let glyph = parse_glyph(data.as_bytes()).unwrap();
-    assert_eq!(glyph.format, GlifVersion { major: 2, minor: 0 });
+    // if this doesn't panic life is okay
+    parse_glyph(data.as_bytes()).unwrap();
 }
 
 #[test]
@@ -65,7 +53,7 @@ fn parse_format_unsupported_major() {
 
 #[test]
 fn serialize_empty_glyph_explicit_line_ending_check() {
-    let glyph = Glyph::new_named("a");
+    let glyph = Glyph::new("a");
     let glif = glyph.encode_xml().unwrap();
     let glif = std::str::from_utf8(&glif).unwrap();
     assert_eq!(
@@ -228,7 +216,6 @@ fn parse_v1_upgrade_anchors() {
             Anchor::new(40.0, 20.0, Some("right".into()), None, None, None),
         ]
     );
-    assert_eq!(glyph.format, GlifVersion::V2);
     assert_eq!(glyph.guidelines, vec![]);
     assert_eq!(glyph.image, None);
     assert_eq!(glyph.lib, Plist::new());
@@ -420,7 +407,6 @@ fn save() {
 
     let glyph2 = parse_glyph(buf.as_slice()).expect("re-parse failed");
     assert_eq!(glyph.name, glyph2.name);
-    assert_eq!(glyph.format, glyph2.format);
     assert_eq!(glyph.height, glyph2.height);
     assert_eq!(glyph.width, glyph2.width);
     assert_eq!(glyph.codepoints, glyph2.codepoints);

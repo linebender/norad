@@ -23,7 +23,7 @@ fn save_default() {
 #[test]
 fn save_new_file() {
     let mut my_ufo = Font::new();
-    let mut my_glyph = Glyph::new_named("A");
+    let mut my_glyph = Glyph::new("A");
     my_glyph.codepoints = vec!['A'];
     my_glyph.note = Some("I did a glyph!".into());
     let mut plist = Plist::new();
@@ -193,7 +193,6 @@ fn object_libs_reject_existing_key() {
 
     let glyph = Glyph {
         name: Name::new("test").unwrap(),
-        format: norad::GlifVersion::V2,
         height: 0.,
         width: 0.,
         anchors: vec![],

@@ -22,14 +22,14 @@ use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
 
 /// A glyph, loaded from a [`.glif` file][glif].
 ///
+/// Norad can load glif version 1.0 and 2.0, and can save 2.0 only.
+///
 /// [glif]: http://unifiedfontobject.org/versions/ufo3/glyphs/glif/
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "druid", derive(Lens))]
 pub struct Glyph {
     /// The name of the glyph.
     pub name: Name,
-    /// Glif file format version.
-    pub format: GlifVersion,
     /// Glyph height.
     pub height: f64,
     /// Glyph width.
@@ -86,9 +86,6 @@ impl Glyph {
         path: &Path,
         opts: &WriteOptions,
     ) -> Result<(), GlifWriteError> {
-        if self.format != GlifVersion::V2 {
-            return Err(GlifWriteError::Downgrade);
-        }
         if self.lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
             return Err(GlifWriteError::PreexistingPublicObjectLibsKey);
         }
@@ -106,14 +103,15 @@ impl Glyph {
     /// panics if `name` is empty or if it contains any [control characters].
     ///
     /// [control characters]: https://unifiedfontobject.org/versions/ufo3/conventions/#controls
-    pub fn new_named(name: &str) -> Self {
-        Glyph::new(Name::new_raw(name), GlifVersion::V2)
+    pub fn new(name: &str) -> Self {
+        Glyph::new_impl(Name::new_raw(name))
     }
 
-    pub(crate) fn new(name: Name, format: GlifVersion) -> Self {
+    // this impl lets the crate pass an explicit `Name`, which is reused between
+    // multiple layers and components
+    pub(crate) fn new_impl(name: Name) -> Self {
         Glyph {
             name,
-            format,
             height: 0.0,
             width: 0.0,
             codepoints: Vec::new(),
@@ -239,7 +237,6 @@ impl Glyph {
 impl Data for Glyph {
     fn same(&self, other: &Glyph) -> bool {
         self.name.same(&other.name)
-            && self.format.same(&other.format)
             && self.height.same(&other.height)
             && self.width.same(&other.width)
             && self.codepoints == other.codepoints
@@ -250,34 +247,6 @@ impl Data for Glyph {
             && self.contours == other.contours
             && self.image == other.image
             && self.lib == other.lib
-    }
-}
-
-/// Version of a `.glif` file, per the [UFO spec].
-///
-/// [UFO spec]: https://unifiedfontobject.org/versions/ufo1/glyphs/glif/#specification
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "druid", derive(Data))]
-pub struct GlifVersion {
-    /// The major version
-    pub major: u16,
-    /// The minor version
-    //NOTE: this is in the spec, but 2.0 is the current max version,
-    //so this is ignored for now.
-    pub minor: u16,
-}
-
-impl GlifVersion {
-    /// Version 1.0
-    pub const V1: GlifVersion = GlifVersion { major: 1, minor: 0 };
-    /// Version 2.0
-    pub const V2: GlifVersion = GlifVersion { major: 2, minor: 0 };
-
-    // helper used during parsing
-    pub(crate) const ZEROS: GlifVersion = GlifVersion { major: 0, minor: 0 };
-
-    pub(crate) const fn is_supported(self) -> bool {
-        (self.major == 1 || self.major == 2) && self.minor == 0
     }
 }
 
