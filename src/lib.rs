@@ -92,7 +92,7 @@ pub use data_request::DataRequest;
 pub use font::{Font, FormatVersion, MetaInfo};
 pub use fontinfo::FontInfo;
 pub use glyph::{
-    AffineTransform, Anchor, Component, Contour, ContourPoint, GlifVersion, Glyph, Image, PointType,
+    AffineTransform, Anchor, Component, Contour, ContourPoint, Glyph, Image, PointType,
 };
 
 pub use name::Name;

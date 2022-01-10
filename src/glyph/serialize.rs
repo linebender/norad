@@ -9,8 +9,8 @@ use quick_xml::{
 
 use super::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{
-    util, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, GlifVersion, Glyph,
-    Guideline, Image, Line, Plist, PointType, WriteOptions,
+    util, AffineTransform, Anchor, Color, Component, Contour, ContourPoint, Glyph, Guideline,
+    Image, Line, Plist, PointType, WriteOptions,
 };
 
 use crate::error::GlifWriteError;
@@ -52,8 +52,9 @@ impl Glyph {
         }
         let mut start = BytesStart::borrowed_name(b"glyph");
         start.push_attribute(("name", &*self.name));
-        start.push_attribute(("format", self.format.major_str()));
+        // we always serialize 2.0
         //TODO: write out formatMinor if we start to support glif 2.1?
+        start.push_attribute(("format", "2"));
         writer.write_event(Event::Start(start)).map_err(GlifWriteError::Xml)?;
 
         for codepoint in &self.codepoints {
@@ -177,16 +178,6 @@ fn write_lib_section<T: Write>(
     }
     writer.write_event(Event::End(BytesEnd::borrowed(b"lib"))).map_err(GlifWriteError::Xml)?;
     Ok(())
-}
-
-impl GlifVersion {
-    fn major_str(&self) -> &str {
-        match self.major {
-            1 => "1",
-            2 => "2",
-            n => panic!("unsupported major version {}", n),
-        }
-    }
 }
 
 impl Guideline {

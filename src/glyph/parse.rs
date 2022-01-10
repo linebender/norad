@@ -17,8 +17,15 @@ pub(crate) fn parse_glyph(xml: &[u8]) -> Result<Glyph, GlifLoadError> {
     GlifParser::from_xml(xml, None)
 }
 
+// major, minor
+type Version = (u32, u32);
+
+const VERSION_1: (u32, u32) = (1, 0);
+const VERSION_2: (u32, u32) = (2, 0);
+
 pub(crate) struct GlifParser<'names> {
     glyph: Glyph,
+    version: Version,
     seen_identifiers: HashSet<Identifier>,
     /// Optional set of glyph names to be reused between glyphs.
     names: Option<&'names NameList>,
@@ -33,13 +40,10 @@ impl<'names> GlifParser<'names> {
         let mut buf = Vec::new();
         reader.trim_text(true);
 
-        start(&mut reader, &mut buf, names).and_then(|glyph| {
-            GlifParser { glyph, seen_identifiers: HashSet::new(), names }.parse_body(
-                &mut reader,
-                xml,
-                &mut buf,
-            )
-        })
+        let (name, version) = start(&mut reader, &mut buf, names)?;
+        let glyph = Glyph::new_impl(name);
+        let parser = GlifParser { glyph, seen_identifiers: Default::default(), names, version };
+        parser.parse_body(&mut reader, xml, &mut buf)
     }
 
     fn parse_body(
@@ -70,7 +74,7 @@ impl<'names> GlifParser<'names> {
                         seen_lib = true;
                         self.parse_lib(reader, raw_xml, buf)?
                     }
-                    b"note" if self.glyph.format == GlifVersion::V1 => {
+                    b"note" if self.version == VERSION_1 => {
                         return Err(ErrorKind::UnexpectedV1Element("note").into());
                     }
                     b"note" if self.glyph.note.is_some() => {
@@ -95,15 +99,15 @@ impl<'names> GlifParser<'names> {
                         self.parse_advance(reader, start)?
                     }
                     b"unicode" => self.parse_unicode(reader, start)?,
-                    b"anchor" if self.glyph.format == GlifVersion::V1 => {
+                    b"anchor" if self.version == VERSION_1 => {
                         return Err(ErrorKind::UnexpectedV1Element("anchor").into());
                     }
                     b"anchor" => self.parse_anchor(reader, start)?,
-                    b"guideline" if self.glyph.format == GlifVersion::V1 => {
+                    b"guideline" if self.version == VERSION_1 => {
                         return Err(ErrorKind::UnexpectedV1Element("guideline").into());
                     }
                     b"guideline" => self.parse_guideline(reader, start)?,
-                    b"image" if self.glyph.format == GlifVersion::V1 => {
+                    b"image" if self.version == VERSION_1 => {
                         return Err(ErrorKind::UnexpectedV1Element("image").into());
                     }
                     b"image" if self.glyph.image.is_some() => {
@@ -118,9 +122,6 @@ impl<'names> GlifParser<'names> {
         }
 
         self.glyph.load_object_libs()?;
-        // we upconvert 1->2, so set that here
-        self.glyph.format.major = 2;
-
         Ok(self.glyph)
     }
 
@@ -164,7 +165,7 @@ impl<'names> GlifParser<'names> {
         let (mut contours, components) = outline_builder.finish()?;
 
         // Upgrade implicit anchors to explicit ones.
-        if self.glyph.format == GlifVersion::V1 {
+        if self.version == VERSION_1 {
             for c in &mut contours {
                 if c.points.len() == 1
                     && c.points[0].typ == PointType::Move
@@ -194,7 +195,7 @@ impl<'names> GlifParser<'names> {
     }
 
     fn parse_identifier(&mut self, value: &str) -> Result<Identifier, GlifLoadError> {
-        if self.glyph.format == GlifVersion::V1 {
+        if self.version == VERSION_1 {
             return Err(ErrorKind::UnexpectedV1Attribute("identifier").into());
         }
 
@@ -215,7 +216,7 @@ impl<'names> GlifParser<'names> {
     ) -> Result<(), GlifLoadError> {
         let mut identifier = None;
         for attr in data.attributes() {
-            if self.glyph.format == GlifVersion::V1 {
+            if self.version == VERSION_1 {
                 return Err(ErrorKind::UnexpectedAttribute.into());
             }
             let attr = attr?;
@@ -563,18 +564,22 @@ impl<'names> GlifParser<'names> {
     }
 }
 
+/// Start parsing XML, expecting an opening <glyph> tag.
+///
+/// On success, returns the glyphs name and the format version.
 fn start(
     reader: &mut Reader<&[u8]>,
     buf: &mut Vec<u8>,
     names: Option<&NameList>,
-) -> Result<Glyph, GlifLoadError> {
+) -> Result<(Name, Version), GlifLoadError> {
     loop {
         match reader.read_event(buf)? {
             Event::Comment(_) => (),
             Event::Decl(_decl) => (),
             Event::Start(ref start) if start.name() == b"glyph" => {
                 let mut name: Option<Name> = None;
-                let mut format = GlifVersion::ZEROS;
+                let mut format_major = 0;
+                let mut format_minor = 0;
                 for attr in start.attributes() {
                     let attr = attr?;
                     let value = attr.unescaped_value()?;
@@ -586,20 +591,21 @@ fn start(
                             name = Some(names.as_ref().map(|n| n.get(&value)).unwrap_or(value));
                         }
                         b"format" => {
-                            format.major = value.parse().map_err(|_| ErrorKind::BadNumber)?;
+                            format_major = value.parse().map_err(|_| ErrorKind::BadNumber)?;
                         }
                         b"formatMinor" => {
-                            format.minor = value.parse().map_err(|_| ErrorKind::BadNumber)?;
+                            format_minor = value.parse().map_err(|_| ErrorKind::BadNumber)?;
                         }
                         _other => return Err(ErrorKind::UnexpectedAttribute.into()),
                     }
                 }
-                if let Some(name) = name.filter(|_| format.is_supported()) {
-                    return Ok(Glyph::new(name.into(), format));
-                } else if format != GlifVersion::ZEROS {
+
+                let name = name.ok_or(ErrorKind::WrongFirstElement)?;
+                let version = (format_major, format_minor);
+                if version != VERSION_1 && version != VERSION_2 {
                     return Err(ErrorKind::UnsupportedGlifVersion.into());
                 } else {
-                    return Err(ErrorKind::WrongFirstElement.into());
+                    return Ok((name, version));
                 }
             }
             _other => return Err(ErrorKind::WrongFirstElement.into()),
