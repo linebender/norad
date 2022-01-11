@@ -185,7 +185,7 @@ mod tests {
         let g1 = Guideline::new(
             Line::Angle { x: 10.0, y: 20.0, degrees: 360.0 },
             Some("hello".to_string()),
-            Some(Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 }),
+            Some(Color::new(0.0, 0.5, 0.0, 0.5).unwrap()),
             Some(Identifier::new("abcABC123").unwrap()),
             None,
         );

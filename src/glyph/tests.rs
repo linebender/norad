@@ -406,7 +406,7 @@ fn notdef_failure() {
 #[test]
 fn druid_from_color() {
     let color = druid::piet::Color::rgba(1.0, 0.11, 0.5, 0.23);
-    let color2: druid::piet::Color = Color { red: 1.0, green: 0.11, blue: 0.5, alpha: 0.23 }.into();
+    let color2: druid::piet::Color = Color::new(1.0, 0.11, 0.5, 0.23).unwrap().into();
     assert_eq!(color2.as_rgba_u32(), color.as_rgba_u32());
 }
 

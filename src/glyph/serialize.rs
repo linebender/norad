@@ -329,7 +329,7 @@ impl Color {
         // TODO: Check that all channels are 0.0..=1.0
         let mut result = String::new();
         let mut scratch = String::new();
-        let Color { red, green, blue, alpha } = self;
+        let (red, green, blue, alpha) = self.channels();
         for channel in &[red, green, blue, alpha] {
             if !result.is_empty() {
                 result.push(',');
