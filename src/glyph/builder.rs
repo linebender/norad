@@ -264,40 +264,6 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn glyph_builder_upgrade_v1_anchor() -> Result<(), ErrorKind> {
-    //     let mut builder = GlyphBuilder::new("test", GlifVersion::V1);
-
-    //     let mut outline_builder = OutlineBuilder::new();
-    //     outline_builder
-    //         .begin_path(None)?
-    //         .add_point((173.0, 536.0), PointType::Move, false, Some("top".into()), None)?
-    //         .end_path()?;
-    //     let (outline, identifiers) = outline_builder.finish()?;
-    //     builder.outline(outline, identifiers)?;
-    //     let glyph = builder.finish()?;
-
-    //     assert_eq!(
-    //         glyph,
-    //         Glyph {
-    //             name: "test".into(),
-    //             format: GlifVersion::V2,
-    //             height: 0.,
-    //             width: 0.,
-    //             codepoints: Vec::new(),
-    //             note: None,
-    //             guidelines: Vec::new(),
-    //             anchors: vec![Anchor::new(173.0, 536.0, Some("top".into()), None, None, None)],
-    //             components: Vec::new(),
-    //             contours: Vec::new(),
-    //             image: None,
-    //             lib: Plist::new(),
-    //         }
-    //     );
-
-    //     Ok(())
-    // }
-
     #[test]
     #[should_panic(expected = "UnfinishedDrawing")]
     fn outline_builder_unfinished_drawing() {

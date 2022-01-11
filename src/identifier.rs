@@ -82,3 +82,19 @@ impl<'de> Deserialize<'de> for Identifier {
         Identifier::new(string).map_err(de::Error::custom)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn identifier_parsing() {
+        let valid_chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+        assert!(Identifier::new(valid_chars).is_ok());
+
+        let i2 = Identifier::new("0aAä");
+        assert!(i2.is_err());
+        let i3 = Identifier::new("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        assert!(i3.is_err());
+    }
+}

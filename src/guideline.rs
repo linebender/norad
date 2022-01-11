@@ -173,3 +173,46 @@ impl<'de> Deserialize<'de> for Guideline {
         Ok(Guideline::new(line, guideline.name, guideline.color, guideline.identifier, None))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use serde_test::{assert_tokens, Token};
+
+    #[test]
+    fn guideline_parsing() {
+        let g1 = Guideline::new(
+            Line::Angle { x: 10.0, y: 20.0, degrees: 360.0 },
+            Some("hello".to_string()),
+            Some(Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 }),
+            Some(Identifier::new("abcABC123").unwrap()),
+            None,
+        );
+        assert_tokens(
+            &g1,
+            &[
+                Token::Struct { name: "RawGuideline", len: 6 },
+                Token::Str("x"),
+                Token::Some,
+                Token::F64(10.0),
+                Token::Str("y"),
+                Token::Some,
+                Token::F64(20.0),
+                Token::Str("angle"),
+                Token::Some,
+                Token::F64(360.0),
+                Token::Str("name"),
+                Token::Some,
+                Token::Str("hello"),
+                Token::Str("color"),
+                Token::Some,
+                Token::Str("0,0.5,0,0.5"),
+                Token::Str("identifier"),
+                Token::Some,
+                Token::Str("abcABC123"),
+                Token::StructEnd,
+            ],
+        );
+    }
+}

@@ -72,7 +72,7 @@ impl<'de> Deserialize<'de> for Color {
 mod tests {
     use serde_test::{assert_de_tokens, assert_ser_tokens, assert_tokens, Token};
 
-    use crate::{Color, Guideline, Identifier, Line};
+    use super::*;
 
     #[test]
     fn color_parsing() {
@@ -95,52 +95,5 @@ mod tests {
         #[allow(clippy::excessive_precision)]
         let c6 = Color { red: 0.123456789, green: 0.456789123, blue: 0.789123456, alpha: 0.1 };
         assert_de_tokens(&c6, &[Token::Str("0.123456789,0.456789123,0.789123456,0.1")]);
-    }
-
-    #[test]
-    fn identifier_parsing() {
-        let valid_chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
-        assert!(Identifier::new(valid_chars).is_ok());
-
-        let i2 = Identifier::new("0aAä");
-        assert!(i2.is_err());
-        let i3 = Identifier::new("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        assert!(i3.is_err());
-    }
-
-    #[test]
-    fn guideline_parsing() {
-        let g1 = Guideline::new(
-            Line::Angle { x: 10.0, y: 20.0, degrees: 360.0 },
-            Some("hello".to_string()),
-            Some(Color { red: 0.0, green: 0.5, blue: 0.0, alpha: 0.5 }),
-            Some(Identifier::new("abcABC123").unwrap()),
-            None,
-        );
-        assert_tokens(
-            &g1,
-            &[
-                Token::Struct { name: "RawGuideline", len: 6 },
-                Token::Str("x"),
-                Token::Some,
-                Token::F64(10.0),
-                Token::Str("y"),
-                Token::Some,
-                Token::F64(20.0),
-                Token::Str("angle"),
-                Token::Some,
-                Token::F64(360.0),
-                Token::Str("name"),
-                Token::Some,
-                Token::Str("hello"),
-                Token::Str("color"),
-                Token::Some,
-                Token::Str("0,0.5,0,0.5"),
-                Token::Str("identifier"),
-                Token::Some,
-                Token::Str("abcABC123"),
-                Token::StructEnd,
-            ],
-        );
     }
 }
