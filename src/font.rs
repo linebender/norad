@@ -404,9 +404,11 @@ impl Font {
     /// ufo.save_with_options("path/to/out-font4.ufo", &spaces_and_singlequotes);
     /// ```
     ///
-    /// Note: This may fail; instead of saving directly to the target path, it is a good
-    /// idea to save to a temporary location and then move that to the target path
-    /// if the save is successful.
+    /// Note: This may fail; It runs validation for groups, fontinfo and
+    /// data/images stores before overwriting anything, but glyph validation may
+    /// still fail later. Instead of saving directly to the target path, it is a
+    /// good idea to save to a temporary location and then move that to the
+    /// target path if the save is successful.
     ///
     /// This _will_ fail if either the global or any glyph lib contains the
     /// `public.objectLibs` key, as object lib management must currently be done
@@ -429,10 +431,21 @@ impl Font {
             return Err(FontWriteError::PreexistingPublicObjectLibsKey);
         }
 
-        // Load all data and images before potentially deleting it from disk.
-        for _ in self.data.iter() {}
-        for _ in self.images.iter() {}
+        // Run various validators before touching the file system.
+        validate_groups(&self.groups).map_err(FontWriteError::InvalidGroups)?;
+        self.font_info.validate().map_err(FontWriteError::InvalidFontInfo)?;
 
+        // Load all data and images before potentially deleting them from disk.
+        // Abandon ship if any of them is in an error state.
+        for (path, entry) in self.data.iter().chain(self.images.iter()) {
+            if let Err(source) = entry {
+                return Err(FontWriteError::InvalidStoreEntry { path: path.clone(), source });
+            };
+        }
+
+        // TODO: run glif validation up front?
+
+        // Now do the actual writing.
         if path.exists() {
             fs::remove_dir_all(path).map_err(FontWriteError::Cleanup)?;
         }
@@ -450,7 +463,6 @@ impl Font {
         }
 
         if !self.font_info.is_empty() {
-            self.font_info.validate().map_err(FontWriteError::InvalidFontInfo)?;
             write::write_xml_to_file(&path.join(FONTINFO_FILE), &self.font_info, options)
                 .map_err(|source| FontWriteError::CustomFile { name: FONTINFO_FILE, source })?;
         }
@@ -474,7 +486,6 @@ impl Font {
         }
 
         if !self.groups.is_empty() {
-            validate_groups(&self.groups).map_err(FontWriteError::InvalidGroups)?;
             write::write_xml_to_file(&path.join(GROUPS_FILE), &self.groups, options)
                 .map_err(|source| FontWriteError::CustomFile { name: GROUPS_FILE, source })?;
         }
@@ -513,26 +524,14 @@ impl Font {
         if !self.data.is_empty() {
             let data_dir = path.join(DATA_DIR);
             for (data_path, contents) in self.data.iter() {
-                match contents {
-                    Ok(data) => {
-                        let destination = data_dir.join(data_path);
-                        let destination_parent = destination.parent().unwrap();
-                        fs::create_dir_all(&destination_parent).map_err(|source| {
-                            FontWriteError::CreateStoreDir {
-                                path: destination_parent.into(),
-                                source,
-                            }
-                        })?;
-                        fs::write(&destination, &*data)
-                            .map_err(|source| FontWriteError::Data { path: destination, source })?;
-                    }
-                    Err(e) => {
-                        return Err(FontWriteError::InvalidStoreEntry {
-                            path: data_path.clone(),
-                            source: e,
-                        })
-                    }
-                }
+                let data = contents.expect("internal error: should have been checked");
+                let destination = data_dir.join(data_path);
+                let destination_parent = destination.parent().unwrap();
+                fs::create_dir_all(&destination_parent).map_err(|source| {
+                    FontWriteError::CreateStoreDir { path: destination_parent.into(), source }
+                })?;
+                fs::write(&destination, &*data)
+                    .map_err(|source| FontWriteError::Data { path: destination, source })?;
             }
         }
 
@@ -544,20 +543,10 @@ impl Font {
                     source,
                 })?;
             for (image_path, contents) in self.images.iter() {
-                match contents {
-                    Ok(data) => {
-                        let destination = images_dir.join(image_path);
-                        fs::write(&destination, &*data).map_err(|source| {
-                            FontWriteError::Image { path: destination, source }
-                        })?;
-                    }
-                    Err(e) => {
-                        return Err(FontWriteError::InvalidStoreEntry {
-                            path: image_path.clone(),
-                            source: e,
-                        })
-                    }
-                }
+                let data = contents.expect("internal error: should have been checked");
+                let destination = images_dir.join(image_path);
+                fs::write(&destination, &*data)
+                    .map_err(|source| FontWriteError::Image { path: destination, source })?;
             }
         }
 
