@@ -171,6 +171,8 @@ pub enum FontInfoErrorKind {
     InvalidOpenTypeHeadCreatedDate,
     /// The openTypeOS2FamilyClass had out of range values.
     InvalidOs2FamilyClass,
+    /// The openTypeOS2Panose field did not have exactly ten elements.
+    InvalidOs2Panose,
     /// A Postscript data list had more elements than the specification allows.
     InvalidPostscriptListLength {
         /// The name of the property.
@@ -184,47 +186,61 @@ pub enum FontInfoErrorKind {
     UnknownFontStyle(i32),
     /// Unrecognized UFO v1 msCharSet field.
     UnknownMsCharSet(i32),
+    /// Unrecognized styleMapStyleName.
+    UnknownStyleMapStyleName,
     /// Unrecognized openTypeOS2WidthClass.
     UnknownWidthClass(String),
+    /// Unrecognized WOFF writing direction.
+    UnknownWoffDirection,
     /// The openTypeGaspRangeRecords field was unsorted.
     UnsortedGaspEntries,
 }
 
 impl std::fmt::Display for FontInfoErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use FontInfoErrorKind::*;
         match self {
-            FontInfoErrorKind::DisallowedSelectionBits => {
+            DisallowedSelectionBits => {
                 write!(f, "openTypeOS2Selection must not contain bits 0, 5 or 6")
             }
-            FontInfoErrorKind::DuplicateGuidelineIdentifiers => {
+            DuplicateGuidelineIdentifiers => {
                 write!(f, "guideline identifiers must be unique within the fontinfo.plist file")
             }
-            FontInfoErrorKind::EmptyWoffAttribute(s) => {
+            EmptyWoffAttribute(s) => {
                 write!(f, "a '{}' element must not be empty", s)
             }
-            FontInfoErrorKind::InvalidOpenTypeHeadCreatedDate => {
+            InvalidOpenTypeHeadCreatedDate => {
                 write!(f, "openTypeHeadCreated must be of format 'YYYY/MM/DD HH:MM:SS'")
             }
-            FontInfoErrorKind::InvalidOs2FamilyClass => {
+            InvalidOs2FamilyClass => {
                 write!(f, "openTypeOS2FamilyClass must be two numbers in the range 0-14 and 0-15, respectively")
             }
-            FontInfoErrorKind::InvalidPostscriptListLength { name, max_len, len } => {
+            InvalidOs2Panose => {
+                write!(f, "openTypeOS2Panose must have exactly ten elements")
+            }
+            InvalidPostscriptListLength { name, max_len, len } => {
                 write!(
                     f,
                     "the Postscript field '{}' must contain at most {} items but found {}",
                     name, max_len, len
                 )
             }
-            FontInfoErrorKind::UnknownFontStyle(s) => {
+            UnknownFontStyle(s) => {
                 write!(f, "unrecognized fontStyle '{}'", s)
             }
-            FontInfoErrorKind::UnknownMsCharSet(c) => {
+            UnknownMsCharSet(c) => {
                 write!(f, "unrecognized msCharSet '{}'", c)
             }
-            FontInfoErrorKind::UnknownWidthClass(w) => {
+            UnknownStyleMapStyleName => {
+                write!(f, "unknown value for styleMapStyleName")
+            }
+            UnknownWidthClass(w) => {
                 write!(f, "unrecognized OS/2 width class '{}'", w)
             }
-            FontInfoErrorKind::UnsortedGaspEntries => {
+            UnknownWoffDirection => {
+                write!(f, "unknown value for the WOFF direction attribute")
+            }
+            UnsortedGaspEntries => {
                 write!(f, "openTypeGaspRangeRecords must be sorted by their rangeMaxPPEM values")
             }
         }
