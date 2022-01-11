@@ -64,7 +64,7 @@ impl<'de> Deserialize<'de> for Color {
         D: Deserializer<'de>,
     {
         let string = String::deserialize(deserializer)?;
-        Color::from_str(&string).map_err(|_| serde::de::Error::custom("Malformed color string."))
+        Color::from_str(&string).map_err(serde::de::Error::custom)
     }
 }
 

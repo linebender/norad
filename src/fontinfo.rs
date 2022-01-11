@@ -1104,10 +1104,7 @@ impl<'de> Deserialize<'de> for NonNegativeIntegerOrFloat {
         D: Deserializer<'de>,
     {
         let value: f64 = Deserialize::deserialize(deserializer)?;
-        match NonNegativeIntegerOrFloat::try_from(value) {
-            Ok(v) => Ok(v),
-            Err(_) => Err(serde::de::Error::custom("Value must be positive.")),
-        }
+        NonNegativeIntegerOrFloat::try_from(value).map_err(serde::de::Error::custom)
     }
 }
 
@@ -1260,9 +1257,7 @@ impl<'de> Deserialize<'de> for Os2FamilyClass {
     {
         let values: Vec<u8> = Deserialize::deserialize(deserializer)?;
         if values.len() != 2 {
-            return Err(serde::de::Error::custom(
-                "openTypeOS2FamilyClass must have exactly two elements.",
-            ));
+            return Err(serde::de::Error::custom(FontInfoErrorKind::InvalidOs2FamilyClass));
         }
 
         Ok(Os2FamilyClass { class_id: values[0], subclass_id: values[1] })
@@ -1321,9 +1316,7 @@ impl<'de> Deserialize<'de> for Os2Panose {
     {
         let values: Vec<NonNegativeInteger> = Deserialize::deserialize(deserializer)?;
         if values.len() != 10 {
-            return Err(serde::de::Error::custom(
-                "openTypeOS2Panose must have exactly ten elements.",
-            ));
+            return Err(serde::de::Error::custom(FontInfoErrorKind::InvalidOs2Panose));
         }
 
         Ok(Os2Panose {
@@ -1381,9 +1374,7 @@ impl<'de> Deserialize<'de> for Os2PanoseV2 {
     {
         let values: Vec<Integer> = Deserialize::deserialize(deserializer)?;
         if values.len() != 10 {
-            return Err(serde::de::Error::custom(
-                "openTypeOS2Panose must have exactly ten elements.",
-            ));
+            return Err(serde::de::Error::custom(FontInfoErrorKind::InvalidOs2Panose));
         }
 
         Ok(Os2PanoseV2 {
@@ -1626,7 +1617,7 @@ impl<'de> Deserialize<'de> for WoffAttributeDirection {
         match string.as_ref() {
             "ltr" => Ok(WoffAttributeDirection::LeftToRight),
             "rtl" => Ok(WoffAttributeDirection::RightToLeft),
-            _ => Err(serde::de::Error::custom("unknown value for the WOFF direction attribute.")),
+            _ => Err(serde::de::Error::custom(FontInfoErrorKind::UnknownWoffDirection)),
         }
     }
 }
@@ -1670,7 +1661,7 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
             "italic" => Ok(StyleMapStyle::Italic),
             "bold" => Ok(StyleMapStyle::Bold),
             "bold italic" => Ok(StyleMapStyle::BoldItalic),
-            _ => Err(serde::de::Error::custom("unknown value for styleMapStyleName.")),
+            _ => Err(serde::de::Error::custom(FontInfoErrorKind::UnknownStyleMapStyleName)),
         }
     }
 }
