@@ -14,7 +14,7 @@ use crate::error::ConvertContourError;
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
 
-use crate::error::{ErrorKind, GlifLoadError, GlifWriteError};
+use crate::error::{ErrorKind, GlifLoadError, GlifWriteError, StoreError};
 use crate::name::Name;
 use crate::names::NameList;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
@@ -735,11 +735,37 @@ impl std::default::Default for AffineTransform {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Image {
     /// The name of the image file. Must be a base file name, no subdirectories involved.
-    pub file_name: PathBuf,
+    file_name: PathBuf,
     /// Optional image color.
     pub color: Option<Color>,
     /// Affine transformation.
     pub transform: AffineTransform,
+}
+
+impl Image {
+    /// Create a new image.
+    pub fn new(
+        file_name: PathBuf,
+        color: Option<Color>,
+        transform: AffineTransform,
+    ) -> Result<Self, StoreError> {
+        // Note: Mostly mirrors [`Self::validate_entry`].
+        if file_name.as_os_str().is_empty() {
+            return Err(StoreError::EmptyPath);
+        }
+        if file_name.is_absolute() {
+            return Err(StoreError::PathIsAbsolute);
+        }
+        if file_name.parent().map_or(false, |p| !p.as_os_str().is_empty()) {
+            return Err(StoreError::Subdir);
+        }
+        Ok(Self { file_name, color, transform })
+    }
+
+    /// Returns the file name of the image.
+    pub fn file_name(&self) -> &Path {
+        self.file_name.as_path()
+    }
 }
 
 #[cfg(feature = "kurbo")]

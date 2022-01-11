@@ -347,7 +347,7 @@ impl Color {
 impl Image {
     fn to_event(&self) -> Event {
         let mut start = BytesStart::borrowed_name(b"image");
-        start.push_attribute(("fileName", self.file_name.to_str().unwrap_or("missing path")));
+        start.push_attribute(("fileName", self.file_name.to_str().expect("missing path")));
 
         write_transform_attributes(&mut start, &self.transform);
 

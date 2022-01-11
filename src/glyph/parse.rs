@@ -552,7 +552,10 @@ impl<'names> GlifParser<'names> {
 
         match filename {
             Some(file_name) => {
-                self.glyph.image = Some(Image { file_name, color, transform });
+                self.glyph.image = Some(
+                    Image::new(file_name, color, transform)
+                        .map_err(|_| GlifLoadError::Parse(ErrorKind::BadImage))?,
+                );
                 Ok(())
             }
             None => Err(ErrorKind::BadImage.into()),
