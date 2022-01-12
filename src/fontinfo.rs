@@ -1733,7 +1733,7 @@ mod tests {
                 Guideline::new(
                     Line::Angle { x: 1.0, y: 2.0, degrees: 0.0 },
                     Some(" [locked]".to_string()),
-                    Some(Color { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }),
+                    Some(Color::new(1.0, 1.0, 1.0, 1.0).unwrap()),
                     Some(Identifier::new("abc").unwrap()),
                     None
                 ),

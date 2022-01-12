@@ -807,18 +807,20 @@ impl From<druid::piet::Color> for Color {
         let a = (rgba & 0xff) as f64 / 255.0;
         assert!((0.0..=1.0).contains(&b), "b: {}, raw {}", b, (rgba & (0xff << 8)));
 
-        Color {
-            red: r.max(0.0).min(1.0),
-            green: g.max(0.0).min(1.0),
-            blue: b.max(0.0).min(1.0),
-            alpha: a.max(0.0).min(1.0),
-        }
+        Color::new(
+            r.max(0.0).min(1.0),
+            g.max(0.0).min(1.0),
+            b.max(0.0).min(1.0),
+            a.max(0.0).min(1.0),
+        )
+        .unwrap()
     }
 }
 
 #[cfg(feature = "druid")]
 impl From<Color> for druid::piet::Color {
     fn from(src: Color) -> druid::piet::Color {
-        druid::piet::Color::rgba(src.red, src.green, src.blue, src.alpha)
+        let (red, green, blue, alpha) = src.channels();
+        druid::piet::Color::rgba(red, green, blue, alpha)
     }
 }

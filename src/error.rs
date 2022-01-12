@@ -7,6 +7,7 @@ use plist::Error as PlistError;
 use quick_xml::Error as XmlError;
 use thiserror::Error;
 
+pub use crate::shared_types::ColorError;
 use crate::write::CustomSerializationError;
 
 /// An error representing a failure to (re)name something.
@@ -306,22 +307,6 @@ pub enum GroupsValidationError {
         /// The group name.
         group_name: String,
     },
-}
-
-/// An error representing an invalid [`Color`] string.
-///
-/// [`Color`]: crate::Color
-#[derive(Debug, Error)]
-#[error("invalid color string '{string}'")]
-pub struct InvalidColorString {
-    /// The source string that caused the error.
-    string: String,
-}
-
-impl InvalidColorString {
-    pub(crate) fn new(source: String) -> Self {
-        InvalidColorString { string: source }
-    }
 }
 
 /// An error returned when there is an inappropriate negative sign on a value.

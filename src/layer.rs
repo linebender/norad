@@ -573,10 +573,7 @@ mod tests {
         let layer_path = "testdata/MutatorSansLightWide.ufo/glyphs";
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
         let layer = Layer::load(layer_path, DEFAULT_LAYER_NAME).unwrap();
-        assert_eq!(
-            layer.color.as_ref().unwrap(),
-            &Color { red: 1.0, green: 0.75, blue: 0.0, alpha: 0.7 }
-        );
+        assert_eq!(layer.color.as_ref().unwrap(), &Color::new(1.0, 0.75, 0.0, 0.7).unwrap());
         assert_eq!(
             layer.lib.get("com.typemytype.robofont.segmentType").unwrap().as_string().unwrap(),
             "curve"
@@ -593,7 +590,7 @@ mod tests {
         assert!(Path::new(layer_path).exists(), "missing test data. Did you `git submodule init`?");
         let mut layer = Layer::load(layer_path, DEFAULT_LAYER_NAME).unwrap();
 
-        layer.color.replace(Color { red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5 });
+        layer.color.replace(Color::new(0.5, 0.5, 0.5, 0.5).unwrap());
         layer.lib.insert(
             "com.typemytype.robofont.segmentType".into(),
             plist::Value::String("test".into()),
@@ -604,10 +601,7 @@ mod tests {
         layer.save(&dir).unwrap();
         let layer2 = Layer::load(&dir, DEFAULT_LAYER_NAME).unwrap();
 
-        assert_eq!(
-            layer2.color.as_ref().unwrap(),
-            &Color { red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5 }
-        );
+        assert_eq!(layer2.color.as_ref().unwrap(), &Color::new(0.5, 0.5, 0.5, 0.5).unwrap());
         assert_eq!(
             layer2.lib.get("com.typemytype.robofont.segmentType").unwrap().as_string().unwrap(),
             "test"
