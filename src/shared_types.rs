@@ -29,7 +29,9 @@ pub struct Color {
 }
 
 impl Color {
-    /// Create a new color.
+    /// Create a color with RGBA values in the range `0..=1.0`.
+    ///
+    /// Returns an error if any of the provided values are not in the allowed range.
     pub fn new(red: f64, green: f64, blue: f64, alpha: f64) -> Result<Self, ColorError> {
         if [red, green, blue, alpha].iter().all(|v| (0.0..=1.0).contains(v)) {
             Ok(Self { red, green, blue, alpha })
