@@ -183,6 +183,8 @@ pub enum FontInfoErrorKind {
         /// The found number of elements.
         len: usize,
     },
+    /// A Postscript data list must contain pairs.
+    PostscriptListMustBePairs(&'static str),
     /// Unrecognized UFO v1 fontStyle field.
     UnknownFontStyle(i32),
     /// Unrecognized UFO v1 msCharSet field.
@@ -225,6 +227,9 @@ impl std::fmt::Display for FontInfoErrorKind {
                     "the Postscript field '{}' must contain at most {} items but found {}",
                     name, max_len, len
                 )
+            }
+            PostscriptListMustBePairs(name) => {
+                write!(f, "the Postscript field '{}' must contain pairs", name)
             }
             UnknownFontStyle(s) => {
                 write!(f, "unrecognized fontStyle '{}'", s)

@@ -888,39 +888,55 @@ impl FontInfo {
 
         // The Postscript blue zone and stem widths lists have a length limitation.
         if let Some(v) = &self.postscript_blue_values {
+            let name = "postscriptBlueValues";
             if v.len() > 14 {
                 return Err(FontInfoErrorKind::InvalidPostscriptListLength {
-                    name: "postscriptBlueValues",
+                    name,
                     max_len: 14,
                     len: v.len(),
                 });
+            }
+            if v.len() % 2 != 0 {
+                return Err(FontInfoErrorKind::PostscriptListMustBePairs(name));
             }
         }
         if let Some(v) = &self.postscript_other_blues {
+            let name = "postscriptOtherBlues";
             if v.len() > 10 {
                 return Err(FontInfoErrorKind::InvalidPostscriptListLength {
-                    name: "postscriptOtherBlues",
+                    name,
                     max_len: 10,
                     len: v.len(),
                 });
             }
+            if v.len() % 2 != 0 {
+                return Err(FontInfoErrorKind::PostscriptListMustBePairs(name));
+            }
         }
         if let Some(v) = &self.postscript_family_blues {
+            let name = "postscriptFamilyBlues";
             if v.len() > 14 {
                 return Err(FontInfoErrorKind::InvalidPostscriptListLength {
-                    name: "postscriptFamilyBlues",
+                    name,
                     max_len: 14,
                     len: v.len(),
                 });
             }
+            if v.len() % 2 != 0 {
+                return Err(FontInfoErrorKind::PostscriptListMustBePairs(name));
+            }
         }
         if let Some(v) = &self.postscript_family_other_blues {
+            let name = "postscriptFamilyOtherBlues";
             if v.len() > 10 {
                 return Err(FontInfoErrorKind::InvalidPostscriptListLength {
-                    name: "postscriptFamilyOtherBlues",
+                    name,
                     max_len: 10,
                     len: v.len(),
                 });
+            }
+            if v.len() % 2 != 0 {
+                return Err(FontInfoErrorKind::PostscriptListMustBePairs(name));
             }
         }
         if let Some(v) = &self.postscript_stem_snap_h {
@@ -1927,5 +1943,89 @@ mod tests {
     fn test_positive_int_or_float() {
         assert!(NonNegativeIntegerOrFloat::try_from(-1.0).is_err());
         assert!(NonNegativeIntegerOrFloat::try_from(1.0).is_ok());
+    }
+
+    #[test]
+    fn test_postscript_blue_values_pairs() {
+        let mut fi = FontInfo {
+            postscript_blue_values: Some(vec![1.0, 2.0, 3.0, 4.0]),
+            ..Default::default()
+        };
+        assert!(fi.validate().is_ok());
+        fi.postscript_blue_values = Some(vec![]);
+        assert!(fi.validate().is_ok());
+        fi.postscript_blue_values = Some(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
+        assert!(matches!(fi.validate(), Err(FontInfoErrorKind::PostscriptListMustBePairs(_))));
+    }
+
+    #[test]
+    fn test_postscript_other_blues_pairs() {
+        let mut fi = FontInfo {
+            postscript_other_blues: Some(vec![1.0, 2.0, 3.0, 4.0]),
+            ..Default::default()
+        };
+        assert!(fi.validate().is_ok());
+        fi.postscript_other_blues = Some(vec![]);
+        assert!(fi.validate().is_ok());
+        fi.postscript_other_blues = Some(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
+        assert!(matches!(fi.validate(), Err(FontInfoErrorKind::PostscriptListMustBePairs(_))));
+    }
+
+    #[test]
+    fn test_postscript_family_blues_pairs() {
+        let mut fi = FontInfo {
+            postscript_family_blues: Some(vec![1.0, 2.0, 3.0, 4.0]),
+            ..Default::default()
+        };
+        assert!(fi.validate().is_ok());
+        fi.postscript_family_blues = Some(vec![]);
+        assert!(fi.validate().is_ok());
+        fi.postscript_family_blues = Some(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
+        assert!(matches!(fi.validate(), Err(FontInfoErrorKind::PostscriptListMustBePairs(_))));
+    }
+
+    #[test]
+    fn test_postscript_family_other_blues_pairs() {
+        let mut fi = FontInfo {
+            postscript_family_other_blues: Some(vec![1.0, 2.0, 3.0, 4.0]),
+            ..Default::default()
+        };
+        assert!(fi.validate().is_ok());
+        fi.postscript_family_other_blues = Some(vec![]);
+        assert!(fi.validate().is_ok());
+        fi.postscript_family_other_blues = Some(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
+        assert!(matches!(fi.validate(), Err(FontInfoErrorKind::PostscriptListMustBePairs(_))));
+    }
+
+    #[test]
+    fn test_postscript_stem_snap_h_length() {
+        let mut fi =
+            FontInfo { postscript_stem_snap_h: Some([0.0; 11].into()), ..Default::default() };
+        assert!(fi.validate().is_ok());
+        fi.postscript_stem_snap_h = Some(vec![]);
+        assert!(fi.validate().is_ok());
+        fi.postscript_stem_snap_h = Some([0.0; 12].into());
+        assert!(fi.validate().is_ok());
+        fi.postscript_stem_snap_h = Some([0.0; 13].into());
+        assert!(matches!(
+            fi.validate(),
+            Err(FontInfoErrorKind::InvalidPostscriptListLength { name: _, max_len: _, len: _ })
+        ));
+    }
+
+    #[test]
+    fn test_postscript_stem_snap_v_length() {
+        let mut fi =
+            FontInfo { postscript_stem_snap_v: Some([0.0; 11].into()), ..Default::default() };
+        assert!(fi.validate().is_ok());
+        fi.postscript_stem_snap_v = Some(vec![]);
+        assert!(fi.validate().is_ok());
+        fi.postscript_stem_snap_v = Some([0.0; 12].into());
+        assert!(fi.validate().is_ok());
+        fi.postscript_stem_snap_v = Some([0.0; 13].into());
+        assert!(matches!(
+            fi.validate(),
+            Err(FontInfoErrorKind::InvalidPostscriptListLength { name: _, max_len: _, len: _ })
+        ));
     }
 }
