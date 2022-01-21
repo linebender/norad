@@ -45,9 +45,13 @@ impl Name {
 
 fn is_valid(name: &str) -> bool {
     !(name.is_empty()
-        || name
-            .bytes()
-            .any(|b| (0x0..=0x1f).contains(&b) || (0x80..=0x9f).contains(&b) || b == 0x7f))
+        // Important: check the chars(), not the bytes(), as UTF-8 encoding
+        // bytes of course contain control characters.
+        || name.chars().any(|b| {
+            (0x0..=0x1f).contains(&(b as u32))
+                || (0x80..=0x9f).contains(&(b as u32))
+                || b as u32 == 0x7f
+        }))
 }
 
 impl AsRef<str> for Name {
@@ -111,6 +115,7 @@ mod tests {
     fn assert_eq_str() {
         assert_eq!(Name::new_raw("hi"), "hi");
         assert_eq!("hi", Name::new_raw("hi"));
+        assert_eq!("hi 💖", Name::new_raw("hi 💖"));
         assert_eq!(vec![Name::new_raw("a"), Name::new_raw("b")], vec!["a", "b"]);
         assert_eq!(vec!["a", "b"], vec![Name::new_raw("a"), Name::new_raw("b")]);
     }
