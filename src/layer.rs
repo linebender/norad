@@ -100,13 +100,20 @@ impl LayerSet {
     ///
     /// # Panics
     ///
-    /// panics if `name` is empty or if it contains any [control characters].
+    /// panics if
+    /// 1. `name` is empty or if it contains any [control characters].
+    /// 2. `name` is the default layer name but the default layer has a
+    ///    different name. Use [`Self::default_layer`] or
+    ///    [`Self::default_layer_mut`] instead.
     ///
     /// [control characters]: https://unifiedfontobject.org/versions/ufo3/conventions/#controls
     pub fn get_or_create(&mut self, name: &str) -> &mut Layer {
         if let Some(index) = self.layers.iter().position(|l| l.name == name) {
             self.layers.get_mut(index).unwrap()
         } else {
+            if name == DEFAULT_LAYER_NAME {
+                panic!("cannot create new layer because 'public.default' is a reserved name, use `default_layer()` to get the default layer")
+            }
             let layer = Layer::new(name, None).unwrap();
             self.layers.push(layer);
             self.layers.last_mut().unwrap()
@@ -137,7 +144,9 @@ impl LayerSet {
 
     /// Returns a new layer with the given name.
     pub fn new_layer(&mut self, name: &str) -> Result<&mut Layer, NamingError> {
-        if self.layers.iter().any(|l| l.name == name) {
+        if name == DEFAULT_LAYER_NAME {
+            Err(NamingError::ReservedName)
+        } else if self.layers.iter().any(|l| l.name == name) {
             Err(NamingError::Duplicate(name.to_string()))
         } else {
             let layer = Layer::new(name, None)?;
@@ -175,17 +184,29 @@ impl LayerSet {
             Err(NamingError::Duplicate(new.to_string()))
         } else if self.get(old).is_none() {
             Err(NamingError::Missing(old.into()))
+        } else if new == DEFAULT_LAYER_NAME && self.layers[0].name != old {
+            Err(NamingError::ReservedName)
         } else {
-            match Name::new(new) {
-                Ok(name) => {
-                    if overwrite {
-                        self.layers.retain(|l| l.name != name)
-                    }
-                    self.get_mut(old).unwrap().name = name;
-                    Ok(())
-                }
-                Err(_) => Err(NamingError::Invalid(new.into())),
+            let name = Name::new(new)?;
+            if overwrite {
+                self.remove(&name);
             }
+
+            // Dance around the borrow checker by using indices instead of references.
+            let layer_pos = self.layers.iter().position(|l| l.name.as_ref() == old).unwrap();
+
+            if layer_pos == 0 {
+                // Default layer: just change the name.
+                let layer = &mut self.layers[layer_pos];
+                layer.name = name;
+            } else {
+                // Non-default layer: change name and path.
+                let layer = &mut self.layers[layer_pos];
+                layer.path = crate::util::default_file_name_for_layer_name(&name).into();
+                layer.name = name;
+            }
+
+            Ok(())
         }
     }
 }
@@ -676,5 +697,108 @@ mod tests {
                 .collect::<Vec<String>>(),
             vec!["A".to_string()]
         );
+    }
+
+    #[test]
+    fn rename_layer() {
+        let mut layer_set = LayerSet::default();
+
+        // Non-default layers can be renamed and get a new path.
+        layer_set.new_layer("aaa").unwrap();
+        assert_eq!(layer_set.get("aaa").unwrap().path().as_os_str(), "glyphs.aaa");
+
+        layer_set.rename_layer("aaa", "bbb", false).unwrap();
+        assert_eq!(layer_set.get("bbb").unwrap().path().as_os_str(), "glyphs.bbb");
+
+        layer_set.rename_layer("bbb", "aaa", false).unwrap();
+        assert_eq!(layer_set.get("aaa").unwrap().path().as_os_str(), "glyphs.aaa");
+    }
+
+    #[test]
+    fn rename_layer_overwrite() {
+        let mut layer_set = LayerSet::default();
+
+        // Non-default layers can be renamed and get a new path.
+        layer_set.new_layer("aaa").unwrap();
+        layer_set.new_layer("bbb").unwrap();
+        assert_eq!(layer_set.get("aaa").unwrap().path().as_os_str(), "glyphs.aaa");
+        assert_eq!(layer_set.get("bbb").unwrap().path().as_os_str(), "glyphs.bbb");
+
+        layer_set.rename_layer("aaa", "bbb", true).unwrap();
+        assert!(layer_set.get("aaa").is_none());
+        assert_eq!(layer_set.get("bbb").unwrap().path().as_os_str(), "glyphs.bbb");
+
+        layer_set.rename_layer("bbb", "aaa", false).unwrap();
+        assert_eq!(layer_set.get("aaa").unwrap().path().as_os_str(), "glyphs.aaa");
+        assert!(layer_set.get("bbb").is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "Reserved")]
+    fn rename_layer_nondefault_default() {
+        let mut layer_set = LayerSet::default();
+
+        layer_set.rename_layer("public.default", "foreground", false).unwrap();
+
+        // "public.default" is the reserved name for the actual default layer.
+        layer_set.new_layer("aaa").unwrap();
+        layer_set.rename_layer("aaa", "public.default", true).unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "reserved")]
+    fn get_or_create_false_default_layer() {
+        let mut layer_set = LayerSet::default();
+        layer_set.rename_layer("public.default", "foreground", false).unwrap();
+        layer_set.get_or_create("public.default");
+    }
+
+    #[test]
+    fn rename_default_layer() {
+        let mut layer_set = LayerSet::default();
+
+        // The default layer can be renamed but the path stays the same.
+        layer_set.rename_layer("public.default", "aaa", false).unwrap();
+
+        assert_eq!(*layer_set.default_layer().name(), "aaa");
+        assert_eq!(layer_set.default_layer().path().as_os_str(), "glyphs");
+
+        // Renaming back must work.
+        layer_set.rename_layer("aaa", "public.default", false).unwrap();
+
+        assert_eq!(*layer_set.default_layer().name(), "public.default");
+        assert_eq!(layer_set.default_layer().path().as_os_str(), "glyphs");
+
+        layer_set.rename_layer("public.default", "aaa", false).unwrap();
+
+        assert_eq!(*layer_set.default_layer().name(), "aaa");
+        assert_eq!(layer_set.default_layer().path().as_os_str(), "glyphs");
+    }
+
+    #[test]
+    fn rename_default_layer_overwrite() {
+        let mut layer_set = LayerSet::default();
+
+        // The default layer can be renamed but the path stays the same.
+        layer_set.new_layer("aaa").unwrap();
+        layer_set.rename_layer("public.default", "aaa", true).unwrap();
+
+        assert_eq!(*layer_set.default_layer().name(), "aaa");
+        assert_eq!(layer_set.default_layer().path().as_os_str(), "glyphs");
+        assert!(layer_set.get("public.default").is_none());
+
+        // Renaming back must work.
+        layer_set.rename_layer("aaa", "public.default", true).unwrap();
+
+        assert_eq!(*layer_set.default_layer().name(), "public.default");
+        assert_eq!(layer_set.default_layer().path().as_os_str(), "glyphs");
+        assert!(layer_set.get("aaa").is_none());
+
+        layer_set.new_layer("aaa").unwrap();
+        layer_set.rename_layer("public.default", "aaa", true).unwrap();
+
+        assert_eq!(*layer_set.default_layer().name(), "aaa");
+        assert_eq!(layer_set.default_layer().path().as_os_str(), "glyphs");
+        assert!(layer_set.get("public.default").is_none());
     }
 }
