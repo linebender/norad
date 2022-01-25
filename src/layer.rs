@@ -195,16 +195,12 @@ impl LayerSet {
             // Dance around the borrow checker by using indices instead of references.
             let layer_pos = self.layers.iter().position(|l| l.name.as_ref() == old).unwrap();
 
-            if layer_pos == 0 {
-                // Default layer: just change the name.
-                let layer = &mut self.layers[layer_pos];
-                layer.name = name;
-            } else {
-                // Non-default layer: change name and path.
-                let layer = &mut self.layers[layer_pos];
+            // Default layer: just change the name. Non-default layer: change name and path.
+            let layer = &mut self.layers[layer_pos];
+            if layer_pos != 0 {
                 layer.path = crate::util::default_file_name_for_layer_name(&name).into();
-                layer.name = name;
             }
+            layer.name = name;
 
             Ok(())
         }
