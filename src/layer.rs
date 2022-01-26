@@ -96,30 +96,6 @@ impl LayerSet {
         self.layers.iter_mut().find(|l| &*l.name == name)
     }
 
-    /// Returns a mutable reference to a layer, by name, creating it if it doesn't exist.
-    ///
-    /// # Panics
-    ///
-    /// panics if
-    /// 1. `name` is empty or if it contains any [control characters].
-    /// 2. `name` is the default layer name but the default layer has a
-    ///    different name. Use [`Self::default_layer`] or
-    ///    [`Self::default_layer_mut`] instead.
-    ///
-    /// [control characters]: https://unifiedfontobject.org/versions/ufo3/conventions/#controls
-    pub fn get_or_create(&mut self, name: &str) -> &mut Layer {
-        if let Some(index) = self.layers.iter().position(|l| l.name == name) {
-            self.layers.get_mut(index).unwrap()
-        } else {
-            if name == DEFAULT_LAYER_NAME {
-                panic!("cannot create new layer because 'public.default' is a reserved name, use `default_layer()` to get the default layer")
-            }
-            let layer = Layer::new(name, None).unwrap();
-            self.layers.push(layer);
-            self.layers.last_mut().unwrap()
-        }
-    }
-
     /// Returns a reference to the default layer.
     pub fn default_layer(&self) -> &Layer {
         debug_assert!(self.layers[0].path() == Path::new(DEFAULT_GLYPHS_DIRNAME));
@@ -670,15 +646,15 @@ mod tests {
     fn layer_creation() {
         let mut ufo = crate::Font::load("testdata/MutatorSansLightWide.ufo").unwrap();
 
-        let default_layer = ufo.layers.get_or_create("foreground");
+        let default_layer = ufo.layers.get_mut("foreground").unwrap();
         assert!(!default_layer.is_empty());
         default_layer.clear();
 
-        let background_layer = ufo.layers.get_or_create("background");
+        let background_layer = ufo.layers.get_mut("background").unwrap();
         assert!(!background_layer.is_empty());
         background_layer.clear();
 
-        let misc_layer = ufo.layers.get_or_create("misc");
+        let misc_layer = ufo.layers.new_layer("misc").unwrap();
         assert!(misc_layer.is_empty());
         misc_layer.insert_glyph(Glyph::new_named("A"));
 
@@ -741,14 +717,6 @@ mod tests {
         // "public.default" is the reserved name for the actual default layer.
         layer_set.new_layer("aaa").unwrap();
         layer_set.rename_layer("aaa", "public.default", true).unwrap();
-    }
-
-    #[test]
-    #[should_panic(expected = "reserved")]
-    fn get_or_create_false_default_layer() {
-        let mut layer_set = LayerSet::default();
-        layer_set.rename_layer("public.default", "foreground", false).unwrap();
-        layer_set.get_or_create("public.default");
     }
 
     #[test]
