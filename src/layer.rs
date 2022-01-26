@@ -704,10 +704,12 @@ mod tests {
         assert_eq!(layer_set.get("aaa").unwrap().path().as_os_str(), "glyphs.aaa");
 
         layer_set.rename_layer("aaa", "bbb", false).unwrap();
+        assert!(layer_set.get("aaa").is_none());
         assert_eq!(layer_set.get("bbb").unwrap().path().as_os_str(), "glyphs.bbb");
 
         layer_set.rename_layer("bbb", "aaa", false).unwrap();
         assert_eq!(layer_set.get("aaa").unwrap().path().as_os_str(), "glyphs.aaa");
+        assert!(layer_set.get("bbb").is_none());
     }
 
     #[test]
