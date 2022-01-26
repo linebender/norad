@@ -24,6 +24,9 @@ pub enum NamingError {
     /// [control characters]: https://unifiedfontobject.org/versions/ufo3/conventions/#controls
     #[error("'{0}' is not a valid name")]
     Invalid(String),
+    /// An error returned when the name "public.default" is used for a non-default layer.
+    #[error("only the default layer may be named 'public.default'")]
+    ReservedName,
 }
 
 /// An error that occurs while attempting to read a .glif file from disk.
