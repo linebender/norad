@@ -36,7 +36,7 @@ pub(crate) fn default_file_name_for_layer_name(name: &Name, existing: &HashSet<S
 /// # Panics
 ///
 /// Panics if a case-insensitive file name clash was detected and no unique
-/// value could be created after 1_000_000_000_000_000 numbering attempts.
+/// value could be created after 99 numbering attempts.
 fn user_name_to_file_name(
     name: &Name,
     prefix: &str,
@@ -126,13 +126,15 @@ fn user_name_to_file_name(
 
     result.push_str(suffix);
 
-    // Test for clashes. Use a counter with 15 digits to look for a name not yet
-    // taken. The UFO specification lists a second way, should one exhaust the
-    // 15 digits, but it is unlikely to be needed in practice.
+    // Test for clashes. Use a counter with 2 digits to look for a name not yet
+    // taken. The UFO specification recommends using 15 digits and lists a
+    // second way should one exhaust them, but it is unlikely to be needed in
+    // practice. 1e15 numbers is a ridicuously high number where holding all
+    // those glyph names in memory would exhaust it.
     if existing.contains(&result.to_lowercase()) {
         // First, cut off the suffix (plus the space needed for the number
         // counter if necessary).
-        const NUMBER_LEN: usize = 15;
+        const NUMBER_LEN: usize = 2;
         if result.len().saturating_sub(suffix.len()).saturating_add(NUMBER_LEN) > MAX_LEN {
             let mut boundary = MAX_LEN.saturating_sub(suffix.len()).saturating_sub(NUMBER_LEN);
             while !result.is_char_boundary(boundary) {
@@ -145,8 +147,8 @@ fn user_name_to_file_name(
         }
 
         let mut found_unique = false;
-        for counter in 1..1_000_000_000_000_000u64 {
-            result.push_str(&format!("{:0>15}", counter));
+        for counter in 1..100u8 {
+            result.push_str(&format!("{:0>2}", counter));
             result.push_str(suffix);
             if !existing.contains(&result.to_lowercase()) {
                 found_unique = true;
@@ -155,7 +157,8 @@ fn user_name_to_file_name(
             result.truncate(result.len().saturating_sub(suffix.len()) - NUMBER_LEN);
         }
         if !found_unique {
-            panic!("Could not find a unique file name after 1_000_000_000_000_000 tries")
+            // Note: if this is ever hit, try appending a UUIDv4 before panicing.
+            panic!("Could not find a unique file name after 99 tries")
         }
     }
 
@@ -280,7 +283,7 @@ mod tests {
 
         let mut container_expected = HashSet::new();
         container_expected.insert("A_b.glif".to_string());
-        container_expected.insert("a_b000000000000001.glif".to_string());
+        container_expected.insert("a_b01.glif".to_string());
 
         assert_eq!(container, container_expected);
     }
@@ -297,7 +300,7 @@ mod tests {
 
         let mut container_expected = HashSet::new();
         container_expected.insert(format!("{}.glif", "A_".repeat(125)));
-        container_expected.insert(format!("{}a000000000000001.glif", "a_".repeat(117)));
+        container_expected.insert(format!("{}01.glif", "a_".repeat(125)));
 
         assert_eq!(container, container_expected);
     }

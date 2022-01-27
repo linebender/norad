@@ -799,7 +799,7 @@ mod tests {
         assert_eq!(layer_set.get("Ab").unwrap().path().as_os_str(), "glyphs.A_b");
 
         layer_set.new_layer("a_b").unwrap();
-        assert_eq!(layer_set.get("a_b").unwrap().path().as_os_str(), "glyphs.a_b000000000000001");
+        assert_eq!(layer_set.get("a_b").unwrap().path().as_os_str(), "glyphs.a_b01");
 
         layer_set.remove("Ab");
         layer_set.new_layer("Ab").unwrap();
@@ -814,7 +814,7 @@ mod tests {
         assert_eq!(layer.contents.get("Ab").unwrap().as_os_str(), "A_b.glif");
 
         layer.insert_glyph(Glyph::new_named("a_b"));
-        assert_eq!(layer.contents.get("a_b").unwrap().as_os_str(), "a_b000000000000001.glif");
+        assert_eq!(layer.contents.get("a_b").unwrap().as_os_str(), "a_b01.glif");
 
         layer.remove_glyph("Ab");
         layer.insert_glyph(Glyph::new_named("Ab"));
