@@ -73,15 +73,6 @@ impl LayerSet {
         Ok(LayerSet { layers, path_set: HashSet::new() })
     }
 
-    /// Returns a new [`LayerSet`] from a `layers` collection.
-    ///
-    /// Will panic if `layers` is empty.
-    pub fn new(mut layers: Vec<Layer>) -> Self {
-        assert!(!layers.is_empty());
-        layers.first_mut().unwrap().path = DEFAULT_GLYPHS_DIRNAME.into();
-        LayerSet { layers, path_set: HashSet::new() }
-    }
-
     /// Returns the number of layers in the set.
     ///
     /// This is always non-zero.
