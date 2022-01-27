@@ -55,11 +55,15 @@ fn user_name_to_file_name(
         !prefix.chars().any(|c| SPECIAL_ILLEGAL.contains(&c)),
         "prefix must not contain illegal chars"
     );
-    debug_assert!(!suffix.ends_with(['.', ' ']), "suffix must not end in period or space");
+    debug_assert!(
+        suffix.is_empty() || suffix.starts_with('.'),
+        "suffix must be empty or start with a period"
+    );
     debug_assert!(
         !suffix.chars().any(|c| SPECIAL_ILLEGAL.contains(&c)),
         "suffix must not contain illegal chars"
     );
+    debug_assert!(!suffix.ends_with(['.', ' ']), "suffix must not end in period or space");
 
     result.push_str(prefix);
     for c in name.chars() {
@@ -76,6 +80,27 @@ fn user_name_to_file_name(
             }
             // Append the rest unchanged.
             c => result.push(c),
+        }
+    }
+
+    // Test for reserved names and parts. The relevant part is the prefix + name
+    // (or "stem") of the file, so e.g. "com1.glif" would be replaced by
+    // "_com1.glif", but "hello.com1.glif", "com10.glif" and "acom1.glif" stay
+    // as they are. For algorithmic simplicity, ignore the presence of the
+    // suffix and potentially replace more than we strictly need to.
+    //
+    // List taken from
+    // <https://docs.microsoft.com/en-gb/windows/win32/fileio/naming-a-file#naming-conventions>.
+    static SPECIAL_RESERVED: &[&str] = &[
+        "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
+        "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+    ];
+    if let Some(stem) = result.split('.').next() {
+        // At this stage, we only need to look for lowercase matches, as every
+        // uppercase letter will be followed by an underscore, automatically
+        // making the name safe.
+        if SPECIAL_RESERVED.contains(&stem) {
+            result.insert(0, '_');
         }
     }
 
@@ -101,27 +126,6 @@ fn user_name_to_file_name(
         }
         let underscores = "_".repeat(result.len() - boundary);
         result.replace_range(boundary..result.len(), &underscores);
-    }
-
-    // Test for reserved names and parts. The relevant part is the prefix + name
-    // (or "stem") of the file, so e.g. "com1.glif" would be replaced by
-    // "_com1.glif", but "hello.com1.glif", "com10.glif" and "acom1.glif" stay
-    // as they are. For algorithmic simplicity, ignore the presence of the
-    // suffix and potentially replace more than we strictly need to.
-    //
-    // List taken from
-    // <https://docs.microsoft.com/en-gb/windows/win32/fileio/naming-a-file#naming-conventions>.
-    static SPECIAL_RESERVED: &[&str] = &[
-        "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
-        "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
-    ];
-    if let Some(stem) = result.split('.').next() {
-        // At this stage, we only need to look for lowercase matches, as every
-        // uppercase letter will be followed by an underscore, automatically
-        // making the name safe.
-        if SPECIAL_RESERVED.contains(&stem) {
-            result.insert(0, '_');
-        }
     }
 
     result.push_str(suffix);
