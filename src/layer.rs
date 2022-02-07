@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -29,6 +29,10 @@ pub(crate) static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 pub struct LayerSet {
     /// A collection of [`Layer`]s.  The first [`Layer`] is the default.
     layers: Vec<Layer>,
+    /// A set of lowercased layer paths (excluding the default layer, as it is
+    /// always unique) for clash detection. This relies on Layer.path being
+    /// immutable.
+    path_set: HashSet<String>,
 }
 
 #[allow(clippy::len_without_is_empty)] // never empty
@@ -66,7 +70,7 @@ impl LayerSet {
             .ok_or(FontLoadError::MissingDefaultLayer)?;
         layers.rotate_left(default_idx);
 
-        Ok(LayerSet { layers })
+        Ok(LayerSet { layers, path_set: HashSet::new() })
     }
 
     /// Returns a new [`LayerSet`] from a `layers` collection.
@@ -75,7 +79,7 @@ impl LayerSet {
     pub fn new(mut layers: Vec<Layer>) -> Self {
         assert!(!layers.is_empty());
         layers.first_mut().unwrap().path = DEFAULT_GLYPHS_DIRNAME.into();
-        LayerSet { layers }
+        LayerSet { layers, path_set: HashSet::new() }
     }
 
     /// Returns the number of layers in the set.
@@ -125,7 +129,10 @@ impl LayerSet {
         } else if self.layers.iter().any(|l| l.name == name) {
             Err(NamingError::Duplicate(name.to_string()))
         } else {
-            let layer = Layer::new(name, None)?;
+            let name = Name::new(name).map_err(|_| NamingError::Invalid(name.into()))?;
+            let path = crate::util::default_file_name_for_layer_name(&name, &self.path_set);
+            let layer = Layer::new(name, path);
+            self.path_set.insert(layer.path.to_string_lossy().to_lowercase());
             self.layers.push(layer);
             Ok(self.layers.last_mut().unwrap())
         }
@@ -135,11 +142,18 @@ impl LayerSet {
     ///
     /// The default layer cannot be removed.
     pub fn remove(&mut self, name: &str) -> Option<Layer> {
-        self.layers
+        let removed_layer = self
+            .layers
             .iter()
             .skip(1)
             .position(|l| l.name.as_ref() == name)
-            .map(|idx| self.layers.remove(idx + 1))
+            .map(|idx| self.layers.remove(idx + 1));
+
+        if let Some(layer) = &removed_layer {
+            self.path_set.remove(&layer.path.to_string_lossy().to_lowercase());
+        }
+
+        removed_layer
     }
 
     /// Rename a layer.
@@ -148,8 +162,9 @@ impl LayerSet {
     /// be replaced.
     ///
     /// Returns an error if `overwrite` is false but a layer with the new
-    /// name exists, if no layer with the old name exists, or if the new name
-    /// is not a valid [`Name`].
+    /// name exists, if no layer with the old name exists, if the new name
+    /// is not a valid [`Name`] or when anything but the default layer should
+    /// be renamed to "public.default".
     pub fn rename_layer(
         &mut self,
         old: &str,
@@ -170,13 +185,16 @@ impl LayerSet {
 
             // Dance around the borrow checker by using indices instead of references.
             let layer_pos = self.layers.iter().position(|l| l.name.as_ref() == old).unwrap();
-
-            // Default layer: just change the name. Non-default layer: change name and path.
-            let layer = &mut self.layers[layer_pos];
+            // Only non-default layers can change path...
             if layer_pos != 0 {
-                layer.path = crate::util::default_file_name_for_layer_name(&name).into();
+                let old_path = self.layers[layer_pos].path.to_string_lossy().to_lowercase();
+                self.path_set.remove(&old_path);
+                let new_path = crate::util::default_file_name_for_layer_name(&name, &self.path_set);
+                self.path_set.insert(new_path.to_string_lossy().to_lowercase());
+                self.layers[layer_pos].path = new_path;
             }
-            layer.name = name;
+            // ... but all can change name.
+            self.layers[layer_pos].name = name;
 
             Ok(())
         }
@@ -186,7 +204,7 @@ impl LayerSet {
 impl Default for LayerSet {
     fn default() -> Self {
         let layers = vec![Layer::default()];
-        LayerSet { layers }
+        LayerSet { layers, path_set: HashSet::new() }
     }
 }
 
@@ -204,6 +222,9 @@ pub struct Layer {
     pub(crate) name: Name,
     pub(crate) path: PathBuf,
     contents: BTreeMap<Name, PathBuf>,
+    /// A set of lowercased glif file names (excluding the default layer, as it
+    /// is always unique) for clash detection.
+    path_set: HashSet<String>,
     /// An optional color, specified in the layer's [`layerinfo.plist`][info].
     ///
     /// [info]: https://unifiedfontobject.org/versions/ufo3/glyphs/layerinfo.plist/
@@ -217,24 +238,18 @@ pub struct Layer {
 impl Layer {
     /// Returns a new [`Layer`] with the provided `name` and `path`.
     ///
-    /// The `path` argument, if provided, will be the directory within the UFO
-    /// that the layer is saved. If it is not provided, it will be derived from
-    /// the layer name.
-    pub(crate) fn new(name: &str, path: Option<PathBuf>) -> Result<Self, NamingError> {
-        let path = match path {
-            Some(path) => path,
-            None if &*name == DEFAULT_LAYER_NAME => DEFAULT_GLYPHS_DIRNAME.into(),
-            _ => crate::util::default_file_name_for_layer_name(name).into(),
-        };
-        let name = Name::new(name).map_err(|_| NamingError::Invalid(name.into()))?;
-        Ok(Layer {
+    /// The `path` argument will be the directory within the UFO that the layer
+    /// is saved.
+    pub(crate) fn new(name: Name, path: PathBuf) -> Self {
+        Layer {
             glyphs: BTreeMap::new(),
             name,
             path,
             contents: BTreeMap::new(),
+            path_set: HashSet::new(),
             color: None,
             lib: Default::default(),
-        })
+        }
     }
 
     /// Returns a new [`Layer`] that is loaded from `path` with the provided `name`.
@@ -269,6 +284,7 @@ impl Layer {
         // names and deserialize to a vec; that would not be a one-liner, though.
         let contents: BTreeMap<Name, PathBuf> = plist::from_file(&contents_path)
             .map_err(|source| LayerLoadError::ParsePlist { name: CONTENTS_FILE, source })?;
+        let path_set = contents.values().map(|p| p.to_string_lossy().to_lowercase()).collect();
 
         #[cfg(feature = "rayon")]
         let iter = contents.par_iter();
@@ -306,7 +322,7 @@ impl Layer {
         // for us to get this far, the path must have a file name
         let path = path.file_name().unwrap().into();
 
-        Ok(Layer { glyphs, name, path, contents, color, lib })
+        Ok(Layer { glyphs, name, path, contents, path_set, color, lib })
     }
 
     fn parse_layer_info(path: &Path) -> Result<(Option<Color>, Plist), LayerLoadError> {
@@ -451,8 +467,9 @@ impl Layer {
     ) {
         let glyph = glyph.into();
         if !self.contents.contains_key(&glyph.name) {
-            let path = crate::util::default_file_name_for_glyph_name(&glyph.name);
-            self.contents.insert(glyph.name.clone(), path.into());
+            let path = crate::util::default_file_name_for_glyph_name(&glyph.name, &self.path_set);
+            self.path_set.insert(path.to_string_lossy().to_lowercase());
+            self.contents.insert(glyph.name.clone(), path);
         }
         self.glyphs.insert(glyph.name.clone(), glyph);
     }
@@ -460,6 +477,7 @@ impl Layer {
     /// Remove all glyphs in the layer. Leave color and the lib untouched.
     pub fn clear(&mut self) {
         self.contents.clear();
+        self.path_set.clear();
         self.glyphs.clear()
     }
 
@@ -470,7 +488,9 @@ impl Layer {
     /// although it will still be removed. In this case, consider using the
     /// `remove_glyph_raw` method instead.
     pub fn remove_glyph(&mut self, name: &str) -> Option<Glyph> {
-        self.contents.remove(name);
+        if let Some(path) = self.contents.remove(name) {
+            self.path_set.remove(&path.to_string_lossy().to_lowercase());
+        }
         #[cfg(feature = "druid")]
         return self.glyphs.remove(name).and_then(|g| Arc::try_unwrap(g).ok());
         #[cfg(not(feature = "druid"))]
@@ -480,6 +500,9 @@ impl Layer {
     /// Remove the named glyph and return it, including the containing `Arc`.
     #[cfg(feature = "druid")]
     pub fn remove_glyph_raw(&mut self, name: &str) -> Option<Arc<Glyph>> {
+        if let Some(path) = self.contents.remove(name) {
+            self.path_set.remove(&path.to_string_lossy().to_lowercase());
+        }
         self.glyphs.remove(name)
     }
 
@@ -551,7 +574,7 @@ impl Layer {
 
 impl Default for Layer {
     fn default() -> Self {
-        Layer::new(DEFAULT_LAYER_NAME, None).unwrap()
+        Layer::new(Name::new_raw(DEFAULT_LAYER_NAME), DEFAULT_GLYPHS_DIRNAME.into())
     }
 }
 
@@ -766,5 +789,35 @@ mod tests {
         assert_eq!(*layer_set.default_layer().name(), "aaa");
         assert_eq!(layer_set.default_layer().path().as_os_str(), "glyphs");
         assert!(layer_set.get("public.default").is_none());
+    }
+
+    #[test]
+    fn layerset_duplicate_paths() {
+        let mut layer_set = LayerSet::default();
+
+        layer_set.new_layer("Ab").unwrap();
+        assert_eq!(layer_set.get("Ab").unwrap().path().as_os_str(), "glyphs.A_b");
+
+        layer_set.new_layer("a_b").unwrap();
+        assert_eq!(layer_set.get("a_b").unwrap().path().as_os_str(), "glyphs.a_b01");
+
+        layer_set.remove("Ab");
+        layer_set.new_layer("Ab").unwrap();
+        assert_eq!(layer_set.get("Ab").unwrap().path().as_os_str(), "glyphs.A_b");
+    }
+
+    #[test]
+    fn layer_duplicate_paths() {
+        let mut layer = Layer::default();
+
+        layer.insert_glyph(Glyph::new_named("Ab"));
+        assert_eq!(layer.contents.get("Ab").unwrap().as_os_str(), "A_b.glif");
+
+        layer.insert_glyph(Glyph::new_named("a_b"));
+        assert_eq!(layer.contents.get("a_b").unwrap().as_os_str(), "a_b01.glif");
+
+        layer.remove_glyph("Ab");
+        layer.insert_glyph(Glyph::new_named("Ab"));
+        assert_eq!(layer.contents.get("Ab").unwrap().as_os_str(), "A_b.glif");
     }
 }
