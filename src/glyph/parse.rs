@@ -20,8 +20,8 @@ pub(crate) fn parse_glyph(xml: &[u8]) -> Result<Glyph, GlifLoadError> {
 // major, minor
 type Version = (u32, u32);
 
-const VERSION_1: (u32, u32) = (1, 0);
-const VERSION_2: (u32, u32) = (2, 0);
+const VERSION_1: Version = (1, 0);
+const VERSION_2: Version = (2, 0);
 
 pub(crate) struct GlifParser<'names> {
     glyph: Glyph,
@@ -584,7 +584,6 @@ fn start(
                     let attr = attr?;
                     let value = attr.unescaped_value()?;
                     let value = reader.decode(&value)?;
-                    // XXX: support `formatMinor`
                     match attr.key {
                         b"name" => {
                             let value = Name::new(value).map_err(|_| ErrorKind::InvalidName)?;
