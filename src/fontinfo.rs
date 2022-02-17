@@ -1685,7 +1685,7 @@ impl<'de> Deserialize<'de> for StyleMapStyle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Color, Identifier, Line};
+    use crate::{Color, Identifier, Line, Name};
     use serde_test::{assert_tokens, Token};
 
     #[test]
@@ -1748,7 +1748,7 @@ mod tests {
                 Guideline::new(Line::Horizontal(123.0), None, None, None, None),
                 Guideline::new(
                     Line::Angle { x: 1.0, y: 2.0, degrees: 0.0 },
-                    Some(" [locked]".to_string()),
+                    Some(Name::new_raw(" [locked]")),
                     Some(Color::new(1.0, 1.0, 1.0, 1.0).unwrap()),
                     Some(Identifier::new("abc").unwrap()),
                     None

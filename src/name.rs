@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::NamingError;
 
@@ -17,7 +17,7 @@ use crate::error::NamingError;
 ///
 /// [`Glyph`]: crate::Glyph
 /// [`Layer`]: crate::Layer
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "druid", derive(druid::Data))]
 pub struct Name(Arc<str>);
 
@@ -89,6 +89,18 @@ impl std::fmt::Display for Name {
 impl std::borrow::Borrow<str> for Name {
     fn borrow(&self) -> &str {
         self.0.as_ref()
+    }
+}
+
+// NOTE: This custom function ensures that serde serializes to a `Token::Str`
+// rather than `Token::NewType` that appears with a derived `Serialize`.
+impl Serialize for Name {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        debug_assert!(is_valid(&self.0), "all names are validated on construction");
+        serializer.serialize_str(&self.0)
     }
 }
 

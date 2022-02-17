@@ -801,14 +801,14 @@ mod tests {
     fn layer_duplicate_paths() {
         let mut layer = Layer::default();
 
-        layer.insert_glyph(Glyph::new_named("Ab"));
+        layer.insert_glyph(Glyph::new("Ab"));
         assert_eq!(layer.contents.get("Ab").unwrap().as_os_str(), "A_b.glif");
 
-        layer.insert_glyph(Glyph::new_named("a_b"));
+        layer.insert_glyph(Glyph::new("a_b"));
         assert_eq!(layer.contents.get("a_b").unwrap().as_os_str(), "a_b01.glif");
 
         layer.remove_glyph("Ab");
-        layer.insert_glyph(Glyph::new_named("Ab"));
+        layer.insert_glyph(Glyph::new("Ab"));
         assert_eq!(layer.contents.get("Ab").unwrap().as_os_str(), "A_b.glif");
     }
 }
