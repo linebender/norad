@@ -1,9 +1,9 @@
 [package]
 name = "norad"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Colin Rofls <colin@cmyr.net>", "Nikolaus Waxweiler <madigens@gmail.com>"]
 license = "MIT/Apache-2.0"
-edition = "2018"
+edition = "2021"
 keywords = ["font", "ufo", "fonts"]
 repository = "https://github.com/linebender/norad"
 description = "Read and write Unified Font Object files."
@@ -29,8 +29,6 @@ kurbo = { version = "0.8.1", optional = true }
 thiserror = "1.0"
 
 [dependencies.druid]
-#git = "https://github.com/xi-editor/druid.git"
-#rev = "7fab0485"
 default-features = false
 features = ["x11"]
 version = "0.7.0"
