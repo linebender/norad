@@ -203,7 +203,7 @@ mod tests {
     fn builder_basic() -> Result<(), ErrorKind> {
         let mut outline_builder = OutlineBuilder::new();
         outline_builder
-            .begin_path(Some(Identifier::new("abc").unwrap()))?
+            .begin_path(Some(Identifier::new_raw("abc")))?
             .add_point((173.0, 536.0), PointType::Line, false, None, None)?
             .add_point((85.0, 536.0), PointType::Line, false, None, None)?
             .add_point((85.0, 0.0), PointType::Line, false, None, None)?
@@ -212,13 +212,13 @@ mod tests {
                 PointType::Line,
                 false,
                 None,
-                Some(Identifier::new("def").unwrap()),
+                Some(Identifier::new_raw("def")),
             )?
             .end_path()?
             .add_component(
                 Name::new_raw("hallo"),
                 AffineTransform::default(),
-                Some(Identifier::new("xyz").unwrap()),
+                Some(Identifier::new_raw("xyz")),
             );
         let (contours, components) = outline_builder.finish()?;
 
@@ -235,11 +235,11 @@ mod tests {
                         PointType::Line,
                         false,
                         None,
-                        Some(Identifier::new("def").unwrap()),
+                        Some(Identifier::new_raw("def")),
                         None,
                     ),
                 ],
-                Some(Identifier::new("abc").unwrap()),
+                Some(Identifier::new_raw("abc")),
                 None,
             )]
         );
@@ -256,7 +256,7 @@ mod tests {
                     x_offset: 0.0,
                     y_offset: 0.0,
                 },
-                Some(Identifier::new("xyz").unwrap()),
+                Some(Identifier::new_raw("xyz")),
                 None,
             )]
         );
@@ -268,7 +268,7 @@ mod tests {
     #[should_panic(expected = "UnfinishedDrawing")]
     fn outline_builder_unfinished_drawing() {
         let mut outline_builder = OutlineBuilder::new();
-        outline_builder.begin_path(Some(Identifier::new("abc").unwrap())).unwrap();
+        outline_builder.begin_path(Some(Identifier::new_raw("abc"))).unwrap();
         outline_builder.finish().unwrap();
     }
 
@@ -276,7 +276,7 @@ mod tests {
     #[should_panic(expected = "UnfinishedDrawing")]
     fn outline_builder_unfinished_drawing2() {
         OutlineBuilder::new()
-            .begin_path(Some(Identifier::new("abc").unwrap()))
+            .begin_path(Some(Identifier::new_raw("abc")))
             .unwrap()
             .begin_path(None)
             .unwrap();
