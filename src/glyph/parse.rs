@@ -343,7 +343,7 @@ impl<'names> GlifParser<'names> {
         data: &BytesStart<'a>,
         outline_builder: &mut OutlineBuilder,
     ) -> Result<(), GlifLoadError> {
-        let mut name: Option<String> = None;
+        let mut name: Option<Name> = None;
         let mut x: Option<f64> = None;
         let mut y: Option<f64> = None;
         let mut typ = PointType::OffCurve;
@@ -361,7 +361,7 @@ impl<'names> GlifParser<'names> {
                 b"y" => {
                     y = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
                 }
-                b"name" => name = Some(value.to_string()),
+                b"name" => name = Some(Name::new(value).map_err(|_| ErrorKind::InvalidName)?),
                 b"type" => {
                     typ = value.parse()?;
                 }
@@ -441,7 +441,7 @@ impl<'names> GlifParser<'names> {
     ) -> Result<(), GlifLoadError> {
         let mut x: Option<f64> = None;
         let mut y: Option<f64> = None;
-        let mut name: Option<String> = None;
+        let mut name: Option<Name> = None;
         let mut color: Option<Color> = None;
         let mut identifier: Option<Identifier> = None;
 
@@ -456,7 +456,7 @@ impl<'names> GlifParser<'names> {
                 b"y" => {
                     y = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
                 }
-                b"name" => name = Some(value.to_string()),
+                b"name" => name = Some(Name::new(value).map_err(|_| ErrorKind::InvalidName)?),
                 b"color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
                 b"identifier" => {
                     identifier = Some(self.parse_identifier(value)?);
@@ -482,7 +482,7 @@ impl<'names> GlifParser<'names> {
         let mut x: Option<f64> = None;
         let mut y: Option<f64> = None;
         let mut angle: Option<f64> = None;
-        let mut name: Option<String> = None;
+        let mut name: Option<Name> = None;
         let mut color: Option<Color> = None;
         let mut identifier: Option<Identifier> = None;
 
@@ -504,7 +504,7 @@ impl<'names> GlifParser<'names> {
                     }
                     angle = Some(angle_value);
                 }
-                b"name" => name = Some(value.to_string()),
+                b"name" => name = Some(Name::new(value).map_err(|_| ErrorKind::InvalidName)?),
                 b"color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
                 b"identifier" => {
                     identifier = Some(self.parse_identifier(value)?);

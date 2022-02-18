@@ -262,7 +262,7 @@ pub struct Anchor {
     /// Anchor y coordinate value.
     pub y: f64,
     /// Optional arbitrary name for the anchor.
-    pub name: Option<String>,
+    pub name: Option<Name>,
     /// Optional anchor color.
     pub color: Option<Color>,
     /// Optional unique identifier for the anchor within the glyph.
@@ -373,7 +373,7 @@ pub struct ContourPoint {
     /// Whether a smooth curvature should be maintained at this point. Must not be set for off-curve points.
     pub smooth: bool,
     /// Optional contour point name.
-    pub name: Option<String>,
+    pub name: Option<Name>,
     /// Optional unique identifier for the point within the glyph.
     ///
     /// This attribute is only required when a lib is present and should otherwise only be added as needed.
@@ -464,7 +464,7 @@ impl Anchor {
     pub fn new(
         x: f64,
         y: f64,
-        name: Option<String>,
+        name: Option<Name>,
         color: Option<Color>,
         identifier: Option<Identifier>,
         lib: Option<Plist>,
@@ -576,7 +576,7 @@ impl ContourPoint {
         y: f64,
         typ: PointType,
         smooth: bool,
-        name: Option<String>,
+        name: Option<Name>,
         identifier: Option<Identifier>,
         lib: Option<Plist>,
     ) -> Self {

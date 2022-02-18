@@ -77,7 +77,7 @@ impl OutlineBuilder {
         (x, y): (f64, f64),
         segment_type: PointType,
         smooth: bool,
-        name: Option<String>,
+        name: Option<Name>,
         identifier: Option<Identifier>,
     ) -> Result<&mut Self, ErrorKind> {
         match &mut self.scratch_state {

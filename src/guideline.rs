@@ -2,7 +2,7 @@ use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use serde::{de, ser};
 
-use crate::{Color, Identifier, Plist};
+use crate::{Color, Identifier, Name, Plist};
 
 /// A guideline associated with a glyph.
 #[derive(Debug, Clone, PartialEq)]
@@ -10,7 +10,7 @@ pub struct Guideline {
     /// The line itself.
     pub line: Line,
     /// An arbitrary name for the guideline.
-    pub name: Option<String>,
+    pub name: Option<Name>,
     /// The color of the line.
     pub color: Option<Color>,
     /// Unique identifier for the guideline within the glyph. This attribute is only required
@@ -44,7 +44,7 @@ impl Guideline {
     /// Returns a new [`Guideline`] struct.
     pub fn new(
         line: Line,
-        name: Option<String>,
+        name: Option<Name>,
         color: Option<Color>,
         identifier: Option<Identifier>,
         lib: Option<Plist>,
@@ -101,7 +101,7 @@ struct RawGuideline {
     x: Option<f64>,
     y: Option<f64>,
     angle: Option<f64>,
-    name: Option<String>,
+    name: Option<Name>,
     color: Option<Color>,
     identifier: Option<Identifier>,
 }
@@ -184,7 +184,7 @@ mod tests {
     fn guideline_parsing() {
         let g1 = Guideline::new(
             Line::Angle { x: 10.0, y: 20.0, degrees: 360.0 },
-            Some("hello".to_string()),
+            Some(Name::new_raw("hello")),
             Some(Color::new(0.0, 0.5, 0.0, 0.5).unwrap()),
             Some(Identifier::new("abcABC123").unwrap()),
             None,
