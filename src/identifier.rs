@@ -1,5 +1,4 @@
 use std::hash::Hash;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -19,45 +18,76 @@ use crate::error::ErrorKind;
 pub struct Identifier(Arc<str>);
 
 impl Identifier {
-    /// Create a new [`Identifier`] from a [`String`], if it is valid.
+    /// Create a new [`Identifier`] from a string, if it is valid.
     ///
     /// A valid identifier must have between 0 and 100 characters, and each
     /// character must be in the printable ASCII range, 0x20 to 0x7E.
-    pub fn new(s: impl Into<Arc<str>>) -> Result<Self, ErrorKind> {
-        let string = s.into();
-        if is_valid_identifier(&string) {
-            Ok(Identifier(string))
+    pub fn new(string: &str) -> Result<Self, ErrorKind> {
+        if is_valid_identifier(string) {
+            Ok(Identifier(string.into()))
         } else {
             Err(ErrorKind::BadIdentifier)
         }
     }
 
+    /// Creates a new `Identifier`, panicking if the given identifier is invalid.
+    #[cfg(test)]
+    pub(crate) fn new_raw(string: &str) -> Self {
+        assert!(is_valid_identifier(string));
+        Self(string.into())
+    }
+
     /// Create a new [`Identifier`] from a UUID v4 identifier.
     pub fn from_uuidv4() -> Self {
-        Self::new(uuid::Uuid::new_v4().to_string()).unwrap()
+        Self::new(uuid::Uuid::new_v4().to_string().as_ref()).unwrap()
     }
 
     /// Return the raw identifier, as a `&str`.
     pub fn as_str(&self) -> &str {
-        &self.0
+        self.as_ref()
     }
 }
 
-impl PartialEq<String> for Identifier {
-    fn eq(&self, other: &String) -> bool {
-        *self.0 == *other
-    }
-}
-
-impl FromStr for Identifier {
-    type Err = ErrorKind;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Identifier::new(s)
-    }
-}
-
-fn is_valid_identifier(s: &Arc<str>) -> bool {
+fn is_valid_identifier(s: &str) -> bool {
     s.len() <= 100 && s.bytes().all(|b| (0x20..=0x7E).contains(&b))
+}
+
+impl AsRef<str> for Identifier {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
+
+impl std::ops::Deref for Identifier {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref()
+    }
+}
+
+// so that assert_eq! macros work
+impl<'a> PartialEq<&'a str> for Identifier {
+    fn eq(&self, other: &&'a str) -> bool {
+        self.0.as_ref() == *other
+    }
+}
+
+impl<'a> PartialEq<Identifier> for &'a str {
+    fn eq(&self, other: &Identifier) -> bool {
+        other == self
+    }
+}
+
+impl std::fmt::Display for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl std::borrow::Borrow<str> for Identifier {
+    fn borrow(&self) -> &str {
+        self.0.as_ref()
+    }
 }
 
 impl Serialize for Identifier {
@@ -79,7 +109,7 @@ impl<'de> Deserialize<'de> for Identifier {
         D: Deserializer<'de>,
     {
         let string = String::deserialize(deserializer)?;
-        Identifier::new(string).map_err(de::Error::custom)
+        Identifier::new(string.as_str()).map_err(de::Error::custom)
     }
 }
 

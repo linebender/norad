@@ -186,7 +186,7 @@ mod tests {
             Line::Angle { x: 10.0, y: 20.0, degrees: 360.0 },
             Some(Name::new_raw("hello")),
             Some(Color::new(0.0, 0.5, 0.0, 0.5).unwrap()),
-            Some(Identifier::new("abcABC123").unwrap()),
+            Some(Identifier::new_raw("abcABC123")),
             None,
         );
         assert_tokens(

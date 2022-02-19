@@ -1750,7 +1750,7 @@ mod tests {
                     Line::Angle { x: 1.0, y: 2.0, degrees: 0.0 },
                     Some(Name::new_raw(" [locked]")),
                     Some(Color::new(1.0, 1.0, 1.0, 1.0).unwrap()),
-                    Some(Identifier::new("abc").unwrap()),
+                    Some(Identifier::new_raw("abc")),
                     None
                 ),
             ])
@@ -1907,14 +1907,14 @@ mod tests {
                 Line::Horizontal(10.0),
                 None,
                 None,
-                Some(Identifier::new("test1").unwrap()),
+                Some(Identifier::new_raw("test1")),
                 None,
             ),
             Guideline::new(
                 Line::Vertical(20.0),
                 None,
                 None,
-                Some(Identifier::new("test2").unwrap()),
+                Some(Identifier::new_raw("test2")),
                 None,
             ),
         ]);
@@ -1925,14 +1925,14 @@ mod tests {
                 Line::Horizontal(10.0),
                 None,
                 None,
-                Some(Identifier::new("test1").unwrap()),
+                Some(Identifier::new_raw("test1")),
                 None,
             ),
             Guideline::new(
                 Line::Vertical(20.0),
                 None,
                 None,
-                Some(Identifier::new("test1").unwrap()),
+                Some(Identifier::new_raw("test1")),
                 None,
             ),
         ]);
