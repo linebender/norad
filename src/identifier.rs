@@ -1,5 +1,4 @@
 use std::hash::Hash;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -88,14 +87,6 @@ impl std::fmt::Display for Identifier {
 impl std::borrow::Borrow<str> for Identifier {
     fn borrow(&self) -> &str {
         self.0.as_ref()
-    }
-}
-
-impl FromStr for Identifier {
-    type Err = ErrorKind;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Identifier::new(s)
     }
 }
 
