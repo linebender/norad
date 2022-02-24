@@ -1,5 +1,6 @@
 //! Glyph and layer names
 
+use std::str::FromStr;
 use std::sync::Arc;
 
 use serde::{Deserialize, Deserializer};
@@ -90,6 +91,14 @@ impl std::fmt::Display for Name {
 impl std::borrow::Borrow<str> for Name {
     fn borrow(&self) -> &str {
         self.0.as_ref()
+    }
+}
+
+impl FromStr for Name {
+    type Err = NamingError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Name::new(s)
     }
 }
 
