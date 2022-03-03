@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 use serde::ser::{SerializeMap, Serializer};
 use serde::Serialize;
 
+use crate::Name;
+
 /// A map of kerning pairs.
 ///
 /// This is represented as a map of first half of a kerning pair (glyph name or group name)
@@ -10,7 +12,7 @@ use serde::Serialize;
 /// (high-level view: (first, second) => value).
 ///
 /// We use a [`BTreeMap`] because we need sorting for serialization.
-pub type Kerning = BTreeMap<String, BTreeMap<String, f64>>;
+pub type Kerning = BTreeMap<Name, BTreeMap<Name, f64>>;
 
 /// A helper for serializing kerning values.
 ///
@@ -22,7 +24,7 @@ pub(crate) struct KerningSerializer<'a> {
 }
 
 struct KerningInnerSerializer<'a> {
-    inner_kerning: &'a BTreeMap<String, f64>,
+    inner_kerning: &'a BTreeMap<Name, f64>,
 }
 
 impl<'a> Serialize for KerningSerializer<'a> {

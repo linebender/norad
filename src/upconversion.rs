@@ -7,6 +7,7 @@ use crate::fontinfo::FontInfo;
 use crate::groups::Groups;
 use crate::kerning::Kerning;
 use crate::names::NameList;
+use crate::Name;
 
 /// Convert kerning groups and pairs from v1 and v2 informal conventions to
 /// v3 formal conventions. Converted groups are added (duplicated) rather than
@@ -27,17 +28,17 @@ pub(crate) fn upconvert_kerning(
     // Make lists of groups referenced in kerning pairs, based on their side.
     for (first, seconds) in kerning {
         if groups.contains_key(first)
-            && !glyph_set.contains(first.as_str())
+            && !glyph_set.contains(&first)
             && !first.starts_with("public.kern1.")
         {
-            groups_first.insert(first.to_string());
+            groups_first.insert(first.clone());
         }
         for second in seconds.keys() {
             if groups.contains_key(second)
-                && !glyph_set.contains(second.as_str())
+                && !glyph_set.contains(&second)
                 && !second.starts_with("public.kern2.")
             {
-                groups_second.insert(second.to_string());
+                groups_second.insert(second.clone());
             }
         }
     }
@@ -45,22 +46,22 @@ pub(crate) fn upconvert_kerning(
     // Duplicate kerning groups with a new name.
     let mut groups_new = groups.clone();
 
-    let mut groups_first_old_to_new: HashMap<&String, String> = HashMap::new();
+    let mut groups_first_old_to_new: HashMap<Name, Name> = HashMap::new();
     for first in &groups_first {
         let first_new = make_unique_group_name(
-            format!("public.kern1.{}", first.replace("@MMK_L_", "")),
+            Name::new(&format!("public.kern1.{}", first.replace("@MMK_L_", ""))).unwrap(),
             &groups_new,
         );
-        groups_first_old_to_new.insert(first, first_new.to_string());
+        groups_first_old_to_new.insert(first.clone(), first_new.clone());
         groups_new.insert(first_new, groups_new.get(first).unwrap().clone());
     }
-    let mut groups_second_old_to_new: HashMap<&String, String> = HashMap::new();
+    let mut groups_second_old_to_new: HashMap<Name, Name> = HashMap::new();
     for second in &groups_second {
         let second_new = make_unique_group_name(
-            format!("public.kern2.{}", second.replace("@MMK_R_", "")),
+            Name::new(&format!("public.kern2.{}", second.replace("@MMK_R_", ""))).unwrap(),
             &groups_new,
         );
-        groups_second_old_to_new.insert(second, second_new.to_string());
+        groups_second_old_to_new.insert(second.clone(), second_new.clone());
         groups_new.insert(second_new, groups_new.get(second).unwrap().clone());
     }
 
@@ -69,41 +70,41 @@ pub(crate) fn upconvert_kerning(
 
     for (first, seconds) in kerning {
         let first_new = groups_first_old_to_new.get(first).unwrap_or(first);
-        let mut seconds_new: BTreeMap<String, f64> = BTreeMap::new();
+        let mut seconds_new: BTreeMap<Name, f64> = BTreeMap::new();
         for (second, value) in seconds {
             let second_new = groups_second_old_to_new.get(second).unwrap_or(second);
-            seconds_new.insert(second_new.to_string(), *value);
+            seconds_new.insert(second_new.clone(), *value);
         }
-        kerning_new.insert(first_new.to_string(), seconds_new);
+        kerning_new.insert(first_new.clone(), seconds_new);
     }
 
     (groups_new, kerning_new)
 }
 
-fn make_unique_group_name(name: String, existing_groups: &Groups) -> String {
+fn make_unique_group_name(name: Name, existing_groups: &Groups) -> Name {
     if !existing_groups.contains_key(&name) {
         return name;
     }
 
     let mut counter = 1;
-    let mut new_name = name.to_string();
+    let mut new_name = name.clone();
     while existing_groups.contains_key(&new_name) {
-        new_name = format!("{}{}", name, counter);
+        new_name = Name::new(&format!("{}{}", name, counter)).unwrap();
         counter += 1;
     }
 
     new_name
 }
 
-fn find_known_kerning_groups(groups: &Groups) -> (HashSet<String>, HashSet<String>) {
-    let mut groups_first: HashSet<String> = HashSet::new();
-    let mut groups_second: HashSet<String> = HashSet::new();
+fn find_known_kerning_groups(groups: &Groups) -> (HashSet<Name>, HashSet<Name>) {
+    let mut groups_first: HashSet<Name> = HashSet::new();
+    let mut groups_second: HashSet<Name> = HashSet::new();
 
     for name in groups.keys() {
         if name.starts_with("@MMK_L_") {
-            groups_first.insert(name.to_string());
+            groups_first.insert(name.clone());
         } else if name.starts_with("@MMK_R_") {
-            groups_second.insert(name.to_string());
+            groups_second.insert(name.clone());
         }
     }
 

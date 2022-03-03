@@ -6,7 +6,7 @@ use crate::Name;
 /// A map of group name to a list of glyph names.
 ///
 /// We use a [`BTreeMap`] because we need sorting for serialization.
-pub type Groups = BTreeMap<String, Vec<Name>>;
+pub type Groups = BTreeMap<Name, Vec<Name>>;
 
 /// Validate the contents of the groups.plist file according to the rules in the
 /// [Unified Font Object v3 specification for groups.plist](http://unifiedfontobject.org/versions/ufo3/groups.plist/#specification).
@@ -26,8 +26,8 @@ pub(crate) fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidatio
             for glyph_name in group_glyph_names {
                 if !kern1_set.insert(glyph_name) {
                     return Err(GroupsValidationError::OverlappingKerningGroups {
-                        glyph_name: glyph_name.to_string(),
-                        group_name: group_name.to_string(),
+                        glyph_name: glyph_name.clone(),
+                        group_name: group_name.clone(),
                     });
                 }
             }
@@ -39,8 +39,8 @@ pub(crate) fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidatio
             for glyph_name in group_glyph_names {
                 if !kern2_set.insert(glyph_name) {
                     return Err(GroupsValidationError::OverlappingKerningGroups {
-                        glyph_name: glyph_name.to_string(),
-                        group_name: group_name.to_string(),
+                        glyph_name: glyph_name.clone(),
+                        group_name: group_name.clone(),
                     });
                 }
             }
