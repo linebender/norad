@@ -9,6 +9,7 @@ use thiserror::Error;
 
 pub use crate::shared_types::ColorError;
 use crate::write::CustomSerializationError;
+use crate::Name;
 
 /// An error representing a failure to (re)name something.
 #[derive(Debug, Error)]
@@ -311,9 +312,9 @@ pub enum GroupsValidationError {
     #[error("the glyph '{glyph_name}' appears in more than one kerning group. Last found in '{group_name}'")]
     OverlappingKerningGroups {
         /// The glyph name.
-        glyph_name: String,
+        glyph_name: Name,
         /// The group name.
-        group_name: String,
+        group_name: Name,
     },
 }
 
