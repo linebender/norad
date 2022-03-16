@@ -85,7 +85,7 @@ mod name;
 mod names;
 mod shared_types;
 mod upconversion;
-pub(crate) mod util;
+pub mod util;
 mod write;
 
 pub use data_request::DataRequest;

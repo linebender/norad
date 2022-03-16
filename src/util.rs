@@ -17,12 +17,12 @@ pub(crate) fn recursive_sort_plist_keys(plist: &mut plist::Dictionary) {
 }
 
 /// Given a glyph `name`, return an appropriate file name.
-pub(crate) fn default_file_name_for_glyph_name(name: &Name, existing: &HashSet<String>) -> PathBuf {
+pub fn default_file_name_for_glyph_name(name: &Name, existing: &HashSet<String>) -> PathBuf {
     user_name_to_file_name(name, "", ".glif", existing)
 }
 
 /// Given a layer `name`, return an appropriate file name.
-pub(crate) fn default_file_name_for_layer_name(name: &Name, existing: &HashSet<String>) -> PathBuf {
+pub fn default_file_name_for_layer_name(name: &Name, existing: &HashSet<String>) -> PathBuf {
     user_name_to_file_name(name, "glyphs.", "", existing)
 }
 
