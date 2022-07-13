@@ -25,7 +25,7 @@ pub(crate) static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 ///
 /// A layer set always includes a default layer, and may also include additional
 /// layers.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct LayerSet {
     /// A collection of [`Layer`]s.  The first [`Layer`] is the default.
     layers: Vec<Layer>,
@@ -33,6 +33,15 @@ pub struct LayerSet {
     /// always unique) for clash detection. This relies on Layer.path being
     /// immutable.
     path_set: HashSet<String>,
+}
+
+impl PartialEq for LayerSet {
+    fn eq(&self, other: &Self) -> bool {
+        // Ignore path_set as an implementation detail. I hope this does not
+        // lead to observable differences in behavior when reading from disk vs.
+        // recreating it in memory...
+        self.layers == other.layers
+    }
 }
 
 #[allow(clippy::len_without_is_empty)] // never empty
