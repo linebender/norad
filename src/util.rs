@@ -1,5 +1,6 @@
 //! Common utilities.
 
+use std::fmt::Write as _;
 use std::{collections::HashSet, path::PathBuf};
 
 use crate::Name;
@@ -152,7 +153,7 @@ fn user_name_to_file_name(
 
         let mut found_unique = false;
         for counter in 1..100u8 {
-            result.push_str(&format!("{:0>2}", counter));
+            write!(&mut result, "{:0>2}", counter).unwrap();
             result.push_str(suffix);
             if !existing.contains(&result.to_lowercase()) {
                 found_unique = true;
