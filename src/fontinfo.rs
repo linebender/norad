@@ -659,7 +659,7 @@ impl FontInfo {
                         .unitsPerEm
                         .map(|v| NonNegativeIntegerOrFloat::new(v.abs()).unwrap()),
                     version_major: fontinfo_v2.versionMajor,
-                    version_minor: fontinfo_v2.versionMinor.map(|v| v.abs() as NonNegativeInteger),
+                    version_minor: fontinfo_v2.versionMinor.map(|v| v.unsigned_abs()),
                     x_height: fontinfo_v2.xHeight,
                     year: fontinfo_v2.year,
                     ..FontInfo::default()
@@ -696,7 +696,7 @@ impl FontInfo {
                     open_type_os2_weight_class: match fontinfo_v1.weightValue {
                         Some(v) => match v {
                             -1 => None,
-                            _ => Some(v.abs() as NonNegativeInteger),
+                            _ => Some(v.unsigned_abs()),
                         },
                         None => None,
                     },
@@ -780,7 +780,7 @@ impl FontInfo {
                         .unitsPerEm
                         .map(|v| NonNegativeIntegerOrFloat::new(v.abs()).unwrap()),
                     version_major: fontinfo_v1.versionMajor,
-                    version_minor: fontinfo_v1.versionMinor.map(|v| v.abs() as NonNegativeInteger),
+                    version_minor: fontinfo_v1.versionMinor.map(|v| v.unsigned_abs()),
                     x_height: fontinfo_v1.xHeight,
                     year: fontinfo_v1.year,
                     ..FontInfo::default()
@@ -1353,16 +1353,16 @@ impl<'de> Deserialize<'de> for Os2Panose {
 impl From<Os2PanoseV2> for Os2Panose {
     fn from(value: Os2PanoseV2) -> Self {
         Os2Panose {
-            family_type: value.family_type.abs() as NonNegativeInteger,
-            serif_style: value.serif_style.abs() as NonNegativeInteger,
-            weight: value.weight.abs() as NonNegativeInteger,
-            proportion: value.proportion.abs() as NonNegativeInteger,
-            contrast: value.contrast.abs() as NonNegativeInteger,
-            stroke_variation: value.stroke_variation.abs() as NonNegativeInteger,
-            arm_style: value.arm_style.abs() as NonNegativeInteger,
-            letterform: value.letterform.abs() as NonNegativeInteger,
-            midline: value.midline.abs() as NonNegativeInteger,
-            x_height: value.x_height.abs() as NonNegativeInteger,
+            family_type: value.family_type.unsigned_abs(),
+            serif_style: value.serif_style.unsigned_abs(),
+            weight: value.weight.unsigned_abs(),
+            proportion: value.proportion.unsigned_abs(),
+            contrast: value.contrast.unsigned_abs(),
+            stroke_variation: value.stroke_variation.unsigned_abs(),
+            arm_style: value.arm_style.unsigned_abs(),
+            letterform: value.letterform.unsigned_abs(),
+            midline: value.midline.unsigned_abs(),
+            x_height: value.x_height.unsigned_abs(),
         }
     }
 }
