@@ -37,7 +37,9 @@ pub struct LayerSet {
 
 impl PartialEq for LayerSet {
     fn eq(&self, other: &Self) -> bool {
-        // Ignore path_set as an implementation detail.
+        // Ignore path_set as an implementation detail. I hope this does not
+        // lead to observable differences in behavior when reading from disk vs.
+        // recreating it in memory...
         self.layers == other.layers
     }
 }
