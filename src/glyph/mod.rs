@@ -29,6 +29,7 @@ use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
 #[cfg_attr(feature = "druid", derive(Lens))]
 pub struct Glyph {
     /// The name of the glyph.
+    #[cfg_attr(feature = "druid", lens(ignore))]
     pub(crate) name: Name,
     /// Glyph height.
     pub height: f64,
