@@ -15,7 +15,7 @@
 //! let mut font_obj = Font::load(inpath).expect("failed to load font");
 //! # let layer = font_obj.default_layer();
 //! # let glyph_a = layer.get_glyph("A").expect("missing glyph");
-//! # assert_eq!(glyph_a.name.as_ref(), "A");
+//! # assert_eq!(glyph_a.name().as_ref(), "A");
 //! # let outpath = "RoflsSemiDim.ufo";
 //! # font_obj.save(outpath);
 //! ```
@@ -28,7 +28,7 @@
 //! # let mut font_obj = Font::load(inpath).expect("failed to load font");
 //! let layer = font_obj.default_layer();
 //! let glyph_a = layer.get_glyph("A").expect("missing glyph");
-//! assert_eq!(glyph_a.name.as_ref(), "A");
+//! assert_eq!(glyph_a.name().as_ref(), "A");
 //! # let outpath = "RoflsSemiDim.ufo";
 //! # font_obj.save(outpath);
 //! ```
@@ -41,7 +41,7 @@
 //! # let mut font_obj = Font::load(inpath).expect("failed to load font");
 //! # let layer = font_obj.default_layer();
 //! # let glyph_a = layer.get_glyph("A").expect("missing glyph");
-//! # assert_eq!(glyph_a.name.as_ref(), "A");
+//! # assert_eq!(glyph_a.name().as_ref(), "A");
 //! let outpath = "RoflsSemiDim.ufo";
 //! font_obj.save(outpath);
 //! ```

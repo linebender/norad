@@ -29,7 +29,8 @@ use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
 #[cfg_attr(feature = "druid", derive(Lens))]
 pub struct Glyph {
     /// The name of the glyph.
-    pub name: Name,
+    #[cfg_attr(feature = "druid", lens(ignore))]
+    pub(crate) name: Name,
     /// Glyph height.
     pub height: f64,
     /// Glyph width.
@@ -123,6 +124,11 @@ impl Glyph {
             image: None,
             lib: Plist::new(),
         }
+    }
+
+    /// Returns the name of the glyph.
+    pub fn name(&self) -> &Name {
+        &self.name
     }
 
     /// Returns true if [`Glyph`] contains one or more [`Component`]s.

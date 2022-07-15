@@ -1,6 +1,6 @@
 //! Testing saving files.
 
-use norad::{Font, FormatVersion, Glyph, Identifier, Name, Plist};
+use norad::{Font, FormatVersion, Glyph, Identifier, Plist};
 use plist::Value;
 
 #[test]
@@ -62,8 +62,8 @@ fn save_fancy() {
     assert_eq!(pre_layer.iter().count(), post_layer.iter().count());
 
     for glyph in pre_layer.iter() {
-        let other = post_layer.get_glyph(&glyph.name);
-        assert!(other.is_some(), "missing {}", &glyph.name);
+        let other = post_layer.get_glyph(glyph.name());
+        assert!(other.is_some(), "missing {}", glyph.name());
         assert_eq!(glyph, other.unwrap());
     }
 }
@@ -191,19 +191,9 @@ fn object_libs_reject_existing_key() {
     assert!(ufo.save(&dir).is_err());
     ufo.lib.remove("public.objectLibs");
 
-    let glyph = Glyph {
-        name: Name::new("test").unwrap(),
-        height: 0.,
-        width: 0.,
-        anchors: vec![],
-        codepoints: vec![],
-        guidelines: vec![],
-        image: None,
-        lib: test_lib,
-        note: None,
-        components: vec![],
-        contours: vec![],
-    };
+    let mut glyph = Glyph::new("test");
+    glyph.lib = test_lib;
+
     ufo.default_layer_mut().insert_glyph(glyph);
     assert!(ufo.save(&dir).is_err());
 }
