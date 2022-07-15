@@ -127,8 +127,8 @@ impl Glyph {
     }
 
     /// Returns the name of the glyph.
-    pub fn name(&self) -> Name {
-        self.name.clone()
+    pub fn name(&self) -> &Name {
+        &self.name
     }
 
     /// Returns true if [`Glyph`] contains one or more [`Component`]s.

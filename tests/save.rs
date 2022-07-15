@@ -62,8 +62,8 @@ fn save_fancy() {
     assert_eq!(pre_layer.iter().count(), post_layer.iter().count());
 
     for glyph in pre_layer.iter() {
-        let other = post_layer.get_glyph(&glyph.name());
-        assert!(other.is_some(), "missing {}", &glyph.name());
+        let other = post_layer.get_glyph(glyph.name());
+        assert!(other.is_some(), "missing {}", glyph.name());
         assert_eq!(glyph, other.unwrap());
     }
 }
