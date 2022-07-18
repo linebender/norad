@@ -1,6 +1,9 @@
 //! Writing out .glif files
 
-use std::io::{Cursor, Write};
+use std::{
+    collections::HashSet,
+    io::{Cursor, Write},
+};
 
 use quick_xml::{
     events::{BytesEnd, BytesStart, BytesText, Event},
@@ -59,8 +62,11 @@ impl Glyph {
         start.push_attribute(("format", "2"));
         writer.write_event(Event::Start(start)).map_err(GlifWriteError::Xml)?;
 
+        let mut seen_codepoints = HashSet::new();
         for codepoint in &self.codepoints {
-            writer.write_event(char_to_event(*codepoint)).map_err(GlifWriteError::Xml)?;
+            if seen_codepoints.insert(codepoint) {
+                writer.write_event(char_to_event(*codepoint)).map_err(GlifWriteError::Xml)?;
+            }
         }
 
         // Skip serializing advance if both values are zero, infinite, subnormal, or NaN.

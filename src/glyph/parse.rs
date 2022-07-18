@@ -122,6 +122,12 @@ impl<'names> GlifParser<'names> {
         }
 
         self.glyph.load_object_libs()?;
+
+        let mut seen_codepoints = HashSet::new();
+        let deduplicated_codepoints =
+            self.glyph.codepoints.iter().filter(|c| seen_codepoints.insert(**c)).cloned().collect();
+        self.glyph.codepoints = deduplicated_codepoints;
+
         Ok(self.glyph)
     }
 

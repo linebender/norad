@@ -868,3 +868,30 @@ fn has_component_with_base() {
     assert!(glyph.has_component_with_base("dieresis"));
     assert!(!glyph.has_component_with_base("Z"));
 }
+
+#[test]
+fn deduplicate_unicodes() {
+    let data = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="period" format="2">
+  <unicode hex="0065"/>
+  <unicode hex="0066"/>
+  <unicode hex="0065"/>
+  <unicode hex="0067"/>
+</glyph>
+"#;
+    let mut glyph = parse_glyph(data.as_bytes()).unwrap();
+    assert_eq!(glyph.codepoints, vec!['e', 'f', 'g']);
+
+    glyph.codepoints = vec!['e', 'f', 'e', 'g'];
+    let data2 = glyph.encode_xml().unwrap();
+    let data2 = std::str::from_utf8(&data2).unwrap();
+    let data2_expected = r#"<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="period" format="2">
+	<unicode hex="0065"/>
+	<unicode hex="0066"/>
+	<unicode hex="0067"/>
+</glyph>
+"#;
+    assert_eq!(data2, data2_expected);
+}
