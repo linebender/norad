@@ -411,8 +411,7 @@ impl Contour {
                     [.., cn] => {
                         // Insert a computed on-curve point between each control point.
                         for (c0, c1) in controls.iter().zip(controls.iter().skip(1)) {
-                            let p1 = Point::new(0.5 * (c0.x + c1.x), 0.5 * (c0.y + c1.y));
-                            segments.push(PathEl::QuadTo(*c0, p1));
+                            segments.push(PathEl::QuadTo(*c0, c0.midpoint(*c1)));
                         }
                         segments.push(PathEl::QuadTo(cn, p));
                         controls.clear()
