@@ -357,7 +357,8 @@ impl Contour {
                         points.iter().position(|e| e.typ != PointType::OffCurve)
                     {
                         points.rotate_left(first_oncurve + 1);
-                        start = points.last().unwrap(); // Not `last` because we rotate.
+                        // Recompute `last` after rotation:
+                        start = points.last().unwrap();
                     // 3. ... Closed all-offcurve quadratic contours: Rare special case of
                     // TrueType's “implied on-curve points” principle. Compute the last implied
                     // on-curve point and append it, so we can handle this normally in the loop
