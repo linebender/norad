@@ -407,15 +407,13 @@ impl Contour {
                         segments.push(PathEl::QuadTo(c1, p));
                         controls.clear()
                     }
-                    _ => {
-                        // TODO: make iterator? controls.iter().zip(controls.iter().cycle().skip(1))
-                        for i in 0..=controls.len() - 2 {
-                            let c = controls[i];
-                            let cn = controls[i + 1];
-                            let pi = Point::new(0.5 * (c.x + cn.x), 0.5 * (c.y + cn.y));
-                            segments.push(PathEl::QuadTo(c, pi));
+                    cn @ [.., last] => {
+                        // Insert a computed on-curve point between each control point.
+                        for (c1, c2) in cn.iter().zip(cn.iter().skip(1)) {
+                            let p1 = Point::new(0.5 * (c1.x + c2.x), 0.5 * (c1.y + c2.y));
+                            segments.push(PathEl::QuadTo(*c1, p1));
                         }
-                        segments.push(PathEl::QuadTo(controls[controls.len() - 1], p));
+                        segments.push(PathEl::QuadTo(*last, p));
                         controls.clear()
                     }
                 },
