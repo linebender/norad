@@ -92,7 +92,7 @@ pub struct Font {
 /// A version of the [UFO spec].
 ///
 /// [UFO spec]: http://unifiedfontobject.org
-#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq, Eq)]
 #[repr(u8)]
 pub enum FormatVersion {
     /// UFO specification major version 1. Only reading (and upconversion) is supported.
@@ -106,7 +106,7 @@ pub enum FormatVersion {
 /// The contents of the [`metainfo.plist`] file.
 ///
 /// [`metainfo.plist`]: http://unifiedfontobject.org/versions/ufo3/metainfo.plist/
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct MetaInfo {
     /// Creator field
