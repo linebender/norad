@@ -328,20 +328,20 @@ impl Contour {
         let implied_oncurve: ContourPoint;
 
         // Phase 1: Preparation
-        match points.len() {
+        match points.as_slice() {
             // Empty contours cannot be represented by segments.
-            0 => return Ok(segments),
+            &[] => return Ok(segments),
             // Single points are converted to open MoveTos because closed single points of any
             // PointType make no sense.
-            1 => {
-                segments.push(PathEl::MoveTo(points[0].to_kurbo()));
+            &[p1] => {
+                segments.push(PathEl::MoveTo(p1.to_kurbo()));
                 return Ok(segments);
             }
             // Contours with two or more points come in three flavors...:
-            _ => {
+            &[first, .., last] => {
                 // 1. ... Open contours begin with a Move. Start the segment on the first point
                 // and don't close it. Note: Trailing off-curves are an error.
-                if let PointType::Move = points[0].typ {
+                if let PointType::Move = first.typ {
                     closed = false;
                     // Pop off the Move here so the segmentation loop below can just error out on
                     // encountering any other Move.
@@ -357,14 +357,12 @@ impl Contour {
                         points.iter().position(|e| e.typ != PointType::OffCurve)
                     {
                         points.rotate_left(first_oncurve + 1);
-                        start = points.last().unwrap();
+                        start = points.last().unwrap(); // Not `last` because we rotate.
                     // 3. ... Closed all-offcurve quadratic contours: Rare special case of
                     // TrueType's “implied on-curve points” principle. Compute the last implied
                     // on-curve point and append it, so we can handle this normally in the loop
                     // below. Start the segment on the last, computed point.
                     } else {
-                        let first = points.first().unwrap();
-                        let last = points.last().unwrap();
                         implied_oncurve = ContourPoint::new(
                             0.5 * (last.x + first.x),
                             0.5 * (last.y + first.y),
@@ -393,8 +391,8 @@ impl Contour {
                 // The first Move is removed from the points above, any other Move we encounter is illegal.
                 PointType::Move => return Err(ConvertContourError::new(ErrorKind::UnexpectedMove)),
                 // A line must have 0 off-curves preceeding it.
-                PointType::Line => match controls.len() {
-                    0 => segments.push(PathEl::LineTo(p)),
+                PointType::Line => match controls.as_slice() {
+                    &[] => segments.push(PathEl::LineTo(p)),
                     _ => {
                         return Err(ConvertContourError::new(
                             ErrorKind::UnexpectedPointAfterOffCurve,
@@ -403,10 +401,10 @@ impl Contour {
                 },
                 // A quadratic curve can have any number of off-curves preceeding it. Zero means it's
                 // a line, numbers > 1 mean we must expand “implied on-curve points”.
-                PointType::QCurve => match controls.len() {
-                    0 => segments.push(PathEl::LineTo(p)),
-                    1 => {
-                        segments.push(PathEl::QuadTo(controls[0], p));
+                PointType::QCurve => match controls.as_slice() {
+                    &[] => segments.push(PathEl::LineTo(p)),
+                    &[c1] => {
+                        segments.push(PathEl::QuadTo(c1, p));
                         controls.clear()
                     }
                     _ => {
@@ -423,14 +421,14 @@ impl Contour {
                 },
                 // A curve can have 0, 1 or 2 off-curves preceeding it according to the UFO specification.
                 // Zero means it's a line, one means it's a quadratic curve, two means it's a cubic curve.
-                PointType::Curve => match controls.len() {
-                    0 => segments.push(PathEl::LineTo(p)),
-                    1 => {
-                        segments.push(PathEl::QuadTo(controls[0], p));
+                PointType::Curve => match controls.as_slice() {
+                    &[] => segments.push(PathEl::LineTo(p)),
+                    &[c1] => {
+                        segments.push(PathEl::QuadTo(c1, p));
                         controls.clear()
                     }
-                    2 => {
-                        segments.push(PathEl::CurveTo(controls[0], controls[1], p));
+                    &[c1, c2] => {
+                        segments.push(PathEl::CurveTo(c1, c2, p));
                         controls.clear()
                     }
                     _ => return Err(ConvertContourError::new(ErrorKind::TooManyOffCurves)),
