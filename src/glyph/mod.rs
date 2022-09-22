@@ -900,6 +900,7 @@ impl From<Color> for druid::piet::Color {
 mod tests2 {
     use super::*;
 
+    #[cfg(feature = "kurbo")]
     #[test]
     fn many_control_quads() {
         let c1 = Contour::new(
