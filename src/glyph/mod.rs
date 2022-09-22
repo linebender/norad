@@ -334,7 +334,7 @@ impl Contour {
             // Single points are converted to open MoveTos because closed single points of any
             // PointType make no sense.
             1 => {
-                segments.push(PathEl::MoveTo(Point::new(points[0].x as f64, points[0].y as f64)));
+                segments.push(PathEl::MoveTo(points[0].to_kurbo()));
                 return Ok(segments);
             }
             // Contours with two or more points come in three flavors...:
@@ -382,12 +382,12 @@ impl Contour {
         }
 
         // Phase 1.5: Always need a MoveTo as the first element.
-        segments.push(PathEl::MoveTo(Point::new(start.x as f64, start.y as f64)));
+        segments.push(PathEl::MoveTo(start.to_kurbo()));
 
         // Phase 2: Conversion
         let mut controls: Vec<Point> = Vec::new();
         for point in points {
-            let p = Point::new(point.x as f64, point.y as f64);
+            let p = point.to_kurbo();
             match point.typ {
                 PointType::OffCurve => controls.push(p),
                 // The first Move is removed from the points above, any other Move we encounter is illegal.
