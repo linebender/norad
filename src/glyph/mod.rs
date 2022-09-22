@@ -333,15 +333,15 @@ impl Contour {
             [] => return Ok(segments),
             // Single points are converted to open MoveTos because closed single points of any
             // PointType make no sense.
-            [p1] => {
-                segments.push(PathEl::MoveTo(p1.to_kurbo()));
+            [p0] => {
+                segments.push(PathEl::MoveTo(p0.to_kurbo()));
                 return Ok(segments);
             }
             // Contours with two or more points come in three flavors...:
-            [first, .., last] => {
+            [p0, .., pn] => {
                 // 1. ... Open contours begin with a Move. Start the segment on the first point
                 // and don't close it. Note: Trailing off-curves are an error.
-                if let PointType::Move = first.typ {
+                if let PointType::Move = p0.typ {
                     closed = false;
                     // Pop off the Move here so the segmentation loop below can just error out on
                     // encountering any other Move.
@@ -365,8 +365,8 @@ impl Contour {
                     // below. Start the segment on the last, computed point.
                     } else {
                         implied_oncurve = ContourPoint::new(
-                            0.5 * (last.x + first.x),
-                            0.5 * (last.y + first.y),
+                            0.5 * (pn.x + p0.x),
+                            0.5 * (pn.y + p0.y),
                             PointType::QCurve,
                             false,
                             None,
@@ -404,15 +404,15 @@ impl Contour {
                 // a line, numbers > 1 mean we must expand “implied on-curve points”.
                 PointType::QCurve => match *controls.as_slice() {
                     [] => segments.push(PathEl::LineTo(p)),
-                    [c1] => {
-                        segments.push(PathEl::QuadTo(c1, p));
+                    [c0] => {
+                        segments.push(PathEl::QuadTo(c0, p));
                         controls.clear()
                     }
                     [.., cn] => {
                         // Insert a computed on-curve point between each control point.
-                        for (c1, c2) in controls.iter().zip(controls.iter().skip(1)) {
-                            let p1 = Point::new(0.5 * (c1.x + c2.x), 0.5 * (c1.y + c2.y));
-                            segments.push(PathEl::QuadTo(*c1, p1));
+                        for (c0, c1) in controls.iter().zip(controls.iter().skip(1)) {
+                            let p1 = Point::new(0.5 * (c0.x + c1.x), 0.5 * (c0.y + c1.y));
+                            segments.push(PathEl::QuadTo(*c0, p1));
                         }
                         segments.push(PathEl::QuadTo(cn, p));
                         controls.clear()
@@ -422,12 +422,12 @@ impl Contour {
                 // Zero means it's a line, one means it's a quadratic curve, two means it's a cubic curve.
                 PointType::Curve => match *controls.as_slice() {
                     [] => segments.push(PathEl::LineTo(p)),
-                    [c1] => {
-                        segments.push(PathEl::QuadTo(c1, p));
+                    [c0] => {
+                        segments.push(PathEl::QuadTo(c0, p));
                         controls.clear()
                     }
-                    [c1, c2] => {
-                        segments.push(PathEl::CurveTo(c1, c2, p));
+                    [c0, c1] => {
+                        segments.push(PathEl::CurveTo(c0, c1, p));
                         controls.clear()
                     }
                     _ => return Err(ConvertContourError::new(ErrorKind::TooManyOffCurves)),
@@ -894,5 +894,73 @@ impl From<Color> for druid::piet::Color {
     fn from(src: Color) -> druid::piet::Color {
         let (red, green, blue, alpha) = src.channels();
         druid::piet::Color::rgba(red, green, blue, alpha)
+    }
+}
+
+#[cfg(test)]
+mod tests2 {
+    use super::*;
+
+    #[test]
+    fn many_control_quads() {
+        let c1 = Contour::new(
+            vec![
+                ContourPoint::new(0.0, 0.0, PointType::OffCurve, false, None, None, None),
+                ContourPoint::new(2.0, 2.0, PointType::OffCurve, false, None, None, None),
+                ContourPoint::new(4.0, 4.0, PointType::OffCurve, false, None, None, None),
+                ContourPoint::new(100.0, 100.0, PointType::QCurve, false, None, None, None),
+            ],
+            None,
+            None,
+        );
+
+        assert_eq!(
+            c1.to_kurbo().unwrap(),
+            vec![
+                kurbo::PathEl::MoveTo((100.0, 100.0).into()),
+                kurbo::PathEl::QuadTo((0.0, 0.0).into(), (1.0, 1.0).into(),),
+                kurbo::PathEl::QuadTo((2.0, 2.0).into(), (3.0, 3.0).into(),),
+                kurbo::PathEl::QuadTo((4.0, 4.0).into(), (100.0, 100.0).into(),),
+                kurbo::PathEl::ClosePath,
+            ]
+        );
+
+        let c2 = Contour::new(
+            vec![
+                ContourPoint::new(0.0, 0.0, PointType::OffCurve, false, None, None, None),
+                ContourPoint::new(2.0, 2.0, PointType::OffCurve, false, None, None, None),
+                ContourPoint::new(100.0, 100.0, PointType::QCurve, false, None, None, None),
+            ],
+            None,
+            None,
+        );
+
+        assert_eq!(
+            c2.to_kurbo().unwrap(),
+            vec![
+                kurbo::PathEl::MoveTo((100.0, 100.0).into()),
+                kurbo::PathEl::QuadTo((0.0, 0.0).into(), (1.0, 1.0).into(),),
+                kurbo::PathEl::QuadTo((2.0, 2.0).into(), (100.0, 100.0).into(),),
+                kurbo::PathEl::ClosePath,
+            ]
+        );
+
+        let c3 = Contour::new(
+            vec![
+                ContourPoint::new(0.0, 0.0, PointType::OffCurve, false, None, None, None),
+                ContourPoint::new(100.0, 100.0, PointType::QCurve, false, None, None, None),
+            ],
+            None,
+            None,
+        );
+
+        assert_eq!(
+            c3.to_kurbo().unwrap(),
+            vec![
+                kurbo::PathEl::MoveTo((100.0, 100.0).into()),
+                kurbo::PathEl::QuadTo((0.0, 0.0).into(), (100.0, 100.0).into(),),
+                kurbo::PathEl::ClosePath,
+            ]
+        );
     }
 }
