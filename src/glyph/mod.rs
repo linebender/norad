@@ -896,11 +896,10 @@ impl From<Color> for druid::piet::Color {
     }
 }
 
-#[cfg(test)]
-mod tests2 {
+#[cfg(all(test, feature = "kurbo"))]
+mod kurbo_tests {
     use super::*;
 
-    #[cfg(feature = "kurbo")]
     #[test]
     fn many_control_quads() {
         let c1 = Contour::new(
