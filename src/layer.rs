@@ -67,7 +67,11 @@ impl LayerSet {
             .map(|(name, path)| {
                 let layer_path = base_dir.join(&path);
                 Layer::load_impl(&layer_path, name.clone(), glyph_names).map_err(|source| {
-                    FontLoadError::Layer { name: name.to_string(), path: layer_path, source }
+                    FontLoadError::Layer {
+                        name: name.to_string(),
+                        path: layer_path,
+                        source: Box::new(source),
+                    }
                 })
             })
             .collect::<Result<_, _>>()?;
@@ -381,7 +385,7 @@ impl Layer {
         path: &Path,
         opts: &WriteOptions,
     ) -> Result<(), LayerWriteError> {
-        fs::create_dir(&path).map_err(LayerWriteError::CreateDir)?;
+        fs::create_dir(path).map_err(LayerWriteError::CreateDir)?;
         crate::write::write_xml_to_file(&path.join(CONTENTS_FILE), &self.contents, opts)
             .map_err(LayerWriteError::Contents)?;
 

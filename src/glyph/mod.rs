@@ -389,7 +389,7 @@ pub struct ContourPoint {
 }
 
 /// Possible types of points that can exist in a [`Contour`].
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PointType {
     /// A point of this type must be the first in a contour. The reverse is not true:
     /// a contour does not necessarily start with a move point. When a contour

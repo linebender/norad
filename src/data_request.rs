@@ -34,7 +34,7 @@
 /// ```
 ///
 /// [`Ufo::with_fields`]: struct.Ufo.html#method.with_fields
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct DataRequest {
     /// Load and parse all layers and glyphs.
