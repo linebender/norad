@@ -4,6 +4,7 @@ use std::io::Error as IoError;
 use std::path::PathBuf;
 
 use plist::Error as PlistError;
+use quick_xml::events::attributes::AttrError;
 use quick_xml::Error as XmlError;
 use thiserror::Error;
 
@@ -40,6 +41,9 @@ pub enum GlifLoadError {
     /// A [`quick_xml::Error`].
     #[error("failed to read or parse XML structure")]
     Xml(#[from] XmlError),
+    /// An error in an XML attribute
+    #[error("error parsing XML attribute")]
+    XmlAttr(#[from] AttrError),
     /// The .glif file was malformed.
     #[error("failed to parse glyph data: {0}")]
     Parse(ErrorKind),
