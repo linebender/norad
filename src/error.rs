@@ -12,7 +12,7 @@ pub use crate::shared_types::ColorError;
 use crate::write::CustomSerializationError;
 use crate::Name;
 
-/// An error that occurs while attempting to read a UFO package from disk.
+/// An error that occurs while attempting to read a designspace file from disk.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum DesignSpaceLoadError {
