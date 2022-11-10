@@ -1214,7 +1214,7 @@ pub struct NameRecord {
 
 /// Corresponds to the allowed values for
 /// [openTypeOS2WidthClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
-#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum Os2WidthClass {
     /// Ultra-condensed width.
@@ -1226,6 +1226,7 @@ pub enum Os2WidthClass {
     /// Semi-condensed width.
     SemiCondensed = 4,
     /// Medium (normal) width.
+    #[default]
     Normal = 5,
     /// Semi-expanded width.
     SemiExpanded = 6,
