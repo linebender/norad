@@ -44,13 +44,15 @@ impl Glyph {
         );
         match options.quote_style {
             QuoteChar::Double => writer
+                .inner()
                 .write(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-                .map_err(GlifWriteError::Xml)?,
+                .map_err(GlifWriteError::Buffer)?,
             QuoteChar::Single => writer
+                .inner()
                 .write(b"<?xml version='1.0' encoding='UTF-8'?>\n")
-                .map_err(GlifWriteError::Xml)?,
-        }
-        let mut start = BytesStart::borrowed_name(b"glyph");
+                .map_err(GlifWriteError::Buffer)?,
+        };
+        let mut start = BytesStart::new("glyph");
         start.push_attribute(("name", &*self.name));
         // we always serialize 2.0
         //TODO: write out formatMinor if we start to support glif 2.1?
@@ -63,7 +65,7 @@ impl Glyph {
 
         // Skip serializing advance if both values are zero, infinite, subnormal, or NaN.
         if self.width.is_normal() || self.height.is_normal() {
-            let mut start = BytesStart::borrowed_name(b"advance");
+            let mut start = BytesStart::new("advance");
             if self.height != 0. {
                 start.push_attribute(("height", self.height.to_string().as_str()));
             }
@@ -79,7 +81,7 @@ impl Glyph {
 
         if !self.contours.is_empty() || !self.components.is_empty() {
             writer
-                .write_event(Event::Start(BytesStart::borrowed_name(b"outline")))
+                .write_event(Event::Start(BytesStart::new("outline")))
                 .map_err(GlifWriteError::Xml)?;
             for contour in &self.contours {
                 contour.write_xml(&mut writer).map_err(GlifWriteError::Xml)?;
@@ -88,7 +90,7 @@ impl Glyph {
                 writer.write_event(component.to_event()).map_err(GlifWriteError::Xml)?;
             }
             writer
-                .write_event(Event::End(BytesEnd::borrowed(b"outline")))
+                .write_event(Event::End(BytesEnd::new("outline")))
                 .map_err(GlifWriteError::Xml)?;
         }
 
@@ -120,19 +122,13 @@ impl Glyph {
 
         if let Some(ref note) = self.note {
             writer
-                .write_event(Event::Start(BytesStart::borrowed_name(b"note")))
+                .write_event(Event::Start(BytesStart::new("note")))
                 .map_err(GlifWriteError::Xml)?;
-            writer
-                .write_event(Event::Text(BytesText::from_plain_str(note)))
-                .map_err(GlifWriteError::Xml)?;
-            writer
-                .write_event(Event::End(BytesEnd::borrowed(b"note")))
-                .map_err(GlifWriteError::Xml)?;
+            writer.write_event(Event::Text(BytesText::new(note))).map_err(GlifWriteError::Xml)?;
+            writer.write_event(Event::End(BytesEnd::new("note"))).map_err(GlifWriteError::Xml)?;
         }
 
-        writer
-            .write_event(Event::End(BytesEnd::borrowed(b"glyph")))
-            .map_err(GlifWriteError::Xml)?;
+        writer.write_event(Event::End(BytesEnd::new("glyph"))).map_err(GlifWriteError::Xml)?;
         writer.inner().write_all("\n".as_bytes()).map_err(GlifWriteError::Buffer)?;
         writer.inner().flush().map_err(GlifWriteError::Buffer)?;
 
@@ -167,22 +163,20 @@ fn write_lib_section<T: Write>(
     let end_idx = lib_xml.find(footer).ok_or(GlifWriteError::InternalLibWriteError)?;
     let to_write = &lib_xml[start_idx..end_idx];
 
-    writer
-        .write_event(Event::Start(BytesStart::borrowed_name(b"lib")))
-        .map_err(GlifWriteError::Xml)?;
+    writer.write_event(Event::Start(BytesStart::new("lib"))).map_err(GlifWriteError::Xml)?;
     for line in to_write.lines() {
         writer.inner().write_all("\n".as_bytes()).map_err(GlifWriteError::Buffer)?;
         writer.inner().write_all(options.indent_str.as_bytes()).map_err(GlifWriteError::Buffer)?;
         writer.inner().write_all(options.indent_str.as_bytes()).map_err(GlifWriteError::Buffer)?;
         writer.inner().write_all(line.as_bytes()).map_err(GlifWriteError::Buffer)?;
     }
-    writer.write_event(Event::End(BytesEnd::borrowed(b"lib"))).map_err(GlifWriteError::Xml)?;
+    writer.write_event(Event::End(BytesEnd::new("lib"))).map_err(GlifWriteError::Xml)?;
     Ok(())
 }
 
 impl Guideline {
     fn to_event(&self) -> Event {
-        let mut start = BytesStart::borrowed_name(b"guideline");
+        let mut start = BytesStart::new("guideline");
         let (x, y, angle) = match self.line {
             Line::Vertical(x) => (Some(x), None, None),
             Line::Horizontal(y) => (None, Some(y), None),
@@ -218,7 +212,7 @@ impl Guideline {
 
 impl Anchor {
     fn to_event(&self) -> Event {
-        let mut start = BytesStart::borrowed_name(b"anchor");
+        let mut start = BytesStart::new("anchor");
 
         if let Some(name) = &self.name {
             start.push_attribute(("name", name.as_str()));
@@ -241,7 +235,7 @@ impl Anchor {
 
 impl Component {
     fn to_event(&self) -> Event {
-        let mut start = BytesStart::borrowed_name(b"component");
+        let mut start = BytesStart::new("component");
         start.push_attribute(("base", &*self.base));
 
         write_transform_attributes(&mut start, &self.transform);
@@ -255,7 +249,7 @@ impl Component {
 
 impl Contour {
     fn write_xml<T: Write>(&self, writer: &mut Writer<T>) -> Result<(), XmlError> {
-        let mut start = BytesStart::borrowed_name(b"contour");
+        let mut start = BytesStart::new("contour");
 
         if let Some(id) = &self.identifier {
             start.push_attribute(("identifier", id.as_str()));
@@ -266,14 +260,14 @@ impl Contour {
         for point in &self.points {
             writer.write_event(point.to_event())?;
         }
-        writer.write_event(Event::End(BytesEnd::borrowed(b"contour")))?;
+        writer.write_event(Event::End(BytesEnd::new("contour")))?;
         Ok(())
     }
 }
 
 impl ContourPoint {
     fn to_event(&self) -> Event {
-        let mut start = BytesStart::borrowed_name(b"point");
+        let mut start = BytesStart::new("point");
 
         if let Some(name) = &self.name {
             start.push_attribute(("name", name.as_str()));
@@ -339,7 +333,7 @@ impl Color {
 
 impl Image {
     fn to_event(&self) -> Event {
-        let mut start = BytesStart::borrowed_name(b"image");
+        let mut start = BytesStart::new("image");
         start.push_attribute(("fileName", self.file_name.to_str().expect("missing path")));
 
         write_transform_attributes(&mut start, &self.transform);
@@ -352,7 +346,7 @@ impl Image {
 }
 
 fn char_to_event(c: char) -> Event<'static> {
-    let mut start = BytesStart::borrowed_name(b"unicode");
+    let mut start = BytesStart::new("unicode");
     let hex = format!("{:04X}", c as u32);
     start.push_attribute(("hex", hex.as_str()));
     Event::Empty(start)

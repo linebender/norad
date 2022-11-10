@@ -55,7 +55,7 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
     let mut level = 0;
 
     loop {
-        match reader.read_event(&mut buf) {
+        match reader.read_event_into(&mut buf) {
             Ok(Event::Decl(decl)) => {
                 let version = decl.version()?;
                 let version = std::str::from_utf8(&version)?;
@@ -66,13 +66,13 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
                 eprintln!("xml version {} encoding {}", version, encoding);
             }
             Ok(Event::Start(start)) => {
-                let name = std::str::from_utf8(start.name())?;
+                let name = start.name();
+                let name = std::str::from_utf8(name.as_ref())?;
                 eprint!("{}<{}", spaces_for_level(level), name);
                 for attr in start.attributes() {
                     let attr = attr?;
-                    let key = std::str::from_utf8(attr.key)?;
-                    let value = attr.unescaped_value()?;
-                    let value = reader.decode(&value)?;
+                    let key = std::str::from_utf8(attr.key.as_ref())?;
+                    let value = attr.unescape_value()?;
                     eprint!(" {}=\"{}\"", key, value);
                 }
                 eprintln!(">");
@@ -80,15 +80,17 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
             }
             Ok(Event::End(end)) => {
                 level -= 1;
-                let name = std::str::from_utf8(end.name())?;
+                let name = end.name();
+                let name = std::str::from_utf8(name.as_ref())?;
                 eprintln!("{}</{}>", spaces_for_level(level), name);
             }
             Ok(Event::Empty(start)) => {
-                let name = std::str::from_utf8(start.name())?;
+                let name = start.name();
+                let name = std::str::from_utf8(name.as_ref())?;
                 eprint!("{}<{}", spaces_for_level(level), name);
                 for attr in start.attributes() {
                     let Attribute { key, value } = attr?;
-                    let key = std::str::from_utf8(key)?;
+                    let key = std::str::from_utf8(key.as_ref())?;
                     let value = std::str::from_utf8(&value)?;
                     eprint!(" {}=\"{}\"", key, value);
                 }
