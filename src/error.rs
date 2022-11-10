@@ -87,7 +87,7 @@ pub enum FontLoadError {
         /// The path to the layer.
         path: PathBuf,
         /// The underlying error.
-        source: LayerLoadError,
+        source: Box<LayerLoadError>,
     },
     /// The lib.plist file was something other than a dictionary.
     #[error("the lib.plist file must contain a dictionary (<dict>...</dict>)")]
@@ -406,7 +406,7 @@ pub enum FontWriteError {
         /// The path to the layer.
         path: PathBuf,
         /// The underlying error.
-        source: LayerWriteError,
+        source: Box<LayerWriteError>,
     },
     /// There exists a `public.objectLibs` lib key when it should be set only by norad.
     #[error("the `public.objectLibs` lib key is managed by norad and must not be set manually")]

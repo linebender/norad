@@ -92,7 +92,7 @@ pub struct Font {
 /// A version of the [UFO spec].
 ///
 /// [UFO spec]: http://unifiedfontobject.org
-#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq, Eq)]
 #[repr(u8)]
 pub enum FormatVersion {
     /// UFO specification major version 1. Only reading (and upconversion) is supported.
@@ -106,7 +106,7 @@ pub enum FormatVersion {
 /// The contents of the [`metainfo.plist`] file.
 ///
 /// [`metainfo.plist`]: http://unifiedfontobject.org/versions/ufo3/metainfo.plist/
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct MetaInfo {
     /// Creator field
@@ -517,7 +517,11 @@ impl Font {
         for layer in self.layers.iter() {
             let layer_path = path.join(&layer.path);
             layer.save_with_options(&layer_path, options).map_err(|source| {
-                FontWriteError::Layer { name: layer.name.to_string(), path: layer_path, source }
+                FontWriteError::Layer {
+                    name: layer.name.to_string(),
+                    path: layer_path,
+                    source: Box::new(source),
+                }
             })?;
         }
 
@@ -527,7 +531,7 @@ impl Font {
                 let data = contents.expect("internal error: should have been checked");
                 let destination = data_dir.join(data_path);
                 let destination_parent = destination.parent().unwrap();
-                fs::create_dir_all(&destination_parent).map_err(|source| {
+                fs::create_dir_all(destination_parent).map_err(|source| {
                     FontWriteError::CreateStoreDir { path: destination_parent.into(), source }
                 })?;
                 fs::write(&destination, &*data)
@@ -653,6 +657,8 @@ fn load_layer_set(
 
 #[cfg(test)]
 mod tests {
+    use std::ops::Deref;
+
     use tempdir::TempDir;
 
     use crate::error::LayerLoadError;
@@ -742,14 +748,12 @@ mod tests {
         // directory. This should raise an error
         let path = "testdata/ufo/Tester-MissingGlyphsContents.ufo";
         let font_load_res = Font::load(path);
-        assert!(matches!(
-            font_load_res,
-            Err(FontLoadError::Layer {
-                name: _,
-                path: _,
-                source: LayerLoadError::MissingContentsFile
-            })
-        ));
+        let Err(FontLoadError::Layer { source, .. }) = font_load_res else {
+            panic!("expected FontLoadError, found '{:?}'", font_load_res);
+        };
+        if !matches!(source.deref(), LayerLoadError::MissingContentsFile) {
+            panic!("expected MissingContentsFile, found '{:?}'", source);
+        }
     }
 
     #[test]
@@ -758,14 +762,12 @@ mod tests {
         // but not in the glyphs.background directory. This should raise an error
         let path = "testdata/ufo/Tester-MissingGlyphsContents-BackgroundLayer.ufo";
         let font_load_res = Font::load(path);
-        assert!(matches!(
-            font_load_res,
-            Err(FontLoadError::Layer {
-                name: _,
-                path: _,
-                source: LayerLoadError::MissingContentsFile
-            })
-        ));
+        let Err(FontLoadError::Layer { source, .. }) = font_load_res else {
+            panic!("expected FontLoadError, found '{:?}'", font_load_res);
+        };
+        if !matches!(source.deref(), LayerLoadError::MissingContentsFile) {
+            panic!("expected MissingContentsFile, found '{:?}'", source);
+        }
     }
 
     #[test]

@@ -1167,7 +1167,7 @@ mod serde_impls {
 }
 
 /// Corresponds to [gasp Range Record Format](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#gasp-range-record-format).
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct GaspRangeRecord {
@@ -1179,7 +1179,7 @@ pub struct GaspRangeRecord {
 }
 
 /// Corresponds to [rangeGaspBehavior Bits](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#rangegaspbehavior-bits).
-#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq, Eq)]
 #[repr(u8)]
 pub enum GaspBehavior {
     /// Use grid fitting.
@@ -1193,7 +1193,7 @@ pub enum GaspBehavior {
 }
 
 /// Corresponds to [Name Record Format](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#name-record-format).
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NameRecord {
     /// Name ID.
@@ -1214,7 +1214,7 @@ pub struct NameRecord {
 
 /// Corresponds to the allowed values for
 /// [openTypeOS2WidthClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
-#[derive(Debug, Clone, Copy, Default, Serialize_repr, Deserialize_repr, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, Serialize_repr, Deserialize_repr, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Os2WidthClass {
     /// Ultra-condensed width.
@@ -1239,7 +1239,7 @@ pub enum Os2WidthClass {
 }
 
 /// Corresponds to [openTypeOS2FamilyClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Os2FamilyClass {
     /// Class ID.
     pub class_id: u8,
@@ -1282,7 +1282,7 @@ impl<'de> Deserialize<'de> for Os2FamilyClass {
 }
 
 /// Corresponds to [openTypeOS2Panose](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Os2Panose {
     /// Panose family type.
     pub family_type: NonNegativeInteger,
@@ -1370,7 +1370,7 @@ impl From<Os2PanoseV2> for Os2Panose {
 
 /// OS2PanoseV2 is from UFO v2 and allows negative integers, while the OpenType specification
 /// specifies unsigned integers.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct Os2PanoseV2 {
     family_type: Integer,
     serif_style: Integer,
@@ -1410,7 +1410,7 @@ impl<'de> Deserialize<'de> for Os2PanoseV2 {
 }
 
 /// Corresponds to postscriptWindowsCharacterSet in [PostScript Specific Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#postscript-specific-data).
-#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, PartialEq, Eq)]
 #[repr(u8)]
 pub enum PostscriptWindowsCharacterSet {
     /// ANSI character set.
@@ -1456,21 +1456,21 @@ pub enum PostscriptWindowsCharacterSet {
 }
 
 /// Corresponds to woffMetadataCopyright in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataCopyright {
     /// WOFF Metadata Copyright Record
     pub text: Vec<WoffMetadataTextRecord>,
 }
 
 /// Corresponds to woffMetadataCredits in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataCredits {
     /// A collection of WOFF Metadata Credit Records
     pub credits: Vec<WoffMetadataCredit>,
 }
 
 /// A WOFF Metadata Credits Record data structure.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataCredit {
     /// Name.
     pub name: String,
@@ -1485,7 +1485,7 @@ pub struct WoffMetadataCredit {
 }
 
 /// Corresponds to woffMetadataDescription in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataDescription {
     /// Description URL.
     pub url: Option<String>,
@@ -1494,7 +1494,7 @@ pub struct WoffMetadataDescription {
 }
 
 /// A WOFF Metadata Text Record data structure.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataTextRecord {
     /// Text.
     pub text: String,
@@ -1507,7 +1507,7 @@ pub struct WoffMetadataTextRecord {
 }
 
 /// A WOFF Metadata Extension Record data structure.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataExtensionRecord {
     /// Identifier.
     pub id: Option<String>,
@@ -1518,7 +1518,7 @@ pub struct WoffMetadataExtensionRecord {
 }
 
 /// A WOFF Metadata Extension Name Record data structure.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataExtensionNameRecord {
     /// Text.
     pub text: String,
@@ -1531,7 +1531,7 @@ pub struct WoffMetadataExtensionNameRecord {
 }
 
 /// A WOFF Metadata Extension Item Record data structure.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataExtensionItemRecord {
     /// Identifier.
     pub id: Option<String>, // XXX: Spec does not specify if required, assume optional.
@@ -1542,7 +1542,7 @@ pub struct WoffMetadataExtensionItemRecord {
 }
 
 /// A WOFF Metadata Extension Value Record data structure.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataExtensionValueRecord {
     /// Text.
     pub text: String,
@@ -1555,7 +1555,7 @@ pub struct WoffMetadataExtensionValueRecord {
 }
 
 /// Corresponds to woffMetadataLicense in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataLicense {
     /// License URL.
     pub url: Option<String>,
@@ -1566,7 +1566,7 @@ pub struct WoffMetadataLicense {
 }
 
 /// Corresponds to woffMetadataLicensee in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataLicensee {
     /// Licensee name.
     pub name: String,
@@ -1577,21 +1577,21 @@ pub struct WoffMetadataLicensee {
 }
 
 /// Corresponds to woffMetadataTrademark in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataTrademark {
     /// Trademark text.
     pub text: Vec<WoffMetadataTextRecord>,
 }
 
 /// Corresponds to woffMetadataUniqueID in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataUniqueId {
     /// Unique identifier.
     pub id: String,
 }
 
 /// Corresponds to woffMetadataVendor in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WoffMetadataVendor {
     /// Vendor name.
     pub name: String,

@@ -28,14 +28,14 @@ pub(crate) fn upconvert_kerning(
     // Make lists of groups referenced in kerning pairs, based on their side.
     for (first, seconds) in kerning {
         if groups.contains_key(first)
-            && !glyph_set.contains(&first)
+            && !glyph_set.contains(first)
             && !first.starts_with("public.kern1.")
         {
             groups_first.insert(first.clone());
         }
         for second in seconds.keys() {
             if groups.contains_key(second)
-                && !glyph_set.contains(&second)
+                && !glyph_set.contains(second)
                 && !second.starts_with("public.kern2.")
             {
                 groups_second.insert(second.clone());
