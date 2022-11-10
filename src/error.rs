@@ -5,12 +5,25 @@ use std::path::PathBuf;
 
 use plist::Error as PlistError;
 use quick_xml::events::attributes::AttrError;
-use quick_xml::Error as XmlError;
+use quick_xml::{DeError, Error as XmlError};
 use thiserror::Error;
 
 pub use crate::shared_types::ColorError;
 use crate::write::CustomSerializationError;
 use crate::Name;
+
+/// An error that occurs while attempting to read a UFO package from disk.
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum DesignSpaceLoadError {
+    /// An [`std::io::Error`].
+    #[error("failed to read file")]
+    Io(#[from] IoError),
+
+    /// A parse error.
+    #[error("failed to deserialize")]
+    DeError(#[from] DeError),
+}
 
 /// An error representing a failure to (re)name something.
 #[derive(Debug, Error)]
