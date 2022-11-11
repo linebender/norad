@@ -13,15 +13,21 @@ use crate::error::DesignSpaceLoadError;
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(rename = "designspace")]
 pub struct DesignSpaceDocument {
+    /// Design space format version.
     pub format: f32,
+    /// One or more axes.
     pub axes: Axes,
+    /// One or more sources.
     pub sources: Sources,
+    /// One or more instances.
     pub instances: Instances,
 }
 
+/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#axes-element
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(rename = "axes")]
 pub struct Axes {
+    /// One or more axis definitions.
     pub axis: Vec<Axis>,
 }
 
@@ -31,26 +37,39 @@ pub struct Axes {
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(rename = "axis")]
 pub struct Axis {
+    /// Name of the axis that is used in the location elements.
     pub name: String,
+    /// 4 letters. Some axis tags are registered in the OpenType Specification.
     pub tag: String,
+    /// The default value for this axis, in user space coordinates.
     pub default: f32,
+    /// Records whether this axis needs to be hidden in interfaces.
     pub hidden: Option<bool>,
+    /// The minimum value for a continuous axis, in user space coordinates.
     pub minimum: Option<f32>,
+    /// The maximum value for a continuous axis, in user space coordinates.
     pub maximum: Option<f32>,
+    /// The possible values for a discrete axis, in user space coordinates.
     pub values: Option<Vec<f32>>,
+    /// Mapping between user space coordinates and design space coordinates.
     pub map: Option<Vec<AxisMapping>>,
 }
 
+/// Maps one input value (user space coord) to one output value (design space coord).
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(rename = "map")]
 pub struct AxisMapping {
+    /// user space coordinate
     pub input: f32,
+    /// designspace coordinate
     pub output: f32,
 }
 
+/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#sources-element
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(rename = "sources")]
 pub struct Sources {
+    /// One or more sources.
     pub source: Vec<Source>,
 }
 
@@ -60,17 +79,25 @@ pub struct Sources {
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(rename = "source")]
 pub struct Source {
+    /// The family name of the source font.
     pub familyname: Option<String>,
+    /// The style name of the source font.
     pub stylename: Option<String>,
+    /// A unique name that can be used to identify this font if it needs to be referenced elsewhere.
     pub name: String,
+    /// A path to the source file, relative to the root path of this document. The path can be at the same level as the document or lower.
     pub filename: String,
+    /// The name of the layer in the source file. If no layer attribute is given assume the foreground layer should be used.
     pub layer: Option<String>,
+    /// Location in designspace coordinates.
     pub location: Location,
 }
 
+/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#instances-element
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(rename = "instances")]
 pub struct Instances {
+    /// One or more instances located somewhere in designspace.
     pub instance: Vec<Instance>,
 }
 
@@ -80,13 +107,21 @@ pub struct Instances {
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 pub struct Instance {
     // per @anthrotype, contrary to spec, familyname and stylename are optional
+    /// The family name of the instance font. Corresponds with font.info.familyName
     pub familyname: Option<String>,
+    /// The style name of the instance font. Corresponds with font.info.styleName
     pub stylename: Option<String>,
+    /// A unique name that can be used to identify this font if it needs to be referenced elsewhere.
     pub name: String,
+    /// A path to the instance file, relative to the root path of this document. The path can be at the same level as the document or lower.
     pub filename: String,
+    /// Corresponds with font.info.postscriptFontName
     pub postscriptfontname: Option<String>,
+    /// Corresponds with styleMapFamilyName
     pub stylemapfamilyname: Option<String>,
+    /// Corresponds with styleMapStyleName
     pub stylemapstylename: Option<String>,
+    /// Location in designspace.
     pub location: Location,
 }
 
@@ -95,6 +130,7 @@ pub struct Instance {
 /// [design space location]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#location-element-source
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 pub struct Location {
+    /// Should contain one Dimension for each axis in the designspace.
     pub dimension: Vec<Dimension>,
 }
 
@@ -103,13 +139,18 @@ pub struct Location {
 /// [design space location]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#location-element-source
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 pub struct Dimension {
+    /// Name of the axis, e.g. Weight.
     pub name: String,
+    /// Value on the axis in user coordinates.
     pub uservalue: Option<f32>,
+    /// Value on the axis in designcoordinates.
     pub xvalue: Option<f32>,
+    /// Separate value for anisotropic interpolations.
     pub yvalue: Option<f32>,
 }
 
 impl DesignSpaceDocument {
+    /// Load a designspace.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<DesignSpaceDocument, DesignSpaceLoadError> {
         let reader = BufReader::new(File::open(path).map_err(DesignSpaceLoadError::Io)?);
         from_reader(reader).map_err(DesignSpaceLoadError::DeError)
