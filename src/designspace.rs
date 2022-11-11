@@ -44,7 +44,8 @@ pub struct Axis {
     /// The default value for this axis, in user space coordinates.
     pub default: f32,
     /// Records whether this axis needs to be hidden in interfaces.
-    pub hidden: Option<bool>,
+    #[serde(default)]
+    pub hidden: bool,
     /// The minimum value for a continuous axis, in user space coordinates.
     pub minimum: Option<f32>,
     /// The maximum value for a continuous axis, in user space coordinates.
@@ -106,7 +107,7 @@ pub struct Instances {
 /// [instance]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#instance-element
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 pub struct Instance {
-    // per @anthrotype, contrary to spec, familyname and stylename are optional
+    // per @anthrotype, contrary to spec, filename, familyname and stylename are optional
     /// The family name of the instance font. Corresponds with font.info.familyName
     pub familyname: Option<String>,
     /// The style name of the instance font. Corresponds with font.info.styleName
@@ -114,7 +115,7 @@ pub struct Instance {
     /// A unique name that can be used to identify this font if it needs to be referenced elsewhere.
     pub name: String,
     /// A path to the instance file, relative to the root path of this document. The path can be at the same level as the document or lower.
-    pub filename: String,
+    pub filename: Option<String>,
     /// Corresponds with font.info.postscriptFontName
     pub postscriptfontname: Option<String>,
     /// Corresponds with styleMapFamilyName
