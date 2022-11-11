@@ -10,22 +10,43 @@ use crate::error::DesignSpaceLoadError;
 ///
 /// [designspace]: https://fonttools.readthedocs.io/en/latest/designspaceLib/index.html
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
-#[serde(rename = "designspace")]
+#[serde(from = "DesignSpaceDocumentXmlRepr")]
 pub struct DesignSpaceDocument {
     /// Design space format version.
     pub format: f32,
     /// One or more axes.
-    pub axes: Axes,
+    pub axes: Vec<Axis>,
     /// One or more sources.
-    pub sources: Sources,
+    pub sources: Vec<Source>,
     /// One or more instances.
-    pub instances: Instances,
+    pub instances: Vec<Instance>,
+}
+
+/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#overview
+#[derive(Deserialize)]
+#[serde(rename = "designspace")]
+struct DesignSpaceDocumentXmlRepr {
+    pub format: f32,
+    pub axes: AxesXmlRepr,
+    pub sources: SourcesXmlRepr,
+    pub instances: InstancesXmlRepr,
+}
+
+impl From<DesignSpaceDocumentXmlRepr> for DesignSpaceDocument {
+    fn from(xml_form: DesignSpaceDocumentXmlRepr) -> Self {
+        DesignSpaceDocument {
+            format: xml_form.format,
+            axes: xml_form.axes.axis,
+            sources: xml_form.sources.source,
+            instances: xml_form.instances.instance,
+        }
+    }
 }
 
 /// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#axes-element
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename = "axes")]
-pub struct Axes {
+pub struct AxesXmlRepr {
     /// One or more axis definitions.
     pub axis: Vec<Axis>,
 }
@@ -66,9 +87,9 @@ pub struct AxisMapping {
 }
 
 /// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#sources-element
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename = "sources")]
-pub struct Sources {
+struct SourcesXmlRepr {
     /// One or more sources.
     pub source: Vec<Source>,
 }
@@ -77,7 +98,7 @@ pub struct Sources {
 ///
 /// [source]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#id25
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
-#[serde(rename = "source")]
+#[serde(from = "SourceXmlRepr")]
 pub struct Source {
     /// The family name of the source font.
     pub familyname: Option<String>,
@@ -90,13 +111,38 @@ pub struct Source {
     /// The name of the layer in the source file. If no layer attribute is given assume the foreground layer should be used.
     pub layer: Option<String>,
     /// Location in designspace coordinates.
-    pub location: Location,
+    pub location: Vec<Dimension>,
+}
+
+/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#source-element
+#[derive(Deserialize)]
+#[serde(rename = "source")]
+struct SourceXmlRepr {
+    pub familyname: Option<String>,
+    pub stylename: Option<String>,
+    pub name: String,
+    pub filename: String,
+    pub layer: Option<String>,
+    pub location: LocationXmlRepr,
+}
+
+impl From<SourceXmlRepr> for Source {
+    fn from(xml_form: SourceXmlRepr) -> Self {
+        Source {
+            familyname: xml_form.familyname,
+            stylename: xml_form.stylename,
+            name: xml_form.name,
+            filename: xml_form.filename,
+            layer: xml_form.layer,
+            location: xml_form.location.dimension,
+        }
+    }
 }
 
 /// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#instances-element
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename = "instances")]
-pub struct Instances {
+struct InstancesXmlRepr {
     /// One or more instances located somewhere in designspace.
     pub instance: Vec<Instance>,
 }
@@ -105,6 +151,7 @@ pub struct Instances {
 ///
 /// [instance]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#instance-element
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[serde(from = "InstanceXmlRepr")]
 pub struct Instance {
     // per @anthrotype, contrary to spec, filename, familyname and stylename are optional
     /// The family name of the instance font. Corresponds with font.info.familyName
@@ -122,15 +169,40 @@ pub struct Instance {
     /// Corresponds with styleMapStyleName
     pub stylemapstylename: Option<String>,
     /// Location in designspace.
-    pub location: Location,
+    pub location: Vec<Dimension>,
 }
 
-/// A [design space location]].
-///
-/// [design space location]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#location-element-source
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
-pub struct Location {
-    /// Should contain one Dimension for each axis in the designspace.
+/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#instance-element
+#[derive(Deserialize)]
+struct InstanceXmlRepr {
+    pub familyname: Option<String>,
+    pub stylename: Option<String>,
+    pub name: String,
+    pub filename: Option<String>,
+    pub postscriptfontname: Option<String>,
+    pub stylemapfamilyname: Option<String>,
+    pub stylemapstylename: Option<String>,
+    pub location: LocationXmlRepr,
+}
+
+impl From<InstanceXmlRepr> for Instance {
+    fn from(instance_xml: InstanceXmlRepr) -> Self {
+        Instance {
+            familyname: instance_xml.familyname,
+            stylename: instance_xml.stylename,
+            name: instance_xml.name,
+            filename: instance_xml.filename,
+            postscriptfontname: instance_xml.postscriptfontname,
+            stylemapfamilyname: instance_xml.stylemapfamilyname,
+            stylemapstylename: instance_xml.stylemapstylename,
+            location: instance_xml.location.dimension,
+        }
+    }
+}
+
+/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#location-element-top-level-stat-label
+#[derive(Deserialize)]
+struct LocationXmlRepr {
     pub dimension: Vec<Dimension>,
 }
 
@@ -163,7 +235,7 @@ mod tests {
 
     use pretty_assertions::assert_eq;
 
-    use crate::designspace::{AxisMapping, Dimension, Location};
+    use crate::designspace::{AxisMapping, Dimension};
 
     use super::DesignSpaceDocument;
 
@@ -174,39 +246,32 @@ mod tests {
     #[test]
     fn read_single_wght() {
         let ds = DesignSpaceDocument::load(Path::new("testdata/single_wght.designspace")).unwrap();
-        assert_eq!(1, ds.axes.axis.len());
+        assert_eq!(1, ds.axes.len());
         assert_eq!(
             &vec![AxisMapping { input: 400., output: 100. }],
-            ds.axes.axis[0].map.as_ref().unwrap()
+            ds.axes[0].map.as_ref().unwrap()
         );
-        assert_eq!(1, ds.sources.source.len());
+        assert_eq!(1, ds.sources.len());
         let weight_100 = dim_name_xvalue("Weight", 100.);
-        assert_eq!(vec![weight_100.clone()], ds.sources.source[0].location.dimension);
-        assert_eq!(1, ds.instances.instance.len());
-        assert_eq!(vec![weight_100], ds.instances.instance[0].location.dimension);
+        assert_eq!(vec![weight_100.clone()], ds.sources[0].location);
+        assert_eq!(1, ds.instances.len());
+        assert_eq!(vec![weight_100], ds.instances[0].location);
     }
 
     #[test]
     fn read_wght_variable() {
         let ds = DesignSpaceDocument::load(Path::new("testdata/wght.designspace")).unwrap();
-        assert_eq!(1, ds.axes.axis.len());
-        assert!(ds.axes.axis[0].map.is_none());
+        assert_eq!(1, ds.axes.len());
+        assert!(ds.axes[0].map.is_none());
         assert_eq!(
             vec![
-                (
-                    "TestFamily-Regular.ufo".to_string(),
-                    Location { dimension: vec![dim_name_xvalue("Weight", 400.)] }
-                ),
-                (
-                    "TestFamily-Bold.ufo".to_string(),
-                    Location { dimension: vec![dim_name_xvalue("Weight", 700.)] }
-                ),
+                ("TestFamily-Regular.ufo".to_string(), vec![dim_name_xvalue("Weight", 400.)]),
+                ("TestFamily-Bold.ufo".to_string(), vec![dim_name_xvalue("Weight", 700.)]),
             ],
             ds.sources
-                .source
                 .into_iter()
                 .map(|s| (s.filename, s.location))
-                .collect::<Vec<(String, Location)>>()
+                .collect::<Vec<(String, Vec<Dimension>)>>()
         );
     }
 }
