@@ -79,8 +79,9 @@ pub struct Instances {
 /// [instance]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#instance-element
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 pub struct Instance {
-    pub familyname: String,
-    pub stylename: String,
+    // per @anthrotype, contrary to spec, familyname and stylename are optional
+    pub familyname: Option<String>,
+    pub stylename: Option<String>,
     pub name: String,
     pub filename: String,
     pub postscriptfontname: Option<String>,
