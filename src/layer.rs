@@ -65,7 +65,7 @@ impl LayerSet {
         let mut layers: Vec<_> = to_load
             .into_iter()
             .map(|(name, path)| {
-                let layer_path = base_dir.join(&path);
+                let layer_path = base_dir.join(path);
                 Layer::load_impl(&layer_path, name.clone(), glyph_names).map_err(|source| {
                     FontLoadError::Layer {
                         name: name.to_string(),

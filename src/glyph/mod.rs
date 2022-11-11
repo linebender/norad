@@ -92,7 +92,7 @@ impl Glyph {
         }
 
         let data = self.encode_xml_with_options(opts)?;
-        std::fs::write(path, &data).map_err(GlifWriteError::Io)?;
+        std::fs::write(path, data).map_err(GlifWriteError::Io)?;
 
         Ok(())
     }
@@ -634,7 +634,7 @@ impl ContourPoint {
     /// Returns a [`kurbo::Point`] with this `ContourPoint`'s coordinates.
     #[cfg(feature = "kurbo")]
     pub fn to_kurbo(&self) -> kurbo::Point {
-        kurbo::Point::new(self.x as f64, self.y as f64)
+        kurbo::Point::new(self.x, self.y)
     }
 
     /// Applies a transformation matrix to the point's coordinates
@@ -798,13 +798,8 @@ impl From<druid::piet::Color> for Color {
         let a = (rgba & 0xff) as f64 / 255.0;
         assert!((0.0..=1.0).contains(&b), "b: {}, raw {}", b, (rgba & (0xff << 8)));
 
-        Color::new(
-            r.max(0.0).min(1.0),
-            g.max(0.0).min(1.0),
-            b.max(0.0).min(1.0),
-            a.max(0.0).min(1.0),
-        )
-        .unwrap()
+        Color::new(r.clamp(0.0, 1.0), g.clamp(0.0, 1.0), b.clamp(0.0, 1.0), a.clamp(0.0, 1.0))
+            .unwrap()
     }
 }
 

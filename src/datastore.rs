@@ -521,7 +521,7 @@ mod tests {
         let images_dir = dir.as_ref().join(crate::font::IMAGES_DIR);
         std::fs::create_dir(&images_dir).unwrap();
         let images_dir_subdir = images_dir.join("test");
-        std::fs::create_dir(&images_dir_subdir).unwrap();
+        std::fs::create_dir(images_dir_subdir).unwrap();
 
         let ufo = crate::Font::load(&dir);
         assert!(ufo.is_err());
