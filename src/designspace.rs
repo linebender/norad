@@ -38,7 +38,7 @@ pub struct Axis {
     pub minimum: Option<f32>,
     pub maximum: Option<f32>,
     pub values: Option<Vec<f32>>,
-    pub map: Vec<AxisMapping>,
+    pub map: Option<Vec<AxisMapping>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
@@ -112,7 +112,7 @@ pub struct Dimension {
 impl DesignSpaceDocument {
     pub fn load<P: AsRef<Path>>(path: P) -> Result<DesignSpaceDocument, DesignSpaceLoadError> {
         let reader = BufReader::new(File::open(path).map_err(DesignSpaceLoadError::Io)?);
-        Ok(from_reader(reader).map_err(DesignSpaceLoadError::DeError)?)
+        from_reader(reader).map_err(DesignSpaceLoadError::DeError)
     }
 }
 
@@ -122,24 +122,50 @@ mod tests {
 
     use pretty_assertions::assert_eq;
 
-    use crate::designspace::{AxisMapping, Dimension};
+    use crate::designspace::{AxisMapping, Dimension, Location};
 
     use super::DesignSpaceDocument;
+
+    fn dim_name_xvalue(name: &str, xvalue: f32) -> Dimension {
+        Dimension { name: name.to_string(), uservalue: None, xvalue: Some(xvalue), yvalue: None }
+    }
 
     #[test]
     fn read_single_wght() {
         let ds = DesignSpaceDocument::load(Path::new("testdata/single_wght.designspace")).unwrap();
         assert_eq!(1, ds.axes.axis.len());
-        assert_eq!(vec![AxisMapping { input: 400., output: 100. }], ds.axes.axis[0].map);
+        assert_eq!(
+            &vec![AxisMapping { input: 400., output: 100. }],
+            ds.axes.axis[0].map.as_ref().unwrap()
+        );
         assert_eq!(1, ds.sources.source.len());
-        let weight_100 = Dimension {
-            name: "Weight".to_string(),
-            uservalue: None,
-            xvalue: Some(100.),
-            yvalue: None,
-        };
+        let weight_100 = dim_name_xvalue("Weight", 100.);
         assert_eq!(vec![weight_100.clone()], ds.sources.source[0].location.dimension);
         assert_eq!(1, ds.instances.instance.len());
         assert_eq!(vec![weight_100], ds.instances.instance[0].location.dimension);
+    }
+
+    #[test]
+    fn read_wght_variable() {
+        let ds = DesignSpaceDocument::load(Path::new("testdata/wght.designspace")).unwrap();
+        assert_eq!(1, ds.axes.axis.len());
+        assert!(ds.axes.axis[0].map.is_none());
+        assert_eq!(
+            vec![
+                (
+                    "TestFamily-Regular.ufo".to_string(),
+                    Location { dimension: vec![dim_name_xvalue("Weight", 400.)] }
+                ),
+                (
+                    "TestFamily-Bold.ufo".to_string(),
+                    Location { dimension: vec![dim_name_xvalue("Weight", 700.)] }
+                ),
+            ],
+            ds.sources
+                .source
+                .into_iter()
+                .map(|s| (s.filename, s.location))
+                .collect::<Vec<(String, Location)>>()
+        );
     }
 }
