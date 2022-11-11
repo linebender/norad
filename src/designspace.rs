@@ -2,7 +2,6 @@
 
 #![deny(rustdoc::broken_intra_doc_links)]
 
-use quick_xml::de::from_reader;
 use std::{fs::File, io::BufReader, path::Path};
 
 use crate::error::DesignSpaceLoadError;
@@ -154,7 +153,7 @@ impl DesignSpaceDocument {
     /// Load a designspace.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<DesignSpaceDocument, DesignSpaceLoadError> {
         let reader = BufReader::new(File::open(path).map_err(DesignSpaceLoadError::Io)?);
-        from_reader(reader).map_err(DesignSpaceLoadError::DeError)
+        quick_xml::de::from_reader(reader).map_err(DesignSpaceLoadError::DeError)
     }
 }
 
