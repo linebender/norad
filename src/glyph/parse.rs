@@ -127,13 +127,7 @@ impl<'names> GlifParser<'names> {
         // than 1 codepoint, to avoid memory allocation.
         if self.glyph.codepoints.len() > 1 {
             let mut seen_codepoints = HashSet::new();
-            self.glyph.codepoints = self
-                .glyph
-                .codepoints
-                .iter()
-                .filter(|c| seen_codepoints.insert(**c))
-                .cloned()
-                .collect();
+            self.glyph.codepoints.retain(|c| seen_codepoints.insert(*c));
         }
 
         Ok(self.glyph)
