@@ -72,6 +72,7 @@ extern crate serde_repr;
 
 mod data_request;
 pub mod datastore;
+pub mod designspace;
 pub mod error;
 mod font;
 pub mod fontinfo;
