@@ -62,10 +62,22 @@ impl Glyph {
         start.push_attribute(("format", "2"));
         writer.write_event(Event::Start(start)).map_err(GlifWriteError::Xml)?;
 
-        let mut seen_codepoints = HashSet::new();
-        for codepoint in &self.codepoints {
-            if seen_codepoints.insert(codepoint) {
-                writer.write_event(char_to_event(*codepoint)).map_err(GlifWriteError::Xml)?;
+        // Deduplicate code points while preserving order, but only if there is more
+        // than 1 codepoint, to avoid memory allocation.
+        match self.codepoints.as_slice() {
+            [] => (),
+            [c] => {
+                writer.write_event(char_to_event(*c)).map_err(GlifWriteError::Xml)?;
+            }
+            _ => {
+                let mut seen_codepoints = HashSet::new();
+                for codepoint in &self.codepoints {
+                    if seen_codepoints.insert(codepoint) {
+                        writer
+                            .write_event(char_to_event(*codepoint))
+                            .map_err(GlifWriteError::Xml)?;
+                    }
+                }
             }
         }
 
