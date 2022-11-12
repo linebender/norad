@@ -260,7 +260,7 @@ mod tests {
 
     #[test]
     fn read_wght_variable() {
-        let ds = DesignSpaceDocument::load(Path::new("testdata/wght.designspace")).unwrap();
+        let ds = DesignSpaceDocument::load("testdata/wght.designspace").unwrap();
         assert_eq!(1, ds.axes.len());
         assert!(ds.axes[0].map.is_none());
         assert_eq!(
