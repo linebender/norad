@@ -5,6 +5,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::data_request::LayerFilter;
 use crate::datastore::{DataStore, ImageStore};
 use crate::error::{FontLoadError, FontWriteError};
 use crate::fontinfo::FontInfo;
@@ -160,7 +161,7 @@ impl Font {
     ///
     /// [v3]: http://unifiedfontobject.org/versions/ufo3/
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Font, FontLoadError> {
-        Self::load_requested_data(path, &DataRequest::default())
+        Self::load_requested_data(path, DataRequest::all())
     }
 
     /// Returns a [`Font`] object with custom data inclusion/exclusion
@@ -178,7 +179,7 @@ impl Font {
     ///
     /// let datareq = DataRequest::default().layers(false).kerning(false);
     ///
-    /// let ufo = Font::load_requested_data("path/to/font.ufo", &datareq).expect("failed to load");
+    /// let ufo = Font::load_requested_data("path/to/font.ufo", datareq).expect("failed to load");
     /// ```
     ///
     /// A font object that excludes all data and images:
@@ -189,7 +190,7 @@ impl Font {
     ///
     /// let datareq = DataRequest::default().data(false).images(false);
     ///
-    /// let ufo = Font::load_requested_data("path/to/font.ufo", &datareq).expect("failed to load");
+    /// let ufo = Font::load_requested_data("path/to/font.ufo", datareq).expect("failed to load");
     /// ```
     ///
     /// A font object that includes only parsed lib.plist data:
@@ -200,16 +201,16 @@ impl Font {
     ///
     /// let datareq = DataRequest::none().lib(true);
     ///
-    /// let ufo = Font::load_requested_data("path/to/font.ufo", &datareq).expect("failed to load");
+    /// let ufo = Font::load_requested_data("path/to/font.ufo", datareq).expect("failed to load");
     /// ```
     pub fn load_requested_data(
         path: impl AsRef<Path>,
-        request: &DataRequest,
+        request: DataRequest,
     ) -> Result<Font, FontLoadError> {
         Self::load_impl(path.as_ref(), request)
     }
 
-    fn load_impl(path: &Path, request: &DataRequest) -> Result<Font, FontLoadError> {
+    fn load_impl(path: &Path, request: DataRequest) -> Result<Font, FontLoadError> {
         let metadata = path.metadata().map_err(FontLoadError::AccessUfoDir)?;
         if !metadata.is_dir() {
             return Err(FontLoadError::UfoNotADir);
@@ -255,11 +256,7 @@ impl Font {
         };
 
         let glyph_names = NameList::default();
-        let layers = if request.layers {
-            load_layer_set(path, &meta, &glyph_names)?
-        } else {
-            LayerSet::default()
-        };
+        let layers = load_layer_set(path, &meta, &glyph_names, &request.layers)?;
 
         let data = if request.data && path.join(DATA_DIR).exists() {
             DataStore::new(path).map_err(FontLoadError::DataStore)?
@@ -308,7 +305,7 @@ impl Font {
             groups: groups.unwrap_or_default(),
             kerning: kerning.unwrap_or_default(),
             features,
-            data_request: *request,
+            data_request: request,
             data,
             images,
         })
@@ -647,12 +644,13 @@ fn load_layer_set(
     ufo_path: &Path,
     meta: &MetaInfo,
     glyph_names: &NameList,
+    filter: &LayerFilter,
 ) -> Result<LayerSet, FontLoadError> {
     let layercontents_path = ufo_path.join(LAYER_CONTENTS_FILE);
     if meta.format_version == FormatVersion::V3 && !layercontents_path.exists() {
         return Err(FontLoadError::MissingLayerContentsFile);
     }
-    LayerSet::load(ufo_path, glyph_names)
+    LayerSet::load(ufo_path, glyph_names, filter)
 }
 
 #[cfg(test)]
@@ -773,7 +771,7 @@ mod tests {
     #[test]
     fn data_request() {
         let path = "testdata/MutatorSansLightWide.ufo";
-        let font_obj = Font::load_requested_data(path, &DataRequest::none()).unwrap();
+        let font_obj = Font::load_requested_data(path, DataRequest::none()).unwrap();
         assert_eq!(font_obj.iter_layers().count(), 1);
         assert!(font_obj.layers.default_layer().is_empty());
         assert_eq!(font_obj.lib, Plist::new());

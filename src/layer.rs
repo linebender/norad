@@ -8,6 +8,7 @@ use std::{ops::Deref, sync::Arc};
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
+use crate::data_request::LayerFilter;
 use crate::error::{FontLoadError, LayerLoadError, LayerWriteError, NamingError};
 use crate::names::NameList;
 use crate::shared_types::Color;
@@ -53,7 +54,11 @@ impl LayerSet {
     ///
     /// The `glyph_names` argument allows norad to reuse glyph name strings,
     /// reducing memory use.
-    pub(crate) fn load(base_dir: &Path, glyph_names: &NameList) -> Result<LayerSet, FontLoadError> {
+    pub(crate) fn load(
+        base_dir: &Path,
+        glyph_names: &NameList,
+        filter: &LayerFilter,
+    ) -> Result<LayerSet, FontLoadError> {
         let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
         let to_load: Vec<(Name, PathBuf)> = if layer_contents_path.exists() {
             plist::from_file(&layer_contents_path)
@@ -64,6 +69,7 @@ impl LayerSet {
 
         let mut layers: Vec<_> = to_load
             .into_iter()
+            .filter(|(name, path)| filter.should_load(name, path))
             .map(|(name, path)| {
                 let layer_path = base_dir.join(&path);
                 Layer::load_impl(&layer_path, name.clone(), glyph_names).map_err(|source| {
@@ -75,6 +81,10 @@ impl LayerSet {
                 })
             })
             .collect::<Result<_, _>>()?;
+        // we always need a default layer, so add an empty one if it's filtered
+        if !filter.includes_default_layer() {
+            layers.push(Layer::default());
+        }
 
         // move the default layer to the front
         let default_idx = layers
@@ -584,6 +594,8 @@ impl Default for Layer {
 
 #[cfg(test)]
 mod tests {
+    use crate::DataRequest;
+
     use super::*;
     use std::path::Path;
 
@@ -823,5 +835,45 @@ mod tests {
         layer.remove_glyph("Ab");
         layer.insert_glyph(Glyph::new("Ab"));
         assert_eq!(layer.contents.get("Ab").unwrap().as_os_str(), "A_b.glif");
+    }
+
+    #[test]
+    fn test_filter() {
+        static UFO_DIR: &str = "testdata/MutatorSansLightWide.ufo/";
+        let ufo_path = Path::new(UFO_DIR);
+
+        let names = NameList::default();
+
+        let request = DataRequest::all();
+        let layerset = LayerSet::load(ufo_path, &names, &request.layers).unwrap();
+        assert_eq!(layerset.len(), 2);
+        assert_eq!(layerset.default_layer().len(), 48);
+
+        let request = DataRequest::none();
+        let layerset = LayerSet::load(ufo_path, &names, &request.layers).unwrap();
+        // default layer is always present
+        assert_eq!(layerset.len(), 1);
+        assert_eq!(layerset.default_layer().len(), 0);
+
+        let request = DataRequest::none().default_layer(true);
+        let layerset = LayerSet::load(ufo_path, &names, &request.layers).unwrap();
+        assert_eq!(layerset.len(), 1);
+        assert_eq!(layerset.default_layer().len(), 48);
+
+        // all is overwridden by default_layer
+        let request = DataRequest::all().default_layer(true);
+        let layerset = LayerSet::load(ufo_path, &names, &request.layers).unwrap();
+        // default layer is always present
+        assert_eq!(layerset.len(), 1);
+        assert_eq!(layerset.default_layer().len(), 48);
+
+        let request = DataRequest::none().named_layers(&["background"]);
+        let layerset = LayerSet::load(ufo_path, &names, &request.layers).unwrap();
+        // default layer is always present
+        assert_eq!(layerset.len(), 2);
+        assert_eq!(layerset.default_layer().len(), 0);
+
+        let bglayer = layerset.get("background").unwrap();
+        assert_eq!(bglayer.len(), 1);
     }
 }

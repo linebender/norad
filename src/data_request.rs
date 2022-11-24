@@ -1,5 +1,7 @@
 //! Load only requested font data.
 
+use std::path::Path;
+
 /// A type that describes which components of a UFO should be loaded.
 ///
 /// By default, all components of the UFO file are loaded; however, if you only
@@ -34,11 +36,11 @@
 /// ```
 ///
 /// [`Ufo::with_fields`]: struct.Ufo.html#method.with_fields
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct DataRequest {
-    /// Load and parse all layers and glyphs.
-    pub layers: bool,
+    // the layers to load.
+    pub(crate) layers: LayerFilter,
     /// Load parsed lib.plist data
     pub lib: bool,
     /// Load parsed groups.plist data
@@ -53,9 +55,42 @@ pub struct DataRequest {
     pub images: bool,
 }
 
+/// A type describing which layers to load.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct LayerFilter {
+    all: bool,
+    load_default: bool,
+    named_layers: Vec<String>,
+}
+
+impl LayerFilter {
+    fn from_bool(b: bool) -> Self {
+        LayerFilter { all: b, ..Default::default() }
+    }
+
+    pub(crate) fn should_load(&self, name: &str, path: &Path) -> bool {
+        self.all
+            || (self.load_default && path == Path::new("glyphs"))
+            || self.named_layers.iter().any(|req_name| name == req_name)
+    }
+
+    /// `true` if this filter includes the default layer
+    pub(crate) fn includes_default_layer(&self) -> bool {
+        self.all || self.load_default
+    }
+}
+
 impl DataRequest {
     fn from_bool(b: bool) -> Self {
-        DataRequest { layers: b, lib: b, groups: b, kerning: b, features: b, data: b, images: b }
+        DataRequest {
+            layers: LayerFilter::from_bool(b),
+            lib: b,
+            groups: b,
+            kerning: b,
+            features: b,
+            data: b,
+            images: b,
+        }
     }
 
     /// Returns a [`DataRequest`] requesting all UFO data.
@@ -70,7 +105,25 @@ impl DataRequest {
 
     /// Request that returned UFO data include layers and their glyph data.
     pub fn layers(mut self, b: bool) -> Self {
-        self.layers = b;
+        self.layers.all = b;
+        self
+    }
+
+    /// Request to only load the default layer.
+    ///
+    /// If set, we will ignore the `layers` option.
+    pub fn default_layer(mut self, b: bool) -> Self {
+        self.layers.load_default = b;
+        self.layers.all = false;
+        self
+    }
+
+    /// Request to load the named layers.
+    ///
+    /// If set, we will ignore the `layers` option.
+    pub fn named_layers(mut self, layers: &[&str]) -> Self {
+        self.layers.named_layers = layers.iter().map(|s| s.to_string()).collect();
+        self.layers.all = false;
         self
     }
 
@@ -124,11 +177,17 @@ mod tests {
     use super::*;
 
     fn all_fields_are_true(dr: &DataRequest) -> bool {
-        dr.layers && dr.lib && dr.groups && dr.kerning && dr.features && dr.data && dr.images
+        dr.layers.all && dr.lib && dr.groups && dr.kerning && dr.features && dr.data && dr.images
     }
 
     fn all_fields_are_false(dr: &DataRequest) -> bool {
-        !dr.layers && !dr.lib && !dr.groups && !dr.kerning && !dr.features && !dr.data && !dr.images
+        !dr.layers.all
+            && !dr.lib
+            && !dr.groups
+            && !dr.kerning
+            && !dr.features
+            && !dr.data
+            && !dr.images
     }
 
     #[test]
