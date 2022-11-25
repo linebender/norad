@@ -568,6 +568,11 @@ impl Layer {
         self.glyphs.values_mut()
     }
 
+    /// Returns an iterator over the names of all glyphs in the layer.
+    pub fn names(&self) -> impl Iterator<Item = &Name> {
+        self.glyphs.keys()
+    }
+
     /// Returns the path to the .glif file of a given glyph `name`.
     ///
     /// The returned path is relative to the path of the current layer.
