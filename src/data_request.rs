@@ -1,6 +1,6 @@
 //! Load only requested font data.
 
-use std::path::Path;
+use std::{path::Path, rc::Rc};
 
 /// A type that describes which components of a UFO should be loaded.
 ///
@@ -56,11 +56,11 @@ pub struct DataRequest {
 }
 
 /// A type describing which layers to load.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone)]
 pub(crate) struct LayerFilter {
     all: bool,
     load_default: bool,
-    named_layers: Vec<String>,
+    custom: Option<Rc<dyn Fn(&str, &Path) -> bool + 'static>>,
 }
 
 impl LayerFilter {
@@ -71,7 +71,7 @@ impl LayerFilter {
     pub(crate) fn should_load(&self, name: &str, path: &Path) -> bool {
         self.all
             || (self.load_default && path == Path::new("glyphs"))
-            || self.named_layers.iter().any(|req_name| name == req_name)
+            || self.custom.as_ref().map(|f| f(name, path)).unwrap_or(false)
     }
 
     /// `true` if this filter includes the default layer
@@ -104,6 +104,11 @@ impl DataRequest {
     }
 
     /// Request that returned UFO data include layers and their glyph data.
+    ///
+    /// See also the [`filter_layers`] and [`default_layer`] options.
+    ///
+    /// [`filter_layers`]: Self::filter_layers
+    /// [`default_layer`]: Self::default_layer
     pub fn layers(mut self, b: bool) -> Self {
         self.layers.all = b;
         self
@@ -111,18 +116,40 @@ impl DataRequest {
 
     /// Request to only load the default layer.
     ///
-    /// If set, we will ignore the `layers` option.
+    /// If set, we will ignore the [`layers`] option. For finer-grained control,
+    /// see the [`filter_layers`] option.
+    ///
+    /// [`filter_layers`]: Self::filter_layers
+    /// [`layers`]: Self::layers
     pub fn default_layer(mut self, b: bool) -> Self {
         self.layers.load_default = b;
         self.layers.all = false;
         self
     }
 
-    /// Request to load the named layers.
+    /// Request to load a subset of layers using a closure
     ///
-    /// If set, we will ignore the `layers` option.
-    pub fn named_layers(mut self, layers: &[&str]) -> Self {
-        self.layers.named_layers = layers.iter().map(|s| s.to_string()).collect();
+    /// Given the name and directory of a layer, the closure must return `true`
+    /// or `false`. Only layers for which the closure returns `true` will be loaded.
+    ///
+    /// If this is set, it will override the [`layers`] option.
+    ///
+    /// To only load the default layer, use the [`default_layer`] option.
+    ///
+    /// # Examples
+    ///
+    /// To only load the background layer:
+    ///
+    /// ```no_run
+    /// # use norad::{DataRequest, Font};
+    /// let to_load = DataRequest::none().filter_layers(|name, _path| name.contains("background"));
+    /// let font = Font::load_requested_data("path/to/font.ufo", to_load).unwrap();
+    /// ```
+    ///
+    /// [`default_layer`]: Self::default_layer
+    /// [`layers`]: Self::layers
+    pub fn filter_layers(mut self, filter: impl Fn(&str, &Path) -> bool + 'static) -> Self {
+        self.layers.custom = Some(Rc::new(filter));
         self.layers.all = false;
         self
     }
@@ -170,6 +197,36 @@ impl Default for DataRequest {
         DataRequest::from_bool(true)
     }
 }
+
+impl Default for LayerFilter {
+    fn default() -> Self {
+        Self { all: true, load_default: false, custom: None }
+    }
+}
+
+impl std::fmt::Debug for LayerFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("LayerFilter")
+            .field("all", &self.all)
+            .field("load_default", &self.load_default)
+            .field("custom", &self.custom.is_some())
+            .finish()
+    }
+}
+
+impl PartialEq for LayerFilter {
+    fn eq(&self, other: &Self) -> bool {
+        self.all == other.all
+            && self.load_default == other.load_default
+            && match (self.custom.as_ref(), other.custom.as_ref()) {
+                (Some(a), Some(b)) => Rc::ptr_eq(&a, &b),
+                (None, None) => true,
+                _ => false,
+            }
+    }
+}
+
+impl Eq for LayerFilter {}
 
 #[cfg(test)]
 mod tests {
