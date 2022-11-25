@@ -1,6 +1,6 @@
 //! Load only requested font data.
 
-use std::{path::Path, rc::Rc};
+use std::path::Path;
 
 /// A type that describes which components of a UFO should be loaded.
 ///
@@ -36,11 +36,11 @@ use std::{path::Path, rc::Rc};
 /// ```
 ///
 /// [`Ufo::with_fields`]: struct.Ufo.html#method.with_fields
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug)]
 #[non_exhaustive]
-pub struct DataRequest {
+pub struct DataRequest<'a> {
     // the layers to load.
-    pub(crate) layers: LayerFilter,
+    pub(crate) layers: LayerFilter<'a>,
     /// Load parsed lib.plist data
     pub lib: bool,
     /// Load parsed groups.plist data
@@ -55,15 +55,16 @@ pub struct DataRequest {
     pub images: bool,
 }
 
+type FilterFn<'a> = dyn Fn(&str, &Path) -> bool + 'a;
+
 /// A type describing which layers to load.
-#[derive(Clone)]
-pub(crate) struct LayerFilter {
+pub(crate) struct LayerFilter<'a> {
     all: bool,
     load_default: bool,
-    custom: Option<Rc<dyn Fn(&str, &Path) -> bool + 'static>>,
+    custom: Option<Box<FilterFn<'a>>>,
 }
 
-impl LayerFilter {
+impl<'a> LayerFilter<'a> {
     fn from_bool(b: bool) -> Self {
         LayerFilter { all: b, ..Default::default() }
     }
@@ -80,7 +81,7 @@ impl LayerFilter {
     }
 }
 
-impl DataRequest {
+impl<'a> DataRequest<'a> {
     fn from_bool(b: bool) -> Self {
         DataRequest {
             layers: LayerFilter::from_bool(b),
@@ -148,8 +149,8 @@ impl DataRequest {
     ///
     /// [`default_layer`]: Self::default_layer
     /// [`layers`]: Self::layers
-    pub fn filter_layers(mut self, filter: impl Fn(&str, &Path) -> bool + 'static) -> Self {
-        self.layers.custom = Some(Rc::new(filter));
+    pub fn filter_layers(mut self, filter: impl Fn(&str, &Path) -> bool + 'a) -> Self {
+        self.layers.custom = Some(Box::new(filter));
         self.layers.all = false;
         self
     }
@@ -192,19 +193,19 @@ impl DataRequest {
     }
 }
 
-impl Default for DataRequest {
+impl Default for DataRequest<'_> {
     fn default() -> Self {
         DataRequest::from_bool(true)
     }
 }
 
-impl Default for LayerFilter {
+impl Default for LayerFilter<'_> {
     fn default() -> Self {
         Self { all: true, load_default: false, custom: None }
     }
 }
 
-impl std::fmt::Debug for LayerFilter {
+impl std::fmt::Debug for LayerFilter<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("LayerFilter")
             .field("all", &self.all)
@@ -213,20 +214,6 @@ impl std::fmt::Debug for LayerFilter {
             .finish()
     }
 }
-
-impl PartialEq for LayerFilter {
-    fn eq(&self, other: &Self) -> bool {
-        self.all == other.all
-            && self.load_default == other.load_default
-            && match (self.custom.as_ref(), other.custom.as_ref()) {
-                (Some(a), Some(b)) => Rc::ptr_eq(&a, &b),
-                (None, None) => true,
-                _ => false,
-            }
-    }
-}
-
-impl Eq for LayerFilter {}
 
 #[cfg(test)]
 mod tests {
