@@ -87,7 +87,6 @@ pub struct Font {
     ///
     /// [dir]: https://unifiedfontobject.org/versions/ufo3/images/
     pub images: ImageStore,
-    data_request: DataRequest,
 }
 
 /// A version of the [UFO spec].
@@ -305,7 +304,6 @@ impl Font {
             groups: groups.unwrap_or_default(),
             kerning: kerning.unwrap_or_default(),
             features,
-            data_request: request,
             data,
             images,
         })

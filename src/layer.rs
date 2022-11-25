@@ -867,7 +867,8 @@ mod tests {
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 48);
 
-        let request = DataRequest::none().filter_layers(|name, _path| name == "background");
+        let layer_name = String::from("background");
+        let request = DataRequest::none().filter_layers(|name, _path| name == layer_name);
         let layerset = LayerSet::load(ufo_path, &names, &request.layers).unwrap();
         // default layer is always present
         assert_eq!(layerset.len(), 2);
