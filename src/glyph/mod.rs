@@ -6,6 +6,7 @@ mod serialize;
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 #[cfg(feature = "kurbo")]
@@ -38,7 +39,7 @@ pub struct Glyph {
     /// A collection of glyph Unicode code points.
     ///
     /// The first entry defines the primary Unicode value for this glyph.
-    pub codepoints: Vec<char>,
+    pub codepoints: Codepoints,
     /// Arbitrary glyph note.
     pub note: Option<String>,
     /// A collection of glyph guidelines.
@@ -115,7 +116,7 @@ impl Glyph {
             name,
             height: 0.0,
             width: 0.0,
-            codepoints: Vec::new(),
+            codepoints: Codepoints::new(),
             note: None,
             guidelines: Vec::new(),
             anchors: Vec::new(),
@@ -253,6 +254,72 @@ impl Data for Glyph {
             && self.contours == other.contours
             && self.image == other.image
             && self.lib == other.lib
+    }
+}
+
+/// A collection of codepoints assigned to a glyph.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Codepoints {
+    codepoints: Vec<char>,
+}
+
+impl Codepoints {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn add(&mut self, codepoint: char) {
+        if !self.codepoints.contains(&codepoint) {
+            self.codepoints.push(codepoint);
+        }
+    }
+
+    pub fn remove(&mut self, codepoint: char) {
+        self.codepoints.retain(|&c| c != codepoint);
+    }
+
+    pub fn clear(&mut self) {
+        self.codepoints.clear()
+    }
+
+    pub fn len(&self) -> usize {
+        self.codepoints.len()
+    }
+
+    pub fn as_slice(&self) -> &[char] {
+        self.codepoints.as_slice()
+    }
+}
+
+impl IntoIterator for Codepoints {
+    type Item = char;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.codepoints.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a Codepoints {
+    type Item = char;
+    type IntoIter = std::iter::Cloned<std::slice::Iter<'a, char>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.codepoints.iter().cloned()
+    }
+}
+
+impl From<Vec<char>> for Codepoints {
+    fn from(chars: Vec<char>) -> Self {
+        // Deduplicate code points while preserving order.
+        let mut codepoints = Vec::new();
+        let mut seen_codepoints = HashSet::new();
+        for codepoint in chars {
+            if seen_codepoints.insert(codepoint) {
+                codepoints.push(codepoint);
+            }
+        }
+        Self { codepoints }
     }
 }
 

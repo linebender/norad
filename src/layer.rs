@@ -601,7 +601,7 @@ mod tests {
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
         assert_eq!(glyph.height, 0.);
         assert_eq!(glyph.width, 1190.);
-        assert_eq!(glyph.codepoints, vec!['A']);
+        assert_eq!(glyph.codepoints, vec!['A'].into());
     }
 
     #[test]

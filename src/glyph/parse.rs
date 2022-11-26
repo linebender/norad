@@ -123,13 +123,6 @@ impl<'names> GlifParser<'names> {
 
         self.glyph.load_object_libs()?;
 
-        // Deduplicate code points while preserving order, but only if there is more
-        // than 1 codepoint, to avoid memory allocation.
-        if self.glyph.codepoints.len() > 1 {
-            let mut seen_codepoints = HashSet::new();
-            self.glyph.codepoints.retain(|c| seen_codepoints.insert(*c));
-        }
-
         Ok(self.glyph)
     }
 
@@ -417,7 +410,7 @@ impl<'names> GlifParser<'names> {
                         .map_err(|_| value.to_string())
                         .and_then(|n| char::try_from(n).map_err(|_| value.to_string()))
                         .map_err(|_| ErrorKind::BadHexValue)?;
-                    self.glyph.codepoints.push(chr);
+                    self.glyph.codepoints.add(chr);
                 }
                 _other => return Err(ErrorKind::UnexpectedAttribute.into()),
             }

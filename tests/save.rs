@@ -24,7 +24,7 @@ fn save_default() {
 fn save_new_file() {
     let mut my_ufo = Font::new();
     let mut my_glyph = Glyph::new("A");
-    my_glyph.codepoints = vec!['A'];
+    my_glyph.codepoints = vec!['A'].into();
     my_glyph.note = Some("I did a glyph!".into());
     let mut plist = Plist::new();
     plist.insert("my-cool-key".into(), plist::Value::Integer(420_u32.into()));
@@ -42,7 +42,7 @@ fn save_new_file() {
     let loaded = Font::load(dir).unwrap();
     assert!(loaded.default_layer().get_glyph("A").is_some());
     let glyph = loaded.default_layer().get_glyph("A").unwrap();
-    assert_eq!(glyph.codepoints, vec!['A']);
+    assert_eq!(glyph.codepoints, vec!['A'].into());
     let lib_val = glyph.lib.get("my-cool-key").and_then(|val| val.as_unsigned_integer());
     assert_eq!(lib_val, Some(420));
 }

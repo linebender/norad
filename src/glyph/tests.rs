@@ -881,9 +881,9 @@ fn deduplicate_unicodes() {
 </glyph>
 "#;
     let mut glyph = parse_glyph(data.as_bytes()).unwrap();
-    assert_eq!(glyph.codepoints, vec!['e', 'f', 'g']);
+    assert_eq!(glyph.codepoints, vec!['e', 'f', 'g'].into());
 
-    glyph.codepoints = vec!['e', 'f', 'e', 'g'];
+    glyph.codepoints = vec!['e', 'f', 'e', 'g'].into();
     let data2 = glyph.encode_xml().unwrap();
     let data2 = std::str::from_utf8(&data2).unwrap();
     let data2_expected = r#"<?xml version="1.0" encoding="UTF-8"?>
