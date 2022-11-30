@@ -104,4 +104,5 @@ pub use identifier::Identifier;
 pub use kerning::Kerning;
 pub use layer::{Layer, LayerSet};
 pub use shared_types::{Color, Plist};
+pub use util::user_name_to_file_name;
 pub use write::{QuoteChar, WriteOptions};
