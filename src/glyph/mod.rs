@@ -13,6 +13,7 @@ use crate::error::ConvertContourError;
 
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
+use indexmap::IndexSet;
 
 use crate::error::{ErrorKind, GlifLoadError, GlifWriteError, StoreError};
 use crate::name::Name;
@@ -38,7 +39,7 @@ pub struct Glyph {
     /// A collection of glyph Unicode code points.
     ///
     /// The first entry defines the primary Unicode value for this glyph.
-    pub codepoints: Vec<char>,
+    pub codepoints: IndexSet<char>,
     /// Arbitrary glyph note.
     pub note: Option<String>,
     /// A collection of glyph guidelines.
@@ -115,7 +116,7 @@ impl Glyph {
             name,
             height: 0.0,
             width: 0.0,
-            codepoints: Vec::new(),
+            codepoints: Default::default(),
             note: None,
             guidelines: Vec::new(),
             anchors: Vec::new(),

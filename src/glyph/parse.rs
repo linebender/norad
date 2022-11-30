@@ -409,7 +409,7 @@ impl<'names> GlifParser<'names> {
                         .map_err(|_| value.to_string())
                         .and_then(|n| char::try_from(n).map_err(|_| value.to_string()))
                         .map_err(|_| ErrorKind::BadHexValue)?;
-                    self.glyph.codepoints.push(chr);
+                    self.glyph.codepoints.insert(chr);
                 }
                 _other => return Err(ErrorKind::UnexpectedAttribute.into()),
             }
