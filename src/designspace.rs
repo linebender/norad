@@ -22,7 +22,7 @@ pub struct DesignSpaceDocument {
     pub instances: Vec<Instance>,
 }
 
-/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#overview
+/// <https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#overview>
 #[derive(Deserialize)]
 #[serde(rename = "designspace")]
 struct DesignSpaceDocumentXmlRepr {
@@ -43,7 +43,7 @@ impl From<DesignSpaceDocumentXmlRepr> for DesignSpaceDocument {
     }
 }
 
-/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#axes-element
+/// <https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#axes-element>
 #[derive(Deserialize)]
 #[serde(rename = "axes")]
 pub struct AxesXmlRepr {
@@ -51,7 +51,7 @@ pub struct AxesXmlRepr {
     pub axis: Vec<Axis>,
 }
 
-/// A [axis]].
+/// An [axis]].
 ///
 /// [axis]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#axis-element
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
@@ -86,7 +86,7 @@ pub struct AxisMapping {
     pub output: f32,
 }
 
-/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#sources-element
+/// <https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#sources-element>
 #[derive(Deserialize)]
 #[serde(rename = "sources")]
 struct SourcesXmlRepr {
@@ -114,7 +114,7 @@ pub struct Source {
     pub location: Vec<Dimension>,
 }
 
-/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#source-element
+/// <https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#source-element>
 #[derive(Deserialize)]
 #[serde(rename = "source")]
 struct SourceXmlRepr {
@@ -139,7 +139,7 @@ impl From<SourceXmlRepr> for Source {
     }
 }
 
-/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#instances-element
+/// <https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#instances-element>
 #[derive(Deserialize)]
 #[serde(rename = "instances")]
 struct InstancesXmlRepr {
@@ -172,7 +172,7 @@ pub struct Instance {
     pub location: Vec<Dimension>,
 }
 
-/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#instance-element
+/// <https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#instance-element>
 #[derive(Deserialize)]
 struct InstanceXmlRepr {
     pub familyname: Option<String>,
@@ -200,7 +200,7 @@ impl From<InstanceXmlRepr> for Instance {
     }
 }
 
-/// https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#location-element-top-level-stat-label
+/// <https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#location-element-top-level-stat-label>
 #[derive(Deserialize)]
 struct LocationXmlRepr {
     pub dimension: Vec<Dimension>,
