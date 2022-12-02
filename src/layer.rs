@@ -594,9 +594,7 @@ impl Default for Layer {
 
 #[cfg(test)]
 mod tests {
-    use indexmap::indexset;
-
-    use crate::DataRequest;
+    use crate::{Codepoints, DataRequest};
 
     use super::*;
     use std::path::Path;
@@ -615,7 +613,7 @@ mod tests {
         let glyph = layer.get_glyph("A").expect("failed to load glyph 'A'");
         assert_eq!(glyph.height, 0.);
         assert_eq!(glyph.width, 1190.);
-        assert_eq!(glyph.codepoints, indexset!['A']);
+        assert_eq!(glyph.codepoints, Codepoints::new(['A']));
     }
 
     #[test]

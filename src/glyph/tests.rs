@@ -1,5 +1,3 @@
-use indexmap::indexset;
-
 use super::parse::parse_glyph;
 use super::*;
 use crate::write::QuoteChar;
@@ -883,9 +881,9 @@ fn deduplicate_unicodes2() {
 </glyph>
 "#;
     let mut glyph = parse_glyph(data.as_bytes()).unwrap();
-    assert_eq!(glyph.codepoints, indexset!['e', 'f', 'g'].into());
+    assert_eq!(glyph.codepoints, Codepoints::new(['e', 'f', 'g']));
 
-    glyph.codepoints = indexset!['e', 'f', 'e', 'g'].into();
+    glyph.codepoints = Codepoints::new(['e', 'f', 'e', 'g']);
     let data2 = glyph.encode_xml().unwrap();
     let data2 = std::str::from_utf8(&data2).unwrap();
     let data2_expected = r#"<?xml version="1.0" encoding="UTF-8"?>

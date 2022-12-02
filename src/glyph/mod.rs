@@ -1,6 +1,7 @@
 //! Data related to individual glyphs.
 
 pub mod builder;
+mod codepoints;
 mod parse;
 mod serialize;
 #[cfg(test)]
@@ -13,13 +14,14 @@ use crate::error::ConvertContourError;
 
 #[cfg(feature = "druid")]
 use druid::{Data, Lens};
-use indexmap::IndexSet;
 
 use crate::error::{ErrorKind, GlifLoadError, GlifWriteError, StoreError};
 use crate::name::Name;
 use crate::names::NameList;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
+
+pub use codepoints::Codepoints;
 
 /// A glyph, loaded from a [`.glif` file][glif].
 ///
@@ -39,7 +41,7 @@ pub struct Glyph {
     /// A collection of glyph Unicode code points.
     ///
     /// The first entry defines the primary Unicode value for this glyph.
-    pub codepoints: IndexSet<char>,
+    pub codepoints: Codepoints,
     /// Arbitrary glyph note.
     pub note: Option<String>,
     /// A collection of glyph guidelines.
