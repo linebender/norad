@@ -896,4 +896,54 @@ mod tests {
         let bglayer = layerset.get("background").unwrap();
         assert_eq!(bglayer.len(), 1);
     }
+
+    #[test]
+    fn test_retain() {
+        let mut layers = LayerSet {
+            layers: vec![
+                Layer::default(),
+                Layer::new(Name::new("fizz").unwrap(), PathBuf::new()),
+                Layer::new(Name::new("buzz").unwrap(), PathBuf::new()),
+                Layer::new(Name::new("fizzbuzz").unwrap(), PathBuf::new()),
+            ],
+            ..Default::default()
+        };
+
+        layers.retain(|l| l.name().starts_with("fizz"));
+
+        assert_eq!(layers.len(), 3, "wrong number of layers deleted");
+        let names = layers.iter().map(|l| l.name().as_str()).collect::<Vec<_>>();
+        assert_eq!(names.as_slice(), &[DEFAULT_LAYER_NAME, "fizz", "fizzbuzz"]);
+    }
+
+    #[test]
+    fn test_remove_empty_layers() {
+        let mut layers = LayerSet {
+            layers: vec![
+                Layer::default(),
+                Layer {
+                    name: Name::new("fizz").unwrap(),
+                    glyphs: maplit::btreemap! {
+                        Name::new("a").unwrap() => Glyph::new("a").into(),
+                    },
+                    ..Default::default()
+                },
+                Layer {
+                    name: Name::new("buzz").unwrap(),
+                    glyphs: maplit::btreemap! {
+                        Name::new("b").unwrap() => Glyph::new("b").into(),
+                    },
+                    ..Default::default()
+                },
+                Layer::new(Name::new("fizzbuzz").unwrap(), PathBuf::new()),
+            ],
+            ..Default::default()
+        };
+
+        layers.remove_empty_layers();
+
+        assert_eq!(layers.len(), 3, "wrong number of layers deleted");
+        let names = layers.iter().map(|l| l.name().as_str()).collect::<Vec<_>>();
+        assert_eq!(names.as_slice(), &[DEFAULT_LAYER_NAME, "fizz", "buzz"]);
+    }
 }
