@@ -213,6 +213,20 @@ impl LayerSet {
             Ok(())
         }
     }
+
+    /// Retains the default layer, and any layers allowed by the predicate.
+    ///
+    /// In other words, remove all layers `l` for which `predicate(&l)` returns `false`.
+    /// This method operates in place, visiting each layer exactly once in the
+    /// original order, and preserves the order of the retained layers.
+    ///
+    /// For more information, see [`Vec::retain`].
+    pub fn retain<F>(&mut self, mut predicate: F)
+    where
+        F: FnMut(&Layer) -> bool,
+    {
+        self.layers.retain(|layer| layer.name == DEFAULT_LAYER_NAME || predicate(layer))
+    }
 }
 
 impl Default for LayerSet {
