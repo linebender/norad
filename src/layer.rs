@@ -917,6 +917,8 @@ mod tests {
     }
 
     #[test]
+    // Saves test from failing to compile with druid enabled
+    #[allow(clippy::useless_conversion)]
     fn test_remove_empty_layers() {
         let mut layers = LayerSet {
             layers: vec![
