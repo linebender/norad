@@ -227,6 +227,11 @@ impl LayerSet {
     {
         self.layers.retain(|layer| layer.name == DEFAULT_LAYER_NAME || predicate(layer))
     }
+
+    /// Removes any layers that contain no glyphs
+    pub fn remove_empty_layers(&mut self) {
+        self.retain(|l| !l.is_empty());
+    }
 }
 
 impl Default for LayerSet {
