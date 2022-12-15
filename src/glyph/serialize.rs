@@ -140,7 +140,7 @@ impl Glyph {
 ///
 /// To write the lib section we write the lib as a plist to an empty buffer,
 /// and then we strip out the leading and trailing bits that we don't need,
-/// such as the xml declaration and the <plist> tag.
+/// such as the xml declaration and the `<plist>` tag.
 ///
 /// We then take this and write it into the middle of our active write session.
 fn write_lib_section<T: Write>(

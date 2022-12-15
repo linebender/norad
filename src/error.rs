@@ -463,7 +463,7 @@ pub enum GlifWriteError {
     #[error("failed to serialize glyph to an internal buffer")]
     Buffer(#[source] IoError),
     /// When writing out the 'lib' section, we use the plist crate to generate
-    /// the plist xml, and then strip the preface and closing </plist> tag.
+    /// the plist xml, and then strip the preface and closing `</plist>` tag.
     ///
     /// If for some reason the implementation of that crate changes, we could
     /// be affected, although this is very unlikely.

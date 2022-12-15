@@ -125,7 +125,7 @@ where
     }
 }
 
-/// Implements path testing-based partial equality for [Store<T>].
+/// Implements path testing-based partial equality for `[Store<T>]`.
 impl<T: DataType> PartialEq for Store<T> {
     fn eq(&self, other: &Self) -> bool {
         self.items.len() == other.items.len()
@@ -521,7 +521,7 @@ mod tests {
         let images_dir = dir.as_ref().join(crate::font::IMAGES_DIR);
         std::fs::create_dir(&images_dir).unwrap();
         let images_dir_subdir = images_dir.join("test");
-        std::fs::create_dir(&images_dir_subdir).unwrap();
+        std::fs::create_dir(images_dir_subdir).unwrap();
 
         let ufo = crate::Font::load(&dir);
         assert!(ufo.is_err());
