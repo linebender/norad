@@ -532,7 +532,7 @@ impl<'names> GlifParser<'names> {
     }
 }
 
-/// Start parsing XML, expecting an opening <glyph> tag.
+/// Start parsing XML, expecting an opening `<glyph>` tag.
 ///
 /// On success, returns the glyphs name and the format version.
 fn start(

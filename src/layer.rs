@@ -71,7 +71,7 @@ impl LayerSet {
             .into_iter()
             .filter(|(name, path)| filter.should_load(name, path))
             .map(|(name, path)| {
-                let layer_path = base_dir.join(&path);
+                let layer_path = base_dir.join(path);
                 Layer::load_impl(&layer_path, name.clone(), glyph_names).map_err(|source| {
                     FontLoadError::Layer {
                         name: name.to_string(),
@@ -303,7 +303,7 @@ impl Layer {
     /// The actual loading logic.
     ///
     /// `names` is a map of glyphnames; we pass it throughout parsing
-    /// so that we reuse the same Arc<str> for identical names.
+    /// so that we reuse the same `Arc<str>` for identical names.
     pub(crate) fn load_impl(
         path: &Path,
         name: Name,

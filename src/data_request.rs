@@ -155,7 +155,7 @@ impl<'a> DataRequest<'a> {
         self
     }
 
-    /// Request that returned UFO data include <lib> sections.
+    /// Request that returned UFO data include `<lib>` sections.
     pub fn lib(mut self, b: bool) -> Self {
         self.lib = b;
         self
