@@ -75,7 +75,8 @@ impl WriteOptions {
         assert!(indent_str.bytes().all(|c| c == self.whitespace_char), "invalid whitespace");
         self.whitespace_count = indent_str.len();
         self.indent_str = indent_str;
-        self.xml_opts = XmlWriteOptions::default().indent_string(self.indent_str.clone());
+        self.xml_opts =
+            XmlWriteOptions::default().indent(self.whitespace_char, self.whitespace_count);
         self
     }
 
