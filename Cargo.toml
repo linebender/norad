@@ -1,6 +1,6 @@
 [package]
 name = "norad"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["Colin Rofls <colin@cmyr.net>", "Nikolaus Waxweiler <madigens@gmail.com>"]
 license = "MIT/Apache-2.0"
 edition = "2021"
