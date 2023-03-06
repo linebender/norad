@@ -69,6 +69,7 @@ impl WriteOptions {
     ///
     /// Panics if the provided string is empty, or if it contains multiple
     /// different characters.
+    #[allow(deprecated)] // we need to update the plist crate to use the new indent API
     pub fn whitespace(mut self, indent_str: impl Into<Cow<'static, str>>) -> Self {
         let indent_str = indent_str.into();
         self.whitespace_char = indent_str.bytes().next().expect("whitespace str must not be empty");
