@@ -332,9 +332,9 @@ impl<'names> GlifParser<'names> {
         Ok(())
     }
 
-    fn parse_point<'a>(
+    fn parse_point(
         &mut self,
-        data: &BytesStart<'a>,
+        data: &BytesStart<'_>,
         outline_builder: &mut OutlineBuilder,
     ) -> Result<(), GlifLoadError> {
         let mut name: Option<Name> = None;
