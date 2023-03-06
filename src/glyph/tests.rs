@@ -104,7 +104,7 @@ fn serialize_with_default_formatting() {
 fn serialize_with_custom_whitespace() {
     let data = include_str!("../../testdata/small_lib.glif");
     let glyph = parse_glyph(data.as_bytes()).unwrap();
-    let options = WriteOptions::default().whitespace("  ");
+    let options = WriteOptions::default().indent(WriteOptions::SPACE, 2);
     let two_spaces = glyph.encode_xml_with_options(&options).unwrap();
     let two_spaces = std::str::from_utf8(&two_spaces).unwrap();
 
@@ -165,7 +165,8 @@ fn serialize_with_single_quote_style() {
 fn serialize_with_custom_whitespace_and_single_quote_style() {
     let data = include_str!("../../testdata/small_lib.glif");
     let glyph = parse_glyph(data.as_bytes()).unwrap();
-    let options = WriteOptions::default().whitespace("  ").quote_char(QuoteChar::Single);
+    let options =
+        WriteOptions::default().indent(WriteOptions::SPACE, 2).quote_char(QuoteChar::Single);
     let two_spaces = glyph.encode_xml_with_options(&options).unwrap();
     let two_spaces = std::str::from_utf8(&two_spaces).unwrap();
 

@@ -39,8 +39,8 @@ impl Glyph {
     fn encode_xml_impl(&self, options: &WriteOptions) -> Result<Vec<u8>, GlifWriteError> {
         let mut writer = Writer::new_with_indent(
             Cursor::new(Vec::new()),
-            options.whitespace_char,
-            options.whitespace_count,
+            options.indent_char,
+            options.indent_count,
         );
         match options.quote_style {
             QuoteChar::Double => writer
@@ -166,8 +166,8 @@ fn write_lib_section<T: Write>(
     writer.write_event(Event::Start(BytesStart::new("lib"))).map_err(GlifWriteError::Xml)?;
     for line in to_write.lines() {
         writer.inner().write_all("\n".as_bytes()).map_err(GlifWriteError::Buffer)?;
-        writer.inner().write_all(options.indent_str.as_bytes()).map_err(GlifWriteError::Buffer)?;
-        writer.inner().write_all(options.indent_str.as_bytes()).map_err(GlifWriteError::Buffer)?;
+        options.write_indent(writer.inner()).map_err(GlifWriteError::Buffer)?;
+        options.write_indent(writer.inner()).map_err(GlifWriteError::Buffer)?;
         writer.inner().write_all(line.as_bytes()).map_err(GlifWriteError::Buffer)?;
     }
     writer.write_event(Event::End(BytesEnd::new("lib"))).map_err(GlifWriteError::Xml)?;
