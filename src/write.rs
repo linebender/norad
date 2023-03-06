@@ -30,27 +30,36 @@ use plist::XmlWriteOptions;
 /// ```
 #[derive(Debug, Clone)]
 pub struct WriteOptions {
-    // for annoying reasons we store three different representations.
-    pub(crate) indent_str: Cow<'static, str>,
     xml_opts: XmlWriteOptions,
-    pub(crate) whitespace_char: u8,
-    pub(crate) whitespace_count: usize,
+    pub(crate) indent_char: u8,
+    pub(crate) indent_count: usize,
     pub(crate) quote_style: QuoteChar,
 }
 
 impl Default for WriteOptions {
     fn default() -> Self {
         WriteOptions {
-            indent_str: "\t".into(),
             xml_opts: Default::default(),
-            whitespace_char: b'\t',
-            whitespace_count: 1,
+            indent_char: WriteOptions::TAB,
+            indent_count: 1,
             quote_style: QuoteChar::Double,
         }
     }
 }
 
 impl WriteOptions {
+    /// The ASCII value of the space character (0x20)
+    pub const SPACE: u8 = b' ';
+    /// The ASCII value of the tab character (0x09)
+    pub const TAB: u8 = b'\t';
+
+    /// Create new, default options.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// **deprecated**. Use [`WriteOptions::indent`] instead.
+    ///
     /// Builder-style method to customize the whitespace.
     ///
     /// By default, we indent with a single tab ("\t").
@@ -69,14 +78,36 @@ impl WriteOptions {
     ///
     /// Panics if the provided string is empty, or if it contains multiple
     /// different characters.
-    #[allow(deprecated)] // we need to update the plist crate to use the new indent API
-    pub fn whitespace(mut self, indent_str: impl Into<Cow<'static, str>>) -> Self {
+    #[deprecated(since = "0.8.1", note = "use 'indent' method instead")]
+    pub fn whitespace(self, indent_str: impl Into<Cow<'static, str>>) -> Self {
         let indent_str = indent_str.into();
-        self.whitespace_char = indent_str.bytes().next().expect("whitespace str must not be empty");
-        assert!(indent_str.bytes().all(|c| c == self.whitespace_char), "invalid whitespace");
-        self.whitespace_count = indent_str.len();
-        self.indent_str = indent_str;
-        self.xml_opts = XmlWriteOptions::default().indent_string(self.indent_str.clone());
+        let indent_char = indent_str.bytes().next().expect("whitespace str must not be empty");
+        assert!(indent_str.bytes().all(|c| c == indent_char), "invalid whitespace");
+        let indent_count = indent_str.len();
+        self.indent(indent_char, indent_count)
+    }
+
+    /// Customize the indent whitespace.
+    ///
+    /// By default, we indent with a single tab (`\t`). You can use this method
+    /// to specify alternative indent behaviour.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the provided `indent_char` is not one of 0x09 (tab) or 0x20 (space).
+    ///
+    /// # Example
+    ///
+    /// Indenting with four spaces:
+    /// ```
+    /// use norad::WriteOptions;
+    /// let options = WriteOptions::new().indent(WriteOptions::SPACE, 4);
+    /// ```
+    pub fn indent(mut self, indent_char: u8, indent_count: usize) -> Self {
+        assert!([WriteOptions::TAB, WriteOptions::SPACE].contains(&indent_char));
+        self.indent_char = indent_char;
+        self.indent_count = indent_count;
+        self.xml_opts = XmlWriteOptions::default().indent(indent_char, indent_count);
         self
     }
 
@@ -94,6 +125,13 @@ impl WriteOptions {
     /// Return a reference to [`XmlWriteOptions`] for use with the `plist` crate.
     pub fn xml_options(&self) -> &XmlWriteOptions {
         &self.xml_opts
+    }
+
+    pub(crate) fn write_indent(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
+        for _ in 0..self.indent_count {
+            writer.write_all(&[self.indent_char])?;
+        }
+        Ok(())
     }
 }
 
@@ -179,7 +217,7 @@ mod tests {
 
     #[test]
     fn write_lib_plist_with_custom_whitespace() {
-        let opt = WriteOptions::default().whitespace("  ");
+        let opt = WriteOptions::default().indent(WriteOptions::SPACE, 2);
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/lib.plist")
             .expect("failed to read plist");
         let tmp = TempDir::new("test").unwrap();
@@ -196,7 +234,8 @@ mod tests {
 
     #[test]
     fn write_lib_plist_with_custom_whitespace_and_single_quotes() {
-        let opt = WriteOptions::default().whitespace("  ").quote_char(QuoteChar::Single);
+        let opt =
+            WriteOptions::default().indent(WriteOptions::SPACE, 2).quote_char(QuoteChar::Single);
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/lib.plist")
             .expect("failed to read plist");
         let tmp = TempDir::new("test").unwrap();
@@ -242,7 +281,7 @@ mod tests {
 
     #[test]
     fn write_fontinfo_plist_with_custom_whitespace() {
-        let opt = WriteOptions::default().whitespace("  ");
+        let opt = WriteOptions::default().indent(WriteOptions::SPACE, 2);
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
             .expect("failed to read plist");
         let tmp = TempDir::new("test").unwrap();
@@ -258,7 +297,8 @@ mod tests {
 
     #[test]
     fn write_fontinfo_plist_with_custom_whitespace_and_single_quotes() {
-        let opt = WriteOptions::default().whitespace("  ").quote_char(QuoteChar::Single);
+        let opt =
+            WriteOptions::default().indent(WriteOptions::SPACE, 2).quote_char(QuoteChar::Single);
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
             .expect("failed to read plist");
         let tmp = TempDir::new("test").unwrap();
