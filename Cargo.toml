@@ -1,6 +1,6 @@
 [package]
 name = "norad"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Colin Rofls <colin@cmyr.net>", "Nikolaus Waxweiler <madigens@gmail.com>"]
 license = "MIT/Apache-2.0"
 edition = "2021"
@@ -18,7 +18,7 @@ exclude = [
 features = ["kurbo"]
 
 [dependencies]
-plist = { version =  "1.3.1", features = ["serde"] }
+plist = { version =  "1.4.1", features = ["serde"] }
 uuid = { version = "1.2", features = ["v4"] }
 serde = { version =  "1.0", features = ["rc", "derive"] }
 serde_derive = "1.0"
@@ -32,7 +32,7 @@ indexmap = {version = "1.9.2", features = ["serde"] }
 [dependencies.druid]
 default-features = false
 features = ["x11"]
-version = "0.7.0"
+version = "0.8.0"
 optional = true
 
 [dev-dependencies]
