@@ -749,6 +749,32 @@ mod tests {
     }
 
     #[test]
+    fn layer_get_or_create() {
+        let mut ufo = crate::Font::load("testdata/MutatorSansLightWide.ufo").unwrap();
+        assert_eq!(
+            ufo.layers.len(),
+            2,
+            "number of layers in test data MutatorSansLightWide changed"
+        );
+
+        let result = ufo.layers.get_or_create_layer("background");
+        assert!(result.is_ok());
+        assert_eq!(ufo.layers.len(), 2);
+
+        let result = ufo.layers.get_or_create_layer("middleground");
+        assert!(result.is_ok());
+        assert_eq!(ufo.layers.len(), 3, "new layer wasn't created");
+        assert!(
+            ufo.layers.layers.iter().any(|layer| layer.name().as_str() == "foreground"),
+            "new layer was created with the wrong name"
+        );
+
+        let result = ufo.layers.get_or_create_layer("\t");
+        assert!(matches!(result, Err(NamingError::Invalid(_))));
+        assert_eq!(ufo.layers.len(), 3);
+    }
+
+    #[test]
     fn rename_layer() {
         let mut layer_set = LayerSet::default();
 
