@@ -136,6 +136,14 @@ impl LayerSet {
         self.layers.iter().map(|l| &l.name)
     }
 
+    fn create_layer(&mut self, name: Name) -> &mut Layer {
+        let path = util::default_file_name_for_layer_name(&name, &self.path_set);
+        let layer = Layer::new(name, path);
+        self.path_set.insert(layer.path.to_string_lossy().to_lowercase());
+        self.layers.push(layer);
+        self.layers.last_mut().unwrap()
+    }
+
     /// Returns a new layer with the given name.
     pub fn new_layer(&mut self, name: &str) -> Result<&mut Layer, NamingError> {
         if name == DEFAULT_LAYER_NAME {
@@ -144,11 +152,22 @@ impl LayerSet {
             Err(NamingError::Duplicate(name.to_string()))
         } else {
             let name = Name::new(name).map_err(|_| NamingError::Invalid(name.into()))?;
-            let path = crate::util::default_file_name_for_layer_name(&name, &self.path_set);
-            let layer = Layer::new(name, path);
-            self.path_set.insert(layer.path.to_string_lossy().to_lowercase());
-            self.layers.push(layer);
-            Ok(self.layers.last_mut().unwrap())
+            Ok(self.create_layer(name))
+        }
+    }
+
+    /// Returns a mutable reference to a layer, by name, creating the layer if it doesn't exist
+    pub fn get_or_create_layer(&mut self, name: &str) -> Result<&mut Layer, NamingError> {
+        let index = self.layers.iter().position(|l| l.name.as_str() == name);
+        match index {
+            Some(its_here) => Ok(&mut self.layers[its_here]),
+            None => {
+                // We can avoid the formal checks that new_layer does because by checking if it's already in the list,
+                // we know that name is not the default name or a duplicate
+                // Skipping it also avoids iterating through self.layers a second time
+                let name = Name::new(name)?;
+                Ok(self.create_layer(name))
+            }
         }
     }
 
