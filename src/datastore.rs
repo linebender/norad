@@ -100,18 +100,13 @@ pub trait DataType: Default {
     ) -> Result<(), StoreError>;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 #[doc(hidden)]
 pub enum Item {
+    #[default]
     NotLoaded,
     Loaded(Arc<[u8]>),
     Error(StoreError),
-}
-
-impl Default for Item {
-    fn default() -> Self {
-        Item::NotLoaded
-    }
 }
 
 // Implement custom Default for Store because automatically deriving it requires

@@ -21,16 +21,14 @@ pub(crate) struct OutlineBuilder {
     scratch_state: OutlineBuilderState,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 enum OutlineBuilderState {
+    #[default]
     Idle,
-    Drawing { scratch_contour: Contour, number_of_offcurves: u32 },
-}
-
-impl Default for OutlineBuilderState {
-    fn default() -> Self {
-        OutlineBuilderState::Idle
-    }
+    Drawing {
+        scratch_contour: Contour,
+        number_of_offcurves: u32,
+    },
 }
 
 impl OutlineBuilder {
