@@ -6,7 +6,7 @@
 use indexmap::IndexSet;
 
 /// A set of Unicode codepoints
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Codepoints(IndexSet<char>);
 
 impl Codepoints {
