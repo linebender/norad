@@ -49,7 +49,7 @@ pub struct Axis {
     #[serde(rename = "@minimum")]
     pub minimum: Option<f32>,
     /// The maximum value for a continuous axis, in user space coordinates.
-    #[serde(rename = "@minimum")]
+    #[serde(rename = "@maximum")]
     pub maximum: Option<f32>,
     /// The possible values for a discrete axis, in user space coordinates.
     #[serde(rename = "@values")]
@@ -229,6 +229,10 @@ mod tests {
     fn read_single_wght() {
         let ds = DesignSpaceDocument::load(Path::new("testdata/single_wght.designspace")).unwrap();
         assert_eq!(1, ds.axes.len());
+        let axis = &ds.axes[0];
+        assert_eq!(axis.minimum, Some(400.));
+        assert_eq!(axis.maximum, Some(600.));
+        assert_eq!(axis.default, 500.);
         assert_eq!(&vec![AxisMapping { input: 400., output: 100. }], &ds.axes[0].map);
         assert_eq!(1, ds.sources.len());
         let weight_100 = dim_name_xvalue("Weight", 100.);
