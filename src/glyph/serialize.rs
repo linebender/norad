@@ -44,11 +44,11 @@ impl Glyph {
         );
         match options.quote_style {
             QuoteChar::Double => writer
-                .inner()
+                .get_mut()
                 .write(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
                 .map_err(GlifWriteError::Buffer)?,
             QuoteChar::Single => writer
-                .inner()
+                .get_mut()
                 .write(b"<?xml version='1.0' encoding='UTF-8'?>\n")
                 .map_err(GlifWriteError::Buffer)?,
         };
@@ -129,8 +129,8 @@ impl Glyph {
         }
 
         writer.write_event(Event::End(BytesEnd::new("glyph"))).map_err(GlifWriteError::Xml)?;
-        writer.inner().write_all("\n".as_bytes()).map_err(GlifWriteError::Buffer)?;
-        writer.inner().flush().map_err(GlifWriteError::Buffer)?;
+        writer.get_mut().write_all("\n".as_bytes()).map_err(GlifWriteError::Buffer)?;
+        writer.get_mut().flush().map_err(GlifWriteError::Buffer)?;
 
         Ok(writer.into_inner().into_inner())
     }
@@ -165,10 +165,10 @@ fn write_lib_section<T: Write>(
 
     writer.write_event(Event::Start(BytesStart::new("lib"))).map_err(GlifWriteError::Xml)?;
     for line in to_write.lines() {
-        writer.inner().write_all("\n".as_bytes()).map_err(GlifWriteError::Buffer)?;
-        options.write_indent(writer.inner()).map_err(GlifWriteError::Buffer)?;
-        options.write_indent(writer.inner()).map_err(GlifWriteError::Buffer)?;
-        writer.inner().write_all(line.as_bytes()).map_err(GlifWriteError::Buffer)?;
+        writer.get_mut().write_all("\n".as_bytes()).map_err(GlifWriteError::Buffer)?;
+        options.write_indent(writer.get_mut()).map_err(GlifWriteError::Buffer)?;
+        options.write_indent(writer.get_mut()).map_err(GlifWriteError::Buffer)?;
+        writer.get_mut().write_all(line.as_bytes()).map_err(GlifWriteError::Buffer)?;
     }
     writer.write_event(Event::End(BytesEnd::new("lib"))).map_err(GlifWriteError::Xml)?;
     Ok(())
