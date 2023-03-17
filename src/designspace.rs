@@ -55,8 +55,7 @@ pub struct Axis {
     #[serde(rename = "@values")]
     pub values: Option<Vec<f32>>,
     /// Mapping between user space coordinates and design space coordinates.
-    #[serde(default)]
-    pub map: Vec<AxisMapping>,
+    pub map: Option<Vec<AxisMapping>>,
 }
 
 /// Maps one input value (user space coord) to one output value (design space coord).
@@ -233,7 +232,10 @@ mod tests {
         assert_eq!(axis.minimum, Some(400.));
         assert_eq!(axis.maximum, Some(600.));
         assert_eq!(axis.default, 500.);
-        assert_eq!(&vec![AxisMapping { input: 400., output: 100. }], &ds.axes[0].map);
+        assert_eq!(
+            &vec![AxisMapping { input: 400., output: 100. }],
+            ds.axes[0].map.as_ref().unwrap()
+        );
         assert_eq!(1, ds.sources.len());
         let weight_100 = dim_name_xvalue("Weight", 100.);
         assert_eq!(vec![weight_100.clone()], ds.sources[0].location);
@@ -245,7 +247,7 @@ mod tests {
     fn read_wght_variable() {
         let ds = DesignSpaceDocument::load("testdata/wght.designspace").unwrap();
         assert_eq!(1, ds.axes.len());
-        assert!(ds.axes[0].map.is_empty());
+        assert!(ds.axes[0].map.is_none());
         assert_eq!(
             vec![
                 ("TestFamily-Regular.ufo".to_string(), vec![dim_name_xvalue("Weight", 400.)]),
