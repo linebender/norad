@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{btree_map, BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -474,6 +474,11 @@ impl Layer {
     /// about it, if you like.
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    pub fn entry(&mut self, glyph: Name) -> btree_map::Entry<Name, Glyph> {
+        self.glyphs.entry(glyph)
     }
 
     /// Returns a reference to the glyph with the given name, if it exists.
