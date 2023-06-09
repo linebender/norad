@@ -131,6 +131,11 @@ impl LayerSet {
         self.layers.iter()
     }
 
+    /// Returns a mutable iterator over all layers.
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Layer> {
+        self.layers.iter_mut()
+    }
+
     /// Returns an iterator over the names of all layers.
     pub fn names(&self) -> impl Iterator<Item = &Name> {
         self.layers.iter().map(|l| &l.name)
