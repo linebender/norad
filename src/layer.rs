@@ -611,6 +611,14 @@ impl Layer {
         self.glyphs.values_mut()
     }
 
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` for which `f(&k, &mut v)` returns `false`.
+    /// The elements are visited in unsorted (and unspecified) order.
+    pub fn retain(&mut self, f: impl FnMut(&Name, &mut Glyph) -> bool) {
+        self.glyphs.retain(f);
+    }
+
     /// Returns the path to the .glif file of a given glyph `name`.
     ///
     /// The returned path is relative to the path of the current layer.
