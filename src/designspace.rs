@@ -22,7 +22,7 @@ pub struct DesignSpaceDocument {
     #[serde(deserialize_with = "serde_impls::deserialize_sources")]
     pub sources: Vec<Source>,
     /// One or more instances.
-    #[serde(deserialize_with = "serde_impls::deserialize_instances")]
+    #[serde(default, deserialize_with = "serde_impls::deserialize_instances")]
     pub instances: Vec<Instance>,
 }
 
@@ -258,5 +258,11 @@ mod tests {
                 .map(|s| (s.filename, s.location))
                 .collect::<Vec<(String, Vec<Dimension>)>>()
         );
+    }
+
+    // <https://github.com/linebender/norad/issues/300>
+    #[test]
+    fn load_with_no_instances() {
+        DesignSpaceDocument::load("testdata/no_instances.designspace").unwrap();
     }
 }
