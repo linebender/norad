@@ -131,6 +131,11 @@ impl LayerSet {
         self.layers.iter()
     }
 
+    /// Returns a mutable iterator over all layers.
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Layer> {
+        self.layers.iter_mut()
+    }
+
     /// Returns an iterator over the names of all layers.
     pub fn names(&self) -> impl Iterator<Item = &Name> {
         self.layers.iter().map(|l| &l.name)
@@ -471,6 +476,12 @@ impl Layer {
         &self.path
     }
 
+    /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    #[cfg(not(feature = "druid"))]
+    pub fn entry(&mut self, glyph: Name) -> std::collections::btree_map::Entry<Name, Glyph> {
+        self.glyphs.entry(glyph)
+    }
+
     /// Returns a reference to the glyph with the given name, if it exists.
     pub fn get_glyph(&self, glyph: &str) -> Option<&Glyph> {
         #[cfg(feature = "druid")]
@@ -604,6 +615,15 @@ impl Layer {
         return self.glyphs.values_mut().map(Arc::make_mut);
         #[cfg(not(feature = "druid"))]
         self.glyphs.values_mut()
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` for which `f(&k, &mut v)` returns `false`.
+    /// The elements are visited in unsorted (and unspecified) order.
+    #[cfg(not(feature = "druid"))]
+    pub fn retain(&mut self, f: impl FnMut(&Name, &mut Glyph) -> bool) {
+        self.glyphs.retain(f);
     }
 
     /// Returns the path to the .glif file of a given glyph `name`.
