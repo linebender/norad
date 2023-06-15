@@ -13,49 +13,39 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
       - run: rustup component add rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+
+      - name: rustfmt check
+        run: cargo fmt --all -- --check
 
   clippy-lint:
     name: Clippy lints
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - name: install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
 
       - name: install druid dependencies
         run: |
           sudo apt update
           sudo apt install libpango1.0-dev libxkbcommon-dev libxkbcommon-x11-dev
 
-      - name: install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: clippy
-          profile: minimal
-          override: true
-
       - run: git submodule update --init --recursive
 
-      - name: cargo clippy --all-features
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --all-targets -- -D warnings
-
       - name: cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-targets -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: cargo clippy --all-features
+        run: cargo clippy --all-features --all-targets -- -D warnings
+
+      - name: cargo doc
+        run: cargo doc --all-features --document-private-items --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
+
 
   test-stable:
     runs-on: ${{ matrix.os }}
@@ -65,7 +55,10 @@ jobs:
 
     name: cargo test stable
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+
+      - name: install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
 
       - name: install druid dependencies
         run: |
@@ -73,23 +66,10 @@ jobs:
           sudo apt install libpango1.0-dev libxkbcommon-dev libxkbcommon-x11-dev
         if: contains(matrix.os, 'ubuntu')
 
-      - name: install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-
       - run: git submodule update --init --recursive
 
       - name: cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-features
+        run: cargo test
 
-      - name: cargo doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --all-features --document-private-items
+      - name: cargo test --all-features
+        run: cargo test --all-features
