@@ -1,4 +1,4 @@
-use std::collections::{btree_map, BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -477,7 +477,8 @@ impl Layer {
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
-    pub fn entry(&mut self, glyph: Name) -> btree_map::Entry<Name, Glyph> {
+    #[cfg(not(feature = "druid"))]
+    pub fn entry(&mut self, glyph: Name) -> std::collections::btree_map::Entry<Name, Glyph> {
         self.glyphs.entry(glyph)
     }
 
@@ -620,6 +621,7 @@ impl Layer {
     ///
     /// In other words, remove all pairs `(k, v)` for which `f(&k, &mut v)` returns `false`.
     /// The elements are visited in unsorted (and unspecified) order.
+    #[cfg(not(feature = "druid"))]
     pub fn retain(&mut self, f: impl FnMut(&Name, &mut Glyph) -> bool) {
         self.glyphs.retain(f);
     }
