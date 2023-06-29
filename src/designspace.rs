@@ -83,7 +83,7 @@ pub struct Source {
     #[serde(rename = "@stylename")]
     pub stylename: Option<String>,
     /// A unique name that can be used to identify this font if it needs to be referenced elsewhere.
-    #[serde(rename = "@name")]
+    #[serde(rename = "@name", default = "serde_impls::generate_missing_source_name")]
     pub name: String,
     /// A path to the source file, relative to the root path of this document.
     ///
@@ -162,6 +162,8 @@ impl DesignSpaceDocument {
 }
 
 mod serde_impls {
+    use std::sync::atomic::AtomicU64;
+
     use super::{Axis, Dimension, Instance, Source};
     use serde::{Deserialize, Deserializer};
 
@@ -207,6 +209,17 @@ mod serde_impls {
             source: Vec<Source>,
         }
         Helper::deserialize(deserializer).map(|x| x.source)
+    }
+
+    /// Generate a unique name for a source.
+    ///
+    /// We do not make guarantees about what name will be assigned to a given
+    /// source, only that it will be unique within this process. If the designer
+    /// cares, they should provide a name explicitly.
+    pub fn generate_missing_source_name() -> String {
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        let next_n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        format!("unnamed_source_{next_n}")
     }
 }
 
@@ -264,5 +277,13 @@ mod tests {
     #[test]
     fn load_with_no_instances() {
         DesignSpaceDocument::load("testdata/no_instances.designspace").unwrap();
+    }
+
+    #[test]
+    fn load_with_no_source_name() {
+        let ds = DesignSpaceDocument::load("testdata/no_source_names.designspace").unwrap();
+        assert!(ds.sources[0].name.starts_with("unnamed_source_"));
+        assert!(ds.sources[1].name.starts_with("unnamed_source_"));
+        assert_ne!(ds.sources[0].name, ds.sources[1].name);
     }
 }
