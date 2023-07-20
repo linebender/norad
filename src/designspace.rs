@@ -114,7 +114,7 @@ pub struct Instance {
     #[serde(rename = "@stylename")]
     pub stylename: Option<String>,
     /// A unique name that can be used to identify this font if it needs to be referenced elsewhere.
-    #[serde(rename = "@name")]
+    #[serde(rename = "@name", default = "serde_impls::generate_missing_instance_name")]
     pub name: String,
     /// A path to the instance file, relative to the root path of this document. The path can be at the same level as the document or lower.
     #[serde(rename = "@filename")]
@@ -221,6 +221,17 @@ mod serde_impls {
         let next_n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         format!("unnamed_source_{next_n}")
     }
+
+    /// Generate a unique name for an instance.
+    ///
+    /// We do not make guarantees about what name will be assigned to a given
+    /// instance, only that it will be unique within this process. If the designer
+    /// cares, they should provide a name explicitly.
+    pub fn generate_missing_instance_name() -> String {
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        let next_n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        format!("unnamed_instance_{next_n}")
+    }
 }
 
 #[cfg(test)]
@@ -285,5 +296,13 @@ mod tests {
         assert!(ds.sources[0].name.starts_with("unnamed_source_"));
         assert!(ds.sources[1].name.starts_with("unnamed_source_"));
         assert_ne!(ds.sources[0].name, ds.sources[1].name);
+    }
+
+    #[test]
+    fn load_with_no_instance_name() {
+        let ds = DesignSpaceDocument::load("testdata/no_instance_names.designspace").unwrap();
+        assert!(ds.instances[0].name.starts_with("unnamed_instance_"));
+        assert!(ds.instances[1].name.starts_with("unnamed_instance_"));
+        assert_ne!(ds.instances[0].name, ds.instances[1].name);
     }
 }
