@@ -2,17 +2,18 @@
 
 #![deny(rustdoc::broken_intra_doc_links)]
 
-use std::{fs::File, io::BufReader, path::Path};
+use serde::Serialize;
+use std::{fs, fs::File, io::BufReader, path::Path};
 
 use plist::Dictionary;
 
-use crate::error::DesignSpaceLoadError;
+use crate::error::{DesignSpaceLoadError, DesignSpaceSaveError};
 use crate::serde_xml_plist as serde_plist;
 
 /// A [designspace].
 ///
 /// [designspace]: https://fonttools.readthedocs.io/en/latest/designspaceLib/index.html
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "designspace")]
 pub struct DesignSpaceDocument {
     /// Design space format version.
@@ -35,7 +36,7 @@ pub struct DesignSpaceDocument {
 /// An [axis].
 ///
 /// [axis]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#axis-element
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "axis")]
 pub struct Axis {
     /// Name of the axis that is used in the location elements.
@@ -65,7 +66,7 @@ pub struct Axis {
 }
 
 /// Maps one input value (user space coord) to one output value (design space coord).
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "map")]
 pub struct AxisMapping {
     /// user space coordinate
@@ -79,7 +80,7 @@ pub struct AxisMapping {
 /// A [source].
 ///
 /// [source]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#id25
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "source")]
 pub struct Source {
     /// The family name of the source font.
@@ -109,7 +110,7 @@ pub struct Source {
 /// An [instance].
 ///
 /// [instance]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#instance-element
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "instance")]
 pub struct Instance {
     // per @anthrotype, contrary to spec, filename, familyname and stylename are optional
@@ -145,7 +146,7 @@ pub struct Instance {
 /// A [design space dimension].
 ///
 /// [design space location]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#location-element-source
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "dimension")]
 pub struct Dimension {
     /// Name of the axis, e.g. Weight.
@@ -167,6 +168,16 @@ impl DesignSpaceDocument {
     pub fn load<P: AsRef<Path>>(path: P) -> Result<DesignSpaceDocument, DesignSpaceLoadError> {
         let reader = BufReader::new(File::open(path).map_err(DesignSpaceLoadError::Io)?);
         quick_xml::de::from_reader(reader).map_err(DesignSpaceLoadError::DeError)
+    }
+
+    pub fn save(&self, path: impl AsRef<Path>) -> Result<(), DesignSpaceSaveError> {
+        let mut buf = String::from("<?xml version='1.0' encoding='UTF-8'?>\n");
+        let mut xml_writer = quick_xml::se::Serializer::new(&mut buf);
+        xml_writer.indent(' ', 2);
+        self.serialize(xml_writer)?;
+        buf.push('\n'); // trailing newline
+        fs::write(path, buf)?;
+        Ok(())
     }
 }
 
@@ -310,5 +321,22 @@ mod tests {
             params[1].as_array().unwrap()[1].as_array().unwrap()[0].as_unsigned_integer(),
             Some(2)
         );
+    }
+
+    #[test]
+    fn load_save_round_trip() {
+        // Given
+        let dir = tempdir::TempDir::new("norad_designspace_load_save_round_trip").unwrap();
+        let mut ds_test_save_location = dir.path().to_path_buf();
+        ds_test_save_location.push("wght.designspace");
+
+        // When
+        let ds_initial = DesignSpaceDocument::load("testdata/wght.designspace").unwrap();
+        ds_initial.save(&ds_test_save_location).expect("failed to save designspace");
+        let ds_after = DesignSpaceDocument::load(ds_test_save_location)
+            .expect("failed to load saved designspace");
+
+        // Then
+        assert_eq!(ds_initial, ds_after);
     }
 }

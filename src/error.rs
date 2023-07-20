@@ -25,6 +25,18 @@ pub enum DesignSpaceLoadError {
     DeError(#[from] DeError),
 }
 
+/// An error that occurs while attempting to write a designspace file to disk.
+#[derive(Debug, Error)]
+pub enum DesignSpaceSaveError {
+    /// An [`std::io::Error`].
+    #[error("failed to open/write file")]
+    Io(#[from] IoError),
+
+    /// A serialization error.
+    #[error("failed to deserialize")]
+    SeError(#[from] DeError),
+}
+
 /// An error representing a failure to (re)name something.
 #[derive(Debug, Error)]
 pub enum NamingError {
