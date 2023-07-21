@@ -20,13 +20,13 @@ pub struct DesignSpaceDocument {
     #[serde(rename = "@format")]
     pub format: f32,
     /// One or more axes.
-    #[serde(deserialize_with = "serde_impls::deserialize_axes")]
+    #[serde(with = "serde_impls::axes", skip_serializing_if = "Vec::is_empty")]
     pub axes: Vec<Axis>,
     /// One or more sources.
-    #[serde(deserialize_with = "serde_impls::deserialize_sources")]
+    #[serde(with = "serde_impls::sources", skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<Source>,
     /// One or more instances.
-    #[serde(default, deserialize_with = "serde_impls::deserialize_instances")]
+    #[serde(default, with = "serde_impls::instances", skip_serializing_if = "Vec::is_empty")]
     pub instances: Vec<Instance>,
     /// Additional arbitrary user data
     #[serde(default, deserialize_with = "serde_plist::deserialize_dict")]
@@ -53,15 +53,16 @@ pub struct Axis {
     #[serde(rename = "@hidden")]
     pub hidden: bool,
     /// The minimum value for a continuous axis, in user space coordinates.
-    #[serde(rename = "@minimum")]
+    #[serde(rename = "@minimum", skip_serializing_if = "Option::is_none")]
     pub minimum: Option<f32>,
     /// The maximum value for a continuous axis, in user space coordinates.
-    #[serde(rename = "@maximum")]
+    #[serde(rename = "@maximum", skip_serializing_if = "Option::is_none")]
     pub maximum: Option<f32>,
     /// The possible values for a discrete axis, in user space coordinates.
-    #[serde(rename = "@values")]
+    #[serde(rename = "@values", skip_serializing_if = "Option::is_none")]
     pub values: Option<Vec<f32>>,
     /// Mapping between user space coordinates and design space coordinates.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub map: Option<Vec<AxisMapping>>,
 }
 
@@ -84,10 +85,10 @@ pub struct AxisMapping {
 #[serde(rename = "source")]
 pub struct Source {
     /// The family name of the source font.
-    #[serde(rename = "@familyname")]
+    #[serde(rename = "@familyname", skip_serializing_if = "Option::is_none")]
     pub familyname: Option<String>,
     /// The style name of the source font.
-    #[serde(rename = "@stylename")]
+    #[serde(rename = "@stylename", skip_serializing_if = "Option::is_none")]
     pub stylename: Option<String>,
     /// A unique name that can be used to identify this font if it needs to be referenced elsewhere.
     #[serde(rename = "@name")]
@@ -100,10 +101,10 @@ pub struct Source {
     /// The name of the layer in the source file.
     ///
     /// If no layer attribute is given assume the foreground layer should be used.
-    #[serde(rename = "@layer")]
+    #[serde(rename = "@layer", skip_serializing_if = "Option::is_none")]
     pub layer: Option<String>,
     /// Location in designspace coordinates.
-    #[serde(deserialize_with = "serde_impls::deserialize_location")]
+    #[serde(with = "serde_impls::location")]
     pub location: Vec<Dimension>,
 }
 
@@ -115,35 +116,35 @@ pub struct Source {
 pub struct Instance {
     // per @anthrotype, contrary to spec, filename, familyname and stylename are optional
     /// The family name of the instance font. Corresponds with font.info.familyName
-    #[serde(rename = "@familyname")]
+    #[serde(rename = "@familyname", skip_serializing_if = "Option::is_none")]
     pub familyname: Option<String>,
     /// The style name of the instance font. Corresponds with font.info.styleName
-    #[serde(rename = "@stylename")]
+    #[serde(rename = "@stylename", skip_serializing_if = "Option::is_none")]
     pub stylename: Option<String>,
     /// A unique name that can be used to identify this font if it needs to be referenced elsewhere.
     #[serde(rename = "@name")]
     pub name: Option<String>,
     /// A path to the instance file, relative to the root path of this document. The path can be at the same level as the document or lower.
-    #[serde(rename = "@filename")]
+    #[serde(rename = "@filename", skip_serializing_if = "Option::is_none")]
     pub filename: Option<String>,
     /// Corresponds with font.info.postscriptFontName
-    #[serde(rename = "@postscriptfontname")]
+    #[serde(rename = "@postscriptfontname", skip_serializing_if = "Option::is_none")]
     pub postscriptfontname: Option<String>,
     /// Corresponds with styleMapFamilyName
-    #[serde(rename = "@stylemapfamilyname")]
+    #[serde(rename = "@stylemapfamilyname", skip_serializing_if = "Option::is_none")]
     pub stylemapfamilyname: Option<String>,
     /// Corresponds with styleMapStyleName
-    #[serde(rename = "@stylemapstylename")]
+    #[serde(rename = "@stylemapstylename", skip_serializing_if = "Option::is_none")]
     pub stylemapstylename: Option<String>,
     /// Location in designspace.
-    #[serde(deserialize_with = "serde_impls::deserialize_location")]
+    #[serde(with = "serde_impls::location")]
     pub location: Vec<Dimension>,
     /// Arbitrary data about this instance
     #[serde(default, deserialize_with = "serde_plist::deserialize_dict")]
     pub lib: Dictionary,
 }
 
-/// A [design space dimension].
+/// A design space dimension.
 ///
 /// [design space location]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#location-element-source
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -153,13 +154,13 @@ pub struct Dimension {
     #[serde(rename = "@name")]
     pub name: String,
     /// Value on the axis in user coordinates.
-    #[serde(rename = "@uservalue")]
+    #[serde(rename = "@uservalue", skip_serializing_if = "Option::is_none")]
     pub uservalue: Option<f32>,
     /// Value on the axis in designcoordinates.
-    #[serde(rename = "@xvalue")]
+    #[serde(rename = "@xvalue", skip_serializing_if = "Option::is_none")]
     pub xvalue: Option<f32>,
     /// Separate value for anisotropic interpolations.
-    #[serde(rename = "@yvalue")]
+    #[serde(rename = "@yvalue", skip_serializing_if = "Option::is_none")]
     pub yvalue: Option<f32>,
 }
 
@@ -170,6 +171,7 @@ impl DesignSpaceDocument {
         quick_xml::de::from_reader(reader).map_err(DesignSpaceLoadError::DeError)
     }
 
+    /// Save a designspace.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<(), DesignSpaceSaveError> {
         let mut buf = String::from("<?xml version='1.0' encoding='UTF-8'?>\n");
         let mut xml_writer = quick_xml::se::Serializer::new(&mut buf);
@@ -184,50 +186,114 @@ impl DesignSpaceDocument {
 mod serde_impls {
 
     use super::{Axis, Dimension, Instance, Source};
-    use serde::{Deserialize, Deserializer};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-    pub fn deserialize_location<'de, D>(deserializer: D) -> Result<Vec<Dimension>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct Helper {
-            dimension: Vec<Dimension>,
+    pub(super) mod location {
+        use super::*;
+
+        pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Dimension>, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            #[derive(Deserialize)]
+            struct Helper {
+                dimension: Vec<Dimension>,
+            }
+            Helper::deserialize(deserializer).map(|x| x.dimension)
         }
-        Helper::deserialize(deserializer).map(|x| x.dimension)
+
+        pub(crate) fn serialize<S>(location: &[Dimension], serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            #[derive(Serialize)]
+            struct Helper<'a> {
+                dimension: &'a [Dimension],
+            }
+            let helper = Helper { dimension: location };
+            helper.serialize(serializer)
+        }
     }
 
-    pub fn deserialize_instances<'de, D>(deserializer: D) -> Result<Vec<Instance>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct Helper {
-            instance: Vec<Instance>,
+    pub(super) mod instances {
+        use super::*;
+
+        pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Instance>, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            #[derive(Deserialize)]
+            struct Helper {
+                instance: Vec<Instance>,
+            }
+            Helper::deserialize(deserializer).map(|x| x.instance)
         }
-        Helper::deserialize(deserializer).map(|x| x.instance)
+
+        pub(crate) fn serialize<S>(instances: &[Instance], serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            #[derive(Serialize)]
+            struct Helper<'a> {
+                instance: &'a [Instance],
+            }
+            let helper = Helper { instance: instances };
+            helper.serialize(serializer)
+        }
     }
 
-    pub fn deserialize_axes<'de, D>(deserializer: D) -> Result<Vec<Axis>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct Helper {
-            axis: Vec<Axis>,
+    pub(super) mod axes {
+        use super::*;
+
+        pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Axis>, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            #[derive(Deserialize)]
+            struct Helper {
+                axis: Vec<Axis>,
+            }
+            Helper::deserialize(deserializer).map(|x| x.axis)
         }
-        Helper::deserialize(deserializer).map(|x| x.axis)
+
+        pub(crate) fn serialize<S>(axes: &[Axis], serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            #[derive(Serialize)]
+            struct Helper<'a> {
+                axis: &'a [Axis],
+            }
+            let helper = Helper { axis: axes };
+            helper.serialize(serializer)
+        }
     }
 
-    pub fn deserialize_sources<'de, D>(deserializer: D) -> Result<Vec<Source>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct Helper {
-            source: Vec<Source>,
+    pub(super) mod sources {
+        use super::*;
+
+        pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Source>, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            #[derive(Deserialize)]
+            struct Helper {
+                source: Vec<Source>,
+            }
+            Helper::deserialize(deserializer).map(|x| x.source)
         }
-        Helper::deserialize(deserializer).map(|x| x.source)
+
+        pub(crate) fn serialize<S>(sources: &[Source], serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            #[derive(Serialize)]
+            struct Helper<'a> {
+                source: &'a [Source],
+            }
+            let helper = Helper { source: sources };
+            helper.serialize(serializer)
+        }
     }
 }
 
