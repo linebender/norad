@@ -2,7 +2,7 @@
 name = "norad"
 version = "0.10.2"
 authors = ["Colin Rofls <colin@cmyr.net>", "Nikolaus Waxweiler <madigens@gmail.com>"]
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 edition = "2021"
 keywords = ["font", "ufo", "fonts"]
 repository = "https://github.com/linebender/norad"
