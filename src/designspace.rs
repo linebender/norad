@@ -4,7 +4,10 @@
 
 use std::{fs::File, io::BufReader, path::Path};
 
+use plist::Dictionary;
+
 use crate::error::DesignSpaceLoadError;
+use crate::serde_xml_plist as serde_plist;
 
 /// A [designspace].
 ///
@@ -24,6 +27,9 @@ pub struct DesignSpaceDocument {
     /// One or more instances.
     #[serde(default, deserialize_with = "serde_impls::deserialize_instances")]
     pub instances: Vec<Instance>,
+    /// Additional arbitrary user data
+    #[serde(default, deserialize_with = "serde_plist::deserialize_dict")]
+    pub lib: Dictionary,
 }
 
 /// An [axis].
@@ -131,6 +137,9 @@ pub struct Instance {
     /// Location in designspace.
     #[serde(deserialize_with = "serde_impls::deserialize_location")]
     pub location: Vec<Dimension>,
+    /// Arbitrary data about this instance
+    #[serde(default, deserialize_with = "serde_plist::deserialize_dict")]
+    pub lib: Dictionary,
 }
 
 /// A [design space dimension].
@@ -215,6 +224,7 @@ mod serde_impls {
 mod tests {
     use std::path::Path;
 
+    use plist::Value;
     use pretty_assertions::assert_eq;
 
     use crate::designspace::{AxisMapping, Dimension};
@@ -279,5 +289,26 @@ mod tests {
         let ds = DesignSpaceDocument::load("testdata/optional_instance_names.designspace").unwrap();
         assert_eq!(ds.instances[0].name.as_deref(), Some("Test Family Regular"));
         assert!(ds.instances[1].name.is_none());
+    }
+
+    #[test]
+    fn load_lib() {
+        let loaded = DesignSpaceDocument::load("testdata/wght.designspace").unwrap();
+        assert_eq!(
+            loaded.lib.get("org.linebender.hasLoadedLibCorrectly"),
+            Some(&Value::String("Absolutely!".into()))
+        );
+
+        let params = loaded.instances[0]
+            .lib
+            .get("com.schriftgestaltung.customParameters")
+            .and_then(Value::as_array)
+            .unwrap();
+        assert_eq!(params[0].as_array().unwrap()[0].as_string(), Some("xHeight"));
+        assert_eq!(params[0].as_array().unwrap()[1].as_string(), Some("536"));
+        assert_eq!(
+            params[1].as_array().unwrap()[1].as_array().unwrap()[0].as_unsigned_integer(),
+            Some(2)
+        );
     }
 }
