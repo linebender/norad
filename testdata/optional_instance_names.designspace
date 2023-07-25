@@ -11,7 +11,7 @@
     </source>
   </sources>
   <instances>
-    <instance filename="TestFamily-Regular.ufo" stylename="Regular">
+    <instance filename="TestFamily-Regular.ufo" name="Test Family Regular" stylename="Regular">
       <location>
         <dimension name="Weight" xvalue="400"/>
       </location>

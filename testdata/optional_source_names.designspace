@@ -9,7 +9,7 @@
         <dimension name="Weight" xvalue="400"/>
       </location>
     </source>
-    <source filename="TestFamily-Bold.ufo" stylename="Bold">
+    <source filename="TestFamily-Bold.ufo" name="Test Family Bold" stylename="Bold">
       <location>
         <dimension name="Weight" xvalue="700"/>
       </location>
