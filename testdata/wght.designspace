@@ -90,6 +90,8 @@
   </instances>
   <lib>
     <dict>
+      <key>org.linebender.hasLoadedLibCorrectly</key>
+      <string>Absolutely!</string>
       <key>com.github.googlei18n.ufo2ft.featureWriters</key>
       <array>
         <dict>
@@ -110,7 +112,7 @@
             <string>skip</string>
           </dict>
         </dict>
-      </array>      
+      </array>
     </dict>
   </lib>
 
