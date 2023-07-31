@@ -29,7 +29,11 @@ pub struct DesignSpaceDocument {
     #[serde(default, with = "serde_impls::instances", skip_serializing_if = "Vec::is_empty")]
     pub instances: Vec<Instance>,
     /// Additional arbitrary user data
-    #[serde(default, deserialize_with = "serde_plist::deserialize_dict")]
+    #[serde(
+        default,
+        deserialize_with = "serde_plist::deserialize_dict",
+        serialize_with = "serde_plist::serialize_dict"
+    )]
     pub lib: Dictionary,
 }
 
@@ -140,7 +144,11 @@ pub struct Instance {
     #[serde(with = "serde_impls::location")]
     pub location: Vec<Dimension>,
     /// Arbitrary data about this instance
-    #[serde(default, deserialize_with = "serde_plist::deserialize_dict")]
+    #[serde(
+        default,
+        deserialize_with = "serde_plist::deserialize_dict",
+        serialize_with = "serde_plist::serialize_dict"
+    )]
     pub lib: Dictionary,
 }
 

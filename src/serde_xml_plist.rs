@@ -1,4 +1,4 @@
-//! Helpers for deserializing plist values from untyped XML
+//! Helpers for (de)serializing plist values from untyped XML
 //!
 //! This is essentially glue between the `plist` crate and the `quick_xml` crate.
 //! It allows plist values, dictionaries and arrays to be used inside types that
@@ -8,9 +8,10 @@ use std::{fmt::Display, marker::PhantomData, str::FromStr};
 
 use base64::{engine::general_purpose::STANDARD as base64_standard, Engine};
 use plist::{Dictionary, Value};
+use serde::ser::{Error, SerializeStruct};
 use serde::{
     de::{Error as DeError, Visitor},
-    Deserialize, Deserializer,
+    Deserialize, Deserializer, Serialize, Serializer,
 };
 
 /// Deserialize a plist Dictionary
@@ -334,6 +335,110 @@ impl Display for ValueKeyword {
             ValueKeyword::False => "false",
         };
         f.write_str(s)
+    }
+}
+
+pub(crate) fn serialize_dict<S>(ds_lib: &Dictionary, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut lib = serializer.serialize_struct("", 1)?;
+    lib.serialize_field("dict", &DictionaryInnerHelper(ds_lib))?;
+    lib.end()
+}
+
+struct ValueHelper<'lib>(&'lib Value);
+
+impl<'lib> ValueHelper<'lib> {
+    fn serialize_within<S>(
+        &self,
+        parent: &mut <S as Serializer>::SerializeStruct,
+    ) -> Result<(), S::Error>
+    where
+        S: Serializer,
+    {
+        match &self.0 {
+            Value::Array(a) => parent.serialize_field("array", &ArrayInnerHelper(a)),
+            Value::Dictionary(_) => parent.serialize_field("dict", &ValueInnerHelper(self.0)),
+            Value::Boolean(true) => parent.serialize_field("true", &()),
+            Value::Boolean(false) => parent.serialize_field("false", &()),
+            Value::Data(_) => parent.serialize_field("data", &ValueInnerHelper(self.0)),
+            Value::Date(_) => parent.serialize_field("date", &ValueInnerHelper(self.0)),
+            Value::Real(_) => parent.serialize_field("real", &ValueInnerHelper(self.0)),
+            Value::Integer(_) => parent.serialize_field("integer", &ValueInnerHelper(self.0)),
+            Value::String(_) => parent.serialize_field("string", &ValueInnerHelper(self.0)),
+            v => Err(S::Error::custom(format_args!("unsupported plist::Value: {v:?}"))),
+        }
+    }
+}
+
+impl Serialize for ValueHelper<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut dummy = serializer.serialize_struct("", 1)?;
+        self.serialize_within::<S>(&mut dummy)?;
+        dummy.end()
+    }
+}
+
+struct ValueInnerHelper<'lib>(&'lib Value);
+
+impl Serialize for ValueInnerHelper<'_> {
+    // Serialize without type tag, e.g. 1
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match &self.0 {
+            Value::Array(a) => ArrayInnerHelper(a).serialize(serializer),
+            Value::Dictionary(d) => DictionaryInnerHelper(d).serialize(serializer),
+            Value::Boolean(b) => {
+                if *b {
+                    serializer.serialize_unit_struct("true")
+                } else {
+                    serializer.serialize_unit_struct("false")
+                }
+            }
+            Value::Data(d) => serializer.serialize_str(&base64_standard.encode(d)),
+            Value::Date(d) => serializer.serialize_str(&d.to_xml_format()),
+            Value::Real(r) => serializer.serialize_f64(*r),
+            Value::Integer(i) => i.serialize(serializer),
+            Value::String(s) => serializer.serialize_str(s),
+            v => Err(S::Error::custom(format_args!("unsupported plist::Value: {v:?}"))),
+        }
+    }
+}
+
+struct DictionaryInnerHelper<'lib>(&'lib Dictionary);
+
+impl Serialize for DictionaryInnerHelper<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut dict = serializer.serialize_struct("", self.0.len() * 2)?;
+        for (key, value) in self.0.iter() {
+            dict.serialize_field("key", key)?;
+            ValueHelper(value).serialize_within::<S>(&mut dict)?;
+        }
+        dict.end()
+    }
+}
+
+struct ArrayInnerHelper<'lib>(&'lib [Value]);
+
+impl Serialize for ArrayInnerHelper<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut array = serializer.serialize_struct("", self.0.len())?;
+        for value in self.0 {
+            ValueHelper(value).serialize_within::<S>(&mut array)?;
+        }
+        array.end()
     }
 }
 
