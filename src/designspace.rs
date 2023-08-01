@@ -184,97 +184,95 @@ impl DesignSpaceDocument {
 }
 
 mod serde_impls {
-
-    use super::{Axis, Dimension, Instance, Source};
-    use serde::{Serialize, Serializer};
-
-    macro_rules! de_from_field {
-        ($name:ident, $container:path) => {
-            pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<$container, D::Error>
-            where
-                D: ::serde::Deserializer<'de>,
-            {
-                use ::serde::Deserialize as _;
-                #[derive(::serde::Deserialize)]
-                struct Helper {
-                    $name: $container,
+    /// Produces a self-contained module to (de)serialise an XML list of a given type
+    ///
+    /// Example usage:
+    /// ```ignore
+    /// # use serde::{Serialize, Deserialize};
+    ///
+    /// // In XML, the locations are referred to as <dimension/>
+    /// serde_from_field!(locations, dimension, Dimension);
+    ///
+    /// #[derive(Serialize, Deserialize)]
+    /// struct DesignSpaceDocument {
+    ///     #[serde(with = "locations")]
+    ///     location: Vec<Dimension>,
+    /// }
+    ///
+    /// #[derive(Serialize, Deserialize)]
+    /// struct Dimension;
+    /// ```
+    ///
+    /// the generated code is approximately:
+    /// ```ignore
+    /// pub(super) mod locations {
+    ///     # use serde::{Deserialize, Deserializer, Serializer, Serialize};
+    ///     # use norad::designspace::Dimension;
+    ///     pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Dimension>, D::Error>
+    ///     where
+    ///         D: Deserializer<'de>,
+    ///     {
+    ///         #[derive(Deserialize)]
+    ///         struct Helper {
+    ///             dimension: Vec<Dimension>,
+    ///         }
+    ///         Helper::deserialize(deserializer).map(|x| x.dimension)
+    ///     }
+    ///
+    ///     pub(crate) fn serialize<S>(
+    ///         dimension: &[Dimension],
+    ///         serializer: S,
+    ///     ) -> Result<S::Ok, S::Error>
+    ///     where
+    ///         S: Serializer,
+    ///     {
+    ///         #[derive(Serialize)]
+    ///         struct Helper<'a> {
+    ///             dimension: &'a [Dimension],
+    ///         }
+    ///         let helper = Helper { dimension };
+    ///         helper.serialize(serializer)
+    ///     }
+    /// }
+    /// ```
+    macro_rules! serde_from_field {
+        ($mod_name:ident, $field_name:ident, $inner:path) => {
+            pub(super) mod $mod_name {
+                pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<$inner>, D::Error>
+                where
+                    D: ::serde::Deserializer<'de>,
+                {
+                    use ::serde::Deserialize as _;
+                    #[derive(::serde::Deserialize)]
+                    struct Helper {
+                        $field_name: Vec<$inner>,
+                    }
+                    Helper::deserialize(deserializer).map(|x| x.$field_name)
                 }
-                Helper::deserialize(deserializer).map(|x| x.$name)
+
+                pub(crate) fn serialize<S>(
+                    $field_name: &[$inner],
+                    serializer: S,
+                ) -> Result<S::Ok, S::Error>
+                where
+                    S: ::serde::Serializer,
+                {
+                    use ::serde::Serialize as _;
+                    #[derive(::serde::Serialize)]
+                    struct Helper<'a> {
+                        $field_name: &'a [$inner],
+                    }
+                    let helper = Helper { $field_name };
+                    helper.serialize(serializer)
+                }
             }
         };
     }
 
-    pub(super) mod location {
-        use super::*;
-
-        de_from_field!(dimension, Vec<Dimension>);
-
-        pub(crate) fn serialize<S>(location: &[Dimension], serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            #[derive(Serialize)]
-            struct Helper<'a> {
-                dimension: &'a [Dimension],
-            }
-            let helper = Helper { dimension: location };
-            helper.serialize(serializer)
-        }
-    }
-
-    pub(super) mod instances {
-        use super::*;
-
-        de_from_field!(instance, Vec<Instance>);
-
-        pub(crate) fn serialize<S>(instances: &[Instance], serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            #[derive(Serialize)]
-            struct Helper<'a> {
-                instance: &'a [Instance],
-            }
-            let helper = Helper { instance: instances };
-            helper.serialize(serializer)
-        }
-    }
-
-    pub(super) mod axes {
-        use super::*;
-
-        de_from_field!(axis, Vec<Axis>);
-
-        pub(crate) fn serialize<S>(axes: &[Axis], serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            #[derive(Serialize)]
-            struct Helper<'a> {
-                axis: &'a [Axis],
-            }
-            let helper = Helper { axis: axes };
-            helper.serialize(serializer)
-        }
-    }
-
-    pub(super) mod sources {
-        use super::*;
-
-        de_from_field!(source, Vec<Source>);
-
-        pub(crate) fn serialize<S>(sources: &[Source], serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            #[derive(Serialize)]
-            struct Helper<'a> {
-                source: &'a [Source],
-            }
-            let helper = Helper { source: sources };
-            helper.serialize(serializer)
-        }
-    }
+    serde_from_field!(location, dimension, crate::designspace::Dimension);
+    serde_from_field!(instances, instance, crate::designspace::Instance);
+    serde_from_field!(axes, axis, crate::designspace::Axis);
+    serde_from_field!(sources, source, crate::designspace::Source);
 }
 
 #[cfg(test)]
