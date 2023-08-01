@@ -29,7 +29,7 @@ pub struct DesignSpaceDocument {
     #[serde(default, with = "serde_impls::instances", skip_serializing_if = "Vec::is_empty")]
     pub instances: Vec<Instance>,
     /// Additional arbitrary user data
-    #[serde(default, with = "serde_plist")]
+    #[serde(default, with = "serde_plist", skip_serializing_if = "Dictionary::is_empty")]
     pub lib: Dictionary,
 }
 
@@ -140,7 +140,7 @@ pub struct Instance {
     #[serde(with = "serde_impls::location")]
     pub location: Vec<Dimension>,
     /// Arbitrary data about this instance
-    #[serde(default, with = "serde_plist")]
+    #[serde(default, with = "serde_plist", skip_serializing_if = "Dictionary::is_empty")]
     pub lib: Dictionary,
 }
 
@@ -387,6 +387,15 @@ mod tests {
             params[1].as_array().unwrap()[1].as_array().unwrap()[0].as_unsigned_integer(),
             Some(2)
         );
+    }
+
+    #[test]
+    fn do_not_serialize_empty_lib() {
+        let ds_initial = DesignSpaceDocument::load("testdata/single_wght.designspace").unwrap();
+        let serialized = quick_xml::se::to_string(&ds_initial).expect("should serialize");
+
+        assert!(!serialized.contains("<lib>"));
+        assert!(!serialized.contains("<lib/>"));
     }
 
     #[test]
