@@ -186,21 +186,28 @@ impl DesignSpaceDocument {
 mod serde_impls {
 
     use super::{Axis, Dimension, Instance, Source};
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{Serialize, Serializer};
+
+    macro_rules! de_from_field {
+        ($name:ident, $container:path) => {
+            pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<$container, D::Error>
+            where
+                D: ::serde::Deserializer<'de>,
+            {
+                use ::serde::Deserialize as _;
+                #[derive(::serde::Deserialize)]
+                struct Helper {
+                    $name: $container,
+                }
+                Helper::deserialize(deserializer).map(|x| x.$name)
+            }
+        };
+    }
 
     pub(super) mod location {
         use super::*;
 
-        pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Dimension>, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            #[derive(Deserialize)]
-            struct Helper {
-                dimension: Vec<Dimension>,
-            }
-            Helper::deserialize(deserializer).map(|x| x.dimension)
-        }
+        de_from_field!(dimension, Vec<Dimension>);
 
         pub(crate) fn serialize<S>(location: &[Dimension], serializer: S) -> Result<S::Ok, S::Error>
         where
@@ -218,16 +225,7 @@ mod serde_impls {
     pub(super) mod instances {
         use super::*;
 
-        pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Instance>, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            #[derive(Deserialize)]
-            struct Helper {
-                instance: Vec<Instance>,
-            }
-            Helper::deserialize(deserializer).map(|x| x.instance)
-        }
+        de_from_field!(instance, Vec<Instance>);
 
         pub(crate) fn serialize<S>(instances: &[Instance], serializer: S) -> Result<S::Ok, S::Error>
         where
@@ -245,16 +243,7 @@ mod serde_impls {
     pub(super) mod axes {
         use super::*;
 
-        pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Axis>, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            #[derive(Deserialize)]
-            struct Helper {
-                axis: Vec<Axis>,
-            }
-            Helper::deserialize(deserializer).map(|x| x.axis)
-        }
+        de_from_field!(axis, Vec<Axis>);
 
         pub(crate) fn serialize<S>(axes: &[Axis], serializer: S) -> Result<S::Ok, S::Error>
         where
@@ -272,16 +261,7 @@ mod serde_impls {
     pub(super) mod sources {
         use super::*;
 
-        pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Source>, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            #[derive(Deserialize)]
-            struct Helper {
-                source: Vec<Source>,
-            }
-            Helper::deserialize(deserializer).map(|x| x.source)
-        }
+        de_from_field!(source, Vec<Source>);
 
         pub(crate) fn serialize<S>(sources: &[Source], serializer: S) -> Result<S::Ok, S::Error>
         where
