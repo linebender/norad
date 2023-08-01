@@ -17,11 +17,11 @@ use crate::Name;
 #[non_exhaustive]
 pub enum DesignSpaceLoadError {
     /// An [`std::io::Error`].
-    #[error("failed to read file")]
+    #[error("failed to read designspace file: {0}")]
     Io(#[from] IoError),
 
     /// A parse error.
-    #[error("failed to deserialize")]
+    #[error("failed to deserialize designspace: {0}")]
     DeError(#[from] DeError),
 }
 
@@ -29,11 +29,11 @@ pub enum DesignSpaceLoadError {
 #[derive(Debug, Error)]
 pub enum DesignSpaceSaveError {
     /// An [`std::io::Error`].
-    #[error("failed to open/write file")]
+    #[error("failed to open/write designspace file: {0}")]
     Io(#[from] IoError),
 
     /// A serialization error.
-    #[error("failed to deserialize")]
+    #[error("failed to serialize designspace: {0}")]
     SeError(#[from] DeError),
 }
 
