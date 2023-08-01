@@ -478,127 +478,180 @@ mod ser {
 mod tests {
     use super::*;
 
-    #[derive(Deserialize)]
+    #[derive(Serialize, Deserialize)]
     struct TestMe {
         #[serde(with = "super")]
         lib: Dictionary,
     }
 
-    #[test]
-    fn deserialize_everything() {
-        let xml = r#"
-<?xml version='1.0' encoding='UTF-8'?>
-  <object>
-  <lib>
-    <dict>
-      <key>hasLoadedLib</key>
-      <string>Absolutely!</string>
-      <key>anArray</key>
-      <array>
-        <dict>
-          <key>class</key>
-          <string>aristocracy</string>
-          <key>heft</key>
-          <real>42.42</real>
-        </dict>
-        <integer>6</integer>
-      </array>
-      <key>isWorking</key>
-      <true/>
-      <key>isBroken</key>
-      <false/>
-      <key>bestBefore</key>
-      <date>2345-01-24T23:22:21Z</date>
-      <key>payload</key>
-      <data>
-      dSBnb3QgMHduZWQ=
-      </data>
-    </dict>
-  </lib>
-  </object>
-"#;
+    mod de {
+        use super::*;
 
-        let readme: TestMe = quick_xml::de::from_str(xml).unwrap();
-        assert_eq!(readme.lib.get("hasLoadedLib").unwrap().as_string(), Some("Absolutely!"));
-        let array = readme.lib.get("anArray").unwrap().as_array().unwrap();
-        assert_eq!(
-            array[0].as_dictionary().and_then(|d| d.get("class")),
-            Some(&Value::String("aristocracy".into()))
-        );
-        assert_eq!(array[0].as_dictionary().and_then(|d| d.get("heft")), Some(&Value::Real(42.42)));
-        assert_eq!(array[1].as_signed_integer(), Some(6));
-        assert_eq!(readme.lib.get("isWorking"), Some(&Value::Boolean(true)));
-        assert_eq!(readme.lib.get("isBroken"), Some(&Value::Boolean(false)));
-        assert_eq!(
-            readme.lib.get("bestBefore").and_then(Value::as_date).map(|d| d.to_xml_format()),
-            Some("2345-01-24T23:22:21Z".into())
-        );
-        assert_eq!(
-            readme.lib.get("payload").and_then(Value::as_data),
-            Some("u got 0wned".as_bytes())
-        );
+        #[test]
+        fn deserialize_everything() {
+            let xml = r#"
+                <?xml version='1.0' encoding='UTF-8'?>
+                  <object>
+                  <lib>
+                    <dict>
+                      <key>hasLoadedLib</key>
+                      <string>Absolutely!</string>
+                      <key>anArray</key>
+                      <array>
+                        <dict>
+                          <key>class</key>
+                          <string>aristocracy</string>
+                          <key>heft</key>
+                          <real>42.42</real>
+                        </dict>
+                        <integer>6</integer>
+                      </array>
+                      <key>isWorking</key>
+                      <true/>
+                      <key>isBroken</key>
+                      <false/>
+                      <key>bestBefore</key>
+                      <date>2345-01-24T23:22:21Z</date>
+                      <key>payload</key>
+                      <data>
+                      dSBnb3QgMHduZWQ=
+                      </data>
+                    </dict>
+                  </lib>
+                  </object>
+            "#;
+
+            let readme: TestMe = quick_xml::de::from_str(xml).unwrap();
+            assert_eq!(readme.lib.get("hasLoadedLib").unwrap().as_string(), Some("Absolutely!"));
+            let array = readme.lib.get("anArray").unwrap().as_array().unwrap();
+            assert_eq!(
+                array[0].as_dictionary().and_then(|d| d.get("class")),
+                Some(&Value::String("aristocracy".into()))
+            );
+            assert_eq!(
+                array[0].as_dictionary().and_then(|d| d.get("heft")),
+                Some(&Value::Real(42.42))
+            );
+            assert_eq!(array[1].as_signed_integer(), Some(6));
+            assert_eq!(readme.lib.get("isWorking"), Some(&Value::Boolean(true)));
+            assert_eq!(readme.lib.get("isBroken"), Some(&Value::Boolean(false)));
+            assert_eq!(
+                readme.lib.get("bestBefore").and_then(Value::as_date).map(|d| d.to_xml_format()),
+                Some("2345-01-24T23:22:21Z".into())
+            );
+            assert_eq!(
+                readme.lib.get("payload").and_then(Value::as_data),
+                Some("u got 0wned".as_bytes())
+            );
+        }
+
+        #[test]
+        fn empty_array_is_a_okay() {
+            let xml = r#"
+                <?xml version='1.0' encoding='UTF-8'?>
+                  <object>
+                  <lib>
+                    <dict>
+                        <key>emptyDict</key>
+                        <dict></dict>
+                        <key>emptyArray</key>
+                        <array></array>
+                        <key>emptyString</key>
+                        <string></string>
+                    </dict>
+                  </lib>
+                  </object>
+            "#;
+
+            let readme: TestMe = quick_xml::de::from_str(xml).unwrap();
+            assert_eq!(
+                readme.lib.get("emptyDict").and_then(Value::as_dictionary),
+                Some(&Dictionary::new())
+            );
+            assert_eq!(readme.lib.get("emptyArray").and_then(Value::as_array), Some(&Vec::new()));
+            assert_eq!(readme.lib.get("emptyString").and_then(Value::as_string), Some(""));
+        }
+
+        #[test]
+        #[should_panic(expected = "Invalid XML data")]
+        fn invalid_data() {
+            let xml = r#"
+                <?xml version='1.0' encoding='UTF-8'?>
+                  <object>
+                  <lib>
+                    <dict>
+                        <key>badData</key>
+                        <data>💣</data>
+                    </dict>
+                  </lib>
+                  </object>
+            "#;
+
+            let _readme: TestMe = quick_xml::de::from_str(xml).unwrap();
+        }
+
+        #[test]
+        #[should_panic(expected = "date")]
+        fn invalid_date() {
+            let xml = r#"
+                <?xml version='1.0' encoding='UTF-8'?>
+                  <object>
+                  <lib>
+                    <dict>
+                        <key>badDate</key>
+                        <date>yesterday</date>
+                    </dict>
+                  </lib>
+                  </object>
+            "#;
+
+            let _readme: TestMe = quick_xml::de::from_str(xml).unwrap();
+        }
     }
 
-    #[test]
-    fn empty_array_is_a_okay() {
-        let xml = r#"
-<?xml version='1.0' encoding='UTF-8'?>
-  <object>
-  <lib>
-    <dict>
-        <key>emptyDict</key>
-        <dict></dict>
-        <key>emptyArray</key>
-        <array></array>
-        <key>emptyString</key>
-        <string></string>
-    </dict>
-  </lib>
-  </object>
-"#;
+    mod ser {
+        use super::*;
 
-        let readme: TestMe = quick_xml::de::from_str(xml).unwrap();
-        assert_eq!(
-            readme.lib.get("emptyDict").and_then(Value::as_dictionary),
-            Some(&Dictionary::new())
-        );
-        assert_eq!(readme.lib.get("emptyArray").and_then(Value::as_array), Some(&Vec::new()));
-        assert_eq!(readme.lib.get("emptyString").and_then(Value::as_string), Some(""));
-    }
+        use expect_test::{expect_file, ExpectFile};
+        use serde::Serialize;
+        use std::f64::consts::PI;
+        use std::time::SystemTime;
 
-    #[test]
-    #[should_panic(expected = "Invalid XML data")]
-    fn invalid_data() {
-        let xml = r#"
-<?xml version='1.0' encoding='UTF-8'?>
-  <object>
-  <lib>
-    <dict>
-        <key>badData</key>
-        <data>💣</data>
-    </dict>
-  </lib>
-  </object>
-"#;
+        fn to_xml_pretty(lib: Dictionary) -> String {
+            let mut buf = String::new();
+            let mut xml_writer = quick_xml::se::Serializer::new(&mut buf);
+            xml_writer.indent(' ', 2);
+            TestMe { lib }.serialize(xml_writer).unwrap();
+            buf
+        }
 
-        let _readme: TestMe = quick_xml::de::from_str(xml).unwrap();
-    }
+        fn check(lib: Dictionary, expect: ExpectFile) {
+            let serialized = to_xml_pretty(lib);
+            expect.assert_eq(&serialized);
+        }
 
-    #[test]
-    #[should_panic(expected = "date")]
-    fn invalid_date() {
-        let xml = r#"
-<?xml version='1.0' encoding='UTF-8'?>
-  <object>
-  <lib>
-    <dict>
-        <key>badDate</key>
-        <date>yesterday</date>
-    </dict>
-  </lib>
-  </object>
-"#;
+        #[test]
+        fn empty() {
+            let lib = Dictionary::new();
+            check(lib, expect_file!("../testdata/empty.plist"));
+        }
 
-        let _readme: TestMe = quick_xml::de::from_str(xml).unwrap();
+        #[test]
+        fn a_bit_of_everything() {
+            let mut lib = Dictionary::new();
+            lib.insert(String::from("enabled"), Value::Boolean(true));
+            lib.insert(String::from("disabled"), Value::Boolean(false));
+            lib.insert(String::from("name"), Value::String("John Cena".into()));
+            lib.insert(String::from("age"), Value::Integer(46.into()));
+            lib.insert(String::from("today"), Value::Date(SystemTime::UNIX_EPOCH.into()));
+            lib.insert(String::from("pi"), Value::Real(PI));
+            lib.insert(String::from("wisdom"), Value::Data(vec![1, 2, 3]));
+            lib.insert(String::from("listicle"), Value::Array(lib.values().cloned().collect()));
+            lib.insert(String::from("recurse"), Value::Dictionary(lib.clone()));
+            lib.insert(String::from("empty_array"), Value::Array(Vec::new()));
+            lib.insert(String::from("empty_dict"), Value::Dictionary(Dictionary::new()));
+
+            check(lib, expect_file!("../testdata/a_bit_of_everything.plist"));
+        }
     }
 }

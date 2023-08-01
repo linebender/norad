@@ -1,0 +1,61 @@
+<TestMe>
+  <lib>
+    <dict>
+      <key>enabled</key>
+      <true/>
+      <key>disabled</key>
+      <false/>
+      <key>name</key>
+      <string>John Cena</string>
+      <key>age</key>
+      <integer>46</integer>
+      <key>today</key>
+      <date>1970-01-01T00:00:00Z</date>
+      <key>pi</key>
+      <real>3.141592653589793</real>
+      <key>wisdom</key>
+      <data>AQID</data>
+      <key>listicle</key>
+      <array>
+        <true/>
+        <false/>
+        <string>John Cena</string>
+        <integer>46</integer>
+        <date>1970-01-01T00:00:00Z</date>
+        <real>3.141592653589793</real>
+        <data>AQID</data>
+      </array>
+      <key>recurse</key>
+      <dict>
+        <key>enabled</key>
+        <true/>
+        <key>disabled</key>
+        <false/>
+        <key>name</key>
+        <string>John Cena</string>
+        <key>age</key>
+        <integer>46</integer>
+        <key>today</key>
+        <date>1970-01-01T00:00:00Z</date>
+        <key>pi</key>
+        <real>3.141592653589793</real>
+        <key>wisdom</key>
+        <data>AQID</data>
+        <key>listicle</key>
+        <array>
+          <true/>
+          <false/>
+          <string>John Cena</string>
+          <integer>46</integer>
+          <date>1970-01-01T00:00:00Z</date>
+          <real>3.141592653589793</real>
+          <data>AQID</data>
+        </array>
+      </dict>
+      <key>empty_array</key>
+      <array/>
+      <key>empty_dict</key>
+      <dict/>
+    </dict>
+  </lib>
+</TestMe>
