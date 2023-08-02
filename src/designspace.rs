@@ -402,8 +402,7 @@ mod tests {
     fn load_save_round_trip() {
         // Given
         let dir = tempdir::TempDir::new("norad_designspace_load_save_round_trip").unwrap();
-        let mut ds_test_save_location = dir.path().to_path_buf();
-        ds_test_save_location.push("wght.designspace");
+        let ds_test_save_location = dir.path().join("wght.designspace");
 
         // When
         let ds_initial = DesignSpaceDocument::load("testdata/wght.designspace").unwrap();

@@ -624,7 +624,7 @@ mod tests {
     #[test]
     fn empty() {
         let lib = Dictionary::new();
-        check(lib, expect_file!("../testdata/empty.plist"));
+        check(lib, expect_file!("../testdata/snapshots/empty.xml"));
     }
 
     #[test]
@@ -642,6 +642,6 @@ mod tests {
         lib.insert(String::from("empty_array"), Value::Array(Vec::new()));
         lib.insert(String::from("empty_dict"), Value::Dictionary(Dictionary::new()));
 
-        check(lib, expect_file!("../testdata/a_bit_of_everything.plist"));
+        check(lib, expect_file!("../testdata/snapshots/a_bit_of_everything.xml"));
     }
 }
