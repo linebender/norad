@@ -68,6 +68,15 @@ impl Glyph {
         Glyph::load_with_names(path, &names)
     }
 
+    /// THIS IS NOT STABLE API!
+    ///
+    /// (exposed for benchmarking only)
+    #[doc(hidden)]
+    pub fn parse_raw(xml: &[u8]) -> Result<Self, GlifLoadError> {
+        let names = NameList::default();
+        parse::GlifParser::from_xml(xml, Some(&names))
+    }
+
     /// Attempt to load the glyph at `path`, reusing names from the `NameList`.
     ///
     /// This uses string interning to reuse allocations when a glyph name
