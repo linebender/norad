@@ -4,7 +4,7 @@
     <axis tag="wdth" name="width" minimum="0" maximum="1000" default="0"/>
     <axis tag="wght" name="weight" minimum="0" maximum="1000" default="0"/>
   </axes>
-  <rules>
+  <rules processing="last">
     <rule name="fold_I_serifs">
       <conditionset>
         <condition name="width" minimum="0" maximum="328"/>
