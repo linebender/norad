@@ -22,6 +22,9 @@ pub struct DesignSpaceDocument {
     /// One or more axes.
     #[serde(with = "serde_impls::axes", skip_serializing_if = "Vec::is_empty")]
     pub axes: Vec<Axis>,
+    /// One or more rules.
+    #[serde(default, with = "serde_impls::rules", skip_serializing_if = "Vec::is_empty")]
+    pub rules: Vec<Rule>,
     /// One or more sources.
     #[serde(with = "serde_impls::sources", skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<Source>,
@@ -76,6 +79,56 @@ pub struct AxisMapping {
     /// designspace coordinate
     #[serde(rename = "@output")]
     pub output: f32,
+}
+
+/// Describes a single set of substitution rules.
+///
+/// Does not support standalone <condition> elements outside a <conditionset>.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename = "rule")]
+pub struct Rule {
+    /// Name of the rule.
+    #[serde(rename = "@name")]
+    pub name: Option<String>,
+    /// Condition sets. If any condition is true, the rule is applied.
+    #[serde(rename = "conditionset")]
+    pub condition_sets: Vec<ConditionSet>,
+    /// Subtitutions (in, out).
+    #[serde(rename = "sub")]
+    pub substitutions: Vec<Substitution>,
+}
+
+/// Describes a single set of substitution rules.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Substitution {
+    /// Substitute this glyph...
+    #[serde(rename = "@name")]
+    pub name: String,
+    /// ...with this one.
+    #[serde(rename = "@with")]
+    pub with: String,
+}
+
+/// Describes a single set of substitution rules.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct ConditionSet {
+    /// Substitute this glyph...
+    #[serde(rename = "condition")]
+    pub conditions: Vec<Condition>,
+}
+
+/// Describes a single set of substitution rules.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Condition {
+    /// Substitute this glyph...
+    #[serde(rename = "@name")]
+    pub name: String,
+    /// Minimum in design space coordinates. If omitted, assumed to be -infinity.
+    #[serde(rename = "@minimum", default, skip_serializing_if = "Option::is_none")]
+    pub minimum: Option<f32>,
+    /// Maximum in design space coordinates. If omitted, assumed to be infinity to mean .
+    #[serde(rename = "@maximum", default, skip_serializing_if = "Option::is_none")]
+    pub maximum: Option<f32>,
 }
 
 /// A [source].
@@ -273,6 +326,7 @@ mod serde_impls {
     serde_from_field!(instances, instance, crate::designspace::Instance);
     serde_from_field!(axes, axis, crate::designspace::Axis);
     serde_from_field!(sources, source, crate::designspace::Source);
+    serde_from_field!(rules, rule, crate::designspace::Rule);
 }
 
 #[cfg(test)]
@@ -389,6 +443,56 @@ mod tests {
             .expect("failed to load saved designspace");
 
         // Then
+        assert_eq!(ds_initial, ds_after);
+    }
+
+    #[test]
+    fn load_save_round_trip_mutatorsans() {
+        // Given
+        let dir = tempdir::TempDir::new("norad_designspace_load_save_round_trip_ms").unwrap();
+        let ds_test_save_location = dir.path().join("MutatorSans.designspace");
+
+        // When
+        let ds_initial = DesignSpaceDocument::load("testdata/MutatorSans.designspace").unwrap();
+        ds_initial.save(&ds_test_save_location).expect("failed to save designspace");
+        let ds_after = DesignSpaceDocument::load(ds_test_save_location)
+            .expect("failed to load saved designspace");
+
+        // Then
+        assert_eq!(
+            &ds_after.rules,
+            &[
+                Rule {
+                    name: Some("fold_I_serifs".into()),
+                    condition_sets: vec![ConditionSet {
+                        conditions: vec![Condition {
+                            name: "width".into(),
+                            minimum: Some(0.0),
+                            maximum: Some(328.0),
+                        }],
+                    }],
+                    substitutions: vec![Substitution { name: "I".into(), with: "I.narrow".into() }],
+                },
+                Rule {
+                    name: Some("fold_S_terminals".into()),
+                    condition_sets: vec![ConditionSet {
+                        conditions: vec![
+                            Condition {
+                                name: "width".into(),
+                                minimum: Some(0.0),
+                                maximum: Some(1000.0),
+                            },
+                            Condition {
+                                name: "weight".into(),
+                                minimum: Some(0.0),
+                                maximum: Some(500.0),
+                            },
+                        ],
+                    }],
+                    substitutions: vec![Substitution { name: "S".into(), with: "S.closed".into() }],
+                },
+            ]
+        );
         assert_eq!(ds_initial, ds_after);
     }
 }
