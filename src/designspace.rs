@@ -9,6 +9,7 @@ use plist::Dictionary;
 
 use crate::error::{DesignSpaceLoadError, DesignSpaceSaveError};
 use crate::serde_xml_plist as serde_plist;
+use crate::Name;
 
 /// A [designspace].
 ///
@@ -125,14 +126,14 @@ pub struct Rule {
 }
 
 /// Describes a single substitution.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Substitution {
     /// Substitute this glyph...
     #[serde(rename = "@name")]
-    pub name: String,
+    pub name: Name,
     /// ...with this one.
     #[serde(rename = "@with")]
-    pub with: String,
+    pub with: Name,
 }
 
 /// Describes a set of conditions that must all be met for the rule to apply.
