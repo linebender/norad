@@ -1,6 +1,6 @@
 [package]
 name = "norad"
-version = "0.11.0"
+version = "0.12.0"
 authors = ["Colin Rofls <colin@cmyr.net>", "Nikolaus Waxweiler <madigens@gmail.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
@@ -43,7 +43,7 @@ tempdir = "0.3.7"
 maplit = "1.0.2"
 pretty_assertions = "1.0"
 expect-test = "1.4.1"
-criterion = "0.3"
+criterion = "0.5"
 
 [[bench]]
 name = "glif_parse"
