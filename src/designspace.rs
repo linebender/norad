@@ -9,6 +9,7 @@ use plist::Dictionary;
 
 use crate::error::{DesignSpaceLoadError, DesignSpaceSaveError};
 use crate::serde_xml_plist as serde_plist;
+use crate::Name;
 
 /// A [designspace].
 ///
@@ -22,6 +23,9 @@ pub struct DesignSpaceDocument {
     /// One or more axes.
     #[serde(with = "serde_impls::axes", skip_serializing_if = "Vec::is_empty")]
     pub axes: Vec<Axis>,
+    /// One or more rules.
+    #[serde(default, skip_serializing_if = "Rules::is_empty")]
+    pub rules: Rules,
     /// One or more sources.
     #[serde(with = "serde_impls::sources", skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<Source>,
@@ -76,6 +80,82 @@ pub struct AxisMapping {
     /// designspace coordinate
     #[serde(rename = "@output")]
     pub output: f32,
+}
+
+/// Describes the substitution [rules] of the Designspace.
+///
+/// [rules]: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#rules-element
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Rules {
+    /// Indicates whether substitution rules should be applied before or after
+    /// other glyph substitution features.
+    #[serde(rename = "@processing")]
+    pub processing: RuleProcessing,
+    /// The rules.
+    #[serde(default, rename = "rule")]
+    pub rules: Vec<Rule>,
+}
+
+/// Indicates whether substitution rules should be applied before or after other
+/// glyph substitution features.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RuleProcessing {
+    /// Apply before other substitution features.
+    #[default]
+    First,
+    /// Apply after other substitution features.
+    Last,
+}
+
+/// Describes a single set of substitution rules.
+///
+/// Does not support standalone `<condition>` elements outside a
+/// `<conditionset>`.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Rule {
+    /// Name of the rule.
+    #[serde(rename = "@name")]
+    pub name: Option<String>,
+    /// Condition sets. If any condition is true, the rule is applied.
+    #[serde(rename = "conditionset")]
+    pub condition_sets: Vec<ConditionSet>,
+    /// Subtitutions (in, out).
+    #[serde(rename = "sub")]
+    pub substitutions: Vec<Substitution>,
+}
+
+/// Describes a single substitution.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Substitution {
+    /// Substitute this glyph...
+    #[serde(rename = "@name")]
+    pub name: Name,
+    /// ...with this one.
+    #[serde(rename = "@with")]
+    pub with: Name,
+}
+
+/// Describes a set of conditions that must all be met for the rule to apply.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct ConditionSet {
+    /// The conditions.
+    #[serde(rename = "condition")]
+    pub conditions: Vec<Condition>,
+}
+
+/// Describes a single condition.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Condition {
+    /// The name of the axis.
+    #[serde(rename = "@name")]
+    pub name: String,
+    /// Lower bounds in design space coordinates.
+    #[serde(rename = "@minimum", default, skip_serializing_if = "Option::is_none")]
+    pub minimum: Option<f32>,
+    /// Upper bounds in design space coordinates.
+    #[serde(rename = "@maximum", default, skip_serializing_if = "Option::is_none")]
+    pub maximum: Option<f32>,
 }
 
 /// A [source].
@@ -180,6 +260,13 @@ impl DesignSpaceDocument {
         buf.push('\n'); // trailing newline
         fs::write(path, buf)?;
         Ok(())
+    }
+}
+
+impl Rules {
+    /// Returns `true` if there are no rules.
+    fn is_empty(&self) -> bool {
+        self.rules.is_empty()
     }
 }
 
@@ -389,6 +476,65 @@ mod tests {
             .expect("failed to load saved designspace");
 
         // Then
+        assert_eq!(ds_initial, ds_after);
+    }
+
+    #[test]
+    fn load_save_round_trip_mutatorsans() {
+        // Given
+        let dir = tempdir::TempDir::new("norad_designspace_load_save_round_trip_ms").unwrap();
+        let ds_test_save_location = dir.path().join("MutatorSans.designspace");
+
+        // When
+        let ds_initial = DesignSpaceDocument::load("testdata/MutatorSans.designspace").unwrap();
+        ds_initial.save(&ds_test_save_location).expect("failed to save designspace");
+        let ds_after = DesignSpaceDocument::load(ds_test_save_location)
+            .expect("failed to load saved designspace");
+
+        // Then
+        assert_eq!(
+            &ds_after.rules,
+            &Rules {
+                processing: RuleProcessing::Last,
+                rules: vec![
+                    Rule {
+                        name: Some("fold_I_serifs".into()),
+                        condition_sets: vec![ConditionSet {
+                            conditions: vec![Condition {
+                                name: "width".into(),
+                                minimum: Some(0.0),
+                                maximum: Some(328.0),
+                            }],
+                        }],
+                        substitutions: vec![Substitution {
+                            name: "I".into(),
+                            with: "I.narrow".into()
+                        }],
+                    },
+                    Rule {
+                        name: Some("fold_S_terminals".into()),
+                        condition_sets: vec![ConditionSet {
+                            conditions: vec![
+                                Condition {
+                                    name: "width".into(),
+                                    minimum: Some(0.0),
+                                    maximum: Some(1000.0),
+                                },
+                                Condition {
+                                    name: "weight".into(),
+                                    minimum: Some(0.0),
+                                    maximum: Some(500.0),
+                                },
+                            ],
+                        }],
+                        substitutions: vec![Substitution {
+                            name: "S".into(),
+                            with: "S.closed".into()
+                        }],
+                    },
+                ]
+            }
+        );
         assert_eq!(ds_initial, ds_after);
     }
 }
