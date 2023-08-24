@@ -53,8 +53,7 @@ pub struct Axis {
     #[serde(rename = "@default")]
     pub default: f32,
     /// Records whether this axis needs to be hidden in interfaces.
-    #[serde(default)]
-    #[serde(rename = "@hidden")]
+    #[serde(default, rename = "@hidden", skip_serializing_if = "is_false")]
     pub hidden: bool,
     /// The minimum value for a continuous axis, in user space coordinates.
     #[serde(rename = "@minimum", skip_serializing_if = "Option::is_none")]
@@ -68,6 +67,10 @@ pub struct Axis {
     /// Mapping between user space coordinates and design space coordinates.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub map: Option<Vec<AxisMapping>>,
+}
+
+fn is_false(value: &bool) -> bool {
+    !(*value)
 }
 
 /// Maps one input value (user space coord) to one output value (design space coord).
