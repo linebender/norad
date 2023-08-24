@@ -45,6 +45,11 @@ pretty_assertions = "1.0"
 expect-test = "1.4.1"
 criterion = "0.5"
 
+# https://github.com/bheisler/criterion.rs/issues/193
+# Make it possible to save baseline, e.g. cargo bench -- --save-baseline master
+[lib]
+bench = false
+
 [[bench]]
 name = "glif_parse"
 harness = false

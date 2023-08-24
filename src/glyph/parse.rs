@@ -119,6 +119,7 @@ impl<'names> GlifParser<'names> {
                 Event::End(ref end) if end.name().as_ref() == b"glyph" => break,
                 _other => return Err(ErrorKind::MissingCloseTag.into()),
             }
+            buf.clear();
         }
 
         self.glyph.load_object_libs()?;
@@ -158,6 +159,7 @@ impl<'names> GlifParser<'names> {
                 Event::Eof => return Err(ErrorKind::UnexpectedEof.into()),
                 _other => return Err(ErrorKind::UnexpectedElement.into()),
             }
+            buf.clear();
         }
 
         let (mut contours, components) = outline_builder.finish()?;
@@ -235,6 +237,7 @@ impl<'names> GlifParser<'names> {
                 Event::Eof => return Err(ErrorKind::UnexpectedEof.into()),
                 _other => return Err(ErrorKind::UnexpectedElement.into()),
             }
+            buf.clear();
         }
         outline_builder.end_path()?;
 
@@ -302,6 +305,7 @@ impl<'names> GlifParser<'names> {
                 Event::Eof => return Err(ErrorKind::UnexpectedEof.into()),
                 _other => end = reader.buffer_position(),
             }
+            buf.clear();
         }
 
         let plist_slice = &raw_xml[start..end];
@@ -328,6 +332,7 @@ impl<'names> GlifParser<'names> {
                 Event::Eof => return Err(ErrorKind::UnexpectedEof.into()),
                 _other => (),
             }
+            buf.clear();
         }
         Ok(())
     }
@@ -576,5 +581,6 @@ fn start(
             }
             _other => return Err(ErrorKind::WrongFirstElement.into()),
         }
+        buf.clear();
     }
 }
