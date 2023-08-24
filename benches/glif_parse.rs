@@ -2,17 +2,34 @@
 //!
 //! This should be run when making any changes to glyph parsing.
 
+use std::path::{Path, PathBuf};
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use norad::Glyph;
 
+static MUTATOR_SANS_GLYPHS_DIR: &str = "testdata/MutatorSansLightWide.ufo/glyphs";
 static S_GLYPH: &str = "testdata/MutatorSansLightWide.ufo/glyphs/S_.glif";
 static DOT: &str = "testdata/MutatorSansLightWide.ufo/glyphs/dot.glif";
 static A_ACUTE_GLYPH: &str = "testdata/MutatorSansLightWide.ufo/glyphs/A_acute.glif";
 // largest glyph in noto cjk
 static CID61855: &str = "testdata/cid61855.glif";
 
-fn load_bytes(path: &str) -> Vec<u8> {
+fn load_bytes<P>(path: P) -> Vec<u8>
+where
+    P: AsRef<Path>,
+{
     std::fs::read(path).unwrap()
+}
+
+fn load_all(dir: &str) -> Vec<(PathBuf, Vec<u8>)> {
+    std::fs::read_dir(dir)
+        .unwrap()
+        .into_iter()
+        .map(|e| e.unwrap())
+        .filter_map(
+            |e| if e.path().is_file() { Some((e.path(), load_bytes(e.path()))) } else { None },
+        )
+        .collect()
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
@@ -42,6 +59,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let bytes = load_bytes(A_ACUTE_GLYPH);
         b.iter(|| {
             Glyph::parse_raw(black_box(&bytes)).unwrap();
+        })
+    });
+    // many glyphs
+    c.bench_function("parse MutatorSansLightWide glyphs", |b| {
+        let glyphs = load_all(MUTATOR_SANS_GLYPHS_DIR);
+        b.iter(|| {
+            for (_, glyph_bytes) in glyphs.iter().filter(|(p, _)| p.ends_with(".glif")) {
+                Glyph::parse_raw(black_box(&glyph_bytes)).unwrap();
+            }
         })
     });
     // Note to somebody using this:
