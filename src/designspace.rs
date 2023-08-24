@@ -89,7 +89,7 @@ pub struct AxisMapping {
 pub struct Rules {
     /// Indicates whether substitution rules should be applied before or after
     /// other glyph substitution features.
-    #[serde(rename = "@processing")]
+    #[serde(default, rename = "@processing")]
     pub processing: RuleProcessing,
     /// The rules.
     #[serde(default, rename = "rule")]
