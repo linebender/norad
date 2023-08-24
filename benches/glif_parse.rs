@@ -24,7 +24,6 @@ where
 fn load_all(dir: &str) -> Vec<(PathBuf, Vec<u8>)> {
     std::fs::read_dir(dir)
         .unwrap()
-        .into_iter()
         .map(|e| e.unwrap())
         .filter_map(
             |e| if e.path().is_file() { Some((e.path(), load_bytes(e.path()))) } else { None },
@@ -66,7 +65,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let glyphs = load_all(MUTATOR_SANS_GLYPHS_DIR);
         b.iter(|| {
             for (_, glyph_bytes) in glyphs.iter().filter(|(p, _)| p.ends_with(".glif")) {
-                Glyph::parse_raw(black_box(&glyph_bytes)).unwrap();
+                Glyph::parse_raw(black_box(glyph_bytes)).unwrap();
             }
         })
     });
