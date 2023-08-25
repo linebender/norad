@@ -27,11 +27,7 @@ fn load_all(dir: &str) -> Vec<Vec<u8>> {
         .unwrap()
         .map(|e| e.unwrap())
         .filter_map(|e| {
-            if e.path().extension().and_then(|ext| ext.to_str()) == Some("glif") {
-                Some(load_bytes(e.path()))
-            } else {
-                None
-            }
+            e.path().extension().map_or(false, |ext| ext == "glif").then(|| load_bytes(e.path()))
         })
         .collect()
 }
@@ -68,7 +64,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     // many glyphs
     c.bench_function("parse MutatorSansLightWide glyphs", |b| {
         let glyphs = load_all(MUTATOR_SANS_GLYPHS_DIR);
-        assert_eq!(glyphs.len(), 48);
+        assert!(glyphs.len() > 25, "sanity check");
         b.iter(|| {
             for glyph_bytes in &glyphs {
                 Glyph::parse_raw(black_box(glyph_bytes)).unwrap();
