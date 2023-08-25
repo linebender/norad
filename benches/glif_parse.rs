@@ -2,7 +2,7 @@
 //!
 //! This should be run when making any changes to glyph parsing.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use norad::Glyph;
@@ -21,13 +21,18 @@ where
     std::fs::read(path).unwrap()
 }
 
-fn load_all(dir: &str) -> Vec<(PathBuf, Vec<u8>)> {
+// Load all the .glif files in a directory
+fn load_all(dir: &str) -> Vec<Vec<u8>> {
     std::fs::read_dir(dir)
         .unwrap()
         .map(|e| e.unwrap())
-        .filter_map(
-            |e| if e.path().is_file() { Some((e.path(), load_bytes(e.path()))) } else { None },
-        )
+        .filter_map(|e| {
+            if e.path().extension().and_then(|ext| ext.to_str()) == Some("glif") {
+                Some(load_bytes(e.path()))
+            } else {
+                None
+            }
+        })
         .collect()
 }
 
@@ -63,8 +68,9 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     // many glyphs
     c.bench_function("parse MutatorSansLightWide glyphs", |b| {
         let glyphs = load_all(MUTATOR_SANS_GLYPHS_DIR);
+        assert_eq!(glyphs.len(), 48);
         b.iter(|| {
-            for (_, glyph_bytes) in glyphs.iter().filter(|(p, _)| p.ends_with(".glif")) {
+            for glyph_bytes in &glyphs {
                 Glyph::parse_raw(black_box(glyph_bytes)).unwrap();
             }
         })
