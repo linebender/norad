@@ -646,6 +646,7 @@ mod tests {
 
     use super::*;
     use std::path::Path;
+    use tempfile::TempDir;
 
     #[test]
     #[allow(clippy::float_cmp)]
@@ -676,7 +677,7 @@ mod tests {
             plist::Value::String("test".into()),
         );
 
-        let temp_dir = tempdir::TempDir::new("test.ufo").unwrap();
+        let temp_dir = TempDir::new().unwrap();
         let dir = temp_dir.path().join("glyphs");
         layer.save(&dir).unwrap();
         let layer2 = Layer::load(&dir, DEFAULT_LAYER_NAME).unwrap();
@@ -691,7 +692,7 @@ mod tests {
     #[test]
     fn skip_writing_empty_layerinfo() {
         let mut layer = Layer::default();
-        let temp_dir = tempdir::TempDir::new("test.ufo").unwrap();
+        let temp_dir = TempDir::new().unwrap();
         let dir = temp_dir.path().join("glyphs");
 
         layer.save(&dir).unwrap();

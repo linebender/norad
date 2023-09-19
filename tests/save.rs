@@ -2,12 +2,13 @@
 
 use norad::{Codepoints, Font, FormatVersion, Glyph, Identifier, Plist};
 use plist::Value;
+use tempfile::TempDir;
 
 #[test]
 fn save_default() {
     let my_ufo = Font::new();
 
-    let dir = tempdir::TempDir::new("Test.ufo").unwrap();
+    let dir = TempDir::new().unwrap();
     my_ufo.save(&dir).unwrap();
 
     assert!(dir.path().join("metainfo.plist").exists());
@@ -15,8 +16,8 @@ fn save_default() {
     assert!(dir.path().join("glyphs/contents.plist").exists());
 
     let loaded = Font::load(dir).unwrap();
-    assert!(loaded.meta.format_version == FormatVersion::V3);
-    assert!(loaded.meta.creator == Some("org.linebender.norad".into()));
+    assert_eq!(loaded.meta.format_version, FormatVersion::V3);
+    assert_eq!(loaded.meta.creator, Some("org.linebender.norad".into()));
     assert_eq!(loaded.layers.len(), 1);
 }
 
@@ -31,7 +32,7 @@ fn save_new_file() {
     my_glyph.lib = plist;
     my_ufo.default_layer_mut().insert_glyph(my_glyph);
 
-    let dir = tempdir::TempDir::new("Test.ufo").unwrap();
+    let dir = TempDir::new().unwrap();
     my_ufo.save(&dir).unwrap();
 
     assert!(dir.path().join("metainfo.plist").exists());
@@ -53,7 +54,7 @@ fn save_fancy() {
     let other_ufo = Font::load("testdata/MutatorSansLightWide.ufo").unwrap();
     *my_ufo.default_layer_mut() = other_ufo.layers.get("foreground").unwrap().clone();
 
-    let dir = tempdir::TempDir::new("Fancy.ufo").unwrap();
+    let dir = TempDir::new().unwrap();
     my_ufo.save(&dir).unwrap();
 
     let loaded = Font::load(dir).unwrap();
@@ -76,7 +77,7 @@ fn roundtrip_object_libs() {
     let glyph = ufo.get_glyph("test").unwrap();
     assert!(!glyph.lib.contains_key("public.objectLibs"));
 
-    let dir = tempdir::TempDir::new("identifiers.ufo").unwrap();
+    let dir = TempDir::new().unwrap();
     ufo.save(&dir).unwrap();
     assert!(!glyph.lib.contains_key("public.objectLibs"));
 
@@ -181,7 +182,7 @@ fn roundtrip_object_libs() {
 
 #[test]
 fn object_libs_reject_existing_key() {
-    let dir = tempdir::TempDir::new("test.ufo").unwrap();
+    let dir = TempDir::new().unwrap();
     let mut ufo = Font::new();
 
     let mut test_lib = plist::Dictionary::new();

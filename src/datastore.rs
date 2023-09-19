@@ -352,6 +352,7 @@ impl<T: DataType> Store<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     const UFO_DATA_IMAGE_TEST_PATH: &str = "testdata/dataimagetest.ufo";
     const PATH_A: &str = "a.txt";
@@ -421,7 +422,7 @@ mod tests {
 
         // 1. Roundtrip font to different dir to ensure we save data and images to
         //    new destination.
-        let roundtrip_dir = tempdir::TempDir::new("Roundtrip.ufo").unwrap();
+        let roundtrip_dir = TempDir::new().unwrap();
         ufo.save(&roundtrip_dir).unwrap();
         std::mem::drop(ufo); // Avoid accidental use below.
 
@@ -510,7 +511,7 @@ mod tests {
     #[test]
     fn images_with_subdirectory() {
         let ufo = crate::Font::new();
-        let dir = tempdir::TempDir::new("Test.ufo").unwrap();
+        let dir = TempDir::new().unwrap();
         ufo.save(&dir).unwrap();
 
         let images_dir = dir.as_ref().join(crate::font::IMAGES_DIR);
