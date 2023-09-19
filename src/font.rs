@@ -655,7 +655,7 @@ fn load_layer_set(
 mod tests {
     use std::ops::Deref;
 
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     use crate::error::LayerLoadError;
 
@@ -669,7 +669,7 @@ mod tests {
 
     #[test]
     fn downgrade_unsupported() {
-        let dir = tempdir::TempDir::new("Test.ufo").unwrap();
+        let dir = TempDir::new().unwrap();
 
         let mut font = Font::new();
         font.meta.format_version = FormatVersion::V1;
@@ -704,7 +704,7 @@ mod tests {
     #[test]
     fn load_save_feature_file_line_endings() {
         let font_obj = Font::load("testdata/lineendings/Tester-LineEndings.ufo").unwrap();
-        let tmp = TempDir::new("test").unwrap();
+        let tmp = TempDir::new().unwrap();
         let ufopath = tmp.path().join("test.ufo");
         let feapath = ufopath.join("features.fea");
         font_obj.save(ufopath).unwrap();
@@ -864,7 +864,7 @@ mod tests {
     fn save_with_options_with_writeoptions_parameter() {
         let opt = WriteOptions::default();
         let ufo = Font::default();
-        let tmp = TempDir::new("test").unwrap();
+        let tmp = TempDir::new().unwrap();
         ufo.save_with_options(tmp, &opt).unwrap()
     }
 }

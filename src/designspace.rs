@@ -371,6 +371,7 @@ mod tests {
 
     use plist::Value;
     use pretty_assertions::assert_eq;
+    use tempfile::TempDir;
 
     use crate::designspace::{AxisMapping, Dimension};
 
@@ -469,7 +470,7 @@ mod tests {
     #[test]
     fn load_save_round_trip() {
         // Given
-        let dir = tempdir::TempDir::new("norad_designspace_load_save_round_trip").unwrap();
+        let dir = TempDir::new().unwrap();
         let ds_test_save_location = dir.path().join("wght.designspace");
 
         // When
@@ -485,7 +486,7 @@ mod tests {
     #[test]
     fn load_save_round_trip_mutatorsans() {
         // Given
-        let dir = tempdir::TempDir::new("norad_designspace_load_save_round_trip_ms").unwrap();
+        let dir = TempDir::new().unwrap();
         let ds_test_save_location = dir.path().join("MutatorSans.designspace");
 
         // When
