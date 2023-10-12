@@ -120,7 +120,8 @@ pub struct Rule {
     /// Name of the rule.
     #[serde(rename = "@name")]
     pub name: Option<String>,
-    /// Condition sets. If any condition is true, the rule is applied.
+    /// Condition sets. If any condition is true or the condition set is empty,
+    /// the rule is applied.
     #[serde(rename = "conditionset")]
     pub condition_sets: Vec<ConditionSet>,
     /// Subtitutions (in, out).
@@ -143,7 +144,7 @@ pub struct Substitution {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ConditionSet {
     /// The conditions.
-    #[serde(rename = "condition")]
+    #[serde(rename = "condition", default)]
     pub conditions: Vec<Condition>,
 }
 
@@ -540,5 +541,38 @@ mod tests {
             }
         );
         assert_eq!(ds_initial, ds_after);
+    }
+
+    #[test]
+    fn accept_always_on_rules() {
+        // Given
+        let designspace =
+            DesignSpaceDocument::load("testdata/MutatorSansAlwaysOnRules.designspace").unwrap();
+
+        // Then
+        assert_eq!(
+            &designspace.rules,
+            &Rules {
+                processing: RuleProcessing::Last,
+                rules: vec![
+                    Rule {
+                        name: Some("fold_I_serifs".into()),
+                        condition_sets: vec![ConditionSet { conditions: vec![] }],
+                        substitutions: vec![Substitution {
+                            name: "I".into(),
+                            with: "I.narrow".into()
+                        }],
+                    },
+                    Rule {
+                        name: Some("fold_S_terminals".into()),
+                        condition_sets: vec![ConditionSet { conditions: vec![] }],
+                        substitutions: vec![Substitution {
+                            name: "S".into(),
+                            with: "S.closed".into()
+                        }],
+                    },
+                ]
+            }
+        );
     }
 }

@@ -342,6 +342,7 @@ impl Contour {
                 .map(|idx| self.points.len() - 1 - idx);
             self.points.iter().cycle().skip(rotate.unwrap_or(0)).take(self.points.len() + 1)
         } else {
+            #[allow(clippy::iter_skip_zero)]
             self.points.iter().cycle().skip(0).take(self.points.len())
         };
         if let Some(start) = points.next() {

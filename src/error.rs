@@ -524,7 +524,7 @@ pub enum ErrorKind {
     BadImage,
     /// Has an invalid identifier.
     BadIdentifier,
-    /// Name is not a valid [`Name`](crate::Name).
+    /// Name is not a valid [`Name`].
     InvalidName,
     /// Has an invalid lib.
     BadLib,
