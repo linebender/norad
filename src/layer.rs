@@ -22,12 +22,14 @@ pub(crate) static LAYER_CONTENTS_FILE: &str = "layercontents.plist";
 pub(crate) static DEFAULT_LAYER_NAME: &str = "public.default";
 pub(crate) static DEFAULT_GLYPHS_DIRNAME: &str = "glyphs";
 
-/// A collection of [`Layer`] objects.
+/// The ordered list of [`Layer`] objects within a UFO.
 ///
 /// A layer set always includes a default layer, and may also include additional
 /// layers.
+///
+/// Corresponds to [`layercontents.plist`](https://unifiedfontobject.org/versions/ufo3/layercontents.plist/).
 #[derive(Debug, Clone)]
-pub struct LayerSet {
+pub struct LayerContents {
     /// A collection of [`Layer`]s.  The first [`Layer`] is the default.
     layers: Vec<Layer>,
     /// A set of lowercased layer paths (excluding the default layer, as it is
@@ -36,7 +38,7 @@ pub struct LayerSet {
     path_set: HashSet<String>,
 }
 
-impl PartialEq for LayerSet {
+impl PartialEq for LayerContents {
     fn eq(&self, other: &Self) -> bool {
         // Ignore path_set as an implementation detail. I hope this does not
         // lead to observable differences in behavior when reading from disk vs.
@@ -46,8 +48,8 @@ impl PartialEq for LayerSet {
 }
 
 #[allow(clippy::len_without_is_empty)] // never empty
-impl LayerSet {
-    /// Returns a [`LayerSet`] from the provided `path`.
+impl LayerContents {
+    /// Returns a [`LayerContents`] from the provided `path`.
     ///
     /// If a `layercontents.plist` file exists, it will be used, otherwise
     /// we will assume the pre-UFOv3 behaviour, and expect a single glyphs dir.
@@ -58,7 +60,7 @@ impl LayerSet {
         base_dir: &Path,
         glyph_names: &NameList,
         filter: &LayerFilter,
-    ) -> Result<LayerSet, FontLoadError> {
+    ) -> Result<LayerContents, FontLoadError> {
         let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
         let to_load: Vec<(Name, PathBuf)> = if layer_contents_path.exists() {
             plist::from_file(&layer_contents_path)
@@ -93,13 +95,12 @@ impl LayerSet {
             .ok_or(FontLoadError::MissingDefaultLayer)?;
         layers.rotate_left(default_idx);
 
-        Ok(LayerSet { layers, path_set: HashSet::new() })
+        Ok(LayerContents { layers, path_set: HashSet::new() })
     }
 
     /// Returns the number of layers in the set.
     ///
     /// This is always non-zero.
-    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.layers.len()
     }
@@ -248,10 +249,10 @@ impl LayerSet {
     }
 }
 
-impl Default for LayerSet {
+impl Default for LayerContents {
     fn default() -> Self {
         let layers = vec![Layer::default()];
-        LayerSet { layers, path_set: HashSet::new() }
+        LayerContents { layers, path_set: HashSet::new() }
     }
 }
 
@@ -305,7 +306,7 @@ impl Layer {
     /// can be reused between layers.
     ///
     /// You generally shouldn't need this; instead prefer to load all layers
-    /// with [`LayerSet::load`] and then get the layer you need from there.
+    /// with [`LayerContents::load`] and then get the layer you need from there.
     #[cfg(test)]
     pub(crate) fn load(path: impl AsRef<Path>, name: &str) -> Result<Layer, LayerLoadError> {
         let path = path.as_ref();
@@ -462,7 +463,7 @@ impl Layer {
 
     /// Returns the name of the layer.
     ///
-    /// This can only be mutated through the [`LayerSet`].
+    /// This can only be mutated through the [`LayerContents`].
     pub fn name(&self) -> &Name {
         &self.name
     }
@@ -791,7 +792,7 @@ mod tests {
 
     #[test]
     fn rename_layer() {
-        let mut layer_set = LayerSet::default();
+        let mut layer_set = LayerContents::default();
 
         // Non-default layers can be renamed and get a new path.
         layer_set.new_layer("aaa").unwrap();
@@ -808,7 +809,7 @@ mod tests {
 
     #[test]
     fn rename_layer_overwrite() {
-        let mut layer_set = LayerSet::default();
+        let mut layer_set = LayerContents::default();
 
         // Non-default layers can be renamed and get a new path.
         layer_set.new_layer("aaa").unwrap();
@@ -828,7 +829,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Reserved")]
     fn rename_layer_nondefault_default() {
-        let mut layer_set = LayerSet::default();
+        let mut layer_set = LayerContents::default();
 
         layer_set.rename_layer("public.default", "foreground", false).unwrap();
 
@@ -839,7 +840,7 @@ mod tests {
 
     #[test]
     fn rename_default_layer() {
-        let mut layer_set = LayerSet::default();
+        let mut layer_set = LayerContents::default();
 
         // The default layer can be renamed but the path stays the same.
         layer_set.rename_layer("public.default", "aaa", false).unwrap();
@@ -861,7 +862,7 @@ mod tests {
 
     #[test]
     fn rename_default_layer_overwrite() {
-        let mut layer_set = LayerSet::default();
+        let mut layer_set = LayerContents::default();
 
         // The default layer can be renamed but the path stays the same.
         layer_set.new_layer("aaa").unwrap();
@@ -888,7 +889,7 @@ mod tests {
 
     #[test]
     fn layerset_duplicate_paths() {
-        let mut layer_set = LayerSet::default();
+        let mut layer_set = LayerContents::default();
 
         layer_set.new_layer("Ab").unwrap();
         assert_eq!(layer_set.get("Ab").unwrap().path().as_os_str(), "glyphs.A_b");
@@ -924,31 +925,31 @@ mod tests {
         let names = NameList::default();
 
         let request = DataRequest::all();
-        let layerset = LayerSet::load(ufo_path, &names, &request.layers).unwrap();
+        let layerset = LayerContents::load(ufo_path, &names, &request.layers).unwrap();
         assert_eq!(layerset.len(), 2);
         assert_eq!(layerset.default_layer().len(), 48);
 
         let request = DataRequest::none();
-        let layerset = LayerSet::load(ufo_path, &names, &request.layers).unwrap();
+        let layerset = LayerContents::load(ufo_path, &names, &request.layers).unwrap();
         // default layer is always present
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 0);
 
         let request = DataRequest::none().default_layer(true);
-        let layerset = LayerSet::load(ufo_path, &names, &request.layers).unwrap();
+        let layerset = LayerContents::load(ufo_path, &names, &request.layers).unwrap();
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 48);
 
         // all is overwridden by default_layer
         let request = DataRequest::all().default_layer(true);
-        let layerset = LayerSet::load(ufo_path, &names, &request.layers).unwrap();
+        let layerset = LayerContents::load(ufo_path, &names, &request.layers).unwrap();
         // default layer is always present
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 48);
 
         let layer_name = String::from("background");
         let request = DataRequest::none().filter_layers(|name, _path| name == layer_name);
-        let layerset = LayerSet::load(ufo_path, &names, &request.layers).unwrap();
+        let layerset = LayerContents::load(ufo_path, &names, &request.layers).unwrap();
         // default layer is always present
         assert_eq!(layerset.len(), 2);
         assert_eq!(layerset.default_layer().len(), 0);
@@ -959,7 +960,7 @@ mod tests {
 
     #[test]
     fn test_retain() {
-        let mut layers = LayerSet {
+        let mut layers = LayerContents {
             layers: vec![
                 Layer::default(),
                 Layer::new(Name::new("fizz").unwrap(), PathBuf::new()),
@@ -980,7 +981,7 @@ mod tests {
     // Saves test from failing to compile with druid enabled
     #[allow(clippy::useless_conversion)]
     fn test_remove_empty_layers() {
-        let mut layers = LayerSet {
+        let mut layers = LayerContents {
             layers: vec![
                 Layer::default(),
                 Layer {

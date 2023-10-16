@@ -103,7 +103,7 @@ pub use groups::Groups;
 pub use guideline::{Guideline, Line};
 pub use identifier::Identifier;
 pub use kerning::Kerning;
-pub use layer::{Layer, LayerSet};
+pub use layer::{Layer, LayerContents};
 pub use shared_types::{Color, Plist};
 pub use util::user_name_to_file_name;
 pub use write::{QuoteChar, WriteOptions};

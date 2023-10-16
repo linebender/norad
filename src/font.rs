@@ -13,7 +13,7 @@ use crate::glyph::Glyph;
 use crate::groups::{validate_groups, Groups};
 use crate::guideline::Guideline;
 use crate::kerning::Kerning;
-use crate::layer::{Layer, LayerSet, LAYER_CONTENTS_FILE};
+use crate::layer::{Layer, LayerContents, LAYER_CONTENTS_FILE};
 use crate::name::Name;
 use crate::names::NameList;
 use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
@@ -55,7 +55,7 @@ pub struct Font {
     ///  [glyph directory][] on disk.
     ///
     ///  [glyph directory]: https://unifiedfontobject.org/versions/ufo3/glyphs/
-    pub layers: LayerSet,
+    pub layers: LayerContents,
     /// Arbitrary user-supplied data.
     ///
     /// This corresponds to the [`lib.plist`][l] file on disk. This file is
@@ -643,12 +643,12 @@ fn load_layer_set(
     meta: &MetaInfo,
     glyph_names: &NameList,
     filter: &LayerFilter,
-) -> Result<LayerSet, FontLoadError> {
+) -> Result<LayerContents, FontLoadError> {
     let layercontents_path = ufo_path.join(LAYER_CONTENTS_FILE);
     if meta.format_version == FormatVersion::V3 && !layercontents_path.exists() {
         return Err(FontLoadError::MissingLayerContentsFile);
     }
-    LayerSet::load(ufo_path, glyph_names, filter)
+    LayerContents::load(ufo_path, glyph_names, filter)
 }
 
 #[cfg(test)]
