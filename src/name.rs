@@ -20,7 +20,6 @@ use crate::error::NamingError;
 /// [`Layer`]: crate::Layer
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(transparent)]
-#[cfg_attr(feature = "druid", derive(druid::Data))]
 pub struct Name(Arc<str>);
 
 impl Name {

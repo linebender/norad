@@ -4,9 +4,6 @@ use serde::de::Deserializer;
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "druid")]
-use druid::Data;
-
 pub static PUBLIC_OBJECT_LIBS_KEY: &str = "public.objectLibs";
 
 /// A Plist dictionary.
@@ -16,7 +13,6 @@ pub type Plist = plist::Dictionary;
 ///
 /// See <https://unifiedfontobject.org/versions/ufo3/conventions/#colors>.
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "druid", derive(Data))]
 pub struct Color {
     /// Red channel value. Must be in the range 0 to 1, inclusive.
     red: f64,
