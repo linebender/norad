@@ -2,9 +2,6 @@ use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[cfg(feature = "druid")]
-use std::{ops::Deref, sync::Arc};
-
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
@@ -263,9 +260,6 @@ impl Default for LayerContents {
 /// [UFO layer]: http://unifiedfontobject.org/versions/ufo3/glyphs/
 #[derive(Debug, Clone, PartialEq)]
 pub struct Layer {
-    #[cfg(feature = "druid")]
-    pub(crate) glyphs: BTreeMap<Name, Arc<Glyph>>,
-    #[cfg(not(feature = "druid"))]
     pub(crate) glyphs: BTreeMap<Name, Glyph>,
     pub(crate) name: Name,
     pub(crate) path: PathBuf,
@@ -352,9 +346,6 @@ impl Layer {
                     })
                     .map(|mut glyph| {
                         glyph.name = name.clone();
-                        #[cfg(feature = "druid")]
-                        return (name, Arc::new(glyph));
-                        #[cfg(not(feature = "druid"))]
                         (name, glyph)
                     })
             })
@@ -478,30 +469,17 @@ impl Layer {
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
-    #[cfg(not(feature = "druid"))]
     pub fn entry(&mut self, glyph: Name) -> std::collections::btree_map::Entry<Name, Glyph> {
         self.glyphs.entry(glyph)
     }
 
     /// Returns a reference to the glyph with the given name, if it exists.
     pub fn get_glyph(&self, glyph: &str) -> Option<&Glyph> {
-        #[cfg(feature = "druid")]
-        return self.glyphs.get(glyph).map(|g| g.deref());
-        #[cfg(not(feature = "druid"))]
-        self.glyphs.get(glyph)
-    }
-
-    /// Returns a reference to the given glyph, behind an `Arc`, if it exists.
-    #[cfg(feature = "druid")]
-    pub fn get_glyph_raw(&self, glyph: &str) -> Option<&Arc<Glyph>> {
         self.glyphs.get(glyph)
     }
 
     /// Returns a mutable reference to the glyph with the given name, if it exists.
     pub fn get_glyph_mut(&mut self, glyph: &str) -> Option<&mut Glyph> {
-        #[cfg(feature = "druid")]
-        return self.glyphs.get_mut(glyph).map(Arc::make_mut);
-        #[cfg(not(feature = "druid"))]
         self.glyphs.get_mut(glyph)
     }
 
@@ -514,11 +492,7 @@ impl Layer {
     ///
     /// If the glyph does not previously exist, the filename is calculated from
     /// the glyph's name.
-    pub fn insert_glyph(
-        &mut self,
-        #[cfg(feature = "druid")] glyph: impl Into<Arc<Glyph>>,
-        #[cfg(not(feature = "druid"))] glyph: impl Into<Glyph>,
-    ) {
+    pub fn insert_glyph(&mut self, glyph: impl Into<Glyph>) {
         let glyph = glyph.into();
         if !self.contents.contains_key(&glyph.name) {
             let path = crate::util::default_file_name_for_glyph_name(&glyph.name, &self.path_set);
@@ -536,24 +510,7 @@ impl Layer {
     }
 
     /// Remove the named glyph from this layer and return it, if it exists.
-    ///
-    /// **Note**: If the `druid` feature is enabled, this will not return the
-    /// removed `Glyph` if there are any other outstanding references to it,
-    /// although it will still be removed. In this case, consider using the
-    /// `remove_glyph_raw` method instead.
     pub fn remove_glyph(&mut self, name: &str) -> Option<Glyph> {
-        if let Some(path) = self.contents.remove(name) {
-            self.path_set.remove(&path.to_string_lossy().to_lowercase());
-        }
-        #[cfg(feature = "druid")]
-        return self.glyphs.remove(name).and_then(|g| Arc::try_unwrap(g).ok());
-        #[cfg(not(feature = "druid"))]
-        self.glyphs.remove(name)
-    }
-
-    /// Remove the named glyph and return it, including the containing `Arc`.
-    #[cfg(feature = "druid")]
-    pub fn remove_glyph_raw(&mut self, name: &str) -> Option<Arc<Glyph>> {
         if let Some(path) = self.contents.remove(name) {
             self.path_set.remove(&path.to_string_lossy().to_lowercase());
         }
@@ -580,41 +537,20 @@ impl Layer {
             Err(NamingError::Missing(old.into()))
         } else {
             let name = Name::new(new).map_err(|_| NamingError::Invalid(new.into()))?;
-            #[cfg(feature = "druid")]
-            {
-                let mut g = self.remove_glyph_raw(old).unwrap();
-                Arc::make_mut(&mut g).name = name;
-                self.insert_glyph(g);
-            }
-            #[cfg(not(feature = "druid"))]
-            {
-                let mut g = self.remove_glyph(old).unwrap();
-                g.name = name;
-                self.insert_glyph(g);
-            }
+            let mut g = self.remove_glyph(old).unwrap();
+            g.name = name;
+            self.insert_glyph(g);
             Ok(())
         }
     }
 
     /// Returns an iterator over the glyphs in this layer.
     pub fn iter(&self) -> impl Iterator<Item = &Glyph> + '_ {
-        #[cfg(feature = "druid")]
-        return self.glyphs.values().map(|g| g.deref());
-        #[cfg(not(feature = "druid"))]
-        self.glyphs.values()
-    }
-
-    /// Returns an iterator over the glyphs in this layer.
-    #[cfg(feature = "druid")]
-    pub fn iter_raw(&self) -> impl Iterator<Item = &Arc<Glyph>> + '_ {
         self.glyphs.values()
     }
 
     /// Returns an iterator over the glyphs in this layer, mutably.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Glyph> {
-        #[cfg(feature = "druid")]
-        return self.glyphs.values_mut().map(Arc::make_mut);
-        #[cfg(not(feature = "druid"))]
         self.glyphs.values_mut()
     }
 
@@ -622,7 +558,6 @@ impl Layer {
     ///
     /// In other words, remove all pairs `(k, v)` for which `f(&k, &mut v)` returns `false`.
     /// The elements are visited in unsorted (and unspecified) order.
-    #[cfg(not(feature = "druid"))]
     pub fn retain(&mut self, f: impl FnMut(&Name, &mut Glyph) -> bool) {
         self.glyphs.retain(f);
     }
@@ -979,7 +914,6 @@ mod tests {
 
     #[test]
     // Saves test from failing to compile with druid enabled
-    #[allow(clippy::useless_conversion)]
     fn test_remove_empty_layers() {
         let mut layers = LayerContents {
             layers: vec![
@@ -987,14 +921,14 @@ mod tests {
                 Layer {
                     name: Name::new("fizz").unwrap(),
                     glyphs: maplit::btreemap! {
-                        Name::new("a").unwrap() => Glyph::new("a").into(),
+                        Name::new("a").unwrap() => Glyph::new("a"),
                     },
                     ..Default::default()
                 },
                 Layer {
                     name: Name::new("buzz").unwrap(),
                     glyphs: maplit::btreemap! {
-                        Name::new("b").unwrap() => Glyph::new("b").into(),
+                        Name::new("b").unwrap() => Glyph::new("b"),
                     },
                     ..Default::default()
                 },

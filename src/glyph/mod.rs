@@ -12,9 +12,6 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "kurbo")]
 use crate::error::ConvertContourError;
 
-#[cfg(feature = "druid")]
-use druid::{Data, Lens};
-
 use crate::error::{ErrorKind, GlifLoadError, GlifWriteError, StoreError};
 use crate::name::Name;
 use crate::names::NameList;
@@ -29,10 +26,8 @@ pub use codepoints::Codepoints;
 ///
 /// [glif]: http://unifiedfontobject.org/versions/ufo3/glyphs/glif/
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "druid", derive(Lens))]
 pub struct Glyph {
     /// The name of the glyph.
-    #[cfg_attr(feature = "druid", lens(ignore))]
     pub(crate) name: Name,
     /// Glyph height.
     pub height: f64,
@@ -251,23 +246,6 @@ impl Glyph {
     }
 }
 
-#[cfg(feature = "druid")]
-impl Data for Glyph {
-    fn same(&self, other: &Glyph) -> bool {
-        self.name.same(&other.name)
-            && self.height.same(&other.height)
-            && self.width.same(&other.width)
-            && self.codepoints == other.codepoints
-            && self.note == other.note
-            && self.guidelines == other.guidelines
-            && self.anchors == other.anchors
-            && self.components == other.components
-            && self.contours == other.contours
-            && self.image == other.image
-            && self.lib == other.lib
-    }
-}
-
 /// A reference position in a glyph, such as for attaching accents.
 ///
 /// See the [Anchor section] of the UFO spec for more information.
@@ -462,7 +440,6 @@ impl std::fmt::Display for PointType {
 
 /// A 2D affine transformation.
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "druid", derive(Data))]
 pub struct AffineTransform {
     /// x-scale value.
     pub x_scale: f64,
@@ -798,28 +775,5 @@ impl From<kurbo::Affine> for AffineTransform {
             x_offset: coeffs[4],
             y_offset: coeffs[5],
         }
-    }
-}
-
-#[cfg(feature = "druid")]
-impl From<druid::piet::Color> for Color {
-    fn from(src: druid::piet::Color) -> Color {
-        let rgba = src.as_rgba_u32();
-        let r = ((rgba >> 24) & 0xff) as f64 / 255.0;
-        let g = ((rgba >> 16) & 0xff) as f64 / 255.0;
-        let b = ((rgba >> 8) & 0xff) as f64 / 255.0;
-        let a = (rgba & 0xff) as f64 / 255.0;
-        assert!((0.0..=1.0).contains(&b), "b: {}, raw {}", b, (rgba & (0xff << 8)));
-
-        Color::new(r.clamp(0.0, 1.0), g.clamp(0.0, 1.0), b.clamp(0.0, 1.0), a.clamp(0.0, 1.0))
-            .unwrap()
-    }
-}
-
-#[cfg(feature = "druid")]
-impl From<Color> for druid::piet::Color {
-    fn from(src: Color) -> druid::piet::Color {
-        let (red, green, blue, alpha) = src.channels();
-        druid::piet::Color::rgba(red, green, blue, alpha)
     }
 }
