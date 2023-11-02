@@ -3,7 +3,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 
 use serde::Serialize;
-use std::{fs, fs::File, io::BufReader, path::Path};
+use std::{fs::File, io::BufReader, path::Path};
 
 use plist::Dictionary;
 
@@ -262,7 +262,7 @@ impl DesignSpaceDocument {
         xml_writer.indent(' ', 2);
         self.serialize(xml_writer)?;
         buf.push('\n'); // trailing newline
-        fs::write(path, buf)?;
+        close_already::fs::write(path, buf)?;
         Ok(())
     }
 }
