@@ -5,6 +5,7 @@ use std::{borrow::Cow, fs::File, io::BufWriter, path::Path};
 #[cfg(target_family = "unix")]
 use std::os::unix::prelude::FileExt;
 
+use close_already::FastCloseable;
 #[cfg(target_family = "windows")]
 use std::os::windows::prelude::*;
 
@@ -152,7 +153,7 @@ pub(crate) fn write_xml_to_file(
     value: &impl serde::Serialize,
     options: &WriteOptions,
 ) -> Result<(), CustomSerializationError> {
-    let mut file = File::create(path).map_err(CustomSerializationError::CreateFile)?;
+    let mut file = File::create(path).map_err(CustomSerializationError::CreateFile)?.fast_close();
     let buf_writer = BufWriter::new(&mut file);
     plist::to_writer_xml_with_options(buf_writer, value, options.xml_options())
         .map_err(CustomSerializationError::SerializePlist)?;

@@ -99,7 +99,7 @@ impl Glyph {
         }
 
         let data = self.encode_xml_with_options(opts)?;
-        std::fs::write(path, data).map_err(GlifWriteError::Io)?;
+        close_already::fs::write(path, data).map_err(GlifWriteError::Io)?;
 
         Ok(())
     }

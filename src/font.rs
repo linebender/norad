@@ -496,10 +496,10 @@ impl Font {
             // This is consistent with the line endings serialized in glif and plist files
             let feature_file_path = path.join(FEATURES_FILE);
             if self.features.as_bytes().contains(&b'\r') {
-                fs::write(&feature_file_path, self.features.replace("\r\n", "\n"))
+                close_already::fs::write(&feature_file_path, self.features.replace("\r\n", "\n"))
                     .map_err(FontWriteError::FeatureFile)?;
             } else {
-                fs::write(&feature_file_path, &self.features)
+                close_already::fs::write(&feature_file_path, &self.features)
                     .map_err(FontWriteError::FeatureFile)?;
             }
         }
@@ -529,7 +529,7 @@ impl Font {
                 fs::create_dir_all(destination_parent).map_err(|source| {
                     FontWriteError::CreateStoreDir { path: destination_parent.into(), source }
                 })?;
-                fs::write(&destination, &*data)
+                close_already::fs::write(&destination, &*data)
                     .map_err(|source| FontWriteError::Data { path: destination, source })?;
             }
         }
@@ -544,7 +544,7 @@ impl Font {
             for (image_path, contents) in self.images.iter() {
                 let data = contents.expect("internal error: should have been checked");
                 let destination = images_dir.join(image_path);
-                fs::write(&destination, &*data)
+                close_already::fs::write(&destination, &*data)
                     .map_err(|source| FontWriteError::Image { path: destination, source })?;
             }
         }
