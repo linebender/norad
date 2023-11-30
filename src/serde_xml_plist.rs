@@ -7,7 +7,7 @@
 use base64::{engine::general_purpose::STANDARD as base64_standard, Engine};
 use plist::{Dictionary, Value};
 use serde::ser::SerializeStruct;
-use serde::{Deserializer, Serializer};
+use serde::{Deserialize, Deserializer, Serializer};
 
 /// Deserialize a plist Dictionary
 ///
@@ -17,7 +17,15 @@ pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Dictionary, D::Erro
 where
     D: Deserializer<'de>,
 {
-    deserializer.deserialize_map(de::ValueVisitor::DictOnly).map(|x| x.into_dictionary().unwrap())
+    // we need to wrap the final dict in another struct that will handled
+    // the first 'dict' key in the xml.
+    #[derive(Deserialize)]
+    struct DictHelper {
+        dict: de::DictWrapper,
+    }
+
+    let helper = DictHelper::deserialize(deserializer)?;
+    Ok(helper.dict.0)
 }
 
 mod de {
@@ -28,7 +36,7 @@ mod de {
     use std::marker::PhantomData;
     use std::str::FromStr;
 
-    struct DictWrapper(Dictionary);
+    pub(super) struct DictWrapper(pub(super) Dictionary);
 
     struct ValueWrapper(Value);
 
@@ -57,19 +65,13 @@ mod de {
 
     // the logic for deserializing a dict is a subset of the general deser logic,
     // so we reuse this type for both cases.
-    pub(super) enum ValueVisitor {
-        AnyValue,
-        DictOnly,
-    }
+    struct ValueVisitor;
 
     impl<'de> Visitor<'de> for ValueVisitor {
         type Value = Value;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            match self {
-                ValueVisitor::AnyValue => formatter.write_str("plist value"),
-                ValueVisitor::DictOnly => formatter.write_str("plist dictionary"),
-            }
+            formatter.write_str("plist value")
         }
 
         fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
@@ -77,7 +79,7 @@ mod de {
             A: serde::de::MapAccess<'de>,
             A::Error: DeError,
         {
-            match read_xml_value(&mut map, matches!(self, ValueVisitor::DictOnly)) {
+            match read_xml_value(&mut map) {
                 Ok(Some(val)) => Ok(val),
                 Ok(None) => Err(A::Error::custom("expected value")),
                 Err(e) => Err(e),
@@ -88,7 +90,7 @@ mod de {
     /// shared helper for deserializing a plist value from the serde map repr used by quick_xml
     ///
     /// if `dict_only` is true, this will reject values that are not dicts.
-    fn read_xml_value<'de, A>(map: &mut A, dict_only: bool) -> Result<Option<Value>, A::Error>
+    fn read_xml_value<'de, A>(map: &mut A) -> Result<Option<Value>, A::Error>
     where
         A: serde::de::MapAccess<'de>,
         A::Error: DeError,
@@ -96,9 +98,6 @@ mod de {
         let value = match map.next_key::<ValueKeyword>()? {
             Some(ValueKeyword::Dict) => {
                 map.next_value::<DictWrapper>().map(|x| Value::Dictionary(x.0))
-            }
-            Some(other) if dict_only => {
-                Err(A::Error::custom(format!("expected 'dict', found '{other}'")))
             }
             Some(ValueKeyword::String) => map.next_value::<String>().map(Value::String),
             Some(ValueKeyword::Array) => {
@@ -136,7 +135,7 @@ mod de {
         where
             D: Deserializer<'de>,
         {
-            deserializer.deserialize_any(ValueVisitor::AnyValue).map(ValueWrapper)
+            deserializer.deserialize_any(ValueVisitor).map(ValueWrapper)
         }
     }
 
@@ -175,7 +174,7 @@ mod de {
                     // where the first is the key and the second is the value.
                     while let Some(key) = read_key(&mut map)? {
                         // if we read a key it's an error for the value to be missing
-                        let value = read_xml_value(&mut map, false)?
+                        let value = read_xml_value(&mut map)?
                             .ok_or_else(|| A::Error::custom("expected value"))?;
                         dict.insert(key, value);
                     }
@@ -206,7 +205,7 @@ mod de {
                     A: serde::de::MapAccess<'de>,
                 {
                     let mut array = Vec::with_capacity(map.size_hint().unwrap_or_default());
-                    while let Some(value) = read_xml_value(&mut map, false)? {
+                    while let Some(value) = read_xml_value(&mut map)? {
                         array.push(value)
                     }
                     Ok(array)

@@ -118,7 +118,7 @@ pub enum RuleProcessing {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Rule {
     /// Name of the rule.
-    #[serde(rename = "@name")]
+    #[serde(rename = "@name", skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     /// Condition sets. If any condition is true or the condition set is empty,
     /// the rule is applied.
@@ -175,7 +175,7 @@ pub struct Source {
     #[serde(rename = "@stylename", skip_serializing_if = "Option::is_none")]
     pub stylename: Option<String>,
     /// A unique name that can be used to identify this font if it needs to be referenced elsewhere.
-    #[serde(rename = "@name")]
+    #[serde(rename = "@name", skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     /// A path to the source file, relative to the root path of this document.
     ///
@@ -206,7 +206,7 @@ pub struct Instance {
     #[serde(rename = "@stylename", skip_serializing_if = "Option::is_none")]
     pub stylename: Option<String>,
     /// A unique name that can be used to identify this font if it needs to be referenced elsewhere.
-    #[serde(rename = "@name")]
+    #[serde(rename = "@name", skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     /// A path to the instance file, relative to the root path of this document. The path can be at the same level as the document or lower.
     #[serde(rename = "@filename", skip_serializing_if = "Option::is_none")]
