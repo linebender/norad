@@ -460,6 +460,87 @@ mod tests {
     }
 
     #[test]
+    fn serialize_lib() {
+        use plist::Value;
+        use serde_test::{assert_tokens, Token};
+
+        // JSON representation of the test lib, abbreviated from Cantarell.designspace:
+        // {
+        //     "GSDimensionPlugin.Dimensions": {
+        //         "0B2E441B-685E-400D-9B9B-E078DEED62EF": {
+        //             "HH": "19",
+        //             "HV": "22"
+        //         },
+        //         "51C2DFEF-3776-4D13-9284-96485B799B57": {
+        //             "HH": "156",
+        //             "HV": "176"
+        //         }
+        //     },
+        //     "public.skipExportGlyphs": [
+        //         "_slash.zero",
+        //         "_slash.zero.osf",
+        //         "_typoquote"
+        //     ]
+        // }
+
+        let mut d1 = plist::Dictionary::new();
+        d1.insert("HH".into(), "19".into());
+        d1.insert("HV".into(), "22".into());
+        let mut d2 = plist::Dictionary::new();
+        d2.insert("HH".into(), "156".into());
+        d2.insert("HV".into(), "176".into());
+        let mut dim = plist::Dictionary::new();
+        dim.insert("0B2E441B-685E-400D-9B9B-E078DEED62EF".into(), Value::Dictionary(d1));
+        dim.insert("51C2DFEF-3776-4D13-9284-96485B799B57".into(), Value::Dictionary(d2));
+        let seg = plist::Value::Array(vec![
+            Value::String("_slash.zero".into()),
+            Value::String("_slash.zero.osf".into()),
+            Value::String("_typoquote".into()),
+        ]);
+        let mut lib = plist::Dictionary::new();
+        lib.insert("GSDimensionPlugin.Dimensions".into(), Value::Dictionary(dim));
+        lib.insert("public.skipExportGlyphs".into(), seg);
+
+        let designspace = DesignSpaceDocument { lib, ..Default::default() };
+
+        assert_tokens(
+            &designspace,
+            &[
+                Token::Struct { name: "designspace", len: 2 },
+                Token::Str("@format"),
+                Token::F32(0.0),
+                Token::Str("lib"),
+                Token::Map { len: Some(2) },
+                Token::Str("GSDimensionPlugin.Dimensions"),
+                Token::Map { len: Some(2) },
+                Token::Str("0B2E441B-685E-400D-9B9B-E078DEED62EF"),
+                Token::Map { len: Some(2) },
+                Token::Str("HH"),
+                Token::Str("19"),
+                Token::Str("HV"),
+                Token::Str("22"),
+                Token::MapEnd,
+                Token::Str("51C2DFEF-3776-4D13-9284-96485B799B57"),
+                Token::Map { len: Some(2) },
+                Token::Str("HH"),
+                Token::Str("156"),
+                Token::Str("HV"),
+                Token::Str("176"),
+                Token::MapEnd,
+                Token::MapEnd,
+                Token::Str("public.skipExportGlyphs"),
+                Token::Seq { len: Some(3) },
+                Token::Str("_slash.zero"),
+                Token::Str("_slash.zero.osf"),
+                Token::Str("_typoquote"),
+                Token::SeqEnd,
+                Token::MapEnd,
+                Token::StructEnd,
+            ],
+        );
+    }
+
+    #[test]
     fn do_not_serialize_empty_lib() {
         let ds_initial = DesignSpaceDocument::load("testdata/single_wght.designspace").unwrap();
         let serialized = quick_xml::se::to_string(&ds_initial).expect("should serialize");
