@@ -193,6 +193,7 @@ pub struct VariableFont {
 
 /// Describes a single axis subset for a variable font.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum AxisSubset {
     /// Describes a range of an axis.
     Range {
