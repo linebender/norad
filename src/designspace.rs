@@ -180,11 +180,7 @@ pub struct VariableFont {
     #[serde(rename = "@filename", default, skip_serializing_if = "Option::is_none")]
     pub filename: Option<String>,
     /// The axis subset the variable font represents.
-    #[serde(
-        rename = "axis-subsets",
-        with = "serde_impls::axis_subsets",
-        skip_serializing_if = "Vec::is_empty"
-    )]
+    #[serde(rename = "axis-subsets", with = "serde_impls::axis_subsets")]
     pub axis_subsets: Vec<AxisSubset>,
     /// Additional arbitrary user data
     #[serde(default, with = "serde_plist", skip_serializing_if = "Dictionary::is_empty")]
@@ -198,6 +194,7 @@ pub enum AxisSubset {
     /// Describes a range of an axis.
     Range {
         /// The name of the axis under consideration.
+        #[serde(rename = "@name")]
         name: String,
         /// Optionally, the lower end of the range, in user coordinates
         #[serde(rename = "@userminimum", default, skip_serializing_if = "Option::is_none")]
@@ -212,6 +209,7 @@ pub enum AxisSubset {
     /// Describes a single point of an axis.
     Discrete {
         /// The name of the axis under consideration.
+        #[serde(rename = "@name")]
         name: String,
         /// The single point of the axis.
         #[serde(rename = "@uservalue")]
