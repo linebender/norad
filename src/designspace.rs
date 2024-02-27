@@ -78,6 +78,9 @@ pub struct Axis {
     /// ...
     #[serde(rename = "labelname", default, skip_serializing_if = "Vec::is_empty")]
     pub label_names: Vec<LabelName>,
+    /// ...
+    #[serde(with = "serde_impls::labels", default, skip_serializing_if = "Vec::is_empty")]
+    pub labels: Vec<Label>,
 }
 
 /// Maps an xml:lang language tag to a localised name.
@@ -89,6 +92,35 @@ pub struct LabelName {
     /// Localised name.
     #[serde(rename = "$text")]
     pub name: String,
+}
+
+/// ...
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Label {
+    /// ...
+    #[serde(rename = "@name")]
+    pub name: String,
+    /// ...
+    #[serde(rename = "@elidable", default, skip_serializing_if = "is_false")]
+    pub elidable: bool,
+    /// ...
+    #[serde(rename = "@oldersibling", default, skip_serializing_if = "is_false")]
+    pub older_sibling: bool,
+    /// ...
+    #[serde(rename = "@uservalue")]
+    pub user_value: f32,
+    /// ...
+    #[serde(rename = "@userminimum", default)]
+    pub user_minimum: Option<f32>,
+    /// ...
+    #[serde(rename = "@usermaximum", default)]
+    pub user_maximum: Option<f32>,
+    /// ...
+    #[serde(rename = "@linkeduservalue", default)]
+    pub linked_user_value: Option<f32>,
+    /// ...
+    #[serde(rename = "labelname", default, skip_serializing_if = "Vec::is_empty")]
+    pub names: Vec<LabelName>,
 }
 
 fn is_false(value: &bool) -> bool {
@@ -437,6 +469,7 @@ mod serde_impls {
     serde_from_field!(sources, source, crate::designspace::Source);
     serde_from_field!(variable_fonts, variable_font, crate::designspace::VariableFont);
     serde_from_field!(axis_subsets, axis_subset, crate::designspace::AxisSubset);
+    serde_from_field!(labels, label, crate::designspace::Label);
 }
 
 #[cfg(test)]
@@ -683,7 +716,8 @@ mod tests {
                     maximum: Some(1000.0),
                     values: None,
                     map: None,
-                    label_names: vec![]
+                    label_names: vec![],
+                    labels: vec![]
                 },
                 Axis {
                     name: "weight".into(),
@@ -695,9 +729,10 @@ mod tests {
                     values: None,
                     map: None,
                     label_names: vec![
-                        LabelName { xml_lang: "fa-IR".into(), name: "قطر".into() },
-                        LabelName { xml_lang: "en".into(), name: "Wéíght".into() },
-                    ]
+                        LabelName { lang: "fa-IR".into(), name: "قطر".into() },
+                        LabelName { lang: "en".into(), name: "Wéíght".into() },
+                    ],
+                    labels: vec![]
                 }
             ]
         );

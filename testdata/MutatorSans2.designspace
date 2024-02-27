@@ -5,6 +5,13 @@
     <axis tag="wght" name="weight" minimum="0" maximum="1000" default="0">
         <labelname xml:lang="fa-IR">قطر</labelname>
         <labelname xml:lang="en">Wéíght</labelname>
+        <labels>
+            <label userminimum="200" uservalue="200" usermaximum="250" name="Extra Light">
+                <labelname xml:lang="de">Extraleicht</labelname>
+                <labelname xml:lang="fr">Extra léger</labelname>
+            </label>
+            <label userminimum="350" uservalue="400" usermaximum="450" name="Regular" elidable="true" />
+        </labels>
     </axis>
   </axes>
   <rules processing="last">
