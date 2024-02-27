@@ -75,6 +75,20 @@ pub struct Axis {
     /// Mapping between user space coordinates and design space coordinates.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub map: Option<Vec<AxisMapping>>,
+    /// ...
+    #[serde(rename = "labelname", default, skip_serializing_if = "Vec::is_empty")]
+    pub label_names: Vec<LabelName>,
+}
+
+/// Maps an xml:lang language tag to a localised name.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct LabelName {
+    /// Language tag.
+    #[serde(rename = "@lang")]
+    pub lang: String,
+    /// Localised name.
+    #[serde(rename = "$text")]
+    pub name: String,
 }
 
 fn is_false(value: &bool) -> bool {
@@ -657,6 +671,37 @@ mod tests {
         vf_lib.insert("public.fontInfo".into(), vf_fontinfo.into());
 
         // Then
+        assert_eq!(
+            &ds_after.axes,
+            &[
+                Axis {
+                    name: "width".into(),
+                    tag: "wdth".into(),
+                    default: 0.0,
+                    hidden: false,
+                    minimum: Some(0.0),
+                    maximum: Some(1000.0),
+                    values: None,
+                    map: None,
+                    label_names: vec![]
+                },
+                Axis {
+                    name: "weight".into(),
+                    tag: "wght".into(),
+                    default: 0.0,
+                    hidden: false,
+                    minimum: Some(0.0),
+                    maximum: Some(1000.0),
+                    values: None,
+                    map: None,
+                    label_names: vec![
+                        LabelName { xml_lang: "fa-IR".into(), name: "قطر".into() },
+                        LabelName { xml_lang: "en".into(), name: "Wéíght".into() },
+                    ]
+                }
+            ]
+        );
+
         assert_eq!(
             &ds_after.variable_fonts,
             &[VariableFont {

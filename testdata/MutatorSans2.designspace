@@ -2,7 +2,10 @@
 <designspace format="5.0">
   <axes>
     <axis tag="wdth" name="width" minimum="0" maximum="1000" default="0"/>
-    <axis tag="wght" name="weight" minimum="0" maximum="1000" default="0"/>
+    <axis tag="wght" name="weight" minimum="0" maximum="1000" default="0">
+        <labelname xml:lang="fa-IR">قطر</labelname>
+        <labelname xml:lang="en">Wéíght</labelname>
+    </axis>
   </axes>
   <rules processing="last">
     <rule name="fold_I_serifs">
