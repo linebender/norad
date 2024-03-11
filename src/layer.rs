@@ -237,7 +237,15 @@ impl LayerContents {
     where
         F: FnMut(&Layer) -> bool,
     {
-        self.layers.retain(|layer| layer.name == DEFAULT_LAYER_NAME || predicate(layer))
+        // Always keep the default layer, which is always the first.
+        let mut is_first = true;
+        self.layers.retain(|layer| {
+            if is_first {
+                is_first = false;
+                return true;
+            }
+            predicate(layer)
+        });
     }
 
     /// Removes any layers that contain no glyphs
@@ -904,12 +912,13 @@ mod tests {
             ],
             ..Default::default()
         };
+        layers.rename_layer("public.default", "foreground", false).unwrap();
 
         layers.retain(|l| l.name().starts_with("fizz"));
 
         assert_eq!(layers.len(), 3, "wrong number of layers deleted");
         let names = layers.iter().map(|l| l.name().as_str()).collect::<Vec<_>>();
-        assert_eq!(names.as_slice(), &[DEFAULT_LAYER_NAME, "fizz", "fizzbuzz"]);
+        assert_eq!(names.as_slice(), &["foreground", "fizz", "fizzbuzz"]);
     }
 
     #[test]
