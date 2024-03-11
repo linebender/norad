@@ -237,11 +237,8 @@ impl LayerContents {
     where
         F: FnMut(&Layer) -> bool,
     {
-        // Always keep the default layer, which is always the first.
-        let mut is_first = true;
         self.layers.retain(|layer| {
-            if is_first {
-                is_first = false;
+            if layer.is_default() {
                 return true;
             }
             predicate(layer)
@@ -458,6 +455,14 @@ impl Layer {
     /// Returns `true` if this layer contains no glyphs.
     pub fn is_empty(&self) -> bool {
         self.glyphs.is_empty()
+    }
+
+    /// Returns `true` if this layer is the default layer.
+    ///
+    /// The default layer can have any name, but always uses the "glyphs"
+    /// directory.
+    pub fn is_default(&self) -> bool {
+        self.path == Path::new(DEFAULT_GLYPHS_DIRNAME)
     }
 
     /// Returns the name of the layer.
