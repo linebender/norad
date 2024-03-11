@@ -237,12 +237,7 @@ impl LayerContents {
     where
         F: FnMut(&Layer) -> bool,
     {
-        self.layers.retain(|layer| {
-            if layer.is_default() {
-                return true;
-            }
-            predicate(layer)
-        });
+        self.layers.retain(|layer| layer.is_default() || predicate(layer));
     }
 
     /// Removes any layers that contain no glyphs
