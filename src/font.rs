@@ -97,7 +97,7 @@ pub struct Font {
 pub enum FormatVersion {
     /// UFO specification major version 1. Only reading (and upconversion) is supported.
     V1 = 1,
-    /// UFO specfication major version 2. Only reading (and upconversion) is supported.
+    /// UFO specification major version 2. Only reading (and upconversion) is supported.
     V2 = 2,
     /// UFO specification major version 3
     V3 = 3,

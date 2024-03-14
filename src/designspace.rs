@@ -124,7 +124,7 @@ pub struct Rule {
     /// the rule is applied.
     #[serde(rename = "conditionset")]
     pub condition_sets: Vec<ConditionSet>,
-    /// Subtitutions (in, out).
+    /// Substitutions (in, out).
     #[serde(rename = "sub")]
     pub substitutions: Vec<Substitution>,
 }

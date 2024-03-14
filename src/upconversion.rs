@@ -170,7 +170,7 @@ pub(crate) fn upconvert_ufov1_robofab_data(
         features.push('\n');
 
         for key in order {
-            // Ignore non-existant keys because defcon does it, too.
+            // Ignore non-existent keys because defcon does it, too.
             if let Some(txt) = features_split.get(&key) {
                 features.push_str(txt);
             }

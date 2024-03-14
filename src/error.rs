@@ -528,7 +528,7 @@ pub enum ErrorKind {
     InvalidName,
     /// Has an invalid lib.
     BadLib,
-    /// Has an unexected duplicate value.
+    /// Has an unexpected duplicate value.
     UnexpectedDuplicate,
     /// Has an unexpected move definition.
     UnexpectedMove,
@@ -550,7 +550,7 @@ pub enum ErrorKind {
     TrailingOffCurves,
     /// Has duplicate identifiers.
     DuplicateIdentifier,
-    /// Has unexepected drawing data.
+    /// Has unexpected drawing data.
     UnexpectedDrawing,
     /// Has incomplete drawing data.
     UnfinishedDrawing,
@@ -564,11 +564,11 @@ pub enum ErrorKind {
     UnexpectedGuidelineField,
     /// Has an unexpected image field.
     UnexpectedImageField,
-    /// An element that can occur just once occured a second time.
+    /// An element that can occur just once occurred a second time.
     DuplicateElement(&'static str),
-    /// An element that can occur just once occured a second time.
+    /// An element that can occur just once occurred a second time.
     UnexpectedV1Element(&'static str),
-    /// An element that can occur just once occured a second time.
+    /// An element that can occur just once occurred a second time.
     UnexpectedV1Attribute(&'static str),
     /// A component had an empty `base` attribute.
     ComponentEmptyBase,
