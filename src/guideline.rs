@@ -16,7 +16,7 @@ pub struct Guideline {
     /// Unique identifier for the guideline within the glyph. This attribute is only required
     /// when a lib is present and should otherwise only be added as needed.
     identifier: Option<Identifier>,
-    /// The guideline's lib for arbitary data.
+    /// The guideline's lib for arbitrary data.
     lib: Option<Plist>,
 }
 

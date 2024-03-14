@@ -265,7 +265,7 @@ pub struct Anchor {
     ///
     /// This attribute is only required when a lib is present and should otherwise only be added as needed.
     identifier: Option<Identifier>,
-    /// Optional anchor lib for arbitary data.
+    /// Optional anchor lib for arbitrary data.
     lib: Option<Plist>,
 }
 
@@ -281,7 +281,7 @@ pub struct Component {
     /// This attribute is only required when a lib is present and should otherwise only
     /// be added as needed.
     identifier: Option<Identifier>,
-    ///  Optional lib for arbitary component data.
+    ///  Optional lib for arbitrary component data.
     lib: Option<Plist>,
 }
 
@@ -295,7 +295,7 @@ pub struct Contour {
     /// This attribute is only required when a lib is present and should otherwise only
     /// be added as needed.
     identifier: Option<Identifier>,
-    /// Optional lib for arbitary contour data.
+    /// Optional lib for arbitrary contour data.
     lib: Option<Plist>,
 }
 
@@ -375,7 +375,7 @@ pub struct ContourPoint {
     ///
     /// This attribute is only required when a lib is present and should otherwise only be added as needed.
     identifier: Option<Identifier>,
-    /// Optional lib for arbitary contour point data.
+    /// Optional lib for arbitrary contour point data.
     lib: Option<Plist>,
 }
 

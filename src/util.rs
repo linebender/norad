@@ -171,7 +171,7 @@ pub fn user_name_to_file_name(
             result.truncate(result.len().saturating_sub(suffix.len()) - NUMBER_LEN);
         }
         if !found_unique {
-            // Note: if this is ever hit, try appending a UUIDv4 before panicing.
+            // Note: if this is ever hit, try appending a UUIDv4 before panicking.
             panic!("Could not find a unique file name after 99 tries")
         }
     }

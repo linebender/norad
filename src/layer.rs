@@ -883,7 +883,7 @@ mod tests {
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 48);
 
-        // all is overwridden by default_layer
+        // all is overridden by default_layer
         let request = DataRequest::all().default_layer(true);
         let layerset = LayerContents::load(ufo_path, &names, &request.layers).unwrap();
         // default layer is always present
