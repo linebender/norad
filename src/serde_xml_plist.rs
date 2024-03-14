@@ -32,6 +32,7 @@ mod de {
     use super::*;
     use serde::de::{Error as DeError, Visitor};
     use serde::Deserialize;
+    use std::borrow::Cow;
     use std::fmt::Display;
     use std::marker::PhantomData;
     use std::str::FromStr;
@@ -106,15 +107,21 @@ mod de {
             Some(ValueKeyword::Data) => {
                 //FIXME: remove this + base64 dep when/if we merge
                 //<https://github.com/ebarnard/rust-plist/pull/122>
-                let b64_str = map.next_value::<&str>()?;
+                // NOTE: Use Cow here because serde needs ownership if it has
+                // to modify the string in any form, e.g. when deserializing
+                // from a Designspace file.
+                let b64_str = map.next_value::<Cow<'_, str>>()?;
                 base64_standard
-                    .decode(b64_str)
+                    .decode(&*b64_str)
                     .map(Value::Data)
                     .map_err(|e| A::Error::custom(format!("Invalid XML data: '{e}'")))
             }
             Some(ValueKeyword::Date) => {
-                let date_str = map.next_value::<&str>()?;
-                plist::Date::from_xml_format(date_str).map_err(A::Error::custom).map(Value::Date)
+                // NOTE: Use Cow here because serde needs ownership if it has
+                // to modify the string in any form, e.g. when deserializing
+                // from a Designspace file.
+                let date_str = map.next_value::<Cow<'_, str>>()?;
+                plist::Date::from_xml_format(&date_str).map_err(A::Error::custom).map(Value::Date)
             }
             Some(ValueKeyword::Real) => map.next_value::<f64>().map(Value::Real),
             Some(ValueKeyword::Integer) => {
