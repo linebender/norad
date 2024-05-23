@@ -101,6 +101,18 @@ impl FromStr for Name {
     }
 }
 
+impl TryFrom<String> for Name {
+    type Error = NamingError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if is_valid(&value) {
+            Ok(Name(value.into()))
+        } else {
+            Err(NamingError::Invalid(value))
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for Name {
     fn deserialize<D>(deserializer: D) -> Result<Name, D::Error>
     where

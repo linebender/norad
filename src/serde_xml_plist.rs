@@ -38,7 +38,7 @@ mod de {
 
     pub(super) struct DictWrapper(pub(super) Dictionary);
 
-    struct ValueWrapper(Value);
+    struct ValueWrapper;
 
     struct ArrayWrapper(Vec<Value>);
 
@@ -135,7 +135,7 @@ mod de {
         where
             D: Deserializer<'de>,
         {
-            deserializer.deserialize_any(ValueVisitor).map(ValueWrapper)
+            deserializer.deserialize_any(ValueVisitor).map(|_| ValueWrapper)
         }
     }
 
