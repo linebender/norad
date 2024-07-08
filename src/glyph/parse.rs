@@ -65,14 +65,14 @@ impl<'names> GlifParser<'names> {
                     }
                     b"outline" => {
                         seen_outline = true;
-                        self.parse_outline(reader, buf)?
+                        self.parse_outline(reader, buf)?;
                     }
                     b"lib" if seen_lib => {
                         return Err(ErrorKind::DuplicateElement("lib").into());
                     }
                     b"lib" => {
                         seen_lib = true;
-                        self.parse_lib(reader, raw_xml, buf)?
+                        self.parse_lib(reader, raw_xml, buf)?;
                     }
                     b"note" if self.version == VERSION_1 => {
                         return Err(ErrorKind::UnexpectedV1Element("note").into());
@@ -96,7 +96,7 @@ impl<'names> GlifParser<'names> {
                     }
                     b"advance" => {
                         seen_advance = true;
-                        self.parse_advance(start)?
+                        self.parse_advance(start)?;
                     }
                     b"unicode" => self.parse_unicode(start)?,
                     b"anchor" if self.version == VERSION_1 => {
@@ -143,7 +143,7 @@ impl<'names> GlifParser<'names> {
                     let mut new_buf = Vec::new(); // borrowck :/
                     match start.name().as_ref() {
                         b"contour" => {
-                            self.parse_contour(start, reader, &mut new_buf, &mut outline_builder)?
+                            self.parse_contour(start, reader, &mut new_buf, &mut outline_builder)?;
                         }
                         _other => return Err(ErrorKind::UnexpectedElement.into()),
                     }

@@ -258,7 +258,7 @@ impl<T: DataType> Store<T> {
 
     /// Clears the store, removing all path-data pairs. Keeps the allocated memory for reuse.
     pub fn clear(&mut self) {
-        self.items.clear()
+        self.items.clear();
     }
 
     /// Returns the number of elements in the store.

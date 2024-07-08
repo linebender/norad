@@ -514,7 +514,7 @@ impl Layer {
     pub fn clear(&mut self) {
         self.contents.clear();
         self.path_set.clear();
-        self.glyphs.clear()
+        self.glyphs.clear();
     }
 
     /// Remove the named glyph from this layer and return it, if it exists.

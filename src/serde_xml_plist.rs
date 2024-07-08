@@ -206,7 +206,7 @@ mod de {
                 {
                     let mut array = Vec::with_capacity(map.size_hint().unwrap_or_default());
                     while let Some(value) = read_xml_value(&mut map)? {
-                        array.push(value)
+                        array.push(value);
                     }
                     Ok(array)
                 }

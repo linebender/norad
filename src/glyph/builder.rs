@@ -96,7 +96,7 @@ impl OutlineBuilder {
                         if smooth {
                             return Err(ErrorKind::UnexpectedSmooth);
                         }
-                        *number_of_offcurves = number_of_offcurves.saturating_add(1)
+                        *number_of_offcurves = number_of_offcurves.saturating_add(1);
                     }
                     PointType::QCurve => *number_of_offcurves = 0,
                     PointType::Curve => {
@@ -140,7 +140,7 @@ impl OutlineBuilder {
                         for point in &scratch_contour.points {
                             match point.typ {
                                 PointType::OffCurve => {
-                                    number_of_offcurves = number_of_offcurves.saturating_add(1)
+                                    number_of_offcurves = number_of_offcurves.saturating_add(1);
                                 }
                                 PointType::QCurve => break,
                                 PointType::Curve => {

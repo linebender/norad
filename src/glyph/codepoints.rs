@@ -41,7 +41,7 @@ impl Codepoints {
 
     /// Remove all codepoints from the set.
     pub fn clear(&mut self) {
-        self.0.clear()
+        self.0.clear();
     }
 
     /// Returns true if the provided codepoint is in this set.
