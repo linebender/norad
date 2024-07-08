@@ -1072,7 +1072,7 @@ impl NonNegativeIntegerOrFloat {
 
     /// Returns `true` if the value is an integer.
     pub(crate) fn is_integer(&self) -> bool {
-        self.0.fract().abs() < std::f64::EPSILON
+        self.0.fract().abs() < f64::EPSILON
     }
 }
 
