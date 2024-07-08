@@ -353,7 +353,7 @@ fn char_to_event(c: char) -> Event<'static> {
 }
 
 fn write_transform_attributes(element: &mut BytesStart, transform: &AffineTransform) {
-    if (transform.x_scale - 1.0).abs() > std::f64::EPSILON {
+    if (transform.x_scale - 1.0).abs() > f64::EPSILON {
         element.push_attribute(("xScale", transform.x_scale.to_string().as_str()));
     }
 
@@ -365,7 +365,7 @@ fn write_transform_attributes(element: &mut BytesStart, transform: &AffineTransf
         element.push_attribute(("yxScale", transform.yx_scale.to_string().as_str()));
     }
 
-    if (transform.y_scale - 1.0).abs() > std::f64::EPSILON {
+    if (transform.y_scale - 1.0).abs() > f64::EPSILON {
         element.push_attribute(("yScale", transform.y_scale.to_string().as_str()));
     }
 

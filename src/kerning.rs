@@ -48,7 +48,7 @@ impl<'a> Serialize for KerningInnerSerializer<'a> {
     {
         let mut map = serializer.serialize_map(Some(self.inner_kerning.len()))?;
         for (k, v) in self.inner_kerning {
-            if (v - v.round()).abs() < std::f64::EPSILON {
+            if (v - v.round()).abs() < f64::EPSILON {
                 map.serialize_entry(k, &(*v as i32))?;
             } else {
                 map.serialize_entry(k, v)?;
