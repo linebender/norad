@@ -17,6 +17,11 @@ exclude = [
 [package.metadata.docs.rs]
 features = ["kurbo"]
 
+[features]
+default = []
+kurbo = ["dep:kurbo"]
+rayon = ["dep:rayon"]
+
 [dependencies]
 plist = { version =  "1.4.1", features = ["serde"] }
 uuid = { version = "1.2", features = ["v4"] }
