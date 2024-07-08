@@ -188,15 +188,15 @@ impl Guideline {
         }
 
         if let Some(x) = x {
-            start.push_attribute(("x", x.to_string().as_str()))
+            start.push_attribute(("x", x.to_string().as_str()));
         }
 
         if let Some(y) = y {
-            start.push_attribute(("y", y.to_string().as_str()))
+            start.push_attribute(("y", y.to_string().as_str()));
         }
 
         if let Some(angle) = angle {
-            start.push_attribute(("angle", angle.to_string().as_str()))
+            start.push_attribute(("angle", angle.to_string().as_str()));
         }
 
         if let Some(color) = &self.color {

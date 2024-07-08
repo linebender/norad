@@ -865,6 +865,6 @@ mod tests {
         let opt = WriteOptions::default();
         let ufo = Font::default();
         let tmp = TempDir::new().unwrap();
-        ufo.save_with_options(tmp, &opt).unwrap()
+        ufo.save_with_options(tmp, &opt).unwrap();
     }
 }
