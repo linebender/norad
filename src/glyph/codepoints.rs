@@ -4,6 +4,7 @@
 //! however we don't want this to be part of our public API, so use a wrapper.
 
 use indexmap::IndexSet;
+use serde::{Deserialize, Serialize};
 
 /// A set of Unicode codepoints
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]

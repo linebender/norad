@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
+use serde::Deserialize;
+
 use crate::data_request::LayerFilter;
 use crate::error::{FontLoadError, LayerLoadError, LayerWriteError, NamingError};
 use crate::names::NameList;

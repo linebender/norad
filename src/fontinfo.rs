@@ -8,6 +8,7 @@ use std::{collections::HashSet, convert::TryFrom, ops::Deref};
 use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::error::{ExpectedPositiveValue, FontInfoErrorKind, FontInfoLoadError};
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;

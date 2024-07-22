@@ -2,7 +2,7 @@
 
 #![deny(rustdoc::broken_intra_doc_links)]
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{fs::File, io::BufReader, path::Path};
 
 use plist::Dictionary;

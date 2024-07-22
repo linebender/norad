@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
+use serde::Deserialize;
+
 use crate::error::FontLoadError;
 use crate::font::LIB_FILE;
 use crate::fontinfo::FontInfo;
@@ -216,8 +218,6 @@ pub(crate) fn upconvert_ufov1_robofab_data(
 
 #[cfg(test)]
 mod tests {
-    extern crate maplit;
-
     use super::*;
     use crate::{
         font::{Font, FormatVersion},
