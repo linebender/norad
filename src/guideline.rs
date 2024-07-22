@@ -1,6 +1,6 @@
-use serde::de::{Deserialize, Deserializer};
-use serde::ser::{Serialize, SerializeStruct, Serializer};
-use serde::{de, ser};
+use serde::de::Deserializer;
+use serde::ser::{SerializeStruct, Serializer};
+use serde::{de, ser, Deserialize, Serialize};
 
 use crate::{Color, Identifier, Name, Plist};
 

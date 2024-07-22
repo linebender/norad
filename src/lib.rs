@@ -65,11 +65,6 @@
 #![warn(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links, unsafe_code)]
 
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate serde_repr;
-
 mod data_request;
 pub mod datastore;
 pub mod designspace;

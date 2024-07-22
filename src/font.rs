@@ -5,6 +5,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
+
 use crate::data_request::LayerFilter;
 use crate::datastore::{DataStore, ImageStore};
 use crate::error::{FontLoadError, FontWriteError};
