@@ -193,7 +193,7 @@ mod tests {
 
     fn file_name(name: &str, prefix: &str, suffix: &str) -> String {
         let container: HashSet<String> = HashSet::new();
-        user_name_to_file_name(&Name::new_raw(name), prefix, suffix, |name| {
+        user_name_to_file_name(Name::new_raw(name), prefix, suffix, |name| {
             !container.contains(name)
         })
         .to_string_lossy()
@@ -292,7 +292,7 @@ mod tests {
         let mut container = HashSet::new();
         let mut existing = HashSet::new();
         for name in ["Ab", "a_b"] {
-            let path = user_name_to_file_name(&Name::new_raw(name), "", ".glif", |name| {
+            let path = user_name_to_file_name(Name::new_raw(name), "", ".glif", |name| {
                 !existing.contains(name)
             });
             existing.insert(path.to_string_lossy().to_string().to_lowercase());
@@ -311,7 +311,7 @@ mod tests {
         let mut container = HashSet::new();
         let mut existing = HashSet::new();
         for name in ["A".repeat(300), "a_".repeat(150)] {
-            let path = user_name_to_file_name(&Name::new_raw(&name), "", ".glif", |name| {
+            let path = user_name_to_file_name(Name::new_raw(&name), "", ".glif", |name| {
                 !existing.contains(name)
             });
             existing.insert(path.to_string_lossy().to_string().to_lowercase());
