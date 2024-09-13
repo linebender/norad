@@ -11,7 +11,7 @@ use std::path::Path;
 ///
 /// # Examples
 ///
-/// A [DataRequest] that excludes all layer, glyph and kerning data:
+/// A [`DataRequest`] that excludes all layer, glyph and kerning data:
 ///
 /// ```
 /// use norad::DataRequest;
@@ -19,7 +19,7 @@ use std::path::Path;
 /// let datareq = DataRequest::default().layers(false).kerning(false);
 /// ```
 ///
-/// A [DataRequest] that excludes all UFO data and images:
+/// A [`DataRequest`] that excludes all UFO data and images:
 ///
 /// ```
 /// use norad::DataRequest;
@@ -27,7 +27,7 @@ use std::path::Path;
 /// let datareq = DataRequest::default().data(false).images(false);
 /// ```
 ///
-/// A [DataRequest] that only includes parsed lib.plist data:
+/// A [`DataRequest`] that only includes parsed `lib.plist` data:
 ///
 /// ```
 /// use norad::DataRequest;
@@ -41,13 +41,13 @@ use std::path::Path;
 pub struct DataRequest<'a> {
     // the layers to load.
     pub(crate) layers: LayerFilter<'a>,
-    /// Load parsed lib.plist data
+    /// Load parsed `lib.plist` data
     pub lib: bool,
-    /// Load parsed groups.plist data
+    /// Load parsed `groups.plist` data
     pub groups: bool,
-    /// Load parsed kerning.plist data
+    /// Load parsed `kerning.plist` data
     pub kerning: bool,
-    /// Load Adobe .fea format feature file data
+    /// Load Adobe `.fea` format feature file data
     pub features: bool,
     /// Load data
     pub data: bool,

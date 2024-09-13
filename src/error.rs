@@ -484,13 +484,13 @@ pub enum GlifWriteError {
     /// Failed to write a .glif file to disk.
     #[error("failed to write .glif file")]
     Io(#[source] IoError),
-    /// Plist serialization error. Wraps a [PlistError].
+    /// Plist serialization error. Wraps a [`PlistError`].
     #[error("error serializing glyph lib data internally")]
     Plist(#[source] PlistError),
     /// There exists a `public.objectLibs` glyph lib key when it should be set only by norad.
     #[error("the `public.objectLibs` lib key is managed by norad and must not be set manually")]
     PreexistingPublicObjectLibsKey,
-    /// XML serialization error. Wraps a [XmlError].
+    /// XML serialization error. Wraps a [`XmlError`].
     #[error("error serializing glyph to XML")]
     Xml(#[source] XmlError),
 }

@@ -1,6 +1,6 @@
 //! A collection of codepoints
 //!
-//! We want to preserve order and ensure uniqueness, so we use an IndexSet;
+//! We want to preserve order and ensure uniqueness, so we use an [`IndexSet`];
 //! however we don't want this to be part of our public API, so use a wrapper.
 
 use indexmap::IndexSet;
@@ -34,7 +34,7 @@ impl Codepoints {
         self.0.is_empty()
     }
 
-    /// Set the codepoints. See [Codepoints::new] for usage.
+    /// Set the codepoints. See [`Codepoints::new`] for usage.
     pub fn set(&mut self, codepoints: impl IntoIterator<Item = char>) {
         self.0.clear();
         self.0.extend(codepoints);

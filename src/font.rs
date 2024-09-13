@@ -158,7 +158,7 @@ impl Font {
     /// and in glyph libs and assign object libs found therein to global
     /// guidelines and glyph objects with the matching identifier, respectively.
     ///
-    /// See [Font::load_requested_data] for a load method that supports customization
+    /// See [`Font::load_requested_data`] for a load method that supports customization
     /// of the data inclusion / exclusion criteria.
     ///
     /// [v3]: http://unifiedfontobject.org/versions/ufo3/
