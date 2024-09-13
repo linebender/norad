@@ -1640,7 +1640,8 @@ impl<'de> Deserialize<'de> for WoffAttributeDirection {
     }
 }
 
-/// Corresponds to the styleMapStyleName in [Generic Identification Information](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#generic-identification-information).
+/// Corresponds to the `styleMapStyleName` in [Generic Identification Information](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#generic-identification-information).
+///
 /// If present, is either "regular", "italic", "bold" or "bold italic".
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum StyleMapStyle {

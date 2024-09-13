@@ -410,7 +410,7 @@ pub enum PointType {
     QCurve,
 }
 
-/// FromStr trait implementation for [`PointType`].
+/// `FromStr` trait implementation for [`PointType`].
 impl std::str::FromStr for PointType {
     type Err = ErrorKind;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -425,7 +425,7 @@ impl std::str::FromStr for PointType {
     }
 }
 
-/// Display trait implementation for [`PointType`].
+/// `Display` trait implementation for [`PointType`].
 impl std::fmt::Display for PointType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
