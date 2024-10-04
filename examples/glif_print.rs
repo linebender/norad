@@ -51,7 +51,7 @@ fn main() -> Result<(), io::Error> {
 fn print_tokens(xml: &str) -> Result<(), Error> {
     let mut reader = Reader::from_str(xml);
     let mut buf = Vec::new();
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
     let mut level = 0;
 
     loop {
