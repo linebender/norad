@@ -274,7 +274,7 @@ pub struct Anchor {
 pub struct Component {
     /// The name of the base glyph used in the component.
     pub base: Name,
-    /// Component affine transormation definition.
+    /// Component affine transformation definition.
     pub transform: AffineTransform,
     /// Optional unique identifier for the component within the glyph.
     ///
