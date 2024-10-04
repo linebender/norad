@@ -38,8 +38,6 @@ mod de {
 
     pub(super) struct DictWrapper(pub(super) Dictionary);
 
-    struct ValueWrapper;
-
     struct ArrayWrapper(Vec<Value>);
 
     struct IntWrapper(plist::Integer);
@@ -61,30 +59,6 @@ mod de {
         Date,
         True,
         False,
-    }
-
-    // the logic for deserializing a dict is a subset of the general deser logic,
-    // so we reuse this type for both cases.
-    struct ValueVisitor;
-
-    impl<'de> Visitor<'de> for ValueVisitor {
-        type Value = Value;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("plist value")
-        }
-
-        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-        where
-            A: serde::de::MapAccess<'de>,
-            A::Error: DeError,
-        {
-            match read_xml_value(&mut map) {
-                Ok(Some(val)) => Ok(val),
-                Ok(None) => Err(A::Error::custom("expected value")),
-                Err(e) => Err(e),
-            }
-        }
     }
 
     /// shared helper for deserializing a plist value from the serde map repr used by quick_xml
@@ -128,15 +102,6 @@ mod de {
             None => return Ok(None),
         };
         value.map(Some)
-    }
-
-    impl<'de> Deserialize<'de> for ValueWrapper {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            deserializer.deserialize_any(ValueVisitor).map(|_| ValueWrapper)
-        }
     }
 
     impl<'de> Deserialize<'de> for DictWrapper {
