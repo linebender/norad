@@ -888,3 +888,10 @@ fn deduplicate_unicodes2() {
 "#;
     assert_eq!(data2, data2_expected);
 }
+
+#[test]
+fn bom_glif() {
+    let bytes = include_bytes!("../../testdata/bom_glif.glif");
+    let glyph = parse_glyph(bytes).expect("initial load failed");
+    assert_eq!(glyph.lib.get("hi").unwrap().as_string(), Some("hello"));
+}
