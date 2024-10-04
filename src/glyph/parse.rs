@@ -23,6 +23,9 @@ type Version = (u32, u32);
 const VERSION_1: Version = (1, 0);
 const VERSION_2: Version = (2, 0);
 
+// https://en.wikipedia.org/wiki/Byte_order_mark
+const UTF8_BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
+
 pub(crate) struct GlifParser<'names> {
     glyph: Glyph,
     version: Version,
@@ -36,6 +39,8 @@ impl<'names> GlifParser<'names> {
         xml: &[u8],
         names: Option<&'names NameList>,
     ) -> Result<Glyph, GlifLoadError> {
+        // optional but allowed for utf-8.
+        let xml = xml.strip_prefix(UTF8_BOM).unwrap_or(xml);
         let mut reader = Reader::from_reader(xml);
         let mut buf = Vec::new();
         reader.trim_text(true);
