@@ -43,7 +43,7 @@ impl<'names> GlifParser<'names> {
         let xml = xml.strip_prefix(UTF8_BOM).unwrap_or(xml);
         let mut reader = Reader::from_reader(xml);
         let mut buf = Vec::new();
-        reader.trim_text(true);
+        reader.config_mut().trim_text(true);
 
         let (name, version) = start(&mut reader, &mut buf, names)?;
         let glyph = Glyph::new_impl(name);
@@ -302,13 +302,13 @@ impl<'names> GlifParser<'names> {
         // The plist crate currently uses a different XML parsing library internally, so
         // we can't pass over control to it directly. Instead, pass it the precise slice
         // of the raw buffer to parse.
-        let start = reader.buffer_position();
+        let start = reader.buffer_position() as usize;
         let mut end = start;
         loop {
             match reader.read_event_into(buf)? {
                 Event::End(ref end) if end.name().as_ref() == b"lib" => break,
                 Event::Eof => return Err(ErrorKind::UnexpectedEof.into()),
-                _other => end = reader.buffer_position(),
+                _other => end = reader.buffer_position() as usize,
             }
             buf.clear();
         }
