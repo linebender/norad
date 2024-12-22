@@ -278,10 +278,7 @@ impl<T: DataType> Store<T> {
 
     /// Returns a reference to the data corresponding to the path.
     pub fn get(&self, path: &Path) -> Option<Result<Arc<[u8]>, StoreError>> {
-        let cell = match self.items.get(path) {
-            Some(item) => item,
-            None => return None,
-        };
+        let cell = self.items.get(path)?;
 
         // If item isn't loaded, try to load it, saving the data or the error
         // NOTE: Figure out whether the item is unloaded and immediately drop the
