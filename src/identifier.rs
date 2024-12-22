@@ -72,7 +72,7 @@ impl<'a> PartialEq<&'a str> for Identifier {
     }
 }
 
-impl<'a> PartialEq<Identifier> for &'a str {
+impl PartialEq<Identifier> for &str {
     fn eq(&self, other: &Identifier) -> bool {
         other == self
     }

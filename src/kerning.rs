@@ -27,7 +27,7 @@ struct KerningInnerSerializer<'a> {
     inner_kerning: &'a BTreeMap<Name, f64>,
 }
 
-impl<'a> Serialize for KerningSerializer<'a> {
+impl Serialize for KerningSerializer<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -41,7 +41,7 @@ impl<'a> Serialize for KerningSerializer<'a> {
     }
 }
 
-impl<'a> Serialize for KerningInnerSerializer<'a> {
+impl Serialize for KerningInnerSerializer<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

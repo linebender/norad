@@ -75,7 +75,7 @@ impl<'a> PartialEq<&'a str> for Name {
     }
 }
 
-impl<'a> PartialEq<Name> for &'a str {
+impl PartialEq<Name> for &str {
     fn eq(&self, other: &Name) -> bool {
         other == self
     }

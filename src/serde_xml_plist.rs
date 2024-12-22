@@ -193,7 +193,7 @@ mod de {
         {
             struct IntegerVisitor;
 
-            impl<'de> Visitor<'de> for IntegerVisitor {
+            impl Visitor<'_> for IntegerVisitor {
                 type Value = plist::Integer;
 
                 fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -230,7 +230,7 @@ mod de {
     // visitor impl shared between key/value keywords
     struct KeywordVisitor<T>(PhantomData<*const T>);
 
-    impl<'de, T> Visitor<'de> for KeywordVisitor<T>
+    impl<T> Visitor<'_> for KeywordVisitor<T>
     where
         T: FromStr,
         T::Err: Display,
@@ -334,7 +334,7 @@ mod ser {
     /// e.g. `Value::Integer(10)` -> `<int>10</int>`
     struct ValueHelper<'lib>(&'lib Value);
 
-    impl<'lib> ValueHelper<'lib> {
+    impl ValueHelper<'_> {
         /// Allows for serialization of a value within a parent struct (array/dictionary)
         fn serialize_within<S>(
             &self,
