@@ -227,7 +227,7 @@ mod tests {
 
     // we don't want this in the crate because it can fail, but it is useful
     // for creating test data.
-    impl<'a> From<&'a str> for Name {
+    impl From<&str> for Name {
         fn from(src: &str) -> Self {
             Name::new_raw(src)
         }

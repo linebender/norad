@@ -64,7 +64,7 @@ pub(crate) struct LayerFilter<'a> {
     custom: Option<Box<FilterFn<'a>>>,
 }
 
-impl<'a> LayerFilter<'a> {
+impl LayerFilter<'_> {
     fn from_bool(b: bool) -> Self {
         LayerFilter { all: b, ..Default::default() }
     }
