@@ -22,9 +22,13 @@ default = []
 kurbo = ["dep:kurbo"]
 rayon = ["dep:rayon"]
 
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+uuid = { version = "1.2", features = ["v4"] }
+[target.'cfg(target_family = "wasm")'.dependencies]
+uuid = { version = "1.2", features = ["v4", "js"] }
+
 [dependencies]
 plist = { version =  "1.4.1", features = ["serde"] }
-uuid = { version = "1.2", features = ["v4"] }
 serde = { version =  "1.0", features = ["rc", "derive"] }
 serde_derive = "1.0"
 serde_repr = "0.1"
