@@ -27,7 +27,7 @@ fn load_all(dir: &str) -> Vec<Vec<u8>> {
         .unwrap()
         .map(|e| e.unwrap())
         .filter_map(|e| {
-            e.path().extension().map_or(false, |ext| ext == "glif").then(|| load_bytes(e.path()))
+            e.path().extension().is_some_and(|ext| ext == "glif").then(|| load_bytes(e.path()))
         })
         .collect()
 }
