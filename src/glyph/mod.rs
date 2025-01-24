@@ -302,7 +302,7 @@ pub struct Contour {
 impl Contour {
     /// Whether the contour is closed.
     pub fn is_closed(&self) -> bool {
-        self.points.first().map_or(true, |v| v.typ != PointType::Move)
+        self.points.first().is_none_or(|v| v.typ != PointType::Move)
     }
 
     /// Converts the `Contour` to a [`kurbo::BezPath`].
@@ -737,7 +737,7 @@ impl Image {
         if file_name.is_absolute() {
             return Err(StoreError::PathIsAbsolute);
         }
-        if file_name.parent().map_or(false, |p| !p.as_os_str().is_empty()) {
+        if file_name.parent().is_some_and(|p| !p.as_os_str().is_empty()) {
             return Err(StoreError::Subdir);
         }
         Ok(Self { file_name, color, transform })

@@ -230,7 +230,7 @@ impl DataType for Image {
         if path.is_absolute() {
             return Err(StoreError::PathIsAbsolute);
         }
-        if path.parent().map_or(false, |p| !p.as_os_str().is_empty()) {
+        if path.parent().is_some_and(|p| !p.as_os_str().is_empty()) {
             return Err(StoreError::Subdir);
         }
         // Check for a valid PNG header signature.
