@@ -37,11 +37,6 @@ impl Identifier {
         Self(string.into())
     }
 
-    /// Create a new [`Identifier`] from a UUID v4 identifier.
-    pub fn from_uuidv4() -> Self {
-        Self::new(uuid::Uuid::new_v4().to_string().as_ref()).unwrap()
-    }
-
     /// Return the raw identifier, as a `&str`.
     pub fn as_str(&self) -> &str {
         self.as_ref()

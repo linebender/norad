@@ -70,11 +70,8 @@ impl Guideline {
     }
 
     /// Replaces the actual lib by the lib given in parameter, returning the old
-    /// lib if present. Sets a new UUID v4 identifier if none is set already.
+    /// lib if present.
     pub fn replace_lib(&mut self, lib: Plist) -> Option<Plist> {
-        if self.identifier.is_none() {
-            self.identifier.replace(Identifier::from_uuidv4());
-        }
         self.lib.replace(lib)
     }
 

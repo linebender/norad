@@ -82,3 +82,19 @@ jobs:
 
       - name: check typos
         uses: crate-ci/typos@v1.25.0
+
+  # We use `cargo build` here because `cargo check` doesn't pick up all
+  # warnings / errors. Notably, it misses `arithmetic_overflow`.
+  check-wasm:
+    name: cargo check wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: wasm32-unknown-unknown
+
+      - name: build fontdrasil for wasm32-unknown-unknown
+        run: cargo build --target wasm32-unknown-unknown

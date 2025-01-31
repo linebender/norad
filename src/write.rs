@@ -163,7 +163,10 @@ pub(crate) fn write_xml_to_file(
 }
 
 /// Write XML declarations with custom quote formatting options.
-fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), std::io::Error> {
+fn write_quote_style(
+    #[allow(unused)] file: &File,
+    options: &WriteOptions,
+) -> Result<(), std::io::Error> {
     // Optionally modify the XML declaration quote style
     match options.quote_style {
         QuoteChar::Single => {
