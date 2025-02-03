@@ -1024,7 +1024,7 @@ impl FontInfo {
                                 id.as_str().to_string(),
                             )
                         })?;
-                        guideline.replace_lib(lib);
+                        guideline.lib = Some(lib);
                     }
                 }
             }
@@ -1740,21 +1740,14 @@ mod tests {
         assert_eq!(
             font_info.guidelines,
             Some(vec![
-                Guideline::new(
-                    Line::Angle { x: 82.0, y: 720.0, degrees: 90.0 },
-                    None,
-                    None,
-                    None,
-                    None
-                ),
-                Guideline::new(Line::Vertical(372.0), None, None, None, None),
-                Guideline::new(Line::Horizontal(123.0), None, None, None, None),
+                Guideline::new(Line::Angle { x: 82.0, y: 720.0, degrees: 90.0 }, None, None, None,),
+                Guideline::new(Line::Vertical(372.0), None, None, None,),
+                Guideline::new(Line::Horizontal(123.0), None, None, None,),
                 Guideline::new(
                     Line::Angle { x: 1.0, y: 2.0, degrees: 0.0 },
                     Some(Name::new_raw(" [locked]")),
                     Some(Color::new(1.0, 1.0, 1.0, 1.0).unwrap()),
                     Some(Identifier::new_raw("abc")),
-                    None
                 ),
             ])
         );
@@ -1906,38 +1899,14 @@ mod tests {
         assert!(fi.validate().is_ok());
 
         fi.guidelines.replace(vec![
-            Guideline::new(
-                Line::Horizontal(10.0),
-                None,
-                None,
-                Some(Identifier::new_raw("test1")),
-                None,
-            ),
-            Guideline::new(
-                Line::Vertical(20.0),
-                None,
-                None,
-                Some(Identifier::new_raw("test2")),
-                None,
-            ),
+            Guideline::new(Line::Horizontal(10.0), None, None, Some(Identifier::new_raw("test1"))),
+            Guideline::new(Line::Vertical(20.0), None, None, Some(Identifier::new_raw("test2"))),
         ]);
         assert!(fi.validate().is_ok());
 
         fi.guidelines.replace(vec![
-            Guideline::new(
-                Line::Horizontal(10.0),
-                None,
-                None,
-                Some(Identifier::new_raw("test1")),
-                None,
-            ),
-            Guideline::new(
-                Line::Vertical(20.0),
-                None,
-                None,
-                Some(Identifier::new_raw("test1")),
-                None,
-            ),
+            Guideline::new(Line::Horizontal(10.0), None, None, Some(Identifier::new_raw("test1"))),
+            Guideline::new(Line::Vertical(20.0), None, None, Some(Identifier::new_raw("test1"))),
         ]);
         assert!(fi.validate().is_err());
     }

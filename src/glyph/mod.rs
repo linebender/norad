@@ -173,7 +173,7 @@ impl Glyph {
                         let lib = lib
                             .into_dictionary()
                             .ok_or(GlifLoadError::ObjectLibMustBeDictionary(id.into()))?;
-                        $object.replace_lib(lib);
+                        $object.lib = Some(lib);
                     }
                 }
             };
@@ -463,16 +463,8 @@ impl Anchor {
         name: Option<Name>,
         color: Option<Color>,
         identifier: Option<Identifier>,
-        lib: Option<Plist>,
     ) -> Self {
-        let mut this = Self { x, y, name, color, identifier: None, lib: None };
-        if let Some(id) = identifier {
-            this.replace_identifier(id);
-        }
-        if let Some(lib) = lib {
-            this.replace_lib(lib);
-        }
-        this
+        Self { x, y, name, color, identifier, lib: None }
     }
 
     /// Returns a reference to the anchor's lib.
@@ -487,6 +479,7 @@ impl Anchor {
 
     /// Replaces the actual lib by the lib given in parameter, returning the old
     /// lib if present. Sets a new UUID v4 identifier if none is set already.
+    #[cfg(feature = "object-libs")]
     pub fn replace_lib(&mut self, lib: Plist) -> Option<Plist> {
         if self.identifier.is_none() {
             self.identifier.replace(Identifier::from_uuidv4());
@@ -513,19 +506,8 @@ impl Anchor {
 
 impl Contour {
     /// Returns a new [`Contour`] given a vector of contour points.
-    pub fn new(
-        points: Vec<ContourPoint>,
-        identifier: Option<Identifier>,
-        lib: Option<Plist>,
-    ) -> Self {
-        let mut this = Self { points, identifier: None, lib: None };
-        if let Some(id) = identifier {
-            this.replace_identifier(id);
-        }
-        if let Some(lib) = lib {
-            this.replace_lib(lib);
-        }
-        this
+    pub fn new(points: Vec<ContourPoint>, identifier: Option<Identifier>) -> Self {
+        Self { points, identifier, lib: None }
     }
 
     /// Returns a reference to the contour's lib.
@@ -540,6 +522,7 @@ impl Contour {
 
     /// Replaces the actual lib by the lib given in parameter, returning the old
     /// lib if present. Sets a new UUID v4 identifier if none is set already.
+    #[cfg(feature = "object-libs")]
     pub fn replace_lib(&mut self, lib: Plist) -> Option<Plist> {
         if self.identifier.is_none() {
             self.identifier.replace(Identifier::from_uuidv4());
@@ -574,16 +557,8 @@ impl ContourPoint {
         smooth: bool,
         name: Option<Name>,
         identifier: Option<Identifier>,
-        lib: Option<Plist>,
     ) -> Self {
-        let mut this = Self { x, y, typ, smooth, name, identifier: None, lib: None };
-        if let Some(id) = identifier {
-            this.replace_identifier(id);
-        }
-        if let Some(lib) = lib {
-            this.replace_lib(lib);
-        }
-        this
+        Self { x, y, typ, smooth, name, identifier, lib: None }
     }
 
     /// Returns a reference to the contour's lib.
@@ -598,6 +573,7 @@ impl ContourPoint {
 
     /// Replaces the actual lib by the lib given in parameter, returning the old
     /// lib if present. Sets a new UUID v4 identifier if none is set already.
+    #[cfg(feature = "object-libs")]
     pub fn replace_lib(&mut self, lib: Plist) -> Option<Plist> {
         if self.identifier.is_none() {
             self.identifier.replace(Identifier::from_uuidv4());
@@ -640,20 +616,8 @@ impl Component {
     /// Returns a new [`Component`] given a base glyph name and affine transformation definition.
     ///
     /// The 'name' argument should be taken from an existing glyph in  the same layer.
-    pub fn new(
-        base: Name,
-        transform: AffineTransform,
-        identifier: Option<Identifier>,
-        lib: Option<Plist>,
-    ) -> Self {
-        let mut this = Self { base, transform, identifier: None, lib: None };
-        if let Some(id) = identifier {
-            this.replace_identifier(id);
-        }
-        if let Some(lib) = lib {
-            this.replace_lib(lib);
-        }
-        this
+    pub fn new(base: Name, transform: AffineTransform, identifier: Option<Identifier>) -> Self {
+        Self { base, transform, identifier, lib: None }
     }
 
     /// Returns a reference to the component's lib.
@@ -668,6 +632,7 @@ impl Component {
 
     /// Replaces the actual lib by the lib given in parameter, returning the old
     /// lib if present. Sets a new UUID v4 identifier if none is set already.
+    #[cfg(feature = "object-libs")]
     pub fn replace_lib(&mut self, lib: Plist) -> Option<Plist> {
         if self.identifier.is_none() {
             self.identifier.replace(Identifier::from_uuidv4());

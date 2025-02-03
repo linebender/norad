@@ -52,7 +52,7 @@ impl OutlineBuilder {
         match self.scratch_state {
             OutlineBuilderState::Idle => {
                 self.scratch_state = OutlineBuilderState::Drawing {
-                    scratch_contour: Contour::new(Vec::new(), identifier, None),
+                    scratch_contour: Contour::new(Vec::new(), identifier),
                     number_of_offcurves: 0,
                 };
                 Ok(self)
@@ -113,7 +113,6 @@ impl OutlineBuilder {
                     smooth,
                     name,
                     identifier,
-                    None,
                 ));
                 Ok(self)
             }
@@ -175,7 +174,7 @@ impl OutlineBuilder {
         transform: AffineTransform,
         identifier: Option<Identifier>,
     ) -> &mut Self {
-        self.components.push(Component::new(base, transform, identifier, None));
+        self.components.push(Component::new(base, transform, identifier));
         self
     }
 
@@ -224,9 +223,9 @@ mod tests {
             contours,
             vec![Contour::new(
                 vec![
-                    ContourPoint::new(173.0, 536.0, PointType::Line, false, None, None, None,),
-                    ContourPoint::new(85.0, 536.0, PointType::Line, false, None, None, None,),
-                    ContourPoint::new(85.0, 0.0, PointType::Line, false, None, None, None),
+                    ContourPoint::new(173.0, 536.0, PointType::Line, false, None, None),
+                    ContourPoint::new(85.0, 536.0, PointType::Line, false, None, None),
+                    ContourPoint::new(85.0, 0.0, PointType::Line, false, None, None),
                     ContourPoint::new(
                         173.0,
                         0.0,
@@ -234,11 +233,9 @@ mod tests {
                         false,
                         None,
                         Some(Identifier::new_raw("def")),
-                        None,
                     ),
                 ],
                 Some(Identifier::new_raw("abc")),
-                None,
             )]
         );
 
@@ -255,7 +252,6 @@ mod tests {
                     y_offset: 0.0,
                 },
                 Some(Identifier::new_raw("xyz")),
-                None,
             )]
         );
 
