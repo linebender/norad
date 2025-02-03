@@ -333,7 +333,7 @@ mod serde_impls {
                 where
                     D: ::serde::Deserializer<'de>,
                 {
-                    use ::serde::Deserialize as _;
+                    use serde::Deserialize as _;
                     #[derive(::serde::Deserialize)]
                     struct Helper {
                         $field_name: Vec<$inner>,
@@ -348,7 +348,7 @@ mod serde_impls {
                 where
                     S: ::serde::Serializer,
                 {
-                    use ::serde::Serialize as _;
+                    use serde::Serialize as _;
                     #[derive(::serde::Serialize)]
                     struct Helper<'a> {
                         $field_name: &'a [$inner],
