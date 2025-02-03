@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use plist::Error as PlistError;
 use quick_xml::events::attributes::AttrError;
-use quick_xml::{DeError, Error as XmlError};
+use quick_xml::{DeError, Error as XmlError, SeError};
 use thiserror::Error;
 
 pub use crate::shared_types::ColorError;
@@ -27,6 +27,7 @@ pub enum DesignSpaceLoadError {
 
 /// An error that occurs while attempting to write a designspace file to disk.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum DesignSpaceSaveError {
     /// An [`std::io::Error`].
     #[error("failed to open/write designspace file: {0}")]
@@ -34,11 +35,12 @@ pub enum DesignSpaceSaveError {
 
     /// A serialization error.
     #[error("failed to serialize designspace: {0}")]
-    SeError(#[from] DeError),
+    SeError(#[from] SeError),
 }
 
 /// An error representing a failure to (re)name something.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum NamingError {
     /// An error returned when an item is duplicated.
     #[error("item '{0}' already exists")]

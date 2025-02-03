@@ -1,10 +1,10 @@
 //! Writing out .glif files
 
-use std::io::{Cursor, Write};
+use std::io::{self, Cursor, Write};
 
 use quick_xml::{
     events::{BytesEnd, BytesStart, BytesText, Event},
-    Error as XmlError, Writer,
+    Writer,
 };
 
 use super::PUBLIC_OBJECT_LIBS_KEY;
@@ -57,10 +57,10 @@ impl Glyph {
         // we always serialize 2.0
         //TODO: write out formatMinor if we start to support glif 2.1?
         start.push_attribute(("format", "2"));
-        writer.write_event(Event::Start(start)).map_err(GlifWriteError::Xml)?;
+        writer.write_event(Event::Start(start)).map_err(GlifWriteError::Buffer)?;
 
         for codepoint in &self.codepoints {
-            writer.write_event(char_to_event(*codepoint)).map_err(GlifWriteError::Xml)?;
+            writer.write_event(char_to_event(*codepoint)).map_err(GlifWriteError::Buffer)?;
         }
 
         // Skip serializing advance if both values are zero, infinite, subnormal, or NaN.
@@ -72,34 +72,34 @@ impl Glyph {
             if self.width != 0. {
                 start.push_attribute(("width", self.width.to_string().as_str()));
             }
-            writer.write_event(Event::Empty(start)).map_err(GlifWriteError::Xml)?;
+            writer.write_event(Event::Empty(start)).map_err(GlifWriteError::Buffer)?;
         }
 
         if let Some(ref image) = self.image {
-            writer.write_event(image.to_event()).map_err(GlifWriteError::Xml)?;
+            writer.write_event(image.to_event()).map_err(GlifWriteError::Buffer)?;
         }
 
         if !self.contours.is_empty() || !self.components.is_empty() {
             writer
                 .write_event(Event::Start(BytesStart::new("outline")))
-                .map_err(GlifWriteError::Xml)?;
+                .map_err(GlifWriteError::Buffer)?;
             for contour in &self.contours {
-                contour.write_xml(&mut writer).map_err(GlifWriteError::Xml)?;
+                contour.write_xml(&mut writer).map_err(GlifWriteError::Buffer)?;
             }
             for component in &self.components {
-                writer.write_event(component.to_event()).map_err(GlifWriteError::Xml)?;
+                writer.write_event(component.to_event()).map_err(GlifWriteError::Buffer)?;
             }
             writer
                 .write_event(Event::End(BytesEnd::new("outline")))
-                .map_err(GlifWriteError::Xml)?;
+                .map_err(GlifWriteError::Buffer)?;
         }
 
         for anchor in &self.anchors {
-            writer.write_event(anchor.to_event()).map_err(GlifWriteError::Xml)?;
+            writer.write_event(anchor.to_event()).map_err(GlifWriteError::Buffer)?;
         }
 
         for guide in &self.guidelines {
-            writer.write_event(guide.to_event()).map_err(GlifWriteError::Xml)?;
+            writer.write_event(guide.to_event()).map_err(GlifWriteError::Buffer)?;
         }
 
         // Object libs are treated specially. The UFO v3 format won't allow us
@@ -123,12 +123,16 @@ impl Glyph {
         if let Some(ref note) = self.note {
             writer
                 .write_event(Event::Start(BytesStart::new("note")))
-                .map_err(GlifWriteError::Xml)?;
-            writer.write_event(Event::Text(BytesText::new(note))).map_err(GlifWriteError::Xml)?;
-            writer.write_event(Event::End(BytesEnd::new("note"))).map_err(GlifWriteError::Xml)?;
+                .map_err(GlifWriteError::Buffer)?;
+            writer
+                .write_event(Event::Text(BytesText::new(note)))
+                .map_err(GlifWriteError::Buffer)?;
+            writer
+                .write_event(Event::End(BytesEnd::new("note")))
+                .map_err(GlifWriteError::Buffer)?;
         }
 
-        writer.write_event(Event::End(BytesEnd::new("glyph"))).map_err(GlifWriteError::Xml)?;
+        writer.write_event(Event::End(BytesEnd::new("glyph"))).map_err(GlifWriteError::Buffer)?;
         writer.get_mut().write_all("\n".as_bytes()).map_err(GlifWriteError::Buffer)?;
         writer.get_mut().flush().map_err(GlifWriteError::Buffer)?;
 
@@ -163,14 +167,14 @@ fn write_lib_section<T: Write>(
     let end_idx = lib_xml.find(footer).ok_or(GlifWriteError::InternalLibWriteError)?;
     let to_write = &lib_xml[start_idx..end_idx];
 
-    writer.write_event(Event::Start(BytesStart::new("lib"))).map_err(GlifWriteError::Xml)?;
+    writer.write_event(Event::Start(BytesStart::new("lib"))).map_err(GlifWriteError::Buffer)?;
     for line in to_write.lines() {
         writer.get_mut().write_all("\n".as_bytes()).map_err(GlifWriteError::Buffer)?;
         options.write_indent(writer.get_mut()).map_err(GlifWriteError::Buffer)?;
         options.write_indent(writer.get_mut()).map_err(GlifWriteError::Buffer)?;
         writer.get_mut().write_all(line.as_bytes()).map_err(GlifWriteError::Buffer)?;
     }
-    writer.write_event(Event::End(BytesEnd::new("lib"))).map_err(GlifWriteError::Xml)?;
+    writer.write_event(Event::End(BytesEnd::new("lib"))).map_err(GlifWriteError::Buffer)?;
     Ok(())
 }
 
@@ -248,7 +252,7 @@ impl Component {
 }
 
 impl Contour {
-    fn write_xml<T: Write>(&self, writer: &mut Writer<T>) -> Result<(), XmlError> {
+    fn write_xml<T: Write>(&self, writer: &mut Writer<T>) -> Result<(), io::Error> {
         let mut start = BytesStart::new("contour");
 
         if let Some(id) = &self.identifier {
@@ -260,8 +264,7 @@ impl Contour {
         for point in &self.points {
             writer.write_event(point.to_event())?;
         }
-        writer.write_event(Event::End(BytesEnd::new("contour")))?;
-        Ok(())
+        writer.write_event(Event::End(BytesEnd::new("contour")))
     }
 }
 
