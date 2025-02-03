@@ -18,14 +18,16 @@ exclude = [
 features = ["kurbo"]
 
 [features]
-default = []
+default = ["object-libs"]
+# allow us to add libs to objects, which requires potentially creating identifiers
+object-libs = ["uuid"]
 kurbo = ["dep:kurbo"]
 rayon = ["dep:rayon"]
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
-uuid = { version = "1.2", features = ["v4"] }
+uuid = { version = "1.2", features = ["v4"], optional = true }
 [target.'cfg(target_family = "wasm")'.dependencies]
-uuid = { version = "1.2", features = ["v4", "js"] }
+uuid = { version = "1.2", features = ["v4", "js"], optional = true }
 
 [dependencies]
 plist = { version =  "1.4.1", features = ["serde"] }

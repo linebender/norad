@@ -38,6 +38,7 @@ impl Identifier {
     }
 
     /// Create a new [`Identifier`] from a UUID v4 identifier.
+    #[cfg(feature = "object-libs")]
     pub fn from_uuidv4() -> Self {
         Self::new(uuid::Uuid::new_v4().to_string().as_ref()).unwrap()
     }

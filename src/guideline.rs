@@ -17,7 +17,7 @@ pub struct Guideline {
     /// when a lib is present and should otherwise only be added as needed.
     identifier: Option<Identifier>,
     /// The guideline's lib for arbitrary data.
-    lib: Option<Plist>,
+    pub(crate) lib: Option<Plist>,
 }
 
 /// An infinite line.
@@ -47,16 +47,8 @@ impl Guideline {
         name: Option<Name>,
         color: Option<Color>,
         identifier: Option<Identifier>,
-        lib: Option<Plist>,
     ) -> Self {
-        let mut this = Self { line, name, color, identifier: None, lib: None };
-        if let Some(id) = identifier {
-            this.replace_identifier(id);
-        }
-        if let Some(lib) = lib {
-            this.replace_lib(lib);
-        }
-        this
+        Self { line, name, color, identifier, lib: None }
     }
 
     /// Returns a reference to the Guideline's lib.
@@ -71,6 +63,7 @@ impl Guideline {
 
     /// Replaces the actual lib by the lib given in parameter, returning the old
     /// lib if present. Sets a new UUID v4 identifier if none is set already.
+    #[cfg(feature = "object-libs")]
     pub fn replace_lib(&mut self, lib: Plist) -> Option<Plist> {
         if self.identifier.is_none() {
             self.identifier.replace(Identifier::from_uuidv4());
@@ -170,7 +163,7 @@ impl<'de> Deserialize<'de> for Guideline {
             }
         };
 
-        Ok(Guideline::new(line, guideline.name, guideline.color, guideline.identifier, None))
+        Ok(Guideline::new(line, guideline.name, guideline.color, guideline.identifier))
     }
 }
 
@@ -187,7 +180,6 @@ mod tests {
             Some(Name::new_raw("hello")),
             Some(Color::new(0.0, 0.5, 0.0, 0.5).unwrap()),
             Some(Identifier::new_raw("abcABC123")),
-            None,
         );
         assert_tokens(
             &g1,

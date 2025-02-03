@@ -211,10 +211,10 @@ fn parse_v1_upgrade_anchors() {
     assert_eq!(
         glyph.anchors,
         vec![
-            Anchor::new(10.0, 10.0, Some("top".into()), None, None, None),
-            Anchor::new(10.0, 20.0, Some("bottom".into()), None, None, None),
-            Anchor::new(30.0, 20.0, Some("left".into()), None, None, None),
-            Anchor::new(40.0, 20.0, Some("right".into()), None, None, None),
+            Anchor::new(10.0, 10.0, Some("top".into()), None, None,),
+            Anchor::new(10.0, 20.0, Some("bottom".into()), None, None,),
+            Anchor::new(30.0, 20.0, Some("left".into()), None, None,),
+            Anchor::new(40.0, 20.0, Some("right".into()), None, None,),
         ]
     );
     assert_eq!(glyph.guidelines, vec![]);

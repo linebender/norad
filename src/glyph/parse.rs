@@ -177,14 +177,8 @@ impl<'names> GlifParser<'names> {
                     && c.points[0].name.is_some()
                 {
                     let anchor_point = c.points.remove(0);
-                    let anchor = Anchor::new(
-                        anchor_point.x,
-                        anchor_point.y,
-                        anchor_point.name,
-                        None,
-                        None,
-                        None,
-                    );
+                    let anchor =
+                        Anchor::new(anchor_point.x, anchor_point.y, anchor_point.name, None, None);
                     self.glyph.anchors.push(anchor);
                 }
             }
@@ -455,7 +449,7 @@ impl<'names> GlifParser<'names> {
 
         match (x, y) {
             (Some(x), Some(y)) => {
-                self.glyph.anchors.push(Anchor::new(x, y, name, color, identifier, None));
+                self.glyph.anchors.push(Anchor::new(x, y, name, color, identifier));
                 Ok(())
             }
             _ => Err(ErrorKind::BadAnchor.into()),
@@ -502,7 +496,7 @@ impl<'names> GlifParser<'names> {
             (Some(x), Some(y), Some(degrees)) => Line::Angle { x, y, degrees },
             _ => return Err(ErrorKind::BadGuideline.into()),
         };
-        self.glyph.guidelines.push(Guideline::new(line, name, color, identifier, None));
+        self.glyph.guidelines.push(Guideline::new(line, name, color, identifier));
 
         Ok(())
     }
