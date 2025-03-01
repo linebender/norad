@@ -11,6 +11,7 @@
 otFamilyName = "otFamilyName"
 otMacName = "otMacName"
 otStyleName = "otStyleName"
+typ = "typ"
 wdth = "wdth"
 
 # Match Inside a Word - Case Insensitive
