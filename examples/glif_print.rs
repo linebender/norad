@@ -23,7 +23,7 @@ fn main() -> Result<(), io::Error> {
     let path = match env::args().nth(1).map(PathBuf::from) {
         Some(ref p) if p.exists() && p.extension() == Some(OsStr::new("glif")) => p.to_owned(),
         Some(ref p) => {
-            eprintln!("path {:?} is not an existing .glif file, exiting", p);
+            eprintln!("path {p:?} is not an existing .glif file, exiting");
             std::process::exit(1);
         }
         None => {
@@ -36,13 +36,13 @@ fn main() -> Result<(), io::Error> {
     let to_xml = glyph.encode_xml().unwrap();
     let to_xml = String::from_utf8(to_xml).unwrap();
     // redirect this to a file to get the rewritten glif
-    println!("{}", to_xml);
+    println!("{to_xml}");
 
     let xml = fs::read_to_string(&path)?;
     match print_tokens(&xml) {
         Ok(_) => Ok(()),
         Err(e) => {
-            eprintln!("error {}", e);
+            eprintln!("error {e}");
             std::process::exit(1);
         }
     }
@@ -63,7 +63,7 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
                 let encoding = decl.encoding().transpose()?.unwrap_or_default();
                 let encoding = std::str::from_utf8(&encoding)?;
 
-                eprintln!("xml version {} encoding {}", version, encoding);
+                eprintln!("xml version {version} encoding {encoding}");
             }
             Ok(Event::Start(start)) => {
                 let name = start.name();
@@ -73,7 +73,7 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
                     let attr = attr?;
                     let key = std::str::from_utf8(attr.key.as_ref())?;
                     let value = attr.unescape_value()?;
-                    eprint!(" {}=\"{}\"", key, value);
+                    eprint!(" {key}=\"{value}\"");
                 }
                 eprintln!(">");
                 level += 1;
@@ -92,14 +92,14 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
                     let Attribute { key, value } = attr?;
                     let key = std::str::from_utf8(key.as_ref())?;
                     let value = std::str::from_utf8(&value)?;
-                    eprint!(" {}=\"{}\"", key, value);
+                    eprint!(" {key}=\"{value}\"");
                 }
                 eprintln!("/>");
             }
             Ok(Event::Eof) => break,
-            Ok(other) => eprintln!("{:?}", other),
+            Ok(other) => eprintln!("{other:?}"),
             Err(e) => {
-                eprintln!("error {:?}", e);
+                eprintln!("error {e:?}");
                 std::process::exit(1);
             }
         }

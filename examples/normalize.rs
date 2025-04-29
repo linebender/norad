@@ -10,7 +10,7 @@ fn main() {
         let mut ufo = match norad::Font::load(&arg) {
             Ok(v) => v,
             Err(e) => {
-                eprintln!("Loading UFO failed: {}", e);
+                eprintln!("Loading UFO failed: {e}");
                 std::process::exit(1);
             }
         };
@@ -53,7 +53,7 @@ fn main() {
 
         ufo.meta.creator = Some("org.linebender.norad".to_string());
         if let Err(e) = ufo.save(arg) {
-            eprintln!("Saving UFO failed: {}", e);
+            eprintln!("Saving UFO failed: {e}");
             std::process::exit(1);
         }
     }

@@ -245,7 +245,7 @@ impl std::fmt::Display for FontInfoErrorKind {
                 write!(f, "guideline identifiers must be unique within the fontinfo.plist file")
             }
             EmptyWoffAttribute(s) => {
-                write!(f, "a '{}' element must not be empty", s)
+                write!(f, "a '{s}' element must not be empty")
             }
             InvalidOpenTypeHeadCreatedDate => {
                 write!(f, "openTypeHeadCreated must be of format 'YYYY/MM/DD HH:MM:SS'")
@@ -259,24 +259,23 @@ impl std::fmt::Display for FontInfoErrorKind {
             InvalidPostscriptListLength { name, max_len, len } => {
                 write!(
                     f,
-                    "the Postscript field '{}' must contain at most {} items but found {}",
-                    name, max_len, len
+                    "the Postscript field '{name}' must contain at most {max_len} items but found {len}"
                 )
             }
             PostscriptListMustBePairs(name) => {
-                write!(f, "the Postscript field '{}' must contain pairs", name)
+                write!(f, "the Postscript field '{name}' must contain pairs")
             }
             UnknownFontStyle(s) => {
-                write!(f, "unrecognized fontStyle '{}'", s)
+                write!(f, "unrecognized fontStyle '{s}'")
             }
             UnknownMsCharSet(c) => {
-                write!(f, "unrecognized msCharSet '{}'", c)
+                write!(f, "unrecognized msCharSet '{c}'")
             }
             UnknownStyleMapStyleName => {
                 write!(f, "unknown value for styleMapStyleName")
             }
             UnknownWidthClass(w) => {
-                write!(f, "unrecognized OS/2 width class '{}'", w)
+                write!(f, "unrecognized OS/2 width class '{w}'")
             }
             UnknownWoffDirection => {
                 write!(f, "unknown value for the WOFF direction attribute")
@@ -625,9 +624,9 @@ impl std::fmt::Display for ErrorKind {
             UnexpectedAnchorField => write!(f, "unexpected anchor field"),
             UnexpectedGuidelineField => write!(f, "unexpected guideline field"),
             UnexpectedImageField => write!(f, "unexpected image field"),
-            DuplicateElement(s) => write!(f, "there must be only one '{}' element", s),
-            UnexpectedV1Element(s) => write!(f, "unexpected element in a format 1 glif: {}", s),
-            UnexpectedV1Attribute(s) => write!(f, "unexpected attribute in a format 1 glif: {}", s),
+            DuplicateElement(s) => write!(f, "there must be only one '{s}' element"),
+            UnexpectedV1Element(s) => write!(f, "unexpected element in a format 1 glif: {s}"),
+            UnexpectedV1Attribute(s) => write!(f, "unexpected attribute in a format 1 glif: {s}"),
             ComponentEmptyBase => write!(f, "a 'component' element has an empty 'base' attribute"),
             ComponentMissingBase => {
                 write!(f, "a 'component' element is missing a 'base' attribute")

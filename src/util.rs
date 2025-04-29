@@ -161,7 +161,7 @@ pub fn user_name_to_file_name(
 
         let mut found_unique = false;
         for counter in 1..100u8 {
-            write!(&mut result, "{:0>2}", counter).unwrap();
+            write!(&mut result, "{counter:0>2}").unwrap();
             result.push_str(suffix);
             if accept_path(&result.to_lowercase()) {
                 //if !existing.contains(&result.to_lowercase()) {

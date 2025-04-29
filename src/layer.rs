@@ -656,11 +656,11 @@ mod tests {
         let mut layer = Layer::load(layer_path, DEFAULT_LAYER_NAME).unwrap();
         layer.remove_glyph("A");
         if let Some(glyph) = layer.get_glyph("A") {
-            panic!("{:?}", glyph);
+            panic!("{glyph:?}");
         }
 
         if let Some(path) = layer.get_path("A") {
-            panic!("{:?}", path);
+            panic!("{path:?}");
         }
     }
 
