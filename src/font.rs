@@ -748,10 +748,10 @@ mod tests {
         let path = "testdata/ufo/Tester-MissingGlyphsContents.ufo";
         let font_load_res = Font::load(path);
         let Err(FontLoadError::Layer { source, .. }) = font_load_res else {
-            panic!("expected FontLoadError, found '{:?}'", font_load_res);
+            panic!("expected FontLoadError, found '{font_load_res:?}'");
         };
         if !matches!(source.deref(), LayerLoadError::MissingContentsFile) {
-            panic!("expected MissingContentsFile, found '{:?}'", source);
+            panic!("expected MissingContentsFile, found '{source:?}'");
         }
     }
 
@@ -762,10 +762,10 @@ mod tests {
         let path = "testdata/ufo/Tester-MissingGlyphsContents-BackgroundLayer.ufo";
         let font_load_res = Font::load(path);
         let Err(FontLoadError::Layer { source, .. }) = font_load_res else {
-            panic!("expected FontLoadError, found '{:?}'", font_load_res);
+            panic!("expected FontLoadError, found '{font_load_res:?}'");
         };
         if !matches!(source.deref(), LayerLoadError::MissingContentsFile) {
-            panic!("expected MissingContentsFile, found '{:?}'", source);
+            panic!("expected MissingContentsFile, found '{source:?}'");
         }
     }
 

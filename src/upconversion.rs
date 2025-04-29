@@ -91,7 +91,7 @@ fn make_unique_group_name(name: Name, existing_groups: &Groups) -> Name {
     let mut counter = 1;
     let mut new_name = name.clone();
     while existing_groups.contains_key(&new_name) {
-        new_name = Name::new(&format!("{}{}", name, counter)).unwrap();
+        new_name = Name::new(&format!("{name}{counter}")).unwrap();
         counter += 1;
     }
 

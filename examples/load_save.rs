@@ -40,14 +40,14 @@ fn main() {
         ufo.save(outpath).expect("failed to save UFO");
         let duration = start.elapsed();
         let time_str = format_time(duration);
-        println!("wrote UFO to disk in {}", time_str);
+        println!("wrote UFO to disk in {time_str}");
     }
 }
 
 fn format_time(duration: Duration) -> String {
     let secs = duration.as_secs();
     let millis = duration.subsec_millis();
-    format!("{}.{}s", secs, millis)
+    format!("{secs}.{millis}s")
 }
 
 struct Args {

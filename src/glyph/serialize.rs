@@ -327,7 +327,7 @@ impl Color {
 
             scratch.clear();
             // This can only fail on an allocation error, in which case we have other problems.
-            let _ = write!(&mut scratch, "{:.3}", channel);
+            let _ = write!(&mut scratch, "{channel:.3}");
             result.push_str(scratch.trim_end_matches('0').trim_end_matches('.'));
         }
         result
