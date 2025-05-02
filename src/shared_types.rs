@@ -12,7 +12,7 @@ pub type Plist = plist::Dictionary;
 /// A color in RGBA (Red-Green-Blue-Alpha) format.
 ///
 /// See <https://unifiedfontobject.org/versions/ufo3/conventions/#colors>.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub struct Color {
     /// Red channel value. Must be in the range 0 to 1, inclusive.
     red: f64,

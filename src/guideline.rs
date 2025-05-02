@@ -21,7 +21,7 @@ pub struct Guideline {
 }
 
 /// An infinite line.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum Line {
     /// A vertical line, passing through a given `x` coordinate.
     Vertical(f64),
