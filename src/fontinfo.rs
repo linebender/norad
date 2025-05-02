@@ -1240,7 +1240,7 @@ pub enum Os2WidthClass {
 }
 
 /// Corresponds to [openTypeOS2FamilyClass](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Copy)]
 pub struct Os2FamilyClass {
     /// Class ID.
     pub class_id: u8,
@@ -1283,7 +1283,7 @@ impl<'de> Deserialize<'de> for Os2FamilyClass {
 }
 
 /// Corresponds to [openTypeOS2Panose](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#opentype-os2-table-fields).
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Copy)]
 pub struct Os2Panose {
     /// Panose family type.
     pub family_type: NonNegativeInteger,
@@ -1606,7 +1606,7 @@ pub struct WoffMetadataVendor {
 
 /// Corresponds to the writing direction attribute used in [WOFF Data](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#woff-data).
 /// If present, is either "ltr" or "rtl".
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum WoffAttributeDirection {
     /// Left to Right writing direction.
     LeftToRight,
@@ -1643,7 +1643,7 @@ impl<'de> Deserialize<'de> for WoffAttributeDirection {
 /// Corresponds to the `styleMapStyleName` in [Generic Identification Information](http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/#generic-identification-information).
 ///
 /// If present, is either "regular", "italic", "bold" or "bold italic".
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum StyleMapStyle {
     /// Regular style.
     Regular,

@@ -139,7 +139,7 @@ impl WriteOptions {
 /// The quote character used to write the XML declaration.
 ///
 /// This is exposed to allow the user to match the output of other tools.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum QuoteChar {
     /// Single quotes: 'UTF-8'.
     Single,

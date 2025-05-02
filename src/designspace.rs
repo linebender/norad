@@ -74,7 +74,7 @@ fn is_false(value: &bool) -> bool {
 }
 
 /// Maps one input value (user space coord) to one output value (design space coord).
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "map")]
 pub struct AxisMapping {
     /// user space coordinate
@@ -101,7 +101,7 @@ pub struct Rules {
 
 /// Indicates whether substitution rules should be applied before or after other
 /// glyph substitution features.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RuleProcessing {
     /// Apply before other substitution features.
