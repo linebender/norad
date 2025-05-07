@@ -26,6 +26,14 @@ pub struct DesignSpaceDocument {
     /// One or more rules.
     #[serde(default, skip_serializing_if = "Rules::is_empty")]
     pub rules: Rules,
+    /// Zero or more variable fonts.
+    #[serde(
+        rename = "variable-fonts",
+        with = "serde_impls::variable_fonts",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub variable_fonts: Vec<VariableFont>,
     /// One or more sources.
     #[serde(with = "serde_impls::sources", skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<Source>,
@@ -67,6 +75,52 @@ pub struct Axis {
     /// Mapping between user space coordinates and design space coordinates.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub map: Option<Vec<AxisMapping>>,
+    /// ...
+    #[serde(rename = "labelname", default, skip_serializing_if = "Vec::is_empty")]
+    pub label_names: Vec<LabelName>,
+    /// ...
+    #[serde(with = "serde_impls::labels", default, skip_serializing_if = "Vec::is_empty")]
+    pub labels: Vec<Label>,
+}
+
+/// Maps an xml:lang language tag to a localised name.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct LabelName {
+    /// Language tag.
+    #[serde(rename = "@lang")]
+    pub lang: String,
+    /// Localised name.
+    #[serde(rename = "$text")]
+    pub name: String,
+}
+
+/// ...
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Label {
+    /// ...
+    #[serde(rename = "@name")]
+    pub name: String,
+    /// ...
+    #[serde(rename = "@elidable", default, skip_serializing_if = "is_false")]
+    pub elidable: bool,
+    /// ...
+    #[serde(rename = "@oldersibling", default, skip_serializing_if = "is_false")]
+    pub older_sibling: bool,
+    /// ...
+    #[serde(rename = "@uservalue")]
+    pub user_value: f32,
+    /// ...
+    #[serde(rename = "@userminimum", default)]
+    pub user_minimum: Option<f32>,
+    /// ...
+    #[serde(rename = "@usermaximum", default)]
+    pub user_maximum: Option<f32>,
+    /// ...
+    #[serde(rename = "@linkeduservalue", default)]
+    pub linked_user_value: Option<f32>,
+    /// ...
+    #[serde(rename = "labelname", default, skip_serializing_if = "Vec::is_empty")]
+    pub names: Vec<LabelName>,
 }
 
 fn is_false(value: &bool) -> bool {
@@ -160,6 +214,53 @@ pub struct Condition {
     /// Upper bounds in design space coordinates.
     #[serde(rename = "@maximum", default, skip_serializing_if = "Option::is_none")]
     pub maximum: Option<f32>,
+}
+
+/// Describes a single variable font.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct VariableFont {
+    /// The name of the variable font.
+    #[serde(rename = "@name")]
+    pub name: String,
+    /// The optional file name of the variable font.
+    #[serde(rename = "@filename", default, skip_serializing_if = "Option::is_none")]
+    pub filename: Option<String>,
+    /// The axis subset the variable font represents.
+    #[serde(rename = "axis-subsets", with = "serde_impls::axis_subsets")]
+    pub axis_subsets: Vec<AxisSubset>,
+    /// Additional arbitrary user data
+    #[serde(default, with = "serde_plist", skip_serializing_if = "Dictionary::is_empty")]
+    pub lib: Dictionary,
+}
+
+/// Describes a single axis subset for a variable font.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AxisSubset {
+    /// Describes a range of an axis.
+    Range {
+        /// The name of the axis under consideration.
+        #[serde(rename = "@name")]
+        name: String,
+        /// Optionally, the lower end of the range, in user coordinates
+        #[serde(rename = "@userminimum", default, skip_serializing_if = "Option::is_none")]
+        user_minimum: Option<f64>,
+        /// Optionally, the upper end of the range, in user coordinates
+        #[serde(rename = "@usermaximum", default, skip_serializing_if = "Option::is_none")]
+        user_maximum: Option<f64>,
+        /// Optionally, the new default value of subset axis, in user coordinates.
+        #[serde(rename = "@userdefault", default, skip_serializing_if = "Option::is_none")]
+        user_default: Option<f64>,
+    },
+    /// Describes a single point of an axis.
+    Discrete {
+        /// The name of the axis under consideration.
+        #[serde(rename = "@name")]
+        name: String,
+        /// The single point of the axis.
+        #[serde(rename = "@uservalue")]
+        user_value: f64,
+    },
 }
 
 /// A [source].
@@ -335,6 +436,7 @@ mod serde_impls {
                 {
                     use serde::Deserialize as _;
                     #[derive(::serde::Deserialize)]
+                    #[serde(rename_all = "kebab-case")]
                     struct Helper {
                         $field_name: Vec<$inner>,
                     }
@@ -350,6 +452,7 @@ mod serde_impls {
                 {
                     use serde::Serialize as _;
                     #[derive(::serde::Serialize)]
+                    #[serde(rename_all = "kebab-case")]
                     struct Helper<'a> {
                         $field_name: &'a [$inner],
                     }
@@ -364,6 +467,9 @@ mod serde_impls {
     serde_from_field!(instances, instance, crate::designspace::Instance);
     serde_from_field!(axes, axis, crate::designspace::Axis);
     serde_from_field!(sources, source, crate::designspace::Source);
+    serde_from_field!(variable_fonts, variable_font, crate::designspace::VariableFont);
+    serde_from_field!(axis_subsets, axis_subset, crate::designspace::AxisSubset);
+    serde_from_field!(labels, label, crate::designspace::Label);
 }
 
 #[cfg(test)]
@@ -574,5 +680,80 @@ mod tests {
                 ]
             }
         );
+    }
+
+    #[test]
+    fn load_save_round_trip_mutatorsans2() {
+        // Given
+        let dir = TempDir::new().unwrap();
+        let ds_test_save_location = dir.path().join("MutatorSans2.designspace");
+
+        // When
+        let ds_initial = DesignSpaceDocument::load("testdata/MutatorSans2.designspace").unwrap();
+        ds_initial.save(&ds_test_save_location).expect("failed to save designspace");
+        let ds_after = DesignSpaceDocument::load(ds_test_save_location)
+            .expect("failed to load saved designspace");
+
+        let mut vf_lib = Dictionary::new();
+        let mut vf_fontinfo = Dictionary::new();
+        vf_fontinfo.insert("familyName".into(), "My Font Narrow VF".into());
+        vf_fontinfo.insert("styleName".into(), "Regular".into());
+        vf_fontinfo.insert("postscriptFontName".into(), "MyFontNarrVF-Regular".into());
+        vf_fontinfo
+            .insert("trademark".into(), "My Font Narrow VF is a registered trademark...".into());
+        vf_lib.insert("public.fontInfo".into(), vf_fontinfo.into());
+
+        // Then
+        assert_eq!(
+            &ds_after.axes,
+            &[
+                Axis {
+                    name: "width".into(),
+                    tag: "wdth".into(),
+                    default: 0.0,
+                    hidden: false,
+                    minimum: Some(0.0),
+                    maximum: Some(1000.0),
+                    values: None,
+                    map: None,
+                    label_names: vec![],
+                    labels: vec![]
+                },
+                Axis {
+                    name: "weight".into(),
+                    tag: "wght".into(),
+                    default: 0.0,
+                    hidden: false,
+                    minimum: Some(0.0),
+                    maximum: Some(1000.0),
+                    values: None,
+                    map: None,
+                    label_names: vec![
+                        LabelName { lang: "fa-IR".into(), name: "قطر".into() },
+                        LabelName { lang: "en".into(), name: "Wéíght".into() },
+                    ],
+                    labels: vec![]
+                }
+            ]
+        );
+
+        assert_eq!(
+            &ds_after.variable_fonts,
+            &[VariableFont {
+                name: "MyFontNarrVF".into(),
+                filename: None,
+                axis_subsets: vec![
+                    AxisSubset::Range {
+                        name: "Weight".into(),
+                        user_minimum: None,
+                        user_maximum: None,
+                        user_default: None
+                    },
+                    AxisSubset::Discrete { name: "Width".into(), user_value: 75.0 },
+                ],
+                lib: vf_lib
+            }]
+        );
+        assert_eq!(ds_initial, ds_after);
     }
 }
