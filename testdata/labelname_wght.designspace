@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<designspace format="5.0">
+  <axes>
+    <axis tag="wght" name="weight" minimum="400" maximum="700" default="400">
+      <map input="400" output="100"/>
+      <map input="500" output="150"/>
+      <map input="700" output="200"/>
+      <labelname xml:lang="fa-IR">قطر</labelname>
+      <labelname xml:lang="en">Weight</labelname>
+    </axis>
+  </axes>
+  <sources>
+    <source filename="Demo-Regular.ufo" name="Demo Regular" familyname="Demo" stylename="Regular">
+      <lib copy="1"/>
+      <groups copy="1"/>
+      <features copy="1"/>
+      <info copy="1"/>
+      <location>
+        <dimension name="weight" xvalue="100"/>
+      </location>
+    </source>
+    <source filename="Demo-Bold.ufo" name="Demo Bold" familyname="Demo" stylename="Bold">
+      <location>
+        <dimension name="weight" xvalue="200"/>
+      </location>
+    </source>
+  </sources>
+  <instances>
+    <instance name="Demo Regular" familyname="Demo" stylename="Regular" filename="../instance_ufo/Demo-Regular.ufo">
+      <location>
+        <dimension name="weight" xvalue="100"/>
+      </location>
+    </instance>
+    <instance name="Demo Medium" familyname="Demo" stylename="Medium" filename="../instance_ufo/Demo-Medium.ufo">
+      <location>
+        <dimension name="weight" xvalue="150"/>
+      </location>
+    </instance>
+    <instance name="Demo Bold" familyname="Demo" stylename="Bold" filename="../instance_ufo/Demo-Bold.ufo">
+      <location>
+        <dimension name="weight" xvalue="200"/>
+      </location>
+    </instance>
+  </instances>
+</designspace>
