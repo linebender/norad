@@ -67,10 +67,28 @@ pub struct Axis {
     /// Mapping between user space coordinates and design space coordinates.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub map: Option<Vec<AxisMapping>>,
+    /// Localised UI strings for the axis name.
+    #[serde(rename = "labelname", default, skip_serializing_if = "Vec::is_empty")]
+    pub label_names: Vec<LocalizedString>,
 }
 
 fn is_false(value: &bool) -> bool {
     !(*value)
+}
+
+/// Localised string for UI use.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename = "labelname")]
+pub struct LocalizedString {
+    /// Language tag, e.g. `"fa-IR"`.
+    // `quick-xml` strips the `xml:` prefix, so the incoming attribute is just
+    // `lang`.  We keep that as the primary name and add an alias so that the
+    // code also accepts the literal `xml:lang` if you ever encounter it.
+    #[serde(rename = "@lang", alias = "@xml:lang")]
+    pub language: String,
+    /// The label name
+    #[serde(rename = "$text")]
+    pub string: String,
 }
 
 /// Maps one input value (user space coord) to one output value (design space coord).
@@ -416,6 +434,20 @@ mod tests {
                 .map(|s| (s.filename, s.location))
                 .collect::<Vec<(String, Vec<Dimension>)>>()
         );
+        assert!(ds.axes[0].label_names.is_empty());
+    }
+
+    #[test]
+    fn read_label_names() {
+        let ds = DesignSpaceDocument::load("testdata/labelname_wght.designspace").unwrap();
+        assert_eq!(1, ds.axes.len());
+        assert!(!ds.axes[0].label_names.is_empty());
+
+        assert_eq!(ds.axes[0].label_names[0].language, "fa-IR");
+        assert_eq!(ds.axes[0].label_names[0].string, "قطر");
+
+        assert_eq!(ds.axes[0].label_names[1].language, "en");
+        assert_eq!(ds.axes[0].label_names[1].string, "Weight");
     }
 
     // <https://github.com/linebender/norad/issues/300>
