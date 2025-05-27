@@ -81,9 +81,9 @@ fn is_false(value: &bool) -> bool {
 pub struct LocalizedString {
     /// Language tag, e.g. `"fa-IR"`.
     // `quick-xml` strips the `xml:` prefix, so the incoming attribute is just
-    // `lang`.  We keep that as the primary name and add an alias so that the
-    // code also accepts the literal `xml:lang` if you ever encounter it.
-    #[serde(rename = "@lang", alias = "@xml:lang")]
+    // `lang`.  We keep `xml:lang` as the primary name used when serializing, but
+    // add an alias to `lang` to be used when deserializing.
+    #[serde(rename = "@xml:lang", alias = "@lang")]
     pub language: String,
     /// The label name
     #[serde(rename = "$text")]
