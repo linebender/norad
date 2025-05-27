@@ -575,6 +575,22 @@ mod tests {
     }
 
     #[test]
+    fn load_save_round_trip_label_names() {
+        // Given
+        let dir = TempDir::new().unwrap();
+        let ds_test_save_location = dir.path().join("labelname_wght.designspace");
+
+        // When
+        let ds_initial = DesignSpaceDocument::load("testdata/labelname_wght.designspace").unwrap();
+        ds_initial.save(&ds_test_save_location).expect("failed to save designspace");
+        let ds_after = DesignSpaceDocument::load(ds_test_save_location)
+            .expect("failed to load saved designspace");
+
+        // Then
+        assert_eq!(ds_initial, ds_after);
+    }
+
+    #[test]
     fn accept_always_on_rules() {
         // Given
         let designspace =
