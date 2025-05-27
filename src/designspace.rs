@@ -67,10 +67,27 @@ pub struct Axis {
     /// Mapping between user space coordinates and design space coordinates.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub map: Option<Vec<AxisMapping>>,
+    /// Localised UI strings for the axis name.
+    #[serde(rename = "labelname", default, skip_serializing_if = "Vec::is_empty")]
+    pub label_names: Vec<LocalizedString>,
 }
 
 fn is_false(value: &bool) -> bool {
     !(*value)
+}
+
+/// Localised string for UI use.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct LocalizedString {
+    /// Language tag, e.g. `"fa-IR"`.
+    // `quick-xml` strips the `xml:` prefix, so the incoming attribute is just
+    // `lang`.  We keep `xml:lang` as the primary name used when serializing, but
+    // add an alias to `lang` to be used when deserializing.
+    #[serde(rename = "@xml:lang", alias = "@lang")]
+    pub language: String,
+    /// The label name
+    #[serde(rename = "$text")]
+    pub string: String,
 }
 
 /// Maps one input value (user space coord) to one output value (design space coord).
@@ -416,6 +433,20 @@ mod tests {
                 .map(|s| (s.filename, s.location))
                 .collect::<Vec<(String, Vec<Dimension>)>>()
         );
+        assert!(ds.axes[0].label_names.is_empty());
+    }
+
+    #[test]
+    fn read_label_names() {
+        let ds = DesignSpaceDocument::load("testdata/labelname_wght.designspace").unwrap();
+        assert_eq!(1, ds.axes.len());
+        assert!(!ds.axes[0].label_names.is_empty());
+
+        assert_eq!(ds.axes[0].label_names[0].language, "fa-IR");
+        assert_eq!(ds.axes[0].label_names[0].string, "قطر");
+
+        assert_eq!(ds.axes[0].label_names[1].language, "en");
+        assert_eq!(ds.axes[0].label_names[1].string, "Weight");
     }
 
     // <https://github.com/linebender/norad/issues/300>
@@ -541,6 +572,30 @@ mod tests {
             }
         );
         assert_eq!(ds_initial, ds_after);
+    }
+
+    #[test]
+    fn load_save_round_trip_label_names() {
+        // Given
+        let dir = TempDir::new().unwrap();
+        let ds_test_save_location = dir.path().join("labelname_wght.designspace");
+
+        // When
+        let ds_initial = DesignSpaceDocument::load("testdata/labelname_wght.designspace").unwrap();
+        ds_initial.save(&ds_test_save_location).expect("failed to save designspace");
+
+        let ds_after = DesignSpaceDocument::load(ds_test_save_location.clone())
+            .expect("failed to load saved designspace");
+
+        // Then
+        assert_eq!(ds_initial, ds_after);
+
+        // Check the raw file content to ensure 'xml:lang' which gets stripped on deserialization
+        // is correctly serialized.
+        let saved_content = std::fs::read_to_string(&ds_test_save_location)
+            .expect("Failed to read saved designspace file");
+        assert!(saved_content.contains("xml:lang=\"fa-IR\""));
+        assert!(saved_content.contains("xml:lang=\"en\""),);
     }
 
     #[test]
