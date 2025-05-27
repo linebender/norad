@@ -78,7 +78,6 @@ fn is_false(value: &bool) -> bool {
 
 /// Localised string for UI use.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename = "labelname")]
 pub struct LocalizedString {
     /// Language tag, e.g. `"fa-IR"`.
     // `quick-xml` strips the `xml:` prefix, so the incoming attribute is just
