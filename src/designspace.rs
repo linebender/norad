@@ -583,11 +583,19 @@ mod tests {
         // When
         let ds_initial = DesignSpaceDocument::load("testdata/labelname_wght.designspace").unwrap();
         ds_initial.save(&ds_test_save_location).expect("failed to save designspace");
-        let ds_after = DesignSpaceDocument::load(ds_test_save_location)
+
+        let ds_after = DesignSpaceDocument::load(ds_test_save_location.clone())
             .expect("failed to load saved designspace");
 
         // Then
         assert_eq!(ds_initial, ds_after);
+
+        // Check the raw file content to ensure 'xml:lang' which gets stripped on deserialization
+        // is correctly serialized.
+        let saved_content = std::fs::read_to_string(&ds_test_save_location)
+            .expect("Failed to read saved designspace file");
+        assert!(saved_content.contains("xml:lang=\"fa-IR\""));
+        assert!(saved_content.contains("xml:lang=\"en\""),);
     }
 
     #[test]
