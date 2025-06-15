@@ -479,7 +479,7 @@ impl Layer {
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
-    pub fn entry(&mut self, glyph: Name) -> std::collections::btree_map::Entry<Name, Glyph> {
+    pub fn entry(&mut self, glyph: Name) -> std::collections::btree_map::Entry<'_, Name, Glyph> {
         self.glyphs.entry(glyph)
     }
 
