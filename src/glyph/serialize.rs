@@ -179,7 +179,7 @@ fn write_lib_section<T: Write>(
 }
 
 impl Guideline {
-    fn to_event(&self) -> Event {
+    fn to_event(&self) -> Event<'_> {
         let mut start = BytesStart::new("guideline");
         let (x, y, angle) = match self.line {
             Line::Vertical(x) => (Some(x), None, None),
@@ -215,7 +215,7 @@ impl Guideline {
 }
 
 impl Anchor {
-    fn to_event(&self) -> Event {
+    fn to_event(&self) -> Event<'_> {
         let mut start = BytesStart::new("anchor");
 
         if let Some(name) = &self.name {
@@ -238,7 +238,7 @@ impl Anchor {
 }
 
 impl Component {
-    fn to_event(&self) -> Event {
+    fn to_event(&self) -> Event<'_> {
         let mut start = BytesStart::new("component");
         start.push_attribute(("base", &*self.base));
 
@@ -269,7 +269,7 @@ impl Contour {
 }
 
 impl ContourPoint {
-    fn to_event(&self) -> Event {
+    fn to_event(&self) -> Event<'_> {
         let mut start = BytesStart::new("point");
 
         if let Some(name) = &self.name {
@@ -335,7 +335,7 @@ impl Color {
 }
 
 impl Image {
-    fn to_event(&self) -> Event {
+    fn to_event(&self) -> Event<'_> {
         let mut start = BytesStart::new("image");
         start.push_attribute(("fileName", self.file_name.to_str().expect("missing path")));
 
