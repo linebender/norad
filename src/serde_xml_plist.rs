@@ -30,11 +30,11 @@ where
 
 mod de {
     use super::*;
-    use serde::de::{Error as DeError, Visitor};
-    use serde::Deserialize;
-    use std::fmt::Display;
-    use std::marker::PhantomData;
-    use std::str::FromStr;
+    use serde::{
+        de::{Error as DeError, Visitor},
+        Deserialize,
+    };
+    use std::{borrow::Cow, fmt::Display, marker::PhantomData, str::FromStr};
 
     pub(super) struct DictWrapper(pub(super) Dictionary);
 
@@ -78,13 +78,8 @@ mod de {
                 map.next_value::<ArrayWrapper>().map(|x| Value::Array(x.0))
             }
             Some(ValueKeyword::Data) => {
-                //FIXME: remove this + base64 dep when/if we merge
-                //<https://github.com/ebarnard/rust-plist/pull/122>
                 let b64_str = map.next_value::<&str>()?;
-                base64_standard
-                    .decode(b64_str)
-                    .map(Value::Data)
-                    .map_err(|e| A::Error::custom(format!("Invalid XML data: '{e}'")))
+                decode_plist_data(b64_str).map(Value::Data).map_err(A::Error::custom)
             }
             Some(ValueKeyword::Date) => {
                 let date_str = map.next_value::<&str>()?;
@@ -312,6 +307,21 @@ mod de {
             };
             f.write_str(s)
         }
+    }
+
+    fn decode_plist_data(s: &str) -> Result<Vec<u8>, String> {
+        let s = s.trim();
+        // apple plist data blocks are formatted so that there are 68 chars
+        // per line. If this is multiline, we need to reformat to remove those
+        // newlines before decoding:
+        // <https://github.com/cmyr/rust-plist/blob/5d6f53da/src/stream/xml_writer.rs#L248-L252>
+        let s = if s.as_bytes().contains(&b'\n') {
+            Cow::Owned(s.bytes().filter(|b| *b != b'\n').collect())
+        } else {
+            Cow::Borrowed(s.as_bytes())
+        };
+
+        base64_standard.decode(s.as_ref()).map_err(|e| format!("Invalid XML data block: '{e}'"))
     }
 }
 
@@ -607,5 +617,19 @@ mod tests {
         lib.insert(String::from("empty_dict"), Value::Dictionary(Dictionary::new()));
 
         check(lib, expect_file!("../testdata/snapshots/a_bit_of_everything.xml"));
+    }
+
+    #[test]
+    fn deserialize_data() {
+        let our_data = b"\
+                                  this here is a big dumb ole string of bytes i'm typin in here\n\
+                                  I reckon lots of folks don't know I can type this many simple\n\
+                                  ascii-only characters down here in this little block of derpy\n\
+                                  text while making every line the same length just bc it's fun\n\
+                                  and I happened to notice i was doing it on line 2 and so what";
+        let lib = [("derp", plist::Value::Data(our_data.into()))].into_iter().collect();
+        let out = to_xml_pretty(lib);
+        let durp: TestMe = quick_xml::de::from_str(&out).unwrap();
+        assert_eq!(durp.lib.get("derp").unwrap().as_data().unwrap(), our_data);
     }
 }

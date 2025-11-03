@@ -326,7 +326,7 @@ impl<'names> GlifParser<'names> {
             match reader.read_event_into(buf)? {
                 Event::End(ref end) if end.name().as_ref() == b"note" => break,
                 Event::Text(text) => {
-                    self.glyph.note = Some(text.unescape()?.into_owned());
+                    self.glyph.note = Some(text.decode()?.into_owned());
                 }
                 Event::Eof => return Err(ErrorKind::UnexpectedEof.into()),
                 _other => (),
