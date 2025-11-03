@@ -1,16 +1,15 @@
 //! Error types.
 
-use std::io::Error as IoError;
-use std::path::PathBuf;
+use std::{io::Error as IoError, path::PathBuf};
 
 use plist::Error as PlistError;
-use quick_xml::events::attributes::AttrError;
-use quick_xml::{DeError, Error as XmlError, SeError};
+use quick_xml::{
+    encoding::EncodingError, events::attributes::AttrError, DeError, Error as XmlError, SeError,
+};
 use thiserror::Error;
 
 pub use crate::shared_types::ColorError;
-use crate::write::CustomSerializationError;
-use crate::Name;
+use crate::{write::CustomSerializationError, Name};
 
 /// An error that occurs while attempting to read a designspace file from disk.
 #[derive(Debug, Error)]
@@ -66,8 +65,11 @@ pub enum GlifLoadError {
     #[error("failed to read file")]
     Io(#[from] IoError),
     /// A [`quick_xml::Error`].
-    #[error("failed to read or parse XML structure")]
+    #[error("failed to read or parse XML structure: '{0}'")]
     Xml(#[from] XmlError),
+    /// An error encountered when decoding XML
+    #[error("error decoding XML: '{0}'")]
+    Encoding(#[from] EncodingError),
     /// An error in an XML attribute
     #[error("error parsing XML attribute")]
     XmlAttr(#[from] AttrError),
