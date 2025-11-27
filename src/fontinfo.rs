@@ -46,7 +46,6 @@ pub type Bitlist = Vec<u8>;
 ///
 /// [`fontinfo.plist`]: http://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct FontInfo {
     // INFO: Keep this struct sorted alphabetically, serde serializes it in the order you see
@@ -341,7 +340,6 @@ pub struct FontInfo {
 ///
 /// [`fontinfo.plist`]: http://unifiedfontobject.org/versions/ufo2/fontinfo.plist/
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 #[allow(non_snake_case)]
 struct FontInfoV2 {
     ascender: Option<IntegerOrFloat>,
@@ -445,7 +443,6 @@ struct FontInfoV2 {
 ///
 /// [`fontinfo.plist`]: http://unifiedfontobject.org/versions/ufo1/fontinfo.plist/
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 #[allow(non_snake_case)]
 struct FontInfoV1 {
     ascender: Option<IntegerOrFloat>,
