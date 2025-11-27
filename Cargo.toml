@@ -41,6 +41,7 @@ thiserror = "2.0"
 indexmap = { version = "2.0.0", features = ["serde"] }
 base64 = "0.22"
 close_already = "0.3"
+log = "0.4"
 
 [dev-dependencies]
 failure = "0.1.6"

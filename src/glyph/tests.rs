@@ -318,8 +318,9 @@ fn bad_angle() {
 }
 
 #[test]
-#[should_panic(expected = "LibMustBeDictionary")]
-fn lib_must_be_dict() {
+// in a number of older UFO files in the wild glyphs can contain dictionaries
+// with arbitrary non-plsit XML:
+fn skip_non_lib_dictionary() {
     let data = r#"
 <?xml version="1.0" encoding="UTF-8"?>
 <glyph name="period" format="2">
@@ -328,7 +329,8 @@ fn lib_must_be_dict() {
     </lib>
 </glyph>
 "#;
-    let _ = parse_glyph(data.as_bytes()).unwrap();
+    let glyph = parse_glyph(data.as_bytes()).unwrap();
+    assert!(glyph.lib.is_empty());
 }
 
 #[test]

@@ -308,12 +308,20 @@ impl<'names> GlifParser<'names> {
         }
 
         let plist_slice = &raw_xml[start..end];
-        let dict = plist::Value::from_reader_xml(plist_slice)
-            .map_err(|_| GlifLoadError::Parse(ErrorKind::BadLib))?
-            .into_dictionary()
-            .ok_or(GlifLoadError::Parse(ErrorKind::LibMustBeDictionary))?;
+        match plist::Value::from_reader_xml(plist_slice)
+            .map_err(|_| GlifLoadError::Parse(ErrorKind::BadLib))
+            .and_then(|x| {
+                x.into_dictionary().ok_or(GlifLoadError::Parse(ErrorKind::LibMustBeDictionary))
+            }) {
+            Ok(dict) => {
+                // we used to error if this was malformed but there are a number of early UFO files
+                // in the wild that store arbitrary xml in the lib, which doesn't parse as a plist.
+                // Instead of failing to parse these files, we prefer to just skip the dicts.
+                self.glyph.lib = dict;
+            }
+            Err(e) => log::info!("glyph {} contains invalid lib: '{e}'", self.glyph.name),
+        }
 
-        self.glyph.lib = dict;
         Ok(())
     }
 
