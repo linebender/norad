@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<designspace format="5.1">
+  <axes>
+    <axis name="Weight" tag="wght" minimum="400" default="400" maximum="700"/>
+    <axis name="Width" tag="wdth" minimum="75" default="100" maximum="125"/>
+    <mappings description="Test avar2 mappings">
+      <mapping description="Heavy at wide gets less heavy">
+        <input>
+          <dimension name="Weight" xvalue="700"/>
+          <dimension name="Width" xvalue="125"/>
+        </input>
+        <output>
+          <dimension name="Weight" xvalue="680"/>
+        </output>
+      </mapping>
+      <mapping>
+        <input>
+          <dimension name="Weight" xvalue="600"/>
+          <dimension name="Width" xvalue="75"/>
+        </input>
+        <output>
+          <dimension name="Weight" xvalue="700"/>
+        </output>
+      </mapping>
+    </mappings>
+  </axes>
+  <sources>
+    <source filename="TestFamily-Regular.ufo">
+      <location>
+        <dimension name="Weight" xvalue="400"/>
+        <dimension name="Width" xvalue="100"/>
+      </location>
+    </source>
+  </sources>
+</designspace>

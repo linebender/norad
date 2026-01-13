@@ -761,4 +761,54 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn load_axis_mappings() {
+        // Given
+        let ds = DesignSpaceDocument::load("testdata/with_mappings.designspace").unwrap();
+        let mappings = ds.axis_mappings.as_ref().expect("should have axis_mappings");
+
+        // Then
+        assert_eq!(mappings.description.as_deref(), Some("Test avar2 mappings"));
+        assert_eq!(mappings.mappings.len(), 2);
+        let m1 = &mappings.mappings[0];
+        assert_eq!(m1.description.as_deref(), Some("Heavy at wide gets less heavy"));
+        assert_eq!(m1.input.len(), 2);
+        assert_eq!(m1.input[0].name, "Weight");
+        assert_eq!(m1.input[0].xvalue, Some(700.0));
+        assert_eq!(m1.input[1].name, "Width");
+        assert_eq!(m1.input[1].xvalue, Some(125.0));
+        assert_eq!(m1.output.len(), 1);
+        assert_eq!(m1.output[0].name, "Weight");
+        assert_eq!(m1.output[0].xvalue, Some(680.0));
+        assert!(mappings.mappings[1].description.is_none());
+    }
+
+    #[test]
+    fn load_save_round_trip_with_mappings() {
+        // Given
+        let dir = TempDir::new().unwrap();
+        let ds_test_save_location = dir.path().join("with_mappings.designspace");
+
+        // When
+        let ds_initial = DesignSpaceDocument::load("testdata/with_mappings.designspace").unwrap();
+        ds_initial.save(&ds_test_save_location).expect("failed to save designspace");
+        let ds_after = DesignSpaceDocument::load(&ds_test_save_location)
+            .expect("failed to load saved designspace");
+
+        // Then
+        assert_eq!(ds_initial, ds_after);
+        let saved_content = std::fs::read_to_string(&ds_test_save_location)
+            .expect("Failed to read saved designspace file");
+        assert!(saved_content.contains("<mappings"));
+        assert!(saved_content.contains("<mapping"));
+        assert!(saved_content.contains("<input>"));
+        assert!(saved_content.contains("<output>"));
+    }
+
+    #[test]
+    fn designspace_without_mappings_has_none() {
+        let ds = DesignSpaceDocument::load("testdata/wght.designspace").unwrap();
+        assert!(ds.axis_mappings.is_none());
+    }
 }
