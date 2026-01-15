@@ -327,12 +327,8 @@ impl Rules {
 struct RawDesignSpaceDocument {
     #[serde(rename = "@format")]
     format: f32,
-    #[serde(
-        default,
-        with = "serde_impls::axes_container",
-        skip_serializing_if = "AxesContainer::is_empty"
-    )]
-    axes: AxesContainer,
+    #[serde(default, skip_serializing_if = "RawAxes::is_empty")]
+    axes: RawAxes,
     #[serde(default, skip_serializing_if = "Rules::is_empty")]
     rules: Rules,
     #[serde(default, with = "serde_impls::sources", skip_serializing_if = "Vec::is_empty")]
@@ -344,15 +340,17 @@ struct RawDesignSpaceDocument {
 }
 
 /// Internal container for axes and their optional mappings.
-#[derive(Clone, Debug, Default, PartialEq)]
-struct AxesContainer {
-    axes: Vec<Axis>,
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+struct RawAxes {
+    #[serde(default, rename = "axis")]
+    axis: Vec<Axis>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     mappings: Option<AxisMappings>,
 }
 
-impl AxesContainer {
+impl RawAxes {
     fn is_empty(&self) -> bool {
-        self.axes.is_empty() && self.mappings.as_ref().is_none_or(|m| m.is_empty())
+        self.axis.is_empty() && self.mappings.as_ref().is_none_or(|m| m.is_empty())
     }
 }
 
@@ -360,7 +358,7 @@ impl From<RawDesignSpaceDocument> for DesignSpaceDocument {
     fn from(raw: RawDesignSpaceDocument) -> Self {
         Self {
             format: raw.format,
-            axes: raw.axes.axes,
+            axes: raw.axes.axis,
             axis_mappings: raw.axes.mappings,
             rules: raw.rules,
             sources: raw.sources,
@@ -374,7 +372,7 @@ impl From<DesignSpaceDocument> for RawDesignSpaceDocument {
     fn from(doc: DesignSpaceDocument) -> Self {
         Self {
             format: doc.format,
-            axes: AxesContainer { axes: doc.axes, mappings: doc.axis_mappings },
+            axes: RawAxes { axis: doc.axes, mappings: doc.axis_mappings },
             rules: doc.rules,
             sources: doc.sources,
             instances: doc.instances,
@@ -472,46 +470,6 @@ mod serde_impls {
     serde_from_field!(location, dimension, crate::designspace::Dimension);
     serde_from_field!(instances, instance, crate::designspace::Instance);
     serde_from_field!(sources, source, crate::designspace::Source);
-
-    /// Custom (de)serialization for the axes container that holds both axes and mappings.
-    pub(super) mod axes_container {
-        use super::super::{AxesContainer, Axis, AxisMappings};
-
-        pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<AxesContainer, D::Error>
-        where
-            D: ::serde::Deserializer<'de>,
-        {
-            use serde::Deserialize as _;
-            #[derive(::serde::Deserialize)]
-            struct Helper {
-                #[serde(default)]
-                axis: Vec<Axis>,
-                #[serde(default)]
-                mappings: Option<AxisMappings>,
-            }
-            Helper::deserialize(deserializer)
-                .map(|h| AxesContainer { axes: h.axis, mappings: h.mappings })
-        }
-
-        pub(crate) fn serialize<S>(
-            container: &AxesContainer,
-            serializer: S,
-        ) -> Result<S::Ok, S::Error>
-        where
-            S: ::serde::Serializer,
-        {
-            use serde::Serialize as _;
-            #[derive(::serde::Serialize)]
-            struct Helper<'a> {
-                #[serde(skip_serializing_if = "<[Axis]>::is_empty")]
-                axis: &'a [Axis],
-                #[serde(skip_serializing_if = "Option::is_none")]
-                mappings: &'a Option<AxisMappings>,
-            }
-            let helper = Helper { axis: &container.axes, mappings: &container.mappings };
-            helper.serialize(serializer)
-        }
-    }
 }
 
 #[cfg(test)]
