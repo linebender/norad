@@ -897,3 +897,18 @@ fn bom_glif() {
     let glyph = parse_glyph(bytes).expect("initial load failed");
     assert_eq!(glyph.lib.get("hi").unwrap().as_string(), Some("hello"));
 }
+
+#[test]
+fn v1_glyph_with_note() {
+    // this isn't allowed by the spec; we'll just drop it.
+    let glyph_xml = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="bn_e" format="1">
+  <advance width="632"/>
+  <unicode hex="098F"/>
+</glyph>
+"#;
+
+    let glyph = parse_glyph(glyph_xml.as_bytes()).unwrap();
+    assert!(glyph.note.is_none());
+}

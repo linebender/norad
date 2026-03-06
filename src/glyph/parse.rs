@@ -80,7 +80,13 @@ impl<'names> GlifParser<'names> {
                         self.parse_lib(reader, raw_xml, buf)?;
                     }
                     b"note" if self.version == VERSION_1 => {
-                        return Err(ErrorKind::UnexpectedV1Element("note").into());
+                        log::warn!(
+                            "v1 .glif '{}' contains unexpected 'note' field",
+                            self.glyph.name
+                        );
+                        self.parse_note(reader, buf)?;
+                        // drop the note
+                        self.glyph.note = None;
                     }
                     b"note" if self.glyph.note.is_some() => {
                         return Err(ErrorKind::DuplicateElement("note").into());
