@@ -142,6 +142,17 @@ pub enum FontLoadError {
         /// The underlying error.
         source: PlistError,
     },
+    /// Failed to load a file through a custom source resolver.
+    #[error("failed to read '{path}' from source resolver")]
+    ResolverIo {
+        /// The requested path.
+        path: PathBuf,
+        /// The underlying error.
+        source: IoError,
+    },
+    /// Resolver-based loading currently supports only UFO v3 fonts.
+    #[error("resolver-based loading currently supports only UFO v3")]
+    ResolverUnsupportedFormatVersion,
     /// Norad can currently only open UFO (directory) packages.
     #[error("only UFO (directory) packages are supported")]
     UfoNotADir,

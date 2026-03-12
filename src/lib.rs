@@ -86,7 +86,7 @@ pub(crate) mod util;
 mod write;
 
 pub use data_request::DataRequest;
-pub use font::{Font, FormatVersion, MetaInfo};
+pub use font::{FileSystemResolver, Font, FormatVersion, MetaInfo, SourceResolver};
 pub use fontinfo::FontInfo;
 pub use glyph::{
     AffineTransform, Anchor, Codepoints, Component, Contour, ContourPoint, Glyph, Image, PointType,

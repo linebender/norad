@@ -312,6 +312,11 @@ impl DesignSpaceDocument {
         close_already::fs::write(path, buf)?;
         Ok(())
     }
+
+    /// Returns a [`DesignSpaceDocument`] loaded from an XML string.
+    pub fn load_str(contents: &str) -> Result<DesignSpaceDocument, DesignSpaceLoadError> {
+        quick_xml::de::from_str(contents).map_err(DesignSpaceLoadError::DeError)
+    }
 }
 
 impl Rules {
