@@ -84,10 +84,7 @@ impl SourceResolver for FileSystemResolver {
         match fs::read_to_string(path) {
             Ok(contents) => Ok(Some(contents)),
             Err(source) if source.kind() == ErrorKind::NotFound => Ok(None),
-            Err(source) => Err(FontLoadError::ResolverIo {
-                path: path.to_path_buf(),
-                source,
-            }),
+            Err(source) => Err(FontLoadError::ResolverIo { path: path.to_path_buf(), source }),
         }
     }
 
@@ -304,10 +301,7 @@ impl Font {
     ) -> Result<Font, FontLoadError> {
         let metainfo_str = required_file(resolver, Path::new(METAINFO_FILE), None)?;
         let mut meta: MetaInfo = plist::from_reader(Cursor::new(metainfo_str.as_bytes()))
-            .map_err(|source| FontLoadError::ParsePlist {
-                name: METAINFO_FILE,
-                source,
-            })?;
+            .map_err(|source| FontLoadError::ParsePlist { name: METAINFO_FILE, source })?;
 
         if meta.format_version != FormatVersion::V3 {
             return Err(FontLoadError::ResolverUnsupportedFormatVersion);
@@ -316,10 +310,7 @@ impl Font {
         let mut lib = if request.lib {
             match optional_file(resolver, Path::new(LIB_FILE), None)? {
                 Some(lib_str) => plist::Value::from_reader(Cursor::new(lib_str.as_bytes()))
-                    .map_err(|source| FontLoadError::ParsePlist {
-                        name: LIB_FILE,
-                        source,
-                    })?
+                    .map_err(|source| FontLoadError::ParsePlist { name: LIB_FILE, source })?
                     .into_dictionary()
                     .ok_or(FontLoadError::LibFileMustBeDictionary)?,
                 None => Plist::new(),
@@ -332,10 +323,7 @@ impl Font {
             optional_file(resolver, Path::new(FONTINFO_FILE), None)?
         {
             let mut font_info: FontInfo = plist::from_reader(Cursor::new(fontinfo_str.as_bytes()))
-                .map_err(|source| FontLoadError::ParsePlist {
-                    name: FONTINFO_FILE,
-                    source,
-                })?;
+                .map_err(|source| FontLoadError::ParsePlist { name: FONTINFO_FILE, source })?;
             font_info
                 .validate()
                 .map_err(crate::error::FontInfoLoadError::InvalidData)
@@ -349,11 +337,10 @@ impl Font {
         let groups = if request.groups {
             match optional_file(resolver, Path::new(GROUPS_FILE), None)? {
                 Some(groups_str) => {
-                    let groups: Groups = plist::from_reader(Cursor::new(groups_str.as_bytes()))
-                        .map_err(|source| FontLoadError::ParsePlist {
-                            name: GROUPS_FILE,
-                            source,
-                        })?;
+                    let groups: Groups =
+                        plist::from_reader(Cursor::new(groups_str.as_bytes())).map_err(
+                            |source| FontLoadError::ParsePlist { name: GROUPS_FILE, source },
+                        )?;
                     validate_groups(&groups).map_err(FontLoadError::InvalidGroups)?;
                     Some(groups)
                 }
@@ -366,11 +353,10 @@ impl Font {
         let kerning = if request.kerning {
             match optional_file(resolver, Path::new(KERNING_FILE), None)? {
                 Some(kerning_str) => {
-                    let kerning: Kerning = plist::from_reader(Cursor::new(kerning_str.as_bytes()))
-                        .map_err(|source| FontLoadError::ParsePlist {
-                            name: KERNING_FILE,
-                            source,
-                        })?;
+                    let kerning: Kerning =
+                        plist::from_reader(Cursor::new(kerning_str.as_bytes())).map_err(
+                            |source| FontLoadError::ParsePlist { name: KERNING_FILE, source },
+                        )?;
                     Some(kerning)
                 }
                 None => None,
@@ -822,11 +808,11 @@ fn load_layer_set_from_resolver(
 ) -> Result<LayerContents, FontLoadError> {
     let layer_descriptors: Vec<(Name, PathBuf)> =
         match optional_file(resolver, Path::new(LAYER_CONTENTS_FILE), None)? {
-            Some(layercontents_str) => plist::from_reader(Cursor::new(layercontents_str.as_bytes()))
-                .map_err(|source| FontLoadError::ParsePlist {
-                    name: LAYER_CONTENTS_FILE,
-                    source,
-                })?,
+            Some(layercontents_str) => {
+                plist::from_reader(Cursor::new(layercontents_str.as_bytes())).map_err(|source| {
+                    FontLoadError::ParsePlist { name: LAYER_CONTENTS_FILE, source }
+                })?
+            }
             None => vec![(Name::new_raw("public.default"), PathBuf::from("glyphs"))],
         };
 
@@ -839,41 +825,45 @@ fn load_layer_set_from_resolver(
         let layer = if layer_dir == Path::new("glyphs") {
             layers.default_layer_mut()
         } else {
-            let layer = layers
-                .get_or_create_layer(layer_name.as_str())
-                .map_err(|_| FontLoadError::Layer {
+            let layer = layers.get_or_create_layer(layer_name.as_str()).map_err(|_| {
+                FontLoadError::Layer {
                     name: layer_name.to_string(),
                     path: layer_dir.clone(),
                     source: Box::new(crate::error::LayerLoadError::MissingContentsFile),
-                })?;
+                }
+            })?;
             layer.path = layer_dir.clone();
             layer
         };
 
         let contents_path = layer_dir.join("contents.plist");
-        let contents_str = optional_file(resolver, &contents_path, None)?.ok_or(FontLoadError::Layer {
-            name: layer_name.to_string(),
-            path: contents_path.clone(),
-            source: Box::new(crate::error::LayerLoadError::MissingContentsFile),
-        })?;
-
-        let glyph_files: BTreeMap<Name, PathBuf> = plist::from_reader(Cursor::new(contents_str.as_bytes()))
-            .map_err(|source| FontLoadError::Layer {
+        let contents_str =
+            optional_file(resolver, &contents_path, None)?.ok_or(FontLoadError::Layer {
                 name: layer_name.to_string(),
                 path: contents_path.clone(),
-                source: Box::new(crate::error::LayerLoadError::ParsePlist {
-                    name: "contents.plist",
-                    source,
-                }),
+                source: Box::new(crate::error::LayerLoadError::MissingContentsFile),
+            })?;
+
+        let glyph_files: BTreeMap<Name, PathBuf> =
+            plist::from_reader(Cursor::new(contents_str.as_bytes())).map_err(|source| {
+                FontLoadError::Layer {
+                    name: layer_name.to_string(),
+                    path: contents_path.clone(),
+                    source: Box::new(crate::error::LayerLoadError::ParsePlist {
+                        name: "contents.plist",
+                        source,
+                    }),
+                }
             })?;
 
         for (_glyph_name, glif_relative_path) in glyph_files {
             let glif_path = layer_dir.join(&glif_relative_path);
-            let glif_contents = optional_file(resolver, &glif_path, None)?.ok_or(FontLoadError::Layer {
-                name: layer_name.to_string(),
-                path: glif_path.clone(),
-                source: Box::new(crate::error::LayerLoadError::MissingContentsFile),
-            })?;
+            let glif_contents =
+                optional_file(resolver, &glif_path, None)?.ok_or(FontLoadError::Layer {
+                    name: layer_name.to_string(),
+                    path: glif_path.clone(),
+                    source: Box::new(crate::error::LayerLoadError::MissingContentsFile),
+                })?;
             let mut glyph = Glyph::parse_raw(glif_contents.as_bytes()).map_err(|source| {
                 FontLoadError::Layer {
                     name: layer_name.to_string(),
