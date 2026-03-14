@@ -536,6 +536,8 @@ pub enum ErrorKind {
     /// Has an unexpected move definition.
     UnexpectedMove,
     /// Has an unexpected smooth definition.
+    //TODO: no longer used, can be removed next non-patch release
+    #[deprecated(since = "0.18.2", note = "unused, will be removed")]
     UnexpectedSmooth,
     /// Has an unexpected element definition.
     UnexpectedElement,
@@ -606,6 +608,7 @@ impl std::fmt::Display for ErrorKind {
             UnexpectedMove => {
                 write!(f, "unexpected move point, can only occur at start of contour")
             }
+            #[allow(deprecated)]
             UnexpectedSmooth => write!(f, "unexpected smooth attribute on an off-curve point"),
             UnexpectedElement => write!(f, "unexpected element"),
             UnexpectedAttribute => write!(f, "unexpected attribute"),

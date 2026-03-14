@@ -30,6 +30,7 @@ pub(crate) struct GlifParser<'names> {
     glyph: Glyph,
     version: Version,
     seen_identifiers: HashSet<Identifier>,
+    has_warned_for_smooth_point: bool,
     /// Optional set of glyph names to be reused between glyphs.
     names: Option<&'names NameList>,
 }
@@ -47,7 +48,13 @@ impl<'names> GlifParser<'names> {
 
         let (name, version) = start(&mut reader, &mut buf, names)?;
         let glyph = Glyph::new_impl(name);
-        let parser = GlifParser { glyph, seen_identifiers: Default::default(), names, version };
+        let parser = GlifParser {
+            glyph,
+            seen_identifiers: Default::default(),
+            names,
+            version,
+            has_warned_for_smooth_point: false,
+        };
         parser.parse_body(&mut reader, xml, &mut buf)
     }
 
@@ -325,7 +332,7 @@ impl<'names> GlifParser<'names> {
                 // Instead of failing to parse these files, we prefer to just skip the dicts.
                 self.glyph.lib = dict;
             }
-            Err(e) => log::info!("glyph {} contains invalid lib: '{e}'", self.glyph.name),
+            Err(e) => log::info!("glyph '{}' {e}", self.glyph.name),
         }
 
         Ok(())
@@ -386,6 +393,16 @@ impl<'names> GlifParser<'names> {
 
         match (x, y) {
             (Some(x), Some(y)) => {
+                if typ == PointType::OffCurve && smooth {
+                    if !self.has_warned_for_smooth_point {
+                        log::info!(
+                            "glyph '{}' has off-curve point with 'smooth' attribute set",
+                            self.glyph.name
+                        );
+                    }
+                    self.has_warned_for_smooth_point = true;
+                    smooth = false;
+                }
                 outline_builder.add_point((x, y), typ, smooth, name, identifier)?;
                 Ok(())
             }
