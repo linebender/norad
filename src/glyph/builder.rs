@@ -65,8 +65,9 @@ impl OutlineBuilder {
     ///
     /// Errors when:
     /// 1. [`Self::begin_path`] wasn't called first.
-    /// 2. the point is an off-curve with the smooth attribute set.
-    /// 3. the point sequence is forbidden by the specification.
+    /// 2. the point sequence is forbidden by the specification.
+    ///
+    /// If an off-curve point has the smooth attribute set, it is logged and ignored.
     ///
     /// On error, it won't add any part of the point, but you can try again with a new
     /// and improved point.
@@ -93,9 +94,6 @@ impl OutlineBuilder {
                         }
                     }
                     PointType::OffCurve => {
-                        if smooth {
-                            return Err(ErrorKind::UnexpectedSmooth);
-                        }
                         *number_of_offcurves = number_of_offcurves.saturating_add(1);
                     }
                     PointType::QCurve => *number_of_offcurves = 0,

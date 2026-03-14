@@ -454,8 +454,9 @@ fn unexpected_move() {
 }
 
 #[test]
-#[should_panic(expected = "UnexpectedSmooth")]
-fn unexpected_smooth() {
+fn offcurve_smooth_is_ignored() {
+    // smooth="yes" on an off-curve point is invalid per the spec but we log and ignore it
+    // rather than returning an error.
     let data = r#"
         <?xml version="1.0" encoding="UTF-8"?>
         <glyph name="period" format="2">
@@ -468,7 +469,9 @@ fn unexpected_smooth() {
             </outline>
         </glyph>
   "#;
-    let _ = parse_glyph(data.as_bytes()).unwrap();
+    let glyph = parse_glyph(data.as_bytes()).unwrap();
+    let contour = &glyph.contours[0];
+    assert!(!contour.points[0].smooth);
 }
 
 #[test]
