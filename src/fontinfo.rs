@@ -1004,7 +1004,7 @@ impl FontInfo {
 
     /// Move libs from the font lib's `public.objectLibs` key into the actual objects.
     /// The key will be removed from the font lib.
-    fn load_object_libs(&mut self, lib: &mut Plist) -> Result<(), FontInfoLoadError> {
+    pub(crate) fn load_object_libs(&mut self, lib: &mut Plist) -> Result<(), FontInfoLoadError> {
         let mut object_libs = match lib.remove(PUBLIC_OBJECT_LIBS_KEY) {
             Some(lib) => {
                 lib.into_dictionary().ok_or(FontInfoLoadError::PublicObjectLibsMustBeDictionary)?
