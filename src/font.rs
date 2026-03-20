@@ -15,7 +15,9 @@ use crate::fontinfo::FontInfo;
 use crate::glyph::Glyph;
 use crate::groups::{validate_groups, Groups};
 use crate::guideline::Guideline;
-use crate::kerning::{Kerning, ReverseGroupsLookup, FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX};
+use crate::kerning::{
+    Kerning, ReverseGroupsLookup, FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX,
+};
 use crate::layer::{Layer, LayerContents, LAYER_CONTENTS_FILE};
 use crate::name::Name;
 use crate::names::NameList;
@@ -610,7 +612,12 @@ impl Font {
         ReverseGroupsLookup::from(&self.groups)
     }
 
-    pub fn kerning_lookup(&self, lookup: &ReverseGroupsLookup, first: &str, second: &str) -> Option<f64> {
+    pub fn kerning_lookup(
+        &self,
+        lookup: &ReverseGroupsLookup,
+        first: &str,
+        second: &str,
+    ) -> Option<f64> {
         // glyph name glyph name
         if let Some(kern) = self.kerning_lookup_dumb(first, second) {
             return Some(kern);
@@ -634,7 +641,9 @@ impl Font {
 
         // group name group name
         if let Some((first_group, second_group)) = first_group.zip(second_group) {
-            if let Some(kern) = self.kerning_lookup_dumb(first_group.as_str(), second_group.as_str()) {
+            if let Some(kern) =
+                self.kerning_lookup_dumb(first_group.as_str(), second_group.as_str())
+            {
                 return Some(kern);
             }
         }
@@ -649,12 +658,13 @@ impl Font {
         }
 
         // group name glyph name
-        let first_group =
-            self.groups.iter().filter(|(name, _)| name.starts_with(FIRST_KERNING_GROUP_PREFIX)).find_map(
-                |(name, members)| {
-                    members.iter().any(|glyph_name| glyph_name.as_str() == first).then_some(name)
-                },
-            );
+        let first_group = self
+            .groups
+            .iter()
+            .filter(|(name, _)| name.starts_with(FIRST_KERNING_GROUP_PREFIX))
+            .find_map(|(name, members)| {
+                members.iter().any(|glyph_name| glyph_name.as_str() == first).then_some(name)
+            });
         if let Some(first_group) = first_group {
             if let Some(kern) = self.kerning_lookup_dumb(first_group.as_str(), second) {
                 return Some(kern);
@@ -662,12 +672,13 @@ impl Font {
         }
 
         // glyph name group name
-        let second_group =
-            self.groups.iter().filter(|(name, _)| name.starts_with(SECOND_KERNING_GROUP_PREFIX)).find_map(
-                |(name, members)| {
-                    members.iter().any(|glyph_name| glyph_name.as_str() == second).then_some(name)
-                },
-            );
+        let second_group = self
+            .groups
+            .iter()
+            .filter(|(name, _)| name.starts_with(SECOND_KERNING_GROUP_PREFIX))
+            .find_map(|(name, members)| {
+                members.iter().any(|glyph_name| glyph_name.as_str() == second).then_some(name)
+            });
         if let Some(second_group) = second_group {
             if let Some(kern) = self.kerning_lookup_dumb(first, second_group.as_str()) {
                 return Some(kern);
@@ -676,7 +687,9 @@ impl Font {
 
         // group name group name
         if let Some((first_group, second_group)) = first_group.zip(second_group) {
-            if let Some(kern) = self.kerning_lookup_dumb(first_group.as_str(), second_group.as_str()) {
+            if let Some(kern) =
+                self.kerning_lookup_dumb(first_group.as_str(), second_group.as_str())
+            {
                 return Some(kern);
             }
         }

@@ -8,7 +8,6 @@ use crate::{Groups, Name};
 pub const FIRST_KERNING_GROUP_PREFIX: &str = "public.kern1.";
 pub const SECOND_KERNING_GROUP_PREFIX: &str = "public.kern2.";
 
-
 /// A map of kerning pairs.
 ///
 /// This is represented as a map of first half of a kerning pair (glyph name or group name)
@@ -42,18 +41,14 @@ impl From<&Groups> for ReverseGroupsLookup {
             .iter()
             .filter(|(group_name, _)| group_name.starts_with(FIRST_KERNING_GROUP_PREFIX))
             .flat_map(|(group_name, members)| {
-                members
-                    .iter()
-                    .map(|member| (member.clone(), group_name.clone()))
+                members.iter().map(|member| (member.clone(), group_name.clone()))
             })
             .collect();
         let second = groups
             .iter()
             .filter(|(group_name, _)| group_name.starts_with(SECOND_KERNING_GROUP_PREFIX))
             .flat_map(|(group_name, members)| {
-                members
-                    .iter()
-                    .map(|member| (member.clone(), group_name.clone()))
+                members.iter().map(|member| (member.clone(), group_name.clone()))
             })
             .collect();
         Self { first, second }
