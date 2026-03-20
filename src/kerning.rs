@@ -1,3 +1,5 @@
+//! Helper types & constants for working with groups & kerning.
+
 use std::collections::{BTreeMap, HashMap};
 
 use serde::ser::{SerializeMap, Serializer};
@@ -5,7 +7,9 @@ use serde::Serialize;
 
 use crate::{Groups, Name};
 
+/// The UFO standard group prefix for kerns in the first position.
 pub const FIRST_KERNING_GROUP_PREFIX: &str = "public.kern1.";
+/// The UFO standard group prefix for kerns in the second position.
 pub const SECOND_KERNING_GROUP_PREFIX: &str = "public.kern2.";
 
 /// A map of kerning pairs.
@@ -17,6 +21,7 @@ pub const SECOND_KERNING_GROUP_PREFIX: &str = "public.kern2.";
 /// We use a [`BTreeMap`] because we need sorting for serialization.
 pub type Kerning = BTreeMap<Name, BTreeMap<Name, f64>>;
 
+/// Maps glyph names to group names; the inverse of a `groups.plist` file.
 #[derive(Debug)]
 pub struct ReverseGroupsLookup {
     first: HashMap<Name, Name>,
@@ -24,11 +29,15 @@ pub struct ReverseGroupsLookup {
 }
 
 impl ReverseGroupsLookup {
+    /// Get the group (if any) for the glyph name when it's first in a kerning
+    /// pair.
     #[inline]
     pub fn get_first(&self, glyph_name: &str) -> Option<Name> {
         self.first.get(glyph_name).cloned()
     }
 
+    /// Get the group (if any) for the glyph name when it's second in a
+    /// kerning pair.
     #[inline]
     pub fn get_second(&self, glyph_name: &str) -> Option<Name> {
         self.second.get(glyph_name).cloned()

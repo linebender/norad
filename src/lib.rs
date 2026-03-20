@@ -75,7 +75,7 @@ mod glyph;
 mod groups;
 mod guideline;
 mod identifier;
-mod kerning;
+pub mod kerning;
 mod layer;
 mod name;
 mod names;
