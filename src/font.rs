@@ -620,7 +620,7 @@ impl Font {
 
     /// Retrieve the kerning value (if any) between a pair of elements.
     ///
-    /// The elments can be either individual glyphs (by name) or kerning groups
+    /// The elements can be either individual glyphs (by name) or kerning groups
     /// (by name), or any combination of the two.
     //  ^ note: this works without any special consideration in the code
     //          because glyph names are forbidden from using the group prefix,
@@ -673,7 +673,7 @@ impl Font {
 
     /// Retrieve the kerning value (if any) between a pair of elements.
     ///
-    /// The elments can be either individual glyphs (by name) or kerning groups
+    /// The elements can be either individual glyphs (by name) or kerning groups
     /// (by name), or any combination of the two.
     //  ^ note: this works without any special consideration in the code
     //          because glyph names are forbidden from using the group prefix,
