@@ -607,11 +607,31 @@ impl Font {
         self.font_info.guidelines.get_or_insert_with(Default::default)
     }
 
+    /// Builds a [`ReverseGroupsLookup`], used to determine what group a glyph
+    /// is in.
+    ///
+    /// Effectively the inverse of `groups.plist`.
+    ///
+    /// Used by [`Font::kerning_lookup`].
     #[inline]
     pub fn get_reverse_groups_lookup(&self) -> ReverseGroupsLookup {
         ReverseGroupsLookup::from(&self.groups)
     }
 
+    /// Retrieve the kerning value (if any) between a pair of elements.
+    ///
+    /// The elments can be either individual glyphs (by name) or kerning groups
+    /// (by name), or any combination of the two.
+    //  ^ note: this works without any special consideration in the code
+    //          because glyph names are forbidden from using the group prefix,
+    //          thus meaning the group name lookup will always fail if a group
+    //          was passed in
+    ///
+    /// This method is accelerated by the [`ReverseGroupsLookup`], which can be
+    /// obtained from [`Font::get_reverse_groups_lookup`]. Using it is highly
+    /// recommended if doing numerous lookups, but if not you can use
+    /// [`Font::kerning_lookup_slow`], which is the same method without needing
+    /// the pre-computed groups lookup.
     pub fn kerning_lookup(
         &self,
         lookup: &ReverseGroupsLookup,
@@ -651,6 +671,20 @@ impl Font {
         None
     }
 
+    /// Retrieve the kerning value (if any) between a pair of elements.
+    ///
+    /// The elments can be either individual glyphs (by name) or kerning groups
+    /// (by name), or any combination of the two.
+    //  ^ note: this works without any special consideration in the code
+    //          because glyph names are forbidden from using the group prefix,
+    //          thus meaning the group name lookup will always fail if a group
+    //          was passed in
+    ///
+    /// ⚠️ This method forgoes pre-computing a reverse glyph groups lookup for the
+    /// use case where you're only after a couple of kerns and the overhead of
+    /// generating the lookup is not worth it. But in cases where you're
+    /// querying many kerns, you should definitely be using
+    /// [`Font::kerning_lookup`] over this method.
     pub fn kerning_lookup_slow(&self, first: &str, second: &str) -> Option<f64> {
         // glyph name glyph name
         if let Some(kern) = self.kerning_lookup_dumb(first, second) {
