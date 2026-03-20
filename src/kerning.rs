@@ -102,6 +102,7 @@ impl Serialize for KerningInnerSerializer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Font;
     use maplit::btreemap;
     use serde_test::{assert_ser_tokens, Token};
 
@@ -135,5 +136,57 @@ mod tests {
                 Token::MapEnd,
             ],
         );
+    }
+
+    #[test]
+    fn test_kerning_resolution() {
+        // Test data taken from https://unifiedfontobject.org/versions/ufo3/kerning.plist/#exceptions
+        let font = Font {
+            groups: btreemap! {
+                Name::new_raw("public.kern1.O") => vec![
+                    Name::new_raw("O"),
+                    Name::new_raw("D"),
+                    Name::new_raw("Q"),
+                ],
+                Name::new_raw("public.kern2.E") => vec![
+                    Name::new_raw("E"),
+                    Name::new_raw("F"),
+                ],
+            },
+            kerning: btreemap! {
+                Name::new_raw("public.kern1.O") => btreemap! {
+                    Name::new_raw("public.kern2.E") => -100f64,
+                    Name::new_raw("F") => -200f64,
+                },
+                Name::new_raw("Q") => btreemap! {
+                    Name::new_raw("public.kern2.E") => -250f64,
+                },
+                Name::new_raw("D") => btreemap! {
+                    Name::new_raw("F") => -300f64,
+                },
+            },
+            ..Default::default()
+        };
+
+        let lookup = font.get_reverse_groups_lookup();
+        for (left, right, expected) in [
+            ("O", "E", -100f64),
+            ("O", "F", -200f64),
+            ("D", "E", -100f64),
+            ("D", "F", -300f64),
+            ("Q", "E", -250f64),
+            ("Q", "F", -250f64),
+        ] {
+            assert_eq!(
+                font.kerning_lookup(&lookup, left, right),
+                Some(expected),
+                "kerning_lookup incorrect for /{left}/{right}"
+            );
+            assert_eq!(
+                font.kerning_lookup_slow(left, right),
+                Some(expected),
+                "kerning_lookup_slow incorrect for /{left}/{right}"
+            );
+        }
     }
 }
