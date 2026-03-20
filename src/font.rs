@@ -604,6 +604,52 @@ impl Font {
     pub fn guidelines_mut(&mut self) -> &mut Vec<Guideline> {
         self.font_info.guidelines.get_or_insert_with(Default::default)
     }
+
+    pub fn kerning_lookup_slow(&self, first: &str, second: &str) -> Option<f64> {
+        let basic_lookup = |first: &str, second: &str| {
+            self.kerning.get(first).and_then(|first| first.get(second)).copied()
+        };
+
+        // glyph name glyph name
+        if let Some(kern) = basic_lookup(first, second) {
+            return Some(kern);
+        }
+
+        // group name glyph name
+        let first_group =
+            self.groups.iter().filter(|(name, _)| name.starts_with("public.kern1.")).find_map(
+                |(name, members)| {
+                    members.iter().any(|glyph_name| glyph_name.as_str() == first).then_some(name)
+                },
+            );
+        if let Some(first_group) = first_group {
+            if let Some(kern) = basic_lookup(first_group.as_str(), second) {
+                return Some(kern);
+            }
+        }
+
+        // glyph name group name
+        let second_group =
+            self.groups.iter().filter(|(name, _)| name.starts_with("public.kern2.")).find_map(
+                |(name, members)| {
+                    members.iter().any(|glyph_name| glyph_name.as_str() == second).then_some(name)
+                },
+            );
+        if let Some(second_group) = second_group {
+            if let Some(kern) = basic_lookup(first, second_group.as_str()) {
+                return Some(kern);
+            }
+        }
+
+        // group name group name
+        if let Some((first_group, second_group)) = first_group.zip(second_group) {
+            if let Some(kern) = basic_lookup(first_group.as_str(), second_group.as_str()) {
+                return Some(kern);
+            }
+        }
+
+        None
+    }
 }
 
 fn load_lib(lib_path: &Path) -> Result<plist::Dictionary, FontLoadError> {
