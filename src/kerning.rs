@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use serde::ser::{SerializeMap, Serializer};
 use serde::Serialize;
 
-use crate::Name;
+use crate::{Groups, Name};
 
 /// A map of kerning pairs.
 ///
@@ -13,6 +13,48 @@ use crate::Name;
 ///
 /// We use a [`BTreeMap`] because we need sorting for serialization.
 pub type Kerning = BTreeMap<Name, BTreeMap<Name, f64>>;
+
+#[derive(Debug)]
+pub struct ReverseGroupsLookup {
+    first: HashMap<Name, Name>,
+    second: HashMap<Name, Name>,
+}
+
+impl ReverseGroupsLookup {
+    #[inline]
+    pub fn get_first(&self, glyph_name: &str) -> Option<Name> {
+        self.first.get(glyph_name).cloned()
+    }
+
+    #[inline]
+    pub fn get_second(&self, glyph_name: &str) -> Option<Name> {
+        self.second.get(glyph_name).cloned()
+    }
+}
+
+impl From<&Groups> for ReverseGroupsLookup {
+    fn from(groups: &Groups) -> Self {
+        let first = groups
+            .iter()
+            .filter(|(group_name, _)| group_name.starts_with("public.kern1."))
+            .flat_map(|(group_name, members)| {
+                members
+                    .iter()
+                    .map(|member| (member.clone(), group_name.clone()))
+            })
+            .collect();
+        let second = groups
+            .iter()
+            .filter(|(group_name, _)| group_name.starts_with("public.kern2."))
+            .flat_map(|(group_name, members)| {
+                members
+                    .iter()
+                    .map(|member| (member.clone(), group_name.clone()))
+            })
+            .collect();
+        Self { first, second }
+    }
+}
 
 /// A helper for serializing kerning values.
 ///

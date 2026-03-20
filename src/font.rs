@@ -15,7 +15,7 @@ use crate::fontinfo::FontInfo;
 use crate::glyph::Glyph;
 use crate::groups::{validate_groups, Groups};
 use crate::guideline::Guideline;
-use crate::kerning::Kerning;
+use crate::kerning::{Kerning, ReverseGroupsLookup};
 use crate::layer::{Layer, LayerContents, LAYER_CONTENTS_FILE};
 use crate::name::Name;
 use crate::names::NameList;
@@ -604,14 +604,47 @@ impl Font {
     pub fn guidelines_mut(&mut self) -> &mut Vec<Guideline> {
         self.font_info.guidelines.get_or_insert_with(Default::default)
     }
+    
+    #[inline]
+    pub fn get_reverse_groups_lookup(&self) -> ReverseGroupsLookup {
+        ReverseGroupsLookup::from(&self.groups)
+    }
+
+    pub fn kerning_lookup(&self, lookup: &ReverseGroupsLookup, first: &str, second: &str) -> Option<f64> {
+        // glyph name glyph name
+        if let Some(kern) = self.kerning_lookup_dumb(first, second) {
+            return Some(kern);
+        }
+
+        // group name glyph name
+        let first_group = lookup.get_first(first);
+        if let Some(first_group) = &first_group {
+            if let Some(kern) = self.kerning_lookup_dumb(first_group.as_str(), second) {
+                return Some(kern);
+            }
+        }
+
+        // glyph name group name
+        let second_group = lookup.get_second(second);
+        if let Some(second_group) = &second_group {
+            if let Some(kern) = self.kerning_lookup_dumb(first, second_group.as_str()) {
+                return Some(kern);
+            }
+        }
+
+        // group name group name
+        if let Some((first_group, second_group)) = first_group.zip(second_group) {
+            if let Some(kern) = self.kerning_lookup_dumb(first_group.as_str(), second_group.as_str()) {
+                return Some(kern);
+            }
+        }
+
+        None
+    }
 
     pub fn kerning_lookup_slow(&self, first: &str, second: &str) -> Option<f64> {
-        let basic_lookup = |first: &str, second: &str| {
-            self.kerning.get(first).and_then(|first| first.get(second)).copied()
-        };
-
         // glyph name glyph name
-        if let Some(kern) = basic_lookup(first, second) {
+        if let Some(kern) = self.kerning_lookup_dumb(first, second) {
             return Some(kern);
         }
 
@@ -623,7 +656,7 @@ impl Font {
                 },
             );
         if let Some(first_group) = first_group {
-            if let Some(kern) = basic_lookup(first_group.as_str(), second) {
+            if let Some(kern) = self.kerning_lookup_dumb(first_group.as_str(), second) {
                 return Some(kern);
             }
         }
@@ -636,19 +669,23 @@ impl Font {
                 },
             );
         if let Some(second_group) = second_group {
-            if let Some(kern) = basic_lookup(first, second_group.as_str()) {
+            if let Some(kern) = self.kerning_lookup_dumb(first, second_group.as_str()) {
                 return Some(kern);
             }
         }
 
         // group name group name
         if let Some((first_group, second_group)) = first_group.zip(second_group) {
-            if let Some(kern) = basic_lookup(first_group.as_str(), second_group.as_str()) {
+            if let Some(kern) = self.kerning_lookup_dumb(first_group.as_str(), second_group.as_str()) {
                 return Some(kern);
             }
         }
 
         None
+    }
+
+    fn kerning_lookup_dumb(&self, first: &str, second: &str) -> Option<f64> {
+        self.kerning.get(first).and_then(|first| first.get(second)).copied()
     }
 }
 
