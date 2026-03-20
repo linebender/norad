@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 
 use crate::error::GroupsValidationError;
+use crate::kerning::{FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX};
 use crate::Name;
 
 /// A map of group name to a list of glyph names.
@@ -18,7 +19,7 @@ pub(crate) fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidatio
             return Err(GroupsValidationError::InvalidName);
         }
 
-        if group_name.starts_with("public.kern1.") {
+        if group_name.starts_with(FIRST_KERNING_GROUP_PREFIX) {
             if group_name.len() == 13 {
                 // Prefix but no actual name.
                 return Err(GroupsValidationError::InvalidName);
@@ -31,7 +32,7 @@ pub(crate) fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidatio
                     });
                 }
             }
-        } else if group_name.starts_with("public.kern2.") {
+        } else if group_name.starts_with(SECOND_KERNING_GROUP_PREFIX) {
             if group_name.len() == 13 {
                 // Prefix but no actual name.
                 return Err(GroupsValidationError::InvalidName);

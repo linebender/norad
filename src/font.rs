@@ -15,7 +15,7 @@ use crate::fontinfo::FontInfo;
 use crate::glyph::Glyph;
 use crate::groups::{validate_groups, Groups};
 use crate::guideline::Guideline;
-use crate::kerning::{Kerning, ReverseGroupsLookup};
+use crate::kerning::{Kerning, ReverseGroupsLookup, FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX};
 use crate::layer::{Layer, LayerContents, LAYER_CONTENTS_FILE};
 use crate::name::Name;
 use crate::names::NameList;
@@ -604,7 +604,7 @@ impl Font {
     pub fn guidelines_mut(&mut self) -> &mut Vec<Guideline> {
         self.font_info.guidelines.get_or_insert_with(Default::default)
     }
-    
+
     #[inline]
     pub fn get_reverse_groups_lookup(&self) -> ReverseGroupsLookup {
         ReverseGroupsLookup::from(&self.groups)
@@ -650,7 +650,7 @@ impl Font {
 
         // group name glyph name
         let first_group =
-            self.groups.iter().filter(|(name, _)| name.starts_with("public.kern1.")).find_map(
+            self.groups.iter().filter(|(name, _)| name.starts_with(FIRST_KERNING_GROUP_PREFIX)).find_map(
                 |(name, members)| {
                     members.iter().any(|glyph_name| glyph_name.as_str() == first).then_some(name)
                 },
@@ -663,7 +663,7 @@ impl Font {
 
         // glyph name group name
         let second_group =
-            self.groups.iter().filter(|(name, _)| name.starts_with("public.kern2.")).find_map(
+            self.groups.iter().filter(|(name, _)| name.starts_with(SECOND_KERNING_GROUP_PREFIX)).find_map(
                 |(name, members)| {
                     members.iter().any(|glyph_name| glyph_name.as_str() == second).then_some(name)
                 },
