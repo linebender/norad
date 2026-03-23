@@ -20,7 +20,7 @@ pub(crate) fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidatio
         }
 
         if group_name.starts_with(FIRST_KERNING_GROUP_PREFIX) {
-            if group_name.len() == 13 {
+            if group_name.len() == FIRST_KERNING_GROUP_PREFIX.len() {
                 // Prefix but no actual name.
                 return Err(GroupsValidationError::InvalidName);
             }
@@ -33,7 +33,7 @@ pub(crate) fn validate_groups(groups_map: &Groups) -> Result<(), GroupsValidatio
                 }
             }
         } else if group_name.starts_with(SECOND_KERNING_GROUP_PREFIX) {
-            if group_name.len() == 13 {
+            if group_name.len() == SECOND_KERNING_GROUP_PREFIX.len() {
                 // Prefix but no actual name.
                 return Err(GroupsValidationError::InvalidName);
             }
