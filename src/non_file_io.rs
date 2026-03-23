@@ -85,10 +85,11 @@ where
         None
     };
 
-    let features = if request.features {
-        load_features_with_includes(source, Path::new(FEATURES_FILE))?.unwrap_or_default()
+    let (features, feature_files) = if request.features {
+        load_feature_files(&mut |path| read_optional_text(source, path), Path::new(FEATURES_FILE))?
+            .unwrap_or_else(|| (String::new(), BTreeMap::new()))
     } else {
-        Default::default()
+        (String::new(), BTreeMap::new())
     };
 
     let layers = load_layer_set_from_source(source, &request.layers)?;
@@ -105,6 +106,7 @@ where
         groups: groups.unwrap_or_default(),
         kerning: kerning.unwrap_or_default(),
         features,
+        feature_files,
         data: Default::default(),
         images: Default::default(),
     })
@@ -191,13 +193,11 @@ where
         )?;
     }
 
-    if !font.features.is_empty() {
-        let feature_bytes = if font.features.as_bytes().contains(&b'\r') {
-            font.features.replace("\r\n", "\n").into_bytes()
-        } else {
-            font.features.as_bytes().to_vec()
-        };
-        write_sink_file(sink, Path::new(FEATURES_FILE), &feature_bytes)?;
+    if !font.features.is_empty() || !font.feature_files.is_empty() {
+        write_sink_file(sink, Path::new(FEATURES_FILE), &normalize_feature_text(&font.features))?;
+        for (feature_path, contents) in &font.feature_files {
+            write_sink_file(sink, feature_path, &normalize_feature_text(contents))?;
+        }
     }
 
     let contents: Vec<(&str, &PathBuf)> =
@@ -332,49 +332,94 @@ where
     Ok(layers)
 }
 
-fn load_features_with_includes<F, E>(
-    source: &mut F,
+pub(crate) fn load_feature_files(
+    source: &mut impl FnMut(&Path) -> Result<Option<String>, FontLoadError>,
     path: &Path,
-) -> Result<Option<String>, FontLoadError>
-where
-    F: FnMut(&Path) -> Result<Option<String>, E>,
-    E: StdError + Send + Sync + 'static,
-{
-    let Some(contents) = read_optional_text(source, path)? else {
+) -> Result<Option<(String, BTreeMap<PathBuf, String>)>, FontLoadError> {
+    let Some(contents) = source(path)? else {
         return Ok(None);
     };
 
-    let mut seen = HashSet::new();
     let normalized_path = normalize_relative_path(path);
-    seen.insert(normalized_path.clone());
-    expand_feature_includes(source, &normalized_path, &contents, &mut seen).map(Some)
+    let mut stack = HashSet::new();
+    let mut included_files = BTreeMap::new();
+    stack.insert(normalized_path.clone());
+    collect_feature_includes(source, &normalized_path, &contents, &mut stack, &mut included_files)?;
+    Ok(Some((contents, included_files)))
 }
 
-fn expand_feature_includes<F, E>(
-    source: &mut F,
+fn collect_feature_includes(
+    source: &mut impl FnMut(&Path) -> Result<Option<String>, FontLoadError>,
     current_path: &Path,
     contents: &str,
-    seen: &mut HashSet<PathBuf>,
-) -> Result<String, FontLoadError>
-where
-    F: FnMut(&Path) -> Result<Option<String>, E>,
-    E: StdError + Send + Sync + 'static,
-{
+    stack: &mut HashSet<PathBuf>,
+    included_files: &mut BTreeMap<PathBuf, String>,
+) -> Result<(), FontLoadError> {
+    for line in contents.split_inclusive('\n') {
+        if let Some(include_target) = parse_include_target(line) {
+            let include_path =
+                join_virtual_path(current_path.parent().unwrap_or(Path::new("")), &include_target);
+            if stack.contains(&include_path) {
+                return Err(FontLoadError::FeatureIncludeCycle { path: include_path });
+            }
+            if included_files.contains_key(&include_path) {
+                continue;
+            }
+
+            let include_contents = source(&include_path)?.ok_or_else(|| {
+                FontLoadError::MissingIncludedFeatureFile { path: include_path.clone() }
+            })?;
+            stack.insert(include_path.clone());
+            collect_feature_includes(
+                source,
+                &include_path,
+                &include_contents,
+                stack,
+                included_files,
+            )?;
+            stack.remove(&include_path);
+            included_files.insert(include_path, include_contents);
+        }
+    }
+
+    Ok(())
+}
+
+pub(crate) fn expand_feature_text(
+    features: &str,
+    feature_files: &BTreeMap<PathBuf, String>,
+) -> Result<String, FontLoadError> {
+    let mut stack = HashSet::new();
+    let root_path = normalize_relative_path(Path::new(FEATURES_FILE));
+    stack.insert(root_path.clone());
+    expand_feature_text_from_map(&root_path, features, feature_files, &mut stack)
+}
+
+fn expand_feature_text_from_map(
+    current_path: &Path,
+    contents: &str,
+    feature_files: &BTreeMap<PathBuf, String>,
+    stack: &mut HashSet<PathBuf>,
+) -> Result<String, FontLoadError> {
     let mut out = String::new();
 
     for line in contents.split_inclusive('\n') {
         if let Some(include_target) = parse_include_target(line) {
             let include_path =
                 join_virtual_path(current_path.parent().unwrap_or(Path::new("")), &include_target);
-            if !seen.insert(include_path.clone()) {
+            if !stack.insert(include_path.clone()) {
                 return Err(FontLoadError::FeatureIncludeCycle { path: include_path });
             }
-
-            let include_contents = read_optional_text(source, &include_path)?.ok_or_else(|| {
+            let include_contents = feature_files.get(&include_path).ok_or_else(|| {
                 FontLoadError::MissingIncludedFeatureFile { path: include_path.clone() }
             })?;
-            out.push_str(&expand_feature_includes(source, &include_path, &include_contents, seen)?);
-            seen.remove(&include_path);
+            out.push_str(&expand_feature_text_from_map(
+                &include_path,
+                include_contents,
+                feature_files,
+                stack,
+            )?);
+            stack.remove(&include_path);
         } else {
             out.push_str(line);
         }
@@ -439,6 +484,14 @@ where
         path: path.to_path_buf(),
         source: Box::new(source),
     })
+}
+
+fn normalize_feature_text(contents: &str) -> Vec<u8> {
+    if contents.as_bytes().contains(&b'\r') {
+        contents.replace("\r\n", "\n").into_bytes()
+    } else {
+        contents.as_bytes().to_vec()
+    }
 }
 
 #[cfg(test)]
@@ -516,7 +569,7 @@ mod tests {
     }
 
     #[test]
-    fn load_with_source_expands_included_feature_files() {
+    fn load_with_source_preserves_structured_feature_includes() {
         let entries = sample_ufo_entries();
         let mut source = |path: &Path| -> Result<Option<String>, Infallible> {
             Ok(entries.get(&path.to_string_lossy().to_string()).cloned())
@@ -527,12 +580,20 @@ mod tests {
         assert_eq!(font.glyph_count(), 1);
         assert_eq!(
             font.features,
+            "languagesystem DFLT dflt;\ninclude( features/includes/shared.fea );\nfeature liga {\n    sub A A by A;\n} liga;\n"
+        );
+        assert_eq!(
+            font.feature_files.get(Path::new("features/includes/shared.fea")),
+            Some(&"@shared = [A];\n".to_string())
+        );
+        assert_eq!(
+            font.features_expanded().unwrap(),
             "languagesystem DFLT dflt;\n@shared = [A];\nfeature liga {\n    sub A A by A;\n} liga;\n"
         );
     }
 
     #[test]
-    fn save_with_sink_writes_flattened_feature_file_and_round_trips() {
+    fn save_with_sink_writes_structured_feature_files_and_round_trips() {
         let entries = sample_ufo_entries();
         let mut source = |path: &Path| -> Result<Option<String>, Infallible> {
             Ok(entries.get(&path.to_string_lossy().to_string()).cloned())
@@ -551,8 +612,13 @@ mod tests {
             String::from_utf8(written.get(Path::new("features.fea")).unwrap().clone()).unwrap();
         assert_eq!(
             features,
-            "languagesystem DFLT dflt;\n@shared = [A];\nfeature liga {\n    sub A A by A;\n} liga;\n"
+            "languagesystem DFLT dflt;\ninclude( features/includes/shared.fea );\nfeature liga {\n    sub A A by A;\n} liga;\n"
         );
+        let shared = String::from_utf8(
+            written.get(Path::new("features/includes/shared.fea")).unwrap().clone(),
+        )
+        .unwrap();
+        assert_eq!(shared, "@shared = [A];\n");
 
         let text_entries: BTreeMap<String, String> = written
             .into_iter()
@@ -566,6 +632,8 @@ mod tests {
         let reloaded = Font::load_with_source(DataRequest::all(), &mut reload_source).unwrap();
 
         assert_eq!(reloaded.features, font.features);
+        assert_eq!(reloaded.feature_files, font.feature_files);
+        assert_eq!(reloaded.features_expanded().unwrap(), font.features_expanded().unwrap());
         assert_eq!(reloaded.glyph_count(), font.glyph_count());
     }
 }

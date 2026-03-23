@@ -2,7 +2,9 @@
 
 #![deny(rustdoc::broken_intra_doc_links)]
 
+use std::collections::BTreeMap;
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -83,6 +85,10 @@ pub struct Font {
     ///
     /// [fea]: https://unifiedfontobject.org/versions/ufo3/features.fea/
     pub features: String,
+    /// Additional feature files referenced from [`Font::features`] via `include(...)`.
+    ///
+    /// Keys are UFO-root-relative paths such as `features/includes/shared.fea`.
+    pub feature_files: BTreeMap<PathBuf, String>,
     /// The contents of the font's [`data` directory][dir].
     ///
     /// [dir]: https://unifiedfontobject.org/versions/ufo3/data/
@@ -219,7 +225,7 @@ impl Font {
     /// `metainfo.plist`, `glyphs/contents.plist`, and `features/includes/foo.fea`.
     ///
     /// Included feature files referenced via `include(...)` are loaded through
-    /// the same callback and flattened into [`Font::features`].
+    /// the same callback and stored in [`Font::feature_files`].
     ///
     /// Note: non-file loading currently supports only UFO v3 and does not
     /// include data/images stores.
@@ -273,10 +279,17 @@ impl Font {
         };
 
         let features_path = path.join(FEATURES_FILE);
-        let mut features = if request.features && features_path.exists() {
-            load_features(&features_path)?
+        let (mut features, mut feature_files) = if request.features && features_path.exists() {
+            let mut feature_source =
+                |requested_path: &Path| match fs::read_to_string(path.join(requested_path)) {
+                    Ok(contents) => Ok(Some(contents)),
+                    Err(source) if source.kind() == ErrorKind::NotFound => Ok(None),
+                    Err(source) => Err(FontLoadError::FeatureFile(source)),
+                };
+            non_file_io::load_feature_files(&mut feature_source, Path::new(FEATURES_FILE))?
+                .unwrap_or_else(|| (String::new(), BTreeMap::new()))
         } else {
-            Default::default()
+            (String::new(), BTreeMap::new())
         };
 
         let glyph_names = NameList::default();
@@ -315,6 +328,7 @@ impl Font {
             {
                 if !features_upgraded.is_empty() {
                     features = features_upgraded;
+                    feature_files.clear();
                 }
             }
         }
@@ -329,9 +343,15 @@ impl Font {
             groups: groups.unwrap_or_default(),
             kerning: kerning.unwrap_or_default(),
             features,
+            feature_files,
             data,
             images,
         })
+    }
+
+    /// Returns the feature code with all `include(...)` directives expanded.
+    pub fn features_expanded(&self) -> Result<String, FontLoadError> {
+        non_file_io::expand_feature_text(&self.features, &self.feature_files)
     }
 
     /// Serialize a [`Font`] to the given `path`, overwriting any existing contents.
@@ -532,15 +552,21 @@ impl Font {
                 .map_err(|source| FontWriteError::CustomFile { name: KERNING_FILE, source })?;
         }
 
-        if !self.features.is_empty() {
+        if !self.features.is_empty() || !self.feature_files.is_empty() {
             // Normalize feature files with line feed line endings
             // This is consistent with the line endings serialized in glif and plist files
             let feature_file_path = path.join(FEATURES_FILE);
-            if self.features.as_bytes().contains(&b'\r') {
-                close_already::fs::write(&feature_file_path, self.features.replace("\r\n", "\n"))
-                    .map_err(FontWriteError::FeatureFile)?;
-            } else {
-                close_already::fs::write(&feature_file_path, &self.features)
+            close_already::fs::write(&feature_file_path, normalize_feature_text(&self.features))
+                .map_err(FontWriteError::FeatureFile)?;
+
+            for (relative_path, contents) in &self.feature_files {
+                let destination = path.join(relative_path);
+                if let Some(parent) = destination.parent() {
+                    fs::create_dir_all(parent).map_err(|source| {
+                        FontWriteError::CreateStoreDir { path: parent.into(), source }
+                    })?;
+                }
+                close_already::fs::write(&destination, normalize_feature_text(contents))
                     .map_err(FontWriteError::FeatureFile)?;
             }
         }
@@ -674,9 +700,12 @@ fn load_kerning(kerning_path: &Path) -> Result<Kerning, FontLoadError> {
     Ok(kerning)
 }
 
-fn load_features(features_path: &Path) -> Result<String, FontLoadError> {
-    let features = fs::read_to_string(features_path).map_err(FontLoadError::FeatureFile)?;
-    Ok(features)
+fn normalize_feature_text(contents: &str) -> Vec<u8> {
+    if contents.as_bytes().contains(&b'\r') {
+        contents.replace("\r\n", "\n").into_bytes()
+    } else {
+        contents.as_bytes().to_vec()
+    }
 }
 
 fn load_layer_set(
@@ -752,6 +781,93 @@ mod tests {
         let test_fea = fs::read_to_string(feapath).unwrap();
         let expected_fea = String::from("feature ss01 {\n    featureNames {\n        name \"Bogus feature\";\n        name 1 \"Bogus feature\";\n    };\n    sub one by two;\n} ss01;\n");
         assert_eq!(test_fea, expected_fea);
+    }
+
+    #[test]
+    fn load_save_preserves_structured_feature_includes() {
+        let tmp = TempDir::new().unwrap();
+        let ufo_path = tmp.path().join("test.ufo");
+        fs::create_dir(&ufo_path).unwrap();
+        fs::write(
+            ufo_path.join(METAINFO_FILE),
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>creator</key>
+    <string>org.linebender.norad</string>
+    <key>formatVersion</key>
+    <integer>3</integer>
+</dict>
+</plist>
+"#,
+        )
+        .unwrap();
+        fs::write(
+            ufo_path.join(LAYER_CONTENTS_FILE),
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+    <array>
+        <string>public.default</string>
+        <string>glyphs</string>
+    </array>
+</array>
+</plist>
+"#,
+        )
+        .unwrap();
+        fs::create_dir(ufo_path.join("glyphs")).unwrap();
+        fs::write(
+            ufo_path.join("glyphs/contents.plist"),
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>A</key>
+    <string>A_.glif</string>
+</dict>
+</plist>
+"#,
+        )
+        .unwrap();
+        fs::write(
+            ufo_path.join("glyphs/A_.glif"),
+            "<?xml version='1.0' encoding='UTF-8'?>\n<glyph name=\"A\" format=\"2\">\n  <advance width=\"500\"/>\n</glyph>\n",
+        )
+        .unwrap();
+        fs::create_dir_all(ufo_path.join("features/includes")).unwrap();
+        fs::write(
+            ufo_path.join(FEATURES_FILE),
+            "languagesystem DFLT dflt;\ninclude( features/includes/shared.fea );\nfeature liga {\n    sub A A by A;\n} liga;\n",
+        )
+        .unwrap();
+        fs::write(ufo_path.join("features/includes/shared.fea"), "@shared = [A];\n").unwrap();
+
+        let font = Font::load(&ufo_path).unwrap();
+
+        assert_eq!(
+            font.features,
+            "languagesystem DFLT dflt;\ninclude( features/includes/shared.fea );\nfeature liga {\n    sub A A by A;\n} liga;\n"
+        );
+        assert_eq!(
+            font.feature_files.get(Path::new("features/includes/shared.fea")),
+            Some(&"@shared = [A];\n".to_string())
+        );
+        assert_eq!(
+            font.features_expanded().unwrap(),
+            "languagesystem DFLT dflt;\n@shared = [A];\nfeature liga {\n    sub A A by A;\n} liga;\n"
+        );
+
+        let saved_path = tmp.path().join("saved.ufo");
+        font.save(&saved_path).unwrap();
+
+        assert_eq!(fs::read_to_string(saved_path.join(FEATURES_FILE)).unwrap(), font.features);
+        assert_eq!(
+            fs::read_to_string(saved_path.join("features/includes/shared.fea")).unwrap(),
+            "@shared = [A];\n"
+        );
     }
 
     #[test]
