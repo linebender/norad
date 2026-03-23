@@ -94,8 +94,6 @@ where
 
     let layers = load_layer_set_from_source(source, &request.layers)?;
 
-    let (groups, kerning) = (groups, kerning);
-
     meta.format_version = FormatVersion::V3;
 
     Ok(Font {
