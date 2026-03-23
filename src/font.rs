@@ -13,11 +13,11 @@ use crate::datastore::{DataStore, ImageStore};
 use crate::error::{FontLoadError, FontWriteError};
 use crate::fontinfo::FontInfo;
 use crate::glyph::Glyph;
-use crate::groups::{validate_groups, Groups};
-use crate::guideline::Guideline;
-use crate::kerning::{
-    Kerning, ReverseGroupsLookup, FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX,
+use crate::groups::{
+    validate_groups, Groups, FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX,
 };
+use crate::guideline::Guideline;
+use crate::kerning::{Kerning, ReverseGroupsLookup};
 use crate::layer::{Layer, LayerContents, LAYER_CONTENTS_FILE};
 use crate::name::Name;
 use crate::names::NameList;

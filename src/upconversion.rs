@@ -6,8 +6,8 @@ use serde::Deserialize;
 use crate::error::FontLoadError;
 use crate::font::LIB_FILE;
 use crate::fontinfo::FontInfo;
-use crate::groups::Groups;
-use crate::kerning::{Kerning, FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX};
+use crate::groups::{Groups, FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX};
+use crate::kerning::Kerning;
 use crate::names::NameList;
 use crate::Name;
 

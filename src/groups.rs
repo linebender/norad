@@ -1,8 +1,14 @@
+//! Helper types & constants for working with groups.
+
 use std::collections::{BTreeMap, HashSet};
 
 use crate::error::GroupsValidationError;
-use crate::kerning::{FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX};
 use crate::Name;
+
+/// The UFO standard group prefix for kerns in the first position.
+pub const FIRST_KERNING_GROUP_PREFIX: &str = "public.kern1.";
+/// The UFO standard group prefix for kerns in the second position.
+pub const SECOND_KERNING_GROUP_PREFIX: &str = "public.kern2.";
 
 /// A map of group name to a list of glyph names.
 ///

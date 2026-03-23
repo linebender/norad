@@ -1,16 +1,12 @@
-//! Helper types & constants for working with groups & kerning.
+//! Helper types for working with kerning.
 
 use std::collections::{BTreeMap, HashMap};
 
 use serde::ser::{SerializeMap, Serializer};
 use serde::Serialize;
 
+use crate::groups::{FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX};
 use crate::{Groups, Name};
-
-/// The UFO standard group prefix for kerns in the first position.
-pub const FIRST_KERNING_GROUP_PREFIX: &str = "public.kern1.";
-/// The UFO standard group prefix for kerns in the second position.
-pub const SECOND_KERNING_GROUP_PREFIX: &str = "public.kern2.";
 
 /// A map of kerning pairs.
 ///
