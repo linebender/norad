@@ -162,6 +162,18 @@ pub(crate) fn write_xml_to_file(
     Ok(())
 }
 
+/// Serialize any `Serialize` value to XML bytes, providing custom options.
+pub(crate) fn write_xml_to_bytes(
+    value: &impl serde::Serialize,
+    options: &WriteOptions,
+) -> Result<Vec<u8>, CustomSerializationError> {
+    let mut out = Vec::new();
+    plist::to_writer_xml_with_options(&mut out, value, options.xml_options())
+        .map_err(CustomSerializationError::SerializePlist)?;
+    write_quote_style_bytes(&mut out, options);
+    Ok(out)
+}
+
 /// Write XML declarations with custom quote formatting options.
 fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), std::io::Error> {
     // Optionally modify the XML declaration quote style
@@ -177,6 +189,19 @@ fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), std::io:
         QuoteChar::Double => (), // double quote is the default style
     }
     Ok(())
+}
+
+fn write_quote_style_bytes(bytes: &mut [u8], options: &WriteOptions) {
+    if !matches!(options.quote_style, QuoteChar::Single) {
+        return;
+    }
+
+    const DOUBLE_HEADER: &[u8] = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+    const SINGLE_HEADER: &[u8] = b"<?xml version='1.0' encoding='UTF-8'?>";
+
+    if bytes.starts_with(DOUBLE_HEADER) {
+        bytes[..SINGLE_HEADER.len()].copy_from_slice(SINGLE_HEADER);
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

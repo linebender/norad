@@ -79,6 +79,7 @@ mod kerning;
 mod layer;
 mod name;
 mod names;
+mod non_file_io;
 mod serde_xml_plist;
 mod shared_types;
 mod upconversion;
@@ -86,7 +87,7 @@ pub(crate) mod util;
 mod write;
 
 pub use data_request::DataRequest;
-pub use font::{FileSystemResolver, Font, FormatVersion, MetaInfo, SourceResolver};
+pub use font::{Font, FormatVersion, MetaInfo};
 pub use fontinfo::FontInfo;
 pub use glyph::{
     AffineTransform, Anchor, Codepoints, Component, Contour, ContourPoint, Glyph, Image, PointType,

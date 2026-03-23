@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashSet};
+use std::error::Error as StdError;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -403,6 +404,30 @@ impl Layer {
             .map_err(LayerWriteError::LayerInfo)
     }
 
+    fn layerinfo_to_bytes_if_needed(
+        &self,
+        options: &WriteOptions,
+    ) -> Result<Option<Vec<u8>>, LayerWriteError> {
+        if self.color.is_none() && self.lib.is_empty() {
+            return Ok(None);
+        }
+
+        let mut dict = plist::dictionary::Dictionary::new();
+
+        if let Some(c) = &self.color {
+            dict.insert("color".into(), c.to_rgba_string().into());
+        }
+        if !self.lib.is_empty() {
+            dict.insert("lib".into(), self.lib.clone().into());
+        }
+
+        util::recursive_sort_plist_keys(&mut dict);
+
+        crate::write::write_xml_to_bytes(&dict, options)
+            .map(Some)
+            .map_err(LayerWriteError::LayerInfo)
+    }
+
     /// Serialize this layer to the given path with the default
     /// [`WriteOptions`] serialization format configuration.
     ///
@@ -442,6 +467,50 @@ impl Layer {
                 source,
             })
         })
+    }
+
+    pub(crate) fn save_with_sink<F, E>(
+        &self,
+        path: &Path,
+        opts: &WriteOptions,
+        sink: &mut F,
+    ) -> Result<(), LayerWriteError>
+    where
+        F: FnMut(&Path, &[u8]) -> Result<(), E>,
+        E: StdError + Send + Sync + 'static,
+    {
+        let contents_path = path.join(CONTENTS_FILE);
+        let contents_xml = crate::write::write_xml_to_bytes(&self.contents, opts)
+            .map_err(LayerWriteError::Contents)?;
+        sink(&contents_path, &contents_xml).map_err(|source| LayerWriteError::Sink {
+            path: contents_path.clone(),
+            source: Box::new(source),
+        })?;
+
+        if let Some(layerinfo_xml) = self.layerinfo_to_bytes_if_needed(opts)? {
+            let layerinfo_path = path.join(LAYER_INFO_FILE);
+            sink(&layerinfo_path, &layerinfo_xml).map_err(|source| LayerWriteError::Sink {
+                path: layerinfo_path.clone(),
+                source: Box::new(source),
+            })?;
+        }
+
+        for (name, glyph_rel_path) in &self.contents {
+            let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
+            let glyph_path = path.join(glyph_rel_path);
+            let glyph_xml =
+                glyph.encode_xml_with_options(opts).map_err(|source| LayerWriteError::Glyph {
+                    name: glyph.name.to_string(),
+                    path: glyph_path.clone(),
+                    source,
+                })?;
+            sink(&glyph_path, &glyph_xml).map_err(|source| LayerWriteError::Sink {
+                path: glyph_path.clone(),
+                source: Box::new(source),
+            })?;
+        }
+
+        Ok(())
     }
 
     /// Returns the number of [`Glyph`]s in the layer.

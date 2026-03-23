@@ -2,9 +2,7 @@
 
 #![deny(rustdoc::broken_intra_doc_links)]
 
-use std::collections::BTreeMap;
 use std::fs;
-use std::io::{Cursor, ErrorKind};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -21,87 +19,21 @@ use crate::kerning::Kerning;
 use crate::layer::{Layer, LayerContents, LAYER_CONTENTS_FILE};
 use crate::name::Name;
 use crate::names::NameList;
+use crate::non_file_io;
 use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
 use crate::upconversion;
 use crate::write::{self, WriteOptions};
 use crate::DataRequest;
 
-static METAINFO_FILE: &str = "metainfo.plist";
-static FONTINFO_FILE: &str = "fontinfo.plist";
+pub(crate) static METAINFO_FILE: &str = "metainfo.plist";
+pub(crate) static FONTINFO_FILE: &str = "fontinfo.plist";
 pub(crate) static LIB_FILE: &str = "lib.plist";
-static GROUPS_FILE: &str = "groups.plist";
-static KERNING_FILE: &str = "kerning.plist";
-static FEATURES_FILE: &str = "features.fea";
-static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
+pub(crate) static GROUPS_FILE: &str = "groups.plist";
+pub(crate) static KERNING_FILE: &str = "kerning.plist";
+pub(crate) static FEATURES_FILE: &str = "features.fea";
+pub(crate) static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
 pub(crate) static DATA_DIR: &str = "data";
 pub(crate) static IMAGES_DIR: &str = "images";
-
-/// Abstraction over loading UTF-8 UFO files.
-///
-/// This can be implemented by filesystem-backed loaders, in-memory maps,
-/// or custom loaders.
-pub trait SourceResolver {
-    /// Return UTF-8 contents for the provided path.
-    ///
-    /// Returning `Ok(None)` indicates a missing file.
-    fn get_contents(&self, path: &Path) -> Result<Option<String>, FontLoadError>;
-
-    /// Resolve a raw request path.
-    fn resolve_raw_path(&self, path: &Path, _requested_from: Option<&Path>) -> PathBuf {
-        path.to_path_buf()
-    }
-
-    /// Canonicalize a path if needed.
-    fn canonicalize(&self, path: &Path) -> Result<PathBuf, FontLoadError> {
-        Ok(path.to_path_buf())
-    }
-}
-
-impl<F> SourceResolver for F
-where
-    F: Fn(&Path) -> Option<String>,
-{
-    fn get_contents(&self, path: &Path) -> Result<Option<String>, FontLoadError> {
-        Ok((self)(path))
-    }
-}
-
-/// Filesystem-backed [`SourceResolver`].
-#[derive(Default)]
-pub struct FileSystemResolver {
-    project_root: PathBuf,
-}
-
-impl FileSystemResolver {
-    /// Create a resolver rooted at `project_root`.
-    pub fn new(project_root: PathBuf) -> Self {
-        Self { project_root }
-    }
-}
-
-impl SourceResolver for FileSystemResolver {
-    fn get_contents(&self, path: &Path) -> Result<Option<String>, FontLoadError> {
-        match fs::read_to_string(path) {
-            Ok(contents) => Ok(Some(contents)),
-            Err(source) if source.kind() == ErrorKind::NotFound => Ok(None),
-            Err(source) => Err(FontLoadError::ResolverIo { path: path.to_path_buf(), source }),
-        }
-    }
-
-    fn resolve_raw_path(&self, path: &Path, requested_from: Option<&Path>) -> PathBuf {
-        if path.is_absolute() {
-            return path.to_path_buf();
-        }
-        if let Some(parent) = requested_from.and_then(Path::parent) {
-            return parent.join(path);
-        }
-        self.project_root.join(path)
-    }
-
-    fn canonicalize(&self, path: &Path) -> Result<PathBuf, FontLoadError> {
-        Ok(path.to_path_buf())
-    }
-}
 
 /// A font object, corresponding to a [UFO directory].
 /// A Unified Font Object.
@@ -281,113 +213,25 @@ impl Font {
         Self::load_impl(path.as_ref(), request)
     }
 
-    /// Returns a [`Font`] loaded via a custom [`SourceResolver`].
+    /// Returns a [`Font`] loaded from a non-file source.
     ///
-    /// Paths are resolved relative to the resolver root and must be UFO-root
-    /// relative (for example `metainfo.plist`, `glyphs/contents.plist`, etc.).
+    /// The source callback receives UFO-root-relative paths such as
+    /// `metainfo.plist`, `glyphs/contents.plist`, and `features/includes/foo.fea`.
     ///
-    /// Note: resolver-based loading currently supports only UFO v3 and does not
+    /// Included feature files referenced via `include(...)` are loaded through
+    /// the same callback and flattened into [`Font::features`].
+    ///
+    /// Note: non-file loading currently supports only UFO v3 and does not
     /// include data/images stores.
-    pub fn load_with_resolver(
+    pub fn load_with_source<F, E>(
         request: DataRequest,
-        resolver: impl SourceResolver,
-    ) -> Result<Font, FontLoadError> {
-        Self::load_with_resolver_impl(request, &resolver)
-    }
-
-    fn load_with_resolver_impl(
-        request: DataRequest,
-        resolver: &dyn SourceResolver,
-    ) -> Result<Font, FontLoadError> {
-        let metainfo_str = required_file(resolver, Path::new(METAINFO_FILE), None)?;
-        let mut meta: MetaInfo = plist::from_reader(Cursor::new(metainfo_str.as_bytes()))
-            .map_err(|source| FontLoadError::ParsePlist { name: METAINFO_FILE, source })?;
-
-        if meta.format_version != FormatVersion::V3 {
-            return Err(FontLoadError::ResolverUnsupportedFormatVersion);
-        }
-
-        let mut lib = if request.lib {
-            match optional_file(resolver, Path::new(LIB_FILE), None)? {
-                Some(lib_str) => plist::Value::from_reader(Cursor::new(lib_str.as_bytes()))
-                    .map_err(|source| FontLoadError::ParsePlist { name: LIB_FILE, source })?
-                    .into_dictionary()
-                    .ok_or(FontLoadError::LibFileMustBeDictionary)?,
-                None => Plist::new(),
-            }
-        } else {
-            Plist::new()
-        };
-
-        let font_info = if let Some(fontinfo_str) =
-            optional_file(resolver, Path::new(FONTINFO_FILE), None)?
-        {
-            let mut font_info: FontInfo = plist::from_reader(Cursor::new(fontinfo_str.as_bytes()))
-                .map_err(|source| FontLoadError::ParsePlist { name: FONTINFO_FILE, source })?;
-            font_info
-                .validate()
-                .map_err(crate::error::FontInfoLoadError::InvalidData)
-                .map_err(FontLoadError::FontInfo)?;
-            font_info.load_object_libs(&mut lib).map_err(FontLoadError::FontInfo)?;
-            font_info
-        } else {
-            Default::default()
-        };
-
-        let groups = if request.groups {
-            match optional_file(resolver, Path::new(GROUPS_FILE), None)? {
-                Some(groups_str) => {
-                    let groups: Groups =
-                        plist::from_reader(Cursor::new(groups_str.as_bytes())).map_err(
-                            |source| FontLoadError::ParsePlist { name: GROUPS_FILE, source },
-                        )?;
-                    validate_groups(&groups).map_err(FontLoadError::InvalidGroups)?;
-                    Some(groups)
-                }
-                None => None,
-            }
-        } else {
-            None
-        };
-
-        let kerning = if request.kerning {
-            match optional_file(resolver, Path::new(KERNING_FILE), None)? {
-                Some(kerning_str) => {
-                    let kerning: Kerning =
-                        plist::from_reader(Cursor::new(kerning_str.as_bytes())).map_err(
-                            |source| FontLoadError::ParsePlist { name: KERNING_FILE, source },
-                        )?;
-                    Some(kerning)
-                }
-                None => None,
-            }
-        } else {
-            None
-        };
-
-        let features = if request.features {
-            optional_file(resolver, Path::new(FEATURES_FILE), None)?.unwrap_or_default()
-        } else {
-            Default::default()
-        };
-
-        let layers = load_layer_set_from_resolver(resolver, &request.layers)?;
-
-        let (groups, kerning) = (groups, kerning);
-
-        meta.format_version = FormatVersion::V3;
-
-        Ok(Font {
-            layers,
-            meta,
-            font_info,
-            lib,
-            groups: groups.unwrap_or_default(),
-            kerning: kerning.unwrap_or_default(),
-            features,
-            data: Default::default(),
-            images: Default::default(),
-        })
+        mut source: F,
+    ) -> Result<Font, FontLoadError>
+    where
+        F: FnMut(&Path) -> Result<Option<String>, E>,
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        non_file_io::load_font_with_source(request, &mut source)
     }
 
     fn load_impl(path: &Path, request: DataRequest) -> Result<Font, FontLoadError> {
@@ -598,6 +442,22 @@ impl Font {
         self.save_impl(path, options)
     }
 
+    /// Serialize a [`Font`] to a non-file sink using UFO-root-relative paths.
+    ///
+    /// The sink callback receives relative output paths such as
+    /// `metainfo.plist`, `glyphs/A_.glif`, and `images/example.png`.
+    pub fn save_with_sink<F, E>(
+        &self,
+        options: &WriteOptions,
+        mut sink: F,
+    ) -> Result<(), FontWriteError>
+    where
+        F: FnMut(&Path, &[u8]) -> Result<(), E>,
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        non_file_io::save_font_with_sink(self, options, &mut sink)
+    }
+
     fn save_impl(&self, path: &Path, options: &WriteOptions) -> Result<(), FontWriteError> {
         if self.meta.format_version != FormatVersion::V3 {
             return Err(FontWriteError::Downgrade);
@@ -782,105 +642,6 @@ impl Font {
     pub fn guidelines_mut(&mut self) -> &mut Vec<Guideline> {
         self.font_info.guidelines.get_or_insert_with(Default::default)
     }
-}
-
-fn optional_file(
-    resolver: &dyn SourceResolver,
-    path: &Path,
-    requested_from: Option<&Path>,
-) -> Result<Option<String>, FontLoadError> {
-    let resolved = resolver.resolve_raw_path(path, requested_from);
-    let canonical = resolver.canonicalize(&resolved)?;
-    resolver.get_contents(&canonical)
-}
-
-fn required_file(
-    resolver: &dyn SourceResolver,
-    path: &Path,
-    requested_from: Option<&Path>,
-) -> Result<String, FontLoadError> {
-    optional_file(resolver, path, requested_from)?.ok_or(FontLoadError::MissingMetaInfoFile)
-}
-
-fn load_layer_set_from_resolver(
-    resolver: &dyn SourceResolver,
-    filter: &LayerFilter,
-) -> Result<LayerContents, FontLoadError> {
-    let layer_descriptors: Vec<(Name, PathBuf)> =
-        match optional_file(resolver, Path::new(LAYER_CONTENTS_FILE), None)? {
-            Some(layercontents_str) => {
-                plist::from_reader(Cursor::new(layercontents_str.as_bytes())).map_err(|source| {
-                    FontLoadError::ParsePlist { name: LAYER_CONTENTS_FILE, source }
-                })?
-            }
-            None => vec![(Name::new_raw("public.default"), PathBuf::from("glyphs"))],
-        };
-
-    let mut layers = LayerContents::default();
-    for (layer_name, layer_dir) in layer_descriptors {
-        if !filter.should_load(&layer_name, &layer_dir) {
-            continue;
-        }
-
-        let layer = if layer_dir == Path::new("glyphs") {
-            layers.default_layer_mut()
-        } else {
-            let layer = layers.get_or_create_layer(layer_name.as_str()).map_err(|_| {
-                FontLoadError::Layer {
-                    name: layer_name.to_string(),
-                    path: layer_dir.clone(),
-                    source: Box::new(crate::error::LayerLoadError::MissingContentsFile),
-                }
-            })?;
-            layer.path = layer_dir.clone();
-            layer
-        };
-
-        let contents_path = layer_dir.join("contents.plist");
-        let contents_str =
-            optional_file(resolver, &contents_path, None)?.ok_or(FontLoadError::Layer {
-                name: layer_name.to_string(),
-                path: contents_path.clone(),
-                source: Box::new(crate::error::LayerLoadError::MissingContentsFile),
-            })?;
-
-        let glyph_files: BTreeMap<Name, PathBuf> =
-            plist::from_reader(Cursor::new(contents_str.as_bytes())).map_err(|source| {
-                FontLoadError::Layer {
-                    name: layer_name.to_string(),
-                    path: contents_path.clone(),
-                    source: Box::new(crate::error::LayerLoadError::ParsePlist {
-                        name: "contents.plist",
-                        source,
-                    }),
-                }
-            })?;
-
-        for (_glyph_name, glif_relative_path) in glyph_files {
-            let glif_path = layer_dir.join(&glif_relative_path);
-            let glif_contents =
-                optional_file(resolver, &glif_path, None)?.ok_or(FontLoadError::Layer {
-                    name: layer_name.to_string(),
-                    path: glif_path.clone(),
-                    source: Box::new(crate::error::LayerLoadError::MissingContentsFile),
-                })?;
-            let mut glyph = Glyph::parse_raw(glif_contents.as_bytes()).map_err(|source| {
-                FontLoadError::Layer {
-                    name: layer_name.to_string(),
-                    path: glif_path.clone(),
-                    source: Box::new(crate::error::LayerLoadError::Glyph {
-                        name: glif_relative_path.to_string_lossy().to_string(),
-                        path: glif_path.clone(),
-                        source,
-                    }),
-                }
-            })?;
-            glyph.name = Name::new_raw(&glyph.name);
-            layer.insert_glyph(glyph);
-        }
-    }
-
-    Ok(layers)
 }
 
 fn load_lib(lib_path: &Path) -> Result<plist::Dictionary, FontLoadError> {
