@@ -42,21 +42,17 @@ impl ReverseGroupsLookup {
 
 impl From<&Groups> for ReverseGroupsLookup {
     fn from(groups: &Groups) -> Self {
-        let first = groups
-            .iter()
-            .filter(|(group_name, _)| group_name.starts_with(FIRST_KERNING_GROUP_PREFIX))
-            .flat_map(|(group_name, members)| {
-                members.iter().map(|member| (member.clone(), group_name.clone()))
-            })
-            .collect();
-        let second = groups
-            .iter()
-            .filter(|(group_name, _)| group_name.starts_with(SECOND_KERNING_GROUP_PREFIX))
-            .flat_map(|(group_name, members)| {
-                members.iter().map(|member| (member.clone(), group_name.clone()))
-            })
-            .collect();
-        Self { first, second }
+        groups.iter().fold(ReverseGroupsLookup { first: HashMap::new(), second: HashMap::new() }, |mut rgl, (group_name, members)| {
+            let inverted = members.iter().map(|member| (member.clone(), group_name.clone()));
+            if group_name.starts_with(FIRST_KERNING_GROUP_PREFIX) {
+                rgl.first.extend(inverted);
+            } else if group_name.starts_with(SECOND_KERNING_GROUP_PREFIX) {
+                rgl.second.extend(inverted);
+            } else {
+                unreachable!("group didn't start with {FIRST_KERNING_GROUP_PREFIX} or {SECOND_KERNING_GROUP_PREFIX}");
+            }
+            rgl
+        })
     }
 }
 
