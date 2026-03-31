@@ -1,4 +1,6 @@
 //! Helper types for working with kerning.
+//!
+//! To find the kerning value for a glyph/group pair, see [`Font::kerning_lookup`](crate::Font::kerning_lookup).
 
 use std::collections::{BTreeMap, HashMap};
 

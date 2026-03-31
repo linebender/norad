@@ -675,10 +675,6 @@ impl Font {
     ///
     /// The elements can be either individual glyphs (by name) or kerning groups
     /// (by name), or any combination of the two.
-    //  ^ note: this works without any special consideration in the code
-    //          because glyph names are forbidden from using the group prefix,
-    //          thus meaning the group name lookup will always fail if a group
-    //          was passed in
     ///
     /// ⚠️ This method forgoes pre-computing a reverse glyph groups lookup for the
     /// use case where you're only after a couple of kerns and the overhead of
@@ -692,38 +688,44 @@ impl Font {
         }
 
         // glyph name group name
-        let second_group = self
-            .groups
-            .iter()
-            .filter(|(name, _)| name.starts_with(SECOND_KERNING_GROUP_PREFIX))
-            .find_map(|(name, members)| {
-                members.iter().any(|glyph_name| glyph_name.as_str() == second).then_some(name)
-            });
+        let second_group = if second.starts_with(SECOND_KERNING_GROUP_PREFIX) {
+            Some(second)
+        } else {
+            self.groups
+                .iter()
+                .filter(|(name, _)| name.starts_with(SECOND_KERNING_GROUP_PREFIX))
+                .find_map(|(name, members)| {
+                    members.iter().any(|glyph_name| glyph_name.as_str() == second).then_some(name)
+                })
+                .map(Name::as_str)
+        };
         if let Some(second_group) = second_group {
-            if let Some(kern) = self.kerning_lookup_dumb(first, second_group.as_str()) {
+            if let Some(kern) = self.kerning_lookup_dumb(first, second_group) {
                 return Some(kern);
             }
         }
 
         // group name glyph name
-        let first_group = self
-            .groups
-            .iter()
-            .filter(|(name, _)| name.starts_with(FIRST_KERNING_GROUP_PREFIX))
-            .find_map(|(name, members)| {
-                members.iter().any(|glyph_name| glyph_name.as_str() == first).then_some(name)
-            });
+        let first_group = if first.starts_with(FIRST_KERNING_GROUP_PREFIX) {
+            Some(first)
+        } else {
+            self.groups
+                .iter()
+                .filter(|(name, _)| name.starts_with(FIRST_KERNING_GROUP_PREFIX))
+                .find_map(|(name, members)| {
+                    members.iter().any(|glyph_name| glyph_name.as_str() == first).then_some(name)
+                })
+                .map(Name::as_str)
+        };
         if let Some(first_group) = first_group {
-            if let Some(kern) = self.kerning_lookup_dumb(first_group.as_str(), second) {
+            if let Some(kern) = self.kerning_lookup_dumb(first_group, second) {
                 return Some(kern);
             }
         }
 
         // group name group name
         if let Some((first_group, second_group)) = first_group.zip(second_group) {
-            if let Some(kern) =
-                self.kerning_lookup_dumb(first_group.as_str(), second_group.as_str())
-            {
+            if let Some(kern) = self.kerning_lookup_dumb(first_group, second_group) {
                 return Some(kern);
             }
         }
