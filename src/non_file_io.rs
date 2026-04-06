@@ -16,6 +16,8 @@ use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
 use crate::write::{self, WriteOptions};
 use crate::{DataRequest, LayerContents, Name};
 
+type FeatureFilesLoadResult = Option<(String, BTreeMap<PathBuf, String>)>;
+
 pub(crate) fn load_font_with_source<F, E>(
     request: DataRequest,
     source: &mut F,
@@ -333,7 +335,7 @@ where
 pub(crate) fn load_feature_files(
     source: &mut impl FnMut(&Path) -> Result<Option<String>, FontLoadError>,
     path: &Path,
-) -> Result<Option<(String, BTreeMap<PathBuf, String>)>, FontLoadError> {
+) -> Result<FeatureFilesLoadResult, FontLoadError> {
     let Some(contents) = source(path)? else {
         return Ok(None);
     };
@@ -501,10 +503,10 @@ mod tests {
 
     use super::*;
 
-    fn sample_ufo_entries() -> BTreeMap<String, String> {
+    fn sample_ufo_entries() -> BTreeMap<PathBuf, String> {
         BTreeMap::from([
             (
-                "metainfo.plist".into(),
+                PathBuf::from("metainfo.plist"),
                 r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -519,7 +521,7 @@ mod tests {
                 .into(),
             ),
             (
-                "layercontents.plist".into(),
+                PathBuf::from("layercontents.plist"),
                 r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -534,7 +536,7 @@ mod tests {
                 .into(),
             ),
             (
-                "glyphs/contents.plist".into(),
+                PathBuf::from("glyphs/contents.plist"),
                 r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -547,7 +549,7 @@ mod tests {
                 .into(),
             ),
             (
-                "glyphs/A_.glif".into(),
+                                PathBuf::from("glyphs/A_.glif"),
                 r#"<?xml version='1.0' encoding='UTF-8'?>
 <glyph name="A" format="2">
   <advance width="500"/>
@@ -556,11 +558,11 @@ mod tests {
                 .into(),
             ),
             (
-                "features.fea".into(),
+                PathBuf::from("features.fea"),
                 "languagesystem DFLT dflt;\ninclude( features/includes/shared.fea );\nfeature liga {\n    sub A A by A;\n} liga;\n".into(),
             ),
             (
-                "features/includes/shared.fea".into(),
+                PathBuf::from("features/includes/shared.fea"),
                 "@shared = [A];\n".into(),
             ),
         ])
@@ -569,9 +571,8 @@ mod tests {
     #[test]
     fn load_with_source_preserves_structured_feature_includes() {
         let entries = sample_ufo_entries();
-        let mut source = |path: &Path| -> Result<Option<String>, Infallible> {
-            Ok(entries.get(&path.to_string_lossy().to_string()).cloned())
-        };
+        let mut source =
+            |path: &Path| -> Result<Option<String>, Infallible> { Ok(entries.get(path).cloned()) };
 
         let font = Font::load_with_source(DataRequest::all(), &mut source).unwrap();
 
@@ -593,9 +594,8 @@ mod tests {
     #[test]
     fn save_with_sink_writes_structured_feature_files_and_round_trips() {
         let entries = sample_ufo_entries();
-        let mut source = |path: &Path| -> Result<Option<String>, Infallible> {
-            Ok(entries.get(&path.to_string_lossy().to_string()).cloned())
-        };
+        let mut source =
+            |path: &Path| -> Result<Option<String>, Infallible> { Ok(entries.get(path).cloned()) };
         let font = Font::load_with_source(DataRequest::all(), &mut source).unwrap();
 
         let mut written = BTreeMap::<PathBuf, Vec<u8>>::new();
@@ -618,14 +618,12 @@ mod tests {
         .unwrap();
         assert_eq!(shared, "@shared = [A];\n");
 
-        let text_entries: BTreeMap<String, String> = written
+        let text_entries: BTreeMap<PathBuf, String> = written
             .into_iter()
-            .map(|(path, bytes)| {
-                (path.to_string_lossy().to_string(), String::from_utf8(bytes).unwrap())
-            })
+            .map(|(path, bytes)| (path, String::from_utf8(bytes).unwrap()))
             .collect();
         let mut reload_source = |path: &Path| -> Result<Option<String>, Infallible> {
-            Ok(text_entries.get(&path.to_string_lossy().to_string()).cloned())
+            Ok(text_entries.get(path).cloned())
         };
         let reloaded = Font::load_with_source(DataRequest::all(), &mut reload_source).unwrap();
 
