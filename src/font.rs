@@ -13,11 +13,9 @@ use crate::datastore::{DataStore, ImageStore};
 use crate::error::{FontLoadError, FontWriteError};
 use crate::fontinfo::FontInfo;
 use crate::glyph::Glyph;
-use crate::groups::{
-    validate_groups, Groups, FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX,
-};
+use crate::groups::{validate_groups, Groups};
 use crate::guideline::Guideline;
-use crate::kerning::{Kerning, ReverseGroupsLookup};
+use crate::kerning::{Kerning, ReverseGroups};
 use crate::layer::{Layer, LayerContents, LAYER_CONTENTS_FILE};
 use crate::name::Name;
 use crate::names::NameList;
@@ -607,15 +605,15 @@ impl Font {
         self.font_info.guidelines.get_or_insert_with(Default::default)
     }
 
-    /// Builds a [`ReverseGroupsLookup`], used to determine what group a glyph
+    /// Builds a [`ReverseGroups`], used to determine what group a glyph
     /// is in.
     ///
     /// Effectively the inverse of `groups.plist`.
     ///
     /// Used by [`Font::kerning_lookup`].
     #[inline]
-    pub fn get_reverse_groups_lookup(&self) -> ReverseGroupsLookup {
-        ReverseGroupsLookup::from(&self.groups)
+    pub fn get_reverse_groups_lookup(&'_ self) -> ReverseGroups<'_> {
+        ReverseGroups::from(&self.groups)
     }
 
     /// Retrieve the kerning value (if any) between a pair of elements.
@@ -627,114 +625,47 @@ impl Font {
     //          thus meaning the group name lookup will always fail if a group
     //          was passed in
     ///
-    /// This method is accelerated by the [`ReverseGroupsLookup`], which can be
-    /// obtained from [`Font::get_reverse_groups_lookup`]. Using it is highly
-    /// recommended if doing numerous lookups, but if not you can use
-    /// [`Font::kerning_lookup_slow`], which is the same method without needing
-    /// the pre-computed groups lookup.
+    /// This method is requires a [`ReverseGroups`], which can be obtained from
+    /// [`Font::get_reverse_groups_lookup`].
     pub fn kerning_lookup(
         &self,
-        lookup: &ReverseGroupsLookup,
+        resolver: &ReverseGroups,
         first: &str,
         second: &str,
     ) -> Option<f64> {
+        let kerning_lookup = |first: &str, second: &str| {
+            self.kerning.get(first).and_then(|first| first.get(second)).copied()
+        };
+
         // glyph name glyph name
-        if let Some(kern) = self.kerning_lookup_dumb(first, second) {
+        if let Some(kern) = kerning_lookup(first, second) {
             return Some(kern);
         }
 
         // glyph name group name
-        let second_group = lookup.get_second(second);
+        let second_group = resolver.get_second(second);
         if let Some(second_group) = &second_group {
-            if let Some(kern) = self.kerning_lookup_dumb(first, second_group.as_str()) {
+            if let Some(kern) = kerning_lookup(first, second_group.as_str()) {
                 return Some(kern);
             }
         }
 
         // group name glyph name
-        let first_group = lookup.get_first(first);
+        let first_group = resolver.get_first(first);
         if let Some(first_group) = &first_group {
-            if let Some(kern) = self.kerning_lookup_dumb(first_group.as_str(), second) {
+            if let Some(kern) = kerning_lookup(first_group.as_str(), second) {
                 return Some(kern);
             }
         }
 
         // group name group name
         if let Some((first_group, second_group)) = first_group.zip(second_group) {
-            if let Some(kern) =
-                self.kerning_lookup_dumb(first_group.as_str(), second_group.as_str())
-            {
+            if let Some(kern) = kerning_lookup(first_group.as_str(), second_group.as_str()) {
                 return Some(kern);
             }
         }
 
         None
-    }
-
-    /// Retrieve the kerning value (if any) between a pair of elements.
-    ///
-    /// The elements can be either individual glyphs (by name) or kerning groups
-    /// (by name), or any combination of the two.
-    ///
-    /// ⚠️ This method forgoes pre-computing a reverse glyph groups lookup for the
-    /// use case where you're only after a couple of kerns and the overhead of
-    /// generating the lookup is not worth it. But in cases where you're
-    /// querying many kerns, you should definitely be using
-    /// [`Font::kerning_lookup`] over this method.
-    pub fn kerning_lookup_slow(&self, first: &str, second: &str) -> Option<f64> {
-        // glyph name glyph name
-        if let Some(kern) = self.kerning_lookup_dumb(first, second) {
-            return Some(kern);
-        }
-
-        // glyph name group name
-        let second_group = if second.starts_with(SECOND_KERNING_GROUP_PREFIX) {
-            Some(second)
-        } else {
-            self.groups
-                .iter()
-                .filter(|(name, _)| name.starts_with(SECOND_KERNING_GROUP_PREFIX))
-                .find_map(|(name, members)| {
-                    members.iter().any(|glyph_name| glyph_name.as_str() == second).then_some(name)
-                })
-                .map(Name::as_str)
-        };
-        if let Some(second_group) = second_group {
-            if let Some(kern) = self.kerning_lookup_dumb(first, second_group) {
-                return Some(kern);
-            }
-        }
-
-        // group name glyph name
-        let first_group = if first.starts_with(FIRST_KERNING_GROUP_PREFIX) {
-            Some(first)
-        } else {
-            self.groups
-                .iter()
-                .filter(|(name, _)| name.starts_with(FIRST_KERNING_GROUP_PREFIX))
-                .find_map(|(name, members)| {
-                    members.iter().any(|glyph_name| glyph_name.as_str() == first).then_some(name)
-                })
-                .map(Name::as_str)
-        };
-        if let Some(first_group) = first_group {
-            if let Some(kern) = self.kerning_lookup_dumb(first_group, second) {
-                return Some(kern);
-            }
-        }
-
-        // group name group name
-        if let Some((first_group, second_group)) = first_group.zip(second_group) {
-            if let Some(kern) = self.kerning_lookup_dumb(first_group, second_group) {
-                return Some(kern);
-            }
-        }
-
-        None
-    }
-
-    fn kerning_lookup_dumb(&self, first: &str, second: &str) -> Option<f64> {
-        self.kerning.get(first).and_then(|first| first.get(second)).copied()
     }
 }
 

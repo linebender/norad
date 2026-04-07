@@ -93,6 +93,12 @@ impl std::borrow::Borrow<str> for Name {
     }
 }
 
+impl std::borrow::Borrow<str> for &Name {
+    fn borrow(&self) -> &str {
+        self.0.as_ref()
+    }
+}
+
 impl FromStr for Name {
     type Err = NamingError;
 

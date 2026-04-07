@@ -2,10 +2,10 @@
 //!
 //! To find the kerning value for a glyph/group pair, see [`Font::kerning_lookup`](crate::Font::kerning_lookup).
 
-use std::collections::{BTreeMap, HashMap};
-
 use serde::ser::{SerializeMap, Serializer};
 use serde::Serialize;
+use std::collections::{BTreeMap, HashMap};
+use std::iter;
 
 use crate::groups::{FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX};
 use crate::{Groups, Name};
@@ -21,33 +21,33 @@ pub type Kerning = BTreeMap<Name, BTreeMap<Name, f64>>;
 
 /// Maps glyph names to group names; the inverse of a `groups.plist` file.
 #[derive(Debug)]
-pub struct ReverseGroupsLookup {
-    first: HashMap<Name, Name>,
-    second: HashMap<Name, Name>,
+pub struct ReverseGroups<'font> {
+    first: HashMap<&'font Name, &'font Name>,
+    second: HashMap<&'font Name, &'font Name>,
 }
 
-impl ReverseGroupsLookup {
+impl ReverseGroups<'_> {
     /// Get the group (if any) for the glyph name when it's first in a kerning
     /// pair.
     #[inline]
-    pub fn get_first(&self, glyph_name: &str) -> Option<Name> {
-        self.first.get(glyph_name).cloned()
+    pub fn get_first(&self, glyph_name: &str) -> Option<&Name> {
+        self.first.get(glyph_name).copied()
     }
 
     /// Get the group (if any) for the glyph name when it's second in a
     /// kerning pair.
     #[inline]
-    pub fn get_second(&self, glyph_name: &str) -> Option<Name> {
-        self.second.get(glyph_name).cloned()
+    pub fn get_second(&self, glyph_name: &str) -> Option<&Name> {
+        self.second.get(glyph_name).copied()
     }
 }
 
-impl From<&Groups> for ReverseGroupsLookup {
-    fn from(groups: &Groups) -> Self {
+impl<'font> From<&'font Groups> for ReverseGroups<'font> {
+    fn from(groups: &'font Groups) -> Self {
         groups.iter().fold(
-            ReverseGroupsLookup { first: HashMap::new(), second: HashMap::new() },
+            ReverseGroups { first: HashMap::new(), second: HashMap::new() },
             |mut rgl, (group_name, members)| {
-                let inverted = members.iter().map(|member| (member.clone(), group_name.clone()));
+                let inverted = members.iter().zip(iter::repeat(group_name));
                 if group_name.starts_with(FIRST_KERNING_GROUP_PREFIX) {
                     rgl.first.extend(inverted);
                 } else if group_name.starts_with(SECOND_KERNING_GROUP_PREFIX) {
@@ -185,11 +185,6 @@ mod tests {
                 font.kerning_lookup(&lookup, left, right),
                 Some(expected),
                 "kerning_lookup incorrect for /{left}/{right}"
-            );
-            assert_eq!(
-                font.kerning_lookup_slow(left, right),
-                Some(expected),
-                "kerning_lookup_slow incorrect for /{left}/{right}"
             );
         }
     }
