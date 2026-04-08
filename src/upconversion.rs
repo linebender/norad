@@ -6,7 +6,7 @@ use serde::Deserialize;
 use crate::error::FontLoadError;
 use crate::font::LIB_FILE;
 use crate::fontinfo::FontInfo;
-use crate::groups::Groups;
+use crate::groups::{Groups, FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX};
 use crate::kerning::Kerning;
 use crate::names::NameList;
 use crate::Name;
@@ -31,14 +31,14 @@ pub(crate) fn upconvert_kerning(
     for (first, seconds) in kerning {
         if groups.contains_key(first)
             && !glyph_set.contains(first)
-            && !first.starts_with("public.kern1.")
+            && !first.starts_with(FIRST_KERNING_GROUP_PREFIX)
         {
             groups_first.insert(first.clone());
         }
         for second in seconds.keys() {
             if groups.contains_key(second)
                 && !glyph_set.contains(second)
-                && !second.starts_with("public.kern2.")
+                && !second.starts_with(SECOND_KERNING_GROUP_PREFIX)
             {
                 groups_second.insert(second.clone());
             }
@@ -51,7 +51,8 @@ pub(crate) fn upconvert_kerning(
     let mut groups_first_old_to_new: HashMap<Name, Name> = HashMap::new();
     for first in &groups_first {
         let first_new = make_unique_group_name(
-            Name::new(&format!("public.kern1.{}", first.replace("@MMK_L_", ""))).unwrap(),
+            Name::new(&format!("{FIRST_KERNING_GROUP_PREFIX}{}", first.replace("@MMK_L_", "")))
+                .unwrap(),
             &groups_new,
         );
         groups_first_old_to_new.insert(first.clone(), first_new.clone());
@@ -60,7 +61,8 @@ pub(crate) fn upconvert_kerning(
     let mut groups_second_old_to_new: HashMap<Name, Name> = HashMap::new();
     for second in &groups_second {
         let second_new = make_unique_group_name(
-            Name::new(&format!("public.kern2.{}", second.replace("@MMK_R_", ""))).unwrap(),
+            Name::new(&format!("{SECOND_KERNING_GROUP_PREFIX}{}", second.replace("@MMK_R_", "")))
+                .unwrap(),
             &groups_new,
         );
         groups_second_old_to_new.insert(second.clone(), second_new.clone());

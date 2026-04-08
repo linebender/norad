@@ -2,8 +2,9 @@
 
 #![deny(rustdoc::broken_intra_doc_links)]
 
-use std::fs;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::{fs, iter};
 
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -13,9 +14,11 @@ use crate::datastore::{DataStore, ImageStore};
 use crate::error::{FontLoadError, FontWriteError};
 use crate::fontinfo::FontInfo;
 use crate::glyph::Glyph;
-use crate::groups::{validate_groups, Groups};
+use crate::groups::{
+    validate_groups, Groups, FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX,
+};
 use crate::guideline::Guideline;
-use crate::kerning::Kerning;
+use crate::kerning::{Kerning, KerningResolver};
 use crate::layer::{Layer, LayerContents, LAYER_CONTENTS_FILE};
 use crate::name::Name;
 use crate::names::NameList;
@@ -603,6 +606,52 @@ impl Font {
     /// These will be created if they do not already exist.
     pub fn guidelines_mut(&mut self) -> &mut Vec<Guideline> {
         self.font_info.guidelines.get_or_insert_with(Default::default)
+    }
+
+    /// Builds a [`KerningResolver`], which can do full kerning lookups,
+    /// including group resolution.
+    ///
+    /// Note: creating a [`KerningResolver`] will prevent you from mutating
+    /// the font until it is dropped.
+    ///
+    /// ```
+    /// # use norad::{Font, Name};
+    /// use maplit::btreemap;
+    ///
+    /// let mut font = Font::new();
+    /// font.groups = btreemap! {
+    ///     Name::new("public.kern1.A").unwrap() => vec![
+    ///         Name::new("A").unwrap(),
+    ///     ],
+    /// };
+    /// font.kerning = btreemap! {
+    ///     Name::new("public.kern1.A").unwrap() => btreemap! {
+    ///         Name::new("V").unwrap() => -15.0,
+    ///     },
+    /// };
+    /// let resolver = font.kerning_resolver();
+    /// assert_eq!(
+    ///     resolver.get("A", "V"),
+    ///     Some(-15.0),
+    /// );
+    /// ```
+    pub fn kerning_resolver(&'_ self) -> KerningResolver<'_> {
+        self.groups.iter().fold(
+            KerningResolver {
+                kerning: &self.kerning,
+                first: HashMap::new(),
+                second: HashMap::new(),
+            },
+            |mut kr, (group_name, members)| {
+                let inverted = members.iter().cloned().zip(iter::repeat(group_name.clone()));
+                if group_name.starts_with(FIRST_KERNING_GROUP_PREFIX) {
+                    kr.first.extend(inverted);
+                } else if group_name.starts_with(SECOND_KERNING_GROUP_PREFIX) {
+                    kr.second.extend(inverted);
+                }
+                kr
+            },
+        )
     }
 }
 
