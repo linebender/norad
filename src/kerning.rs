@@ -22,6 +22,28 @@ pub type Kerning = BTreeMap<Name, BTreeMap<Name, f64>>;
 /// A utility struct to facilitate kerning lookups, including resolving group membership.
 ///
 /// Created by calling [`Font::kerning_resolver`](crate::Font::kerning_resolver).
+///
+/// ```
+/// # use norad::{Font, Name};
+/// use maplit::btreemap;
+///
+/// let mut font = Font::new();
+/// font.groups = btreemap! {
+///     Name::new("public.kern1.A").unwrap() => vec![
+///         Name::new("A").unwrap(),
+///     ],
+/// };
+/// font.kerning = btreemap! {
+///     Name::new("public.kern1.A").unwrap() => btreemap! {
+///         Name::new("V").unwrap() => -15.0,
+///     },
+/// };
+/// let resolver = font.kerning_resolver();
+/// assert_eq!(
+///     resolver.get("A", "V"),
+///     Some(-15.0),
+/// );
+/// ```
 #[derive(Debug)]
 pub struct KerningResolver<'font> {
     pub(crate) kerning: &'font Kerning,

@@ -613,6 +613,28 @@ impl Font {
     ///
     /// Note: creating a [`KerningResolver`] will prevent you from mutating
     /// the font until it is dropped.
+    ///
+    /// ```
+    /// # use norad::{Font, Name};
+    /// use maplit::btreemap;
+    ///
+    /// let mut font = Font::new();
+    /// font.groups = btreemap! {
+    ///     Name::new("public.kern1.A").unwrap() => vec![
+    ///         Name::new("A").unwrap(),
+    ///     ],
+    /// };
+    /// font.kerning = btreemap! {
+    ///     Name::new("public.kern1.A").unwrap() => btreemap! {
+    ///         Name::new("V").unwrap() => -15.0,
+    ///     },
+    /// };
+    /// let resolver = font.kerning_resolver();
+    /// assert_eq!(
+    ///     resolver.get("A", "V"),
+    ///     Some(-15.0),
+    /// );
+    /// ```
     pub fn kerning_resolver(&'_ self) -> KerningResolver<'_> {
         self.groups.iter().fold(
             KerningResolver {
