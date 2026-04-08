@@ -1,14 +1,14 @@
 //! Helper types for working with kerning.
 //!
-//! To find the kerning value for a glyph/group pair, see [`Font::kerning_lookup`](crate::Font::kerning_lookup).
+//! To find the kerning value for a glyph/group pair, see
+//! [`Font::kerning_resolver`](crate::Font::kerning_resolver) and then
+//! [`KerningResolver::get`].
 
 use serde::ser::{SerializeMap, Serializer};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
-use std::iter;
 
-use crate::groups::{FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX};
-use crate::{Groups, Name};
+use crate::Name;
 
 /// A map of kerning pairs.
 ///
@@ -19,43 +19,73 @@ use crate::{Groups, Name};
 /// We use a [`BTreeMap`] because we need sorting for serialization.
 pub type Kerning = BTreeMap<Name, BTreeMap<Name, f64>>;
 
-/// Maps glyph names to group names; the inverse of a `groups.plist` file.
+/// A utility struct to facilitate kerning lookups, including resolving group membership.
+///
+/// Created by calling [`Font::kerning_resolver`](crate::Font::kerning_resolver).
 #[derive(Debug)]
-pub struct ReverseGroups<'font> {
-    first: HashMap<&'font Name, &'font Name>,
-    second: HashMap<&'font Name, &'font Name>,
+pub struct KerningResolver<'font> {
+    pub(crate) kerning: &'font Kerning,
+    pub(crate) first: HashMap<Name, Name>,
+    pub(crate) second: HashMap<Name, Name>,
 }
 
-impl ReverseGroups<'_> {
+impl KerningResolver<'_> {
     /// Get the group (if any) for the glyph name when it's first in a kerning
     /// pair.
     #[inline]
-    pub fn get_first(&self, glyph_name: &str) -> Option<&Name> {
-        self.first.get(glyph_name).copied()
+    pub fn get_first_group(&self, glyph_name: &str) -> Option<Name> {
+        self.first.get(glyph_name).cloned()
     }
 
     /// Get the group (if any) for the glyph name when it's second in a
     /// kerning pair.
     #[inline]
-    pub fn get_second(&self, glyph_name: &str) -> Option<&Name> {
-        self.second.get(glyph_name).copied()
+    pub fn get_second_group(&self, glyph_name: &str) -> Option<Name> {
+        self.second.get(glyph_name).cloned()
     }
-}
 
-impl<'font> From<&'font Groups> for ReverseGroups<'font> {
-    fn from(groups: &'font Groups) -> Self {
-        groups.iter().fold(
-            ReverseGroups { first: HashMap::new(), second: HashMap::new() },
-            |mut rgl, (group_name, members)| {
-                let inverted = members.iter().zip(iter::repeat(group_name));
-                if group_name.starts_with(FIRST_KERNING_GROUP_PREFIX) {
-                    rgl.first.extend(inverted);
-                } else if group_name.starts_with(SECOND_KERNING_GROUP_PREFIX) {
-                    rgl.second.extend(inverted);
-                }
-                rgl
-            },
-        )
+    /// Retrieve the kerning value (if any) between a pair of elements.
+    ///
+    /// The elements can be either individual glyphs (by name) or kerning groups
+    /// (by name), or any combination of the two.
+    //  ^ note: this works without any special consideration in the code
+    //          because glyph names are forbidden from using the group prefix,
+    //          thus meaning the group name lookup will always fail if a group
+    //          was passed in
+    pub fn get(&self, first: &str, second: &str) -> Option<f64> {
+        let kerning_lookup = |first: &str, second: &str| {
+            self.kerning.get(first).and_then(|first| first.get(second)).copied()
+        };
+
+        // glyph name glyph name
+        if let Some(kern) = kerning_lookup(first, second) {
+            return Some(kern);
+        }
+
+        // glyph name group name
+        let second_group = self.get_second_group(second);
+        if let Some(second_group) = &second_group {
+            if let Some(kern) = kerning_lookup(first, second_group.as_str()) {
+                return Some(kern);
+            }
+        }
+
+        // group name glyph name
+        let first_group = self.get_first_group(first);
+        if let Some(first_group) = &first_group {
+            if let Some(kern) = kerning_lookup(first_group.as_str(), second) {
+                return Some(kern);
+            }
+        }
+
+        // group name group name
+        if let Some((first_group, second_group)) = first_group.zip(second_group) {
+            if let Some(kern) = kerning_lookup(first_group.as_str(), second_group.as_str()) {
+                return Some(kern);
+            }
+        }
+
+        None
     }
 }
 
@@ -172,7 +202,7 @@ mod tests {
             ..Default::default()
         };
 
-        let lookup = font.get_reverse_groups_lookup();
+        let resolver = font.kerning_resolver();
         for (left, right, expected) in [
             ("O", "E", -100f64),
             ("O", "F", -200f64),
@@ -182,7 +212,7 @@ mod tests {
             ("Q", "F", -250f64),
         ] {
             assert_eq!(
-                font.kerning_lookup(&lookup, left, right),
+                resolver.get(left, right),
                 Some(expected),
                 "kerning_lookup incorrect for /{left}/{right}"
             );

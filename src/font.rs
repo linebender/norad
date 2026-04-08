@@ -2,8 +2,9 @@
 
 #![deny(rustdoc::broken_intra_doc_links)]
 
-use std::fs;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::{fs, iter};
 
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -13,9 +14,11 @@ use crate::datastore::{DataStore, ImageStore};
 use crate::error::{FontLoadError, FontWriteError};
 use crate::fontinfo::FontInfo;
 use crate::glyph::Glyph;
-use crate::groups::{validate_groups, Groups};
+use crate::groups::{
+    validate_groups, Groups, FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX,
+};
 use crate::guideline::Guideline;
-use crate::kerning::{Kerning, ReverseGroups};
+use crate::kerning::{Kerning, KerningResolver};
 use crate::layer::{Layer, LayerContents, LAYER_CONTENTS_FILE};
 use crate::name::Name;
 use crate::names::NameList;
@@ -605,67 +608,28 @@ impl Font {
         self.font_info.guidelines.get_or_insert_with(Default::default)
     }
 
-    /// Builds a [`ReverseGroups`], used to determine what group a glyph
-    /// is in.
+    /// Builds a [`KerningResolver`], which can do full kerning lookups,
+    /// including group resolution.
     ///
-    /// Effectively the inverse of `groups.plist`.
-    ///
-    /// Used by [`Font::kerning_lookup`].
-    #[inline]
-    pub fn get_reverse_groups_lookup(&'_ self) -> ReverseGroups<'_> {
-        ReverseGroups::from(&self.groups)
-    }
-
-    /// Retrieve the kerning value (if any) between a pair of elements.
-    ///
-    /// The elements can be either individual glyphs (by name) or kerning groups
-    /// (by name), or any combination of the two.
-    //  ^ note: this works without any special consideration in the code
-    //          because glyph names are forbidden from using the group prefix,
-    //          thus meaning the group name lookup will always fail if a group
-    //          was passed in
-    ///
-    /// This method is requires a [`ReverseGroups`], which can be obtained from
-    /// [`Font::get_reverse_groups_lookup`].
-    pub fn kerning_lookup(
-        &self,
-        resolver: &ReverseGroups,
-        first: &str,
-        second: &str,
-    ) -> Option<f64> {
-        let kerning_lookup = |first: &str, second: &str| {
-            self.kerning.get(first).and_then(|first| first.get(second)).copied()
-        };
-
-        // glyph name glyph name
-        if let Some(kern) = kerning_lookup(first, second) {
-            return Some(kern);
-        }
-
-        // glyph name group name
-        let second_group = resolver.get_second(second);
-        if let Some(second_group) = &second_group {
-            if let Some(kern) = kerning_lookup(first, second_group.as_str()) {
-                return Some(kern);
-            }
-        }
-
-        // group name glyph name
-        let first_group = resolver.get_first(first);
-        if let Some(first_group) = &first_group {
-            if let Some(kern) = kerning_lookup(first_group.as_str(), second) {
-                return Some(kern);
-            }
-        }
-
-        // group name group name
-        if let Some((first_group, second_group)) = first_group.zip(second_group) {
-            if let Some(kern) = kerning_lookup(first_group.as_str(), second_group.as_str()) {
-                return Some(kern);
-            }
-        }
-
-        None
+    /// Note: creating a [`KerningResolver`] will prevent you from mutating
+    /// the font until it is dropped.
+    pub fn kerning_resolver(&'_ self) -> KerningResolver<'_> {
+        self.groups.iter().fold(
+            KerningResolver {
+                kerning: &self.kerning,
+                first: HashMap::new(),
+                second: HashMap::new(),
+            },
+            |mut kr, (group_name, members)| {
+                let inverted = members.iter().cloned().zip(iter::repeat(group_name.clone()));
+                if group_name.starts_with(FIRST_KERNING_GROUP_PREFIX) {
+                    kr.first.extend(inverted);
+                } else if group_name.starts_with(SECOND_KERNING_GROUP_PREFIX) {
+                    kr.second.extend(inverted);
+                }
+                kr
+            },
+        )
     }
 }
 
