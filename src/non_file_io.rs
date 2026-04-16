@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashSet};
 use std::error::Error as StdError;
+use std::io;
 use std::path::{Component, Path, PathBuf};
 
-use crate::error::{FontLoadError, FontWriteError, LayerLoadError};
+use crate::error::{FontLoadError, FontWriteError, GlifLoadError, LayerLoadError};
 use crate::font::{
     Font, FormatVersion, MetaInfo, DATA_DIR, DEFAULT_METAINFO_CREATOR, FEATURES_FILE,
     FONTINFO_FILE, GROUPS_FILE, IMAGES_DIR, KERNING_FILE, LIB_FILE, METAINFO_FILE,
@@ -321,10 +322,14 @@ where
         for (_glyph_name, glif_relative_path) in glyph_files {
             let glif_path = layer_dir.join(&glif_relative_path);
             let glif_contents =
-                read_optional_text(source, &glif_path)?.ok_or(FontLoadError::Layer {
+                read_optional_text(source, &glif_path)?.ok_or_else(|| FontLoadError::Layer {
                     name: layer_name.to_string(),
                     path: glif_path.clone(),
-                    source: Box::new(LayerLoadError::MissingContentsFile),
+                    source: Box::new(LayerLoadError::Glyph {
+                        name: glif_relative_path.to_string_lossy().to_string(),
+                        path: glif_path.clone(),
+                        source: GlifLoadError::Io(io::Error::from(io::ErrorKind::NotFound)),
+                    }),
                 })?;
             let mut glyph = Glyph::parse_raw(glif_contents.as_bytes()).map_err(|source| {
                 FontLoadError::Layer {
@@ -511,10 +516,12 @@ fn normalize_feature_text(contents: &str) -> Cow<'_, str> {
 mod tests {
     use std::collections::BTreeMap;
     use std::convert::Infallible;
+    use std::ops::Deref;
 
     use pretty_assertions::assert_eq;
 
     use super::*;
+    use crate::error::LayerLoadError;
 
     fn sample_ufo_entries() -> BTreeMap<PathBuf, String> {
         BTreeMap::from([
@@ -644,5 +651,23 @@ mod tests {
         assert_eq!(reloaded.feature_files, font.feature_files);
         assert_eq!(reloaded.features_expanded().unwrap(), font.features_expanded().unwrap());
         assert_eq!(reloaded.glyph_count(), font.glyph_count());
+    }
+
+    #[test]
+    fn load_with_source_reports_missing_glif_as_glyph_error() {
+        let mut entries = sample_ufo_entries();
+        entries.remove(Path::new("glyphs/A_.glif"));
+        let mut source =
+            |path: &Path| -> Result<Option<String>, Infallible> { Ok(entries.get(path).cloned()) };
+
+        let err = Font::load_with_source(DataRequest::all(), &mut source).unwrap_err();
+
+        let FontLoadError::Layer { source, .. } = err else {
+            panic!("expected layer load error, found '{err:?}'");
+        };
+        let LayerLoadError::Glyph { source, .. } = source.deref() else {
+            panic!("expected missing glif to surface as glyph error, found '{source:?}'");
+        };
+        assert!(matches!(source, GlifLoadError::Io(err) if err.kind() == io::ErrorKind::NotFound));
     }
 }
