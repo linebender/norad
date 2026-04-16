@@ -27,7 +27,9 @@ where
     F: FnMut(&Path) -> Result<Option<String>, E>,
     E: StdError + Send + Sync + 'static,
 {
-    let metainfo_str = read_required_metainfo_text(source, Path::new(METAINFO_FILE))?;
+    let metainfo_str = read_required_text(source, Path::new(METAINFO_FILE), || {
+        FontLoadError::MissingMetaInfoFile
+    })?;
     let mut meta: MetaInfo = plist::from_reader_xml(metainfo_str.as_bytes())
         .map_err(|source| FontLoadError::ParsePlist { name: METAINFO_FILE, source })?;
 
@@ -253,12 +255,17 @@ where
     })
 }
 
-fn read_required_metainfo_text<F, E>(source: &mut F, path: &Path) -> Result<String, FontLoadError>
+fn read_required_text<F, E, M>(
+    source: &mut F,
+    path: &Path,
+    missing_error: M,
+) -> Result<String, FontLoadError>
 where
     F: FnMut(&Path) -> Result<Option<String>, E>,
+    M: FnOnce() -> FontLoadError,
     E: StdError + Send + Sync + 'static,
 {
-    read_optional_text(source, path)?.ok_or(FontLoadError::MissingMetaInfoFile)
+    read_optional_text(source, path)?.ok_or_else(missing_error)
 }
 
 fn load_layer_set_from_source<F, E>(
@@ -269,8 +276,9 @@ where
     F: FnMut(&Path) -> Result<Option<String>, E>,
     E: StdError + Send + Sync + 'static,
 {
-    let layercontents_str = read_optional_text(source, Path::new(LAYER_CONTENTS_FILE))?
-        .ok_or(FontLoadError::MissingLayerContentsFile)?;
+    let layercontents_str = read_required_text(source, Path::new(LAYER_CONTENTS_FILE), || {
+        FontLoadError::MissingLayerContentsFile
+    })?;
     let layer_descriptors: Vec<(Name, PathBuf)> =
         plist::from_reader_xml(layercontents_str.as_bytes())
             .map_err(|source| FontLoadError::ParsePlist { name: LAYER_CONTENTS_FILE, source })?;
