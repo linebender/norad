@@ -509,7 +509,7 @@ pub enum LayerWriteError {
     #[error("failed to write layerinfo.plist file")]
     LayerInfo(#[source] CustomSerializationError),
     /// Failed to write a layer file via a custom sink.
-    #[error("failed to write layer file '{path}' via sink")]
+    #[error("failed to write layer file '{path}' via sink: {source}")]
     Sink {
         /// The path to the output file.
         path: PathBuf,
