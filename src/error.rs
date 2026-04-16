@@ -37,7 +37,7 @@ pub enum DesignSpaceSaveError {
     SeError(#[from] SeError),
 
     /// Failed to write the designspace via a custom sink.
-    #[error("failed to write designspace file '{path}' via sink")]
+    #[error("failed to write designspace file '{path}' via sink: {source}")]
     Sink {
         /// The path to the output file.
         path: PathBuf,
