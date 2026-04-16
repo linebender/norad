@@ -358,7 +358,7 @@ pub(crate) fn load_feature_files(
         return Ok(None);
     };
 
-    let normalized_path = normalize_relative_path(path);
+    let normalized_path = normalize_virtual_path(path);
     let mut stack = HashSet::new();
     let mut included_files = BTreeMap::new();
     stack.insert(normalized_path.clone());
@@ -408,7 +408,7 @@ pub(crate) fn expand_feature_text(
     feature_files: &BTreeMap<PathBuf, String>,
 ) -> Result<String, FontLoadError> {
     let mut stack = HashSet::new();
-    let root_path = normalize_relative_path(Path::new(FEATURES_FILE));
+    let root_path = normalize_virtual_path(Path::new(FEATURES_FILE));
     stack.insert(root_path.clone());
     expand_feature_text_from_map(&root_path, features, feature_files, &mut stack)
 }
@@ -468,17 +468,18 @@ fn parse_include_target(line: &str) -> Option<PathBuf> {
         return None;
     }
 
-    Some(normalize_relative_path(Path::new(inner)))
+    Some(normalize_virtual_path(Path::new(inner)))
 }
 
 fn join_virtual_path(base: &Path, relative: &Path) -> PathBuf {
     if relative.is_absolute() {
-        return normalize_relative_path(relative);
+        return normalize_virtual_path(relative);
     }
-    normalize_relative_path(&base.join(relative))
+    normalize_virtual_path(&base.join(relative))
 }
 
-fn normalize_relative_path(path: &Path) -> PathBuf {
+// Lexically normalize a UFO virtual path without consulting cwd or the host filesystem.
+fn normalize_virtual_path(path: &Path) -> PathBuf {
     let mut normalized = PathBuf::new();
     for component in path.components() {
         match component {
