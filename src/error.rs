@@ -476,7 +476,7 @@ pub enum FontWriteError {
     #[error("the `public.objectLibs` lib key is managed by norad and must not be set manually")]
     PreexistingPublicObjectLibsKey,
     /// Failed to write a file through a custom non-file sink.
-    #[error("failed to write '{path}' via non-file sink")]
+    #[error("failed to write '{path}' via non-file sink: {source}")]
     Sink {
         /// The path to the output file.
         path: PathBuf,
