@@ -164,7 +164,7 @@ pub enum FontLoadError {
         path: PathBuf,
     },
     /// Failed to load a file through a custom non-file source.
-    #[error("failed to read '{path}' from non-file source")]
+    #[error("failed to read '{path}' from non-file source: {source}")]
     Source {
         /// The requested path.
         path: PathBuf,
