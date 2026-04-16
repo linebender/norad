@@ -2,7 +2,6 @@
 
 #![deny(rustdoc::broken_intra_doc_links)]
 
-use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
@@ -561,7 +560,7 @@ impl Font {
             let feature_file_path = path.join(FEATURES_FILE);
             close_already::fs::write(
                 &feature_file_path,
-                normalize_feature_text(&self.features).as_bytes(),
+                non_file_io::normalize_feature_text(&self.features).as_bytes(),
             )
             .map_err(FontWriteError::FeatureFile)?;
 
@@ -572,8 +571,11 @@ impl Font {
                         FontWriteError::CreateStoreDir { path: parent.into(), source }
                     })?;
                 }
-                close_already::fs::write(&destination, normalize_feature_text(contents).as_bytes())
-                    .map_err(FontWriteError::FeatureFile)?;
+                close_already::fs::write(
+                    &destination,
+                    non_file_io::normalize_feature_text(contents).as_bytes(),
+                )
+                .map_err(FontWriteError::FeatureFile)?;
             }
         }
 
@@ -750,14 +752,6 @@ fn load_kerning(kerning_path: &Path) -> Result<Kerning, FontLoadError> {
     let kerning: Kerning = plist::from_file(kerning_path)
         .map_err(|source| FontLoadError::ParsePlist { name: KERNING_FILE, source })?;
     Ok(kerning)
-}
-
-fn normalize_feature_text(contents: &str) -> Cow<'_, str> {
-    if contents.as_bytes().contains(&b'\r') {
-        Cow::Owned(contents.replace("\r\n", "\n"))
-    } else {
-        Cow::Borrowed(contents)
-    }
 }
 
 fn load_layer_set(

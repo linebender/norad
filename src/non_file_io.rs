@@ -505,7 +505,7 @@ where
     })
 }
 
-fn normalize_feature_text(contents: &str) -> Cow<'_, str> {
+pub(crate) fn normalize_feature_text(contents: &str) -> Cow<'_, str> {
     if contents.as_bytes().contains(&b'\r') {
         Cow::Owned(contents.replace("\r\n", "\n"))
     } else {
