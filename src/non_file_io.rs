@@ -27,7 +27,7 @@ where
     F: FnMut(&Path) -> Result<Option<String>, E>,
     E: StdError + Send + Sync + 'static,
 {
-    let metainfo_str = read_required_text(source, Path::new(METAINFO_FILE))?;
+    let metainfo_str = read_required_metainfo_text(source, Path::new(METAINFO_FILE))?;
     let mut meta: MetaInfo = plist::from_reader_xml(metainfo_str.as_bytes())
         .map_err(|source| FontLoadError::ParsePlist { name: METAINFO_FILE, source })?;
 
@@ -253,7 +253,7 @@ where
     })
 }
 
-fn read_required_text<F, E>(source: &mut F, path: &Path) -> Result<String, FontLoadError>
+fn read_required_metainfo_text<F, E>(source: &mut F, path: &Path) -> Result<String, FontLoadError>
 where
     F: FnMut(&Path) -> Result<Option<String>, E>,
     E: StdError + Send + Sync + 'static,
