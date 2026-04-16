@@ -2,6 +2,7 @@
 
 #![deny(rustdoc::broken_intra_doc_links)]
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::ErrorKind;
@@ -556,8 +557,11 @@ impl Font {
             // Normalize feature files with line feed line endings
             // This is consistent with the line endings serialized in glif and plist files
             let feature_file_path = path.join(FEATURES_FILE);
-            close_already::fs::write(&feature_file_path, normalize_feature_text(&self.features))
-                .map_err(FontWriteError::FeatureFile)?;
+            close_already::fs::write(
+                &feature_file_path,
+                normalize_feature_text(&self.features).as_bytes(),
+            )
+            .map_err(FontWriteError::FeatureFile)?;
 
             for (relative_path, contents) in &self.feature_files {
                 let destination = path.join(relative_path);
@@ -566,7 +570,7 @@ impl Font {
                         FontWriteError::CreateStoreDir { path: parent.into(), source }
                     })?;
                 }
-                close_already::fs::write(&destination, normalize_feature_text(contents))
+                close_already::fs::write(&destination, normalize_feature_text(contents).as_bytes())
                     .map_err(FontWriteError::FeatureFile)?;
             }
         }
@@ -700,11 +704,11 @@ fn load_kerning(kerning_path: &Path) -> Result<Kerning, FontLoadError> {
     Ok(kerning)
 }
 
-fn normalize_feature_text(contents: &str) -> Vec<u8> {
+fn normalize_feature_text(contents: &str) -> Cow<'_, str> {
     if contents.as_bytes().contains(&b'\r') {
-        contents.replace("\r\n", "\n").into_bytes()
+        Cow::Owned(contents.replace("\r\n", "\n"))
     } else {
-        contents.as_bytes().to_vec()
+        Cow::Borrowed(contents)
     }
 }
 

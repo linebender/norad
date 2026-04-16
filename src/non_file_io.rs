@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashSet};
 use std::error::Error as StdError;
 use std::path::{Component, Path, PathBuf};
@@ -194,9 +195,13 @@ where
     }
 
     if !font.features.is_empty() || !font.feature_files.is_empty() {
-        write_sink_file(sink, Path::new(FEATURES_FILE), &normalize_feature_text(&font.features))?;
+        write_sink_file(
+            sink,
+            Path::new(FEATURES_FILE),
+            normalize_feature_text(&font.features).as_bytes(),
+        )?;
         for (feature_path, contents) in &font.feature_files {
-            write_sink_file(sink, feature_path, &normalize_feature_text(contents))?;
+            write_sink_file(sink, feature_path, normalize_feature_text(contents).as_bytes())?;
         }
     }
 
@@ -486,11 +491,11 @@ where
     })
 }
 
-fn normalize_feature_text(contents: &str) -> Vec<u8> {
+fn normalize_feature_text(contents: &str) -> Cow<'_, str> {
     if contents.as_bytes().contains(&b'\r') {
-        contents.replace("\r\n", "\n").into_bytes()
+        Cow::Owned(contents.replace("\r\n", "\n"))
     } else {
-        contents.as_bytes().to_vec()
+        Cow::Borrowed(contents)
     }
 }
 
