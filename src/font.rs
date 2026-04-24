@@ -673,8 +673,7 @@ fn load_fontinfo(
 }
 
 fn load_groups(groups_path: &Path) -> Result<Groups, FontLoadError> {
-    let groups: Groups = plist::from_file(groups_path)
-        .map_err(|source| FontLoadError::ParsePlist { name: GROUPS_FILE, source })?;
+    let groups: Groups = crate::groups::deserialize_groups(groups_path)?;
     validate_groups(&groups).map_err(FontLoadError::InvalidGroups)?;
     Ok(groups)
 }
