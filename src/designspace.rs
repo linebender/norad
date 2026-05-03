@@ -3,7 +3,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::BufReader, path::Path};
+use std::{error::Error as StdError, fs::File, io::BufReader, path::Path};
 
 use plist::Dictionary;
 
@@ -339,15 +339,43 @@ impl DesignSpaceDocument {
         quick_xml::de::from_reader(reader).map_err(DesignSpaceLoadError::DeError)
     }
 
-    /// Save a designspace.
-    pub fn save(&self, path: impl AsRef<Path>) -> Result<(), DesignSpaceSaveError> {
+    /// Returns a [`DesignSpaceDocument`] loaded from an XML string.
+    pub fn load_str(contents: &str) -> Result<DesignSpaceDocument, DesignSpaceLoadError> {
+        quick_xml::de::from_str(contents).map_err(DesignSpaceLoadError::DeError)
+    }
+
+    /// Serialize a designspace to an XML string.
+    pub fn to_xml_string(&self) -> Result<String, DesignSpaceSaveError> {
         let mut buf = String::from("<?xml version='1.0' encoding='UTF-8'?>\n");
         let mut xml_writer = quick_xml::se::Serializer::new(&mut buf);
         xml_writer.indent(' ', 2);
         self.serialize(xml_writer)?;
         buf.push('\n'); // trailing newline
-        close_already::fs::write(path, buf)?;
+        Ok(buf)
+    }
+
+    /// Save a designspace.
+    pub fn save(&self, path: impl AsRef<Path>) -> Result<(), DesignSpaceSaveError> {
+        close_already::fs::write(path, self.to_xml_string()?)?;
         Ok(())
+    }
+
+    /// Save a designspace through a custom non-file sink.
+    pub fn save_with_sink<F, E>(
+        &self,
+        path: impl AsRef<Path>,
+        mut sink: F,
+    ) -> Result<(), DesignSpaceSaveError>
+    where
+        F: FnMut(&Path, &[u8]) -> Result<(), E>,
+        E: StdError + Send + Sync + 'static,
+    {
+        let path = path.as_ref();
+        let buf = self.to_xml_string()?;
+        sink(path, buf.as_bytes()).map_err(|source| DesignSpaceSaveError::Sink {
+            path: path.to_path_buf(),
+            source: Box::new(source),
+        })
     }
 }
 
@@ -623,6 +651,25 @@ mod tests {
 
         assert!(!serialized.contains("<lib>"));
         assert!(!serialized.contains("<lib/>"));
+    }
+
+    #[test]
+    fn save_with_sink_round_trip() {
+        let ds_initial = DesignSpaceDocument::load("testdata/wght.designspace").unwrap();
+        let mut written = Vec::new();
+
+        ds_initial
+            .save_with_sink("virtual.designspace", |_path, bytes| {
+                written = bytes.to_vec();
+                Ok::<_, std::convert::Infallible>(())
+            })
+            .expect("failed to save designspace via sink");
+
+        let serialized = String::from_utf8(written).expect("designspace should be utf-8");
+        let ds_after = DesignSpaceDocument::load_str(&serialized)
+            .expect("failed to load designspace from sink output");
+
+        assert_eq!(ds_initial, ds_after);
     }
 
     #[test]

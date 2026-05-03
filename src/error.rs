@@ -1,6 +1,6 @@
 //! Error types.
 
-use std::{io::Error as IoError, path::PathBuf};
+use std::{error::Error as StdError, io::Error as IoError, path::PathBuf};
 
 use plist::Error as PlistError;
 use quick_xml::{
@@ -35,6 +35,15 @@ pub enum DesignSpaceSaveError {
     /// A serialization error.
     #[error("failed to serialize designspace: {0}")]
     SeError(#[from] SeError),
+
+    /// Failed to write the designspace via a custom sink.
+    #[error("failed to write designspace file '{path}' via sink: {source}")]
+    Sink {
+        /// The path to the output file.
+        path: PathBuf,
+        /// The underlying error.
+        source: Box<dyn StdError + Send + Sync>,
+    },
 }
 
 /// An error representing a failure to (re)name something.
@@ -142,6 +151,29 @@ pub enum FontLoadError {
         /// The underlying error.
         source: PlistError,
     },
+    /// Included feature file could not be found.
+    #[error("cannot find included feature file '{path}'")]
+    MissingIncludedFeatureFile {
+        /// The requested path.
+        path: PathBuf,
+    },
+    /// Included feature files form a cycle.
+    #[error("cyclic feature include detected for '{path}'")]
+    FeatureIncludeCycle {
+        /// The requested path.
+        path: PathBuf,
+    },
+    /// Failed to load a file through a custom non-file source.
+    #[error("failed to read '{path}' from non-file source: {source}")]
+    Source {
+        /// The requested path.
+        path: PathBuf,
+        /// The underlying error.
+        source: Box<dyn StdError + Send + Sync>,
+    },
+    /// Non-file loading currently supports only UFO v3 fonts.
+    #[error("non-file loading currently supports only UFO v3")]
+    SourceUnsupportedFormatVersion,
     /// Norad can currently only open UFO (directory) packages.
     #[error("only UFO (directory) packages are supported")]
     UfoNotADir,
@@ -443,6 +475,14 @@ pub enum FontWriteError {
     /// There exists a `public.objectLibs` lib key when it should be set only by norad.
     #[error("the `public.objectLibs` lib key is managed by norad and must not be set manually")]
     PreexistingPublicObjectLibsKey,
+    /// Failed to write a file through a custom non-file sink.
+    #[error("failed to write '{path}' via non-file sink: {source}")]
+    Sink {
+        /// The path to the output file.
+        path: PathBuf,
+        /// The underlying error.
+        source: Box<dyn StdError + Send + Sync>,
+    },
 }
 
 /// An error that occurs while attempting to read a UFO layer from disk.
@@ -468,6 +508,14 @@ pub enum LayerWriteError {
     /// Failed to write out the layerinfo.plist file
     #[error("failed to write layerinfo.plist file")]
     LayerInfo(#[source] CustomSerializationError),
+    /// Failed to write a layer file via a custom sink.
+    #[error("failed to write layer file '{path}' via sink: {source}")]
+    Sink {
+        /// The path to the output file.
+        path: PathBuf,
+        /// The underlying error.
+        source: Box<dyn StdError + Send + Sync>,
+    },
 }
 
 /// An error when attempting to write a .glif file.
