@@ -160,20 +160,57 @@ pub enum RuleProcessing {
 
 /// Describes a single set of substitution rules.
 ///
-/// Does not support standalone `<condition>` elements outside a
-/// `<conditionset>`.
+/// Supports both modern `<conditionset>` wrappers and legacy standalone
+/// `<condition>` elements directly inside `<rule>`. Bare conditions are
+/// collected into a single implicit condition set, matching fonttools behavior.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(from = "RawRule", into = "RawRule")]
 pub struct Rule {
     /// Name of the rule.
-    #[serde(rename = "@name", skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    /// Condition sets. If any condition is true or the condition set is empty,
+    /// Condition sets. If any condition set is true or is empty,
     /// the rule is applied.
-    #[serde(rename = "conditionset")]
     pub condition_sets: Vec<ConditionSet>,
     /// Substitutions (in, out).
-    #[serde(rename = "sub")]
     pub substitutions: Vec<Substitution>,
+}
+
+/// Internal deserialization helper that captures both `<conditionset>` and
+/// bare `<condition>` children of a `<rule>` element.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+struct RawRule {
+    #[serde(rename = "@name", skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(rename = "conditionset", default, skip_serializing_if = "Vec::is_empty")]
+    condition_sets: Vec<ConditionSet>,
+    /// Legacy bare conditions outside a `<conditionset>`.
+    #[serde(rename = "condition", default, skip_serializing_if = "Vec::is_empty")]
+    conditions: Vec<Condition>,
+    #[serde(rename = "sub", default, skip_serializing_if = "Vec::is_empty")]
+    substitutions: Vec<Substitution>,
+}
+
+impl From<RawRule> for Rule {
+    fn from(raw: RawRule) -> Self {
+        let mut condition_sets = raw.condition_sets;
+        // Legacy format: bare <condition> elements outside <conditionset>
+        // are wrapped into a single implicit condition set.
+        if !raw.conditions.is_empty() {
+            condition_sets.push(ConditionSet { conditions: raw.conditions });
+        }
+        Rule { name: raw.name, condition_sets, substitutions: raw.substitutions }
+    }
+}
+
+impl From<Rule> for RawRule {
+    fn from(rule: Rule) -> Self {
+        RawRule {
+            name: rule.name,
+            condition_sets: rule.condition_sets,
+            conditions: Vec::new(),
+            substitutions: rule.substitutions,
+        }
+    }
 }
 
 /// Describes a single substitution.
@@ -685,6 +722,56 @@ mod tests {
             .expect("Failed to read saved designspace file");
         assert!(saved_content.contains("xml:lang=\"fa-IR\""));
         assert!(saved_content.contains("xml:lang=\"en\""),);
+    }
+
+    #[test]
+    fn accept_bare_conditions_in_rule() {
+        // Legacy format: <condition> elements directly inside <rule> without <conditionset>
+        let designspace = DesignSpaceDocument::load("testdata/BareConditions.designspace").unwrap();
+
+        assert_eq!(
+            &designspace.rules,
+            &Rules {
+                processing: RuleProcessing::Last,
+                rules: vec![
+                    Rule {
+                        name: Some("fold_I_serifs".into()),
+                        condition_sets: vec![ConditionSet {
+                            conditions: vec![Condition {
+                                name: "width".into(),
+                                minimum: Some(0.0),
+                                maximum: Some(328.0),
+                            }],
+                        }],
+                        substitutions: vec![Substitution {
+                            name: "I".into(),
+                            with: "I.narrow".into()
+                        }],
+                    },
+                    Rule {
+                        name: Some("fold_S_terminals".into()),
+                        condition_sets: vec![ConditionSet {
+                            conditions: vec![
+                                Condition {
+                                    name: "width".into(),
+                                    minimum: Some(0.0),
+                                    maximum: Some(1000.0),
+                                },
+                                Condition {
+                                    name: "weight".into(),
+                                    minimum: Some(0.0),
+                                    maximum: Some(500.0),
+                                },
+                            ],
+                        }],
+                        substitutions: vec![Substitution {
+                            name: "S".into(),
+                            with: "S.closed".into()
+                        }],
+                    },
+                ]
+            }
+        );
     }
 
     #[test]
