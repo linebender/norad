@@ -14,7 +14,6 @@ use crate::error::ConvertContourError;
 
 use crate::error::{ErrorKind, GlifLoadError, GlifWriteError, StoreError};
 use crate::name::Name;
-use crate::names::NameList;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
 
@@ -59,8 +58,9 @@ impl Glyph {
     /// [`.glif`]: http://unifiedfontobject.org/versions/ufo3/glyphs/glif/
     pub fn load(path: impl AsRef<Path>) -> Result<Self, GlifLoadError> {
         let path = path.as_ref();
-        let names = NameList::default();
-        Glyph::load_with_names(path, &names)
+        std::fs::read(path)
+            .map_err(GlifLoadError::Io)
+            .and_then(|data| parse::GlifParser::from_xml(&data))
     }
 
     /// THIS IS NOT STABLE API!
@@ -68,18 +68,7 @@ impl Glyph {
     /// (exposed for benchmarking only)
     #[doc(hidden)]
     pub fn parse_raw(xml: &[u8]) -> Result<Self, GlifLoadError> {
-        let names = NameList::default();
-        parse::GlifParser::from_xml(xml, Some(&names))
-    }
-
-    /// Attempt to load the glyph at `path`, reusing names from the `NameList`.
-    ///
-    /// This uses string interning to reuse allocations when a glyph name
-    /// occurs multiple times (such as in components or in different layers).
-    pub(crate) fn load_with_names(path: &Path, names: &NameList) -> Result<Self, GlifLoadError> {
-        std::fs::read(path)
-            .map_err(GlifLoadError::Io)
-            .and_then(|data| parse::GlifParser::from_xml(&data, Some(names)))
+        parse::GlifParser::from_xml(xml)
     }
 
     #[doc(hidden)]

@@ -6,6 +6,7 @@ use plist::Error as PlistError;
 use quick_xml::{
     encoding::EncodingError, events::attributes::AttrError, DeError, Error as XmlError, SeError,
 };
+use smol_str::SmolStr;
 use thiserror::Error;
 
 pub use crate::shared_types::ColorError;
@@ -43,15 +44,15 @@ pub enum DesignSpaceSaveError {
 pub enum NamingError {
     /// An error returned when an item is duplicated.
     #[error("item '{0}' already exists")]
-    Duplicate(String),
+    Duplicate(SmolStr),
     /// An error returned when an expected item is missing.
     #[error("item '{0}' does not exist")]
-    Missing(String),
+    Missing(SmolStr),
     /// A name is empty, or contains [control characters].
     ///
     /// [control characters]: https://unifiedfontobject.org/versions/ufo3/conventions/#controls
     #[error("'{0}' is not a valid name")]
-    Invalid(String),
+    Invalid(SmolStr),
     /// An error returned when the name "public.default" is used for a non-default layer.
     #[error("only the default layer may be named 'public.default'")]
     ReservedName,

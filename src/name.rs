@@ -1,9 +1,9 @@
 //! Glyph and layer names
 
 use std::str::FromStr;
-use std::sync::Arc;
 
 use serde::{Deserialize, Deserializer, Serialize};
+use smol_str::SmolStr;
 
 use crate::error::NamingError;
 
@@ -20,13 +20,13 @@ use crate::error::NamingError;
 /// [`Layer`]: crate::Layer
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(transparent)]
-pub struct Name(Arc<str>);
+pub struct Name(SmolStr);
 
 impl Name {
     /// Creates a new `Name` if the given value isn't empty and contains no control characters.
     pub fn new(name: &str) -> Result<Name, NamingError> {
         if is_valid(name) {
-            Ok(Name(name.into()))
+            Ok(Name(SmolStr::new(name)))
         } else {
             Err(NamingError::Invalid(name.into()))
         }
@@ -35,12 +35,12 @@ impl Name {
     /// Creates a new `Name`, panicking if the given name is invalid.
     pub(crate) fn new_raw(name: &str) -> Name {
         assert!(is_valid(name));
-        Name(name.into())
+        Name(SmolStr::new(name))
     }
 
     /// Returns a string slice containing the name.
     pub fn as_str(&self) -> &str {
-        self.as_ref()
+        self.0.as_str()
     }
 }
 
@@ -57,21 +57,21 @@ fn is_valid(name: &str) -> bool {
 
 impl AsRef<str> for Name {
     fn as_ref(&self) -> &str {
-        self.0.as_ref()
+        self.0.as_str()
     }
 }
 
 impl std::ops::Deref for Name {
     type Target = str;
     fn deref(&self) -> &Self::Target {
-        self.0.as_ref()
+        self.0.as_str()
     }
 }
 
 // so that assert_eq! macros work
 impl<'a> PartialEq<&'a str> for Name {
     fn eq(&self, other: &&'a str) -> bool {
-        self.0.as_ref() == *other
+        self.0.as_str() == *other
     }
 }
 
@@ -89,13 +89,13 @@ impl std::fmt::Display for Name {
 
 impl std::borrow::Borrow<str> for Name {
     fn borrow(&self) -> &str {
-        self.0.as_ref()
+        self.0.as_str()
     }
 }
 
 impl std::borrow::Borrow<str> for &Name {
     fn borrow(&self) -> &str {
-        self.0.as_ref()
+        self.0.as_str()
     }
 }
 
@@ -107,12 +107,19 @@ impl FromStr for Name {
     }
 }
 
+impl From<Name> for SmolStr {
+    fn from(val: Name) -> Self {
+        val.0
+    }
+}
+
 impl TryFrom<String> for Name {
     type Error = NamingError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
+        let value: SmolStr = value.into();
         if is_valid(&value) {
-            Ok(Name(value.into()))
+            Ok(Name(value))
         } else {
             Err(NamingError::Invalid(value))
         }
@@ -124,13 +131,11 @@ impl<'de> Deserialize<'de> for Name {
     where
         D: Deserializer<'de>,
     {
-        // we go directly to Arc<str> and validate manually so we don't need
-        // to allocate twice
-        let s: Arc<str> = Deserialize::deserialize(deserializer)?;
+        let s: SmolStr = Deserialize::deserialize(deserializer)?;
         if is_valid(&s) {
             Ok(Name(s))
         } else {
-            Err(serde::de::Error::custom(NamingError::Invalid(s.to_string())))
+            Err(serde::de::Error::custom(NamingError::Invalid(s)))
         }
     }
 }

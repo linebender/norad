@@ -8,7 +8,6 @@ use crate::font::LIB_FILE;
 use crate::fontinfo::FontInfo;
 use crate::groups::{Groups, FIRST_KERNING_GROUP_PREFIX, SECOND_KERNING_GROUP_PREFIX};
 use crate::kerning::Kerning;
-use crate::names::NameList;
 use crate::Name;
 
 /// Convert kerning groups and pairs from v1 and v2 informal conventions to
@@ -21,7 +20,7 @@ use crate::Name;
 pub(crate) fn upconvert_kerning(
     groups: &Groups,
     kerning: &Kerning,
-    glyph_set: &NameList,
+    glyph_set: &HashSet<Name>,
 ) -> (Groups, Kerning) {
     // Gather known kerning groups based on the prefixes. This will catch groups that exist in
     // `groups` but are not referenced in `kerning`.
@@ -250,10 +249,9 @@ mod tests {
             "foo".into() => vec![],
         };
         let kerning: Kerning = Kerning::new();
-        let glyph_set: NameList = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+        let glyph_set: HashSet<Name> = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
             .iter()
-            .cloned()
-            .map(Name::from)
+            .map(|s| Name::new_raw(s))
             .collect();
 
         let (groups_new, kerning_new) = upconvert_kerning(&groups, &kerning, &glyph_set);
@@ -309,7 +307,7 @@ mod tests {
                 "DGroup".into() => 12.0,
             },
         };
-        let glyph_set = NameList::default();
+        let glyph_set = HashSet::new();
 
         let (groups_new, kerning_new) = upconvert_kerning(&groups, &kerning, &glyph_set);
 
@@ -380,7 +378,7 @@ mod tests {
                 "@MMK_R_DGroup".into() => 12.0,
             },
         };
-        let glyph_set = NameList::default();
+        let glyph_set = HashSet::new();
 
         let (groups_new, kerning_new) = upconvert_kerning(&groups, &kerning, &glyph_set);
 
@@ -454,7 +452,7 @@ mod tests {
                 "DGroup".into() => 12.0,
             },
         };
-        let glyph_set = NameList::default();
+        let glyph_set = HashSet::new();
 
         let (groups_new, kerning_new) = upconvert_kerning(&groups, &kerning, &glyph_set);
 
