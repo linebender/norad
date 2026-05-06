@@ -789,6 +789,21 @@ impl FontInfo {
         }
     }
 
+    /// Load a v3 [`FontInfo`] from a reader (bytes).
+    ///
+    /// This only supports UFO v3; v1/v2 upconversion requires filesystem access.
+    #[cfg(feature = "no-fs")]
+    pub(crate) fn from_reader(
+        reader: impl std::io::Read + std::io::Seek,
+        lib: &mut crate::shared_types::Plist,
+    ) -> Result<Self, FontInfoLoadError> {
+        let mut fontinfo: FontInfo =
+            plist::from_reader(reader).map_err(FontInfoLoadError::ParsePlist)?;
+        fontinfo.validate().map_err(FontInfoLoadError::InvalidData)?;
+        fontinfo.load_object_libs(lib)?;
+        Ok(fontinfo)
+    }
+
     /// Returns `false` if this [`FontInfo`] has any non-default value, and `true` otherwise.
     pub fn is_empty(&self) -> bool {
         self == &Self::default()

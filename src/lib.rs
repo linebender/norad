@@ -70,6 +70,8 @@ pub mod datastore;
 pub mod designspace;
 pub mod error;
 mod font;
+#[cfg(feature = "no-fs")]
+mod font_source;
 pub mod fontinfo;
 mod glyph;
 pub mod groups;
@@ -77,6 +79,8 @@ mod guideline;
 mod identifier;
 pub mod kerning;
 mod layer;
+#[cfg(feature = "no-fs")]
+mod load_from_source;
 mod name;
 mod serde_xml_plist;
 mod shared_types;
@@ -86,6 +90,8 @@ mod write;
 
 pub use data_request::DataRequest;
 pub use font::{Font, FormatVersion, MetaInfo};
+#[cfg(feature = "no-fs")]
+pub use font_source::FontSource;
 pub use fontinfo::FontInfo;
 pub use glyph::{
     AffineTransform, Anchor, Codepoints, Component, Contour, ContourPoint, Glyph, Image, PointType,
