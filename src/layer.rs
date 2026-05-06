@@ -9,7 +9,6 @@ use serde::Deserialize;
 
 use crate::data_request::LayerFilter;
 use crate::error::{FontLoadError, LayerLoadError, LayerWriteError, NamingError};
-use crate::names::NameList;
 use crate::shared_types::Color;
 use crate::Name;
 use crate::{util, Glyph, Plist, WriteOptions};
@@ -53,11 +52,8 @@ impl LayerContents {
     /// If a `layercontents.plist` file exists, it will be used, otherwise
     /// we will assume the pre-UFOv3 behaviour, and expect a single glyphs dir.
     ///
-    /// The `glyph_names` argument allows norad to reuse glyph name strings,
-    /// reducing memory use.
     pub(crate) fn load(
         base_dir: &Path,
-        glyph_names: &NameList,
         filter: &LayerFilter,
     ) -> Result<LayerContents, FontLoadError> {
         let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
@@ -73,12 +69,10 @@ impl LayerContents {
             .filter(|(name, path)| filter.should_load(name, path))
             .map(|(name, path)| {
                 let layer_path = base_dir.join(path);
-                Layer::load_impl(&layer_path, name.clone(), glyph_names).map_err(|source| {
-                    FontLoadError::Layer {
-                        name: name.to_string(),
-                        path: layer_path,
-                        source: Box::new(source),
-                    }
+                Layer::load_impl(&layer_path, name.clone()).map_err(|source| FontLoadError::Layer {
+                    name: name.to_string(),
+                    path: layer_path,
+                    source: Box::new(source),
                 })
             })
             .collect::<Result<_, _>>()?;
@@ -146,7 +140,7 @@ impl LayerContents {
         if name == DEFAULT_LAYER_NAME {
             Err(NamingError::ReservedName)
         } else if self.layers.iter().any(|l| l.name == name) {
-            Err(NamingError::Duplicate(name.to_string()))
+            Err(NamingError::Duplicate(name.into()))
         } else {
             let name = Name::new(name).map_err(|_| NamingError::Invalid(name.into()))?;
             let path = util::default_file_name_for_layer_name(&name, &self.path_set);
@@ -200,7 +194,7 @@ impl LayerContents {
         overwrite: bool,
     ) -> Result<(), NamingError> {
         if !overwrite && self.get(new).is_some() {
-            Err(NamingError::Duplicate(new.to_string()))
+            Err(NamingError::Duplicate(new.into()))
         } else if self.get(old).is_none() {
             Err(NamingError::Missing(old.into()))
         } else if new == DEFAULT_LAYER_NAME && self.layers[0].name != old {
@@ -306,20 +300,12 @@ impl Layer {
     #[cfg(test)]
     pub(crate) fn load(path: impl AsRef<Path>, name: &str) -> Result<Layer, LayerLoadError> {
         let path = path.as_ref();
-        let names = NameList::default();
         let name = Name::new_raw(name);
-        Layer::load_impl(path, name, &names)
+        Layer::load_impl(path, name)
     }
 
     /// The actual loading logic.
-    ///
-    /// `names` is a map of glyphnames; we pass it throughout parsing
-    /// so that we reuse the same `Arc<str>` for identical names.
-    pub(crate) fn load_impl(
-        path: &Path,
-        name: Name,
-        names: &NameList,
-    ) -> Result<Layer, LayerLoadError> {
+    pub(crate) fn load_impl(path: &Path, name: Name) -> Result<Layer, LayerLoadError> {
         let contents_path = path.join(CONTENTS_FILE);
         if !contents_path.exists() {
             return Err(LayerLoadError::MissingContentsFile);
@@ -337,10 +323,10 @@ impl Layer {
 
         let glyphs = iter
             .map(|(name, glyph_path)| {
-                let name = names.get(name);
+                let name = name.clone();
                 let glyph_path = path.join(glyph_path);
 
-                Glyph::load_with_names(&glyph_path, names)
+                Glyph::load(&glyph_path)
                     .map_err(|source| LayerLoadError::Glyph {
                         name: name.to_string(),
                         path: glyph_path,
@@ -542,7 +528,7 @@ impl Layer {
         overwrite: bool,
     ) -> Result<(), NamingError> {
         if !overwrite && self.glyphs.contains_key(new) {
-            Err(NamingError::Duplicate(new.to_string()))
+            Err(NamingError::Duplicate(new.into()))
         } else if !self.glyphs.contains_key(old) {
             Err(NamingError::Missing(old.into()))
         } else {
@@ -867,34 +853,32 @@ mod tests {
         static UFO_DIR: &str = "testdata/MutatorSansLightWide.ufo/";
         let ufo_path = Path::new(UFO_DIR);
 
-        let names = NameList::default();
-
         let request = DataRequest::all();
-        let layerset = LayerContents::load(ufo_path, &names, &request.layers).unwrap();
+        let layerset = LayerContents::load(ufo_path, &request.layers).unwrap();
         assert_eq!(layerset.len(), 2);
         assert_eq!(layerset.default_layer().len(), 48);
 
         let request = DataRequest::none();
-        let layerset = LayerContents::load(ufo_path, &names, &request.layers).unwrap();
+        let layerset = LayerContents::load(ufo_path, &request.layers).unwrap();
         // default layer is always present
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 0);
 
         let request = DataRequest::none().default_layer(true);
-        let layerset = LayerContents::load(ufo_path, &names, &request.layers).unwrap();
+        let layerset = LayerContents::load(ufo_path, &request.layers).unwrap();
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 48);
 
         // all is overridden by default_layer
         let request = DataRequest::all().default_layer(true);
-        let layerset = LayerContents::load(ufo_path, &names, &request.layers).unwrap();
+        let layerset = LayerContents::load(ufo_path, &request.layers).unwrap();
         // default layer is always present
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 48);
 
         let layer_name = String::from("background");
         let request = DataRequest::none().filter_layers(|name, _path| name == layer_name);
-        let layerset = LayerContents::load(ufo_path, &names, &request.layers).unwrap();
+        let layerset = LayerContents::load(ufo_path, &request.layers).unwrap();
         // default layer is always present
         assert_eq!(layerset.len(), 2);
         assert_eq!(layerset.default_layer().len(), 0);

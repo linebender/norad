@@ -21,7 +21,6 @@ use crate::guideline::Guideline;
 use crate::kerning::{Kerning, KerningResolver};
 use crate::layer::{Layer, LayerContents, LAYER_CONTENTS_FILE};
 use crate::name::Name;
-use crate::names::NameList;
 use crate::shared_types::{Plist, PUBLIC_OBJECT_LIBS_KEY};
 use crate::upconversion;
 use crate::write::{self, WriteOptions};
@@ -260,8 +259,7 @@ impl Font {
             Default::default()
         };
 
-        let glyph_names = NameList::default();
-        let layers = load_layer_set(path, &meta, &glyph_names, &request.layers)?;
+        let layers = load_layer_set(path, &meta, &request.layers)?;
 
         let data = if request.data && path.join(DATA_DIR).exists() {
             DataStore::new(path).map_err(FontLoadError::DataStore)?
@@ -281,6 +279,8 @@ impl Font {
             (FormatVersion::V3, g, k) => (g, k), // For v3, we do nothing.
             (_, None, k) => (None, k), // Without a groups.plist, there's nothing to upgrade.
             (_, Some(g), k) => {
+                let glyph_names: std::collections::HashSet<Name> =
+                    layers.default_layer().glyphs.keys().cloned().collect();
                 let (groups, kerning) =
                     upconversion::upconvert_kerning(&g, &k.unwrap_or_default(), &glyph_names);
                 validate_groups(&groups).map_err(FontLoadError::GroupsUpconversionFailure)?;
@@ -692,14 +692,13 @@ fn load_features(features_path: &Path) -> Result<String, FontLoadError> {
 fn load_layer_set(
     ufo_path: &Path,
     meta: &MetaInfo,
-    glyph_names: &NameList,
     filter: &LayerFilter,
 ) -> Result<LayerContents, FontLoadError> {
     let layercontents_path = ufo_path.join(LAYER_CONTENTS_FILE);
     if meta.format_version == FormatVersion::V3 && !layercontents_path.exists() {
         return Err(FontLoadError::MissingLayerContentsFile);
     }
-    LayerContents::load(ufo_path, glyph_names, filter)
+    LayerContents::load(ufo_path, filter)
 }
 
 #[cfg(test)]

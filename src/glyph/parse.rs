@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use super::*;
 use crate::error::{ErrorKind, GlifLoadError};
 use crate::glyph::builder::OutlineBuilder;
-use crate::names::NameList;
 
 use quick_xml::{
     events::{BytesStart, Event},
@@ -14,7 +13,7 @@ use quick_xml::{
 
 #[cfg(test)]
 pub(crate) fn parse_glyph(xml: &[u8]) -> Result<Glyph, GlifLoadError> {
-    GlifParser::from_xml(xml, None)
+    GlifParser::from_xml(xml)
 }
 
 // major, minor
@@ -26,32 +25,26 @@ const VERSION_2: Version = (2, 0);
 // https://en.wikipedia.org/wiki/Byte_order_mark
 const UTF8_BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
 
-pub(crate) struct GlifParser<'names> {
+pub(crate) struct GlifParser {
     glyph: Glyph,
     version: Version,
     seen_identifiers: HashSet<Identifier>,
     has_warned_for_smooth_point: bool,
-    /// Optional set of glyph names to be reused between glyphs.
-    names: Option<&'names NameList>,
 }
 
-impl<'names> GlifParser<'names> {
-    pub(crate) fn from_xml(
-        xml: &[u8],
-        names: Option<&'names NameList>,
-    ) -> Result<Glyph, GlifLoadError> {
+impl GlifParser {
+    pub(crate) fn from_xml(xml: &[u8]) -> Result<Glyph, GlifLoadError> {
         // optional but allowed for utf-8.
         let xml = xml.strip_prefix(UTF8_BOM).unwrap_or(xml);
         let mut reader = Reader::from_reader(xml);
         let mut buf = Vec::new();
         reader.config_mut().trim_text(true);
 
-        let (name, version) = start(&mut reader, &mut buf, names)?;
+        let (name, version) = start(&mut reader, &mut buf)?;
         let glyph = Glyph::new_impl(name);
         let parser = GlifParser {
             glyph,
             seen_identifiers: Default::default(),
-            names,
             version,
             has_warned_for_smooth_point: false,
         };
@@ -281,7 +274,6 @@ impl<'names> GlifParser<'names> {
                 }
                 b"base" => {
                     let name = Name::new(&value).map_err(|_| ErrorKind::InvalidName)?;
-                    let name = self.names.as_ref().map(|n| n.get(&name)).unwrap_or(name);
                     base = Some(name);
                 }
                 b"identifier" => {
@@ -570,11 +562,7 @@ impl<'names> GlifParser<'names> {
 /// Start parsing XML, expecting an opening `<glyph>` tag.
 ///
 /// On success, returns the glyphs name and the format version.
-fn start(
-    reader: &mut Reader<&[u8]>,
-    buf: &mut Vec<u8>,
-    names: Option<&NameList>,
-) -> Result<(Name, Version), GlifLoadError> {
+fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<(Name, Version), GlifLoadError> {
     loop {
         match reader.read_event_into(buf)? {
             Event::Comment(_) => (),
@@ -589,7 +577,7 @@ fn start(
                     match attr.key.as_ref() {
                         b"name" => {
                             let value = Name::new(&value).map_err(|_| ErrorKind::InvalidName)?;
-                            name = Some(names.as_ref().map(|n| n.get(&value)).unwrap_or(value));
+                            name = Some(value);
                         }
                         b"format" => {
                             format_major = value.parse().map_err(|_| ErrorKind::BadNumber)?;
