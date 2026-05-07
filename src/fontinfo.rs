@@ -496,23 +496,32 @@ impl FontInfo {
     /// converted by taking their absolute value. Fields that could be floats before and are
     /// integers now are rounded. Fields that could be floats before and are unsigned integers
     /// now are rounded before taking their absolute value.
+    #[allow(dead_code)]
     pub(crate) fn from_file<P: AsRef<Path>>(
         path: P,
         format_version: FormatVersion,
         lib: &mut Plist,
     ) -> Result<Self, FontInfoLoadError> {
-        let path = path.as_ref();
+        let data = std::fs::read(path.as_ref()).map_err(FontInfoLoadError::Io)?;
+        Self::from_bytes(&data, format_version, lib)
+    }
+
+    pub(crate) fn from_bytes(
+        data: &[u8],
+        format_version: FormatVersion,
+        lib: &mut Plist,
+    ) -> Result<Self, FontInfoLoadError> {
         match format_version {
             FormatVersion::V3 => {
                 let mut fontinfo: FontInfo =
-                    plist::from_file(path).map_err(FontInfoLoadError::ParsePlist)?;
+                    plist::from_bytes(data).map_err(FontInfoLoadError::ParsePlist)?;
                 fontinfo.validate().map_err(FontInfoLoadError::InvalidData)?;
                 fontinfo.load_object_libs(lib)?;
                 Ok(fontinfo)
             }
             FormatVersion::V2 => {
                 let fontinfo_v2: FontInfoV2 =
-                    plist::from_file(path).map_err(FontInfoLoadError::ParsePlist)?;
+                    plist::from_bytes(data).map_err(FontInfoLoadError::ParsePlist)?;
                 let fontinfo = FontInfo {
                     ascender: fontinfo_v2.ascender,
                     cap_height: fontinfo_v2.capHeight,
@@ -667,7 +676,7 @@ impl FontInfo {
             }
             FormatVersion::V1 => {
                 let fontinfo_v1: FontInfoV1 =
-                    plist::from_file(path).map_err(FontInfoLoadError::ParsePlist)?;
+                    plist::from_bytes(data).map_err(FontInfoLoadError::ParsePlist)?;
                 let fontinfo = FontInfo {
                     ascender: fontinfo_v1.ascender,
                     cap_height: fontinfo_v1.capHeight,

@@ -1,7 +1,6 @@
 //! Helper types & constants for working with groups.
 
 use std::collections::{BTreeMap, HashSet};
-use std::path::Path;
 
 use crate::error::{FontLoadError, GroupsValidationError};
 use crate::Name;
@@ -16,7 +15,7 @@ pub const SECOND_KERNING_GROUP_PREFIX: &str = "public.kern2.";
 /// We use a [`BTreeMap`] because we need sorting for serialization.
 pub type Groups = BTreeMap<Name, Vec<Name>>;
 
-pub(crate) fn deserialize_groups<P: AsRef<Path>>(path: P) -> Result<Groups, FontLoadError> {
+pub(crate) fn deserialize_groups(data: &[u8]) -> Result<Groups, FontLoadError> {
     struct GroupsDeHelper(Groups);
 
     impl<'de> serde::Deserialize<'de> for GroupsDeHelper {
@@ -38,7 +37,7 @@ pub(crate) fn deserialize_groups<P: AsRef<Path>>(path: P) -> Result<Groups, Font
         }
     }
 
-    plist::from_file::<_, GroupsDeHelper>(path.as_ref())
+    plist::from_bytes::<GroupsDeHelper>(data)
         .map(|h| h.0)
         .map_err(|source| FontLoadError::ParsePlist { name: "groups.plist", source })
 }
@@ -91,7 +90,8 @@ mod tests {
 
     #[test]
     fn deserialize_skip_empty_group_member() {
-        let group = deserialize_groups("testdata/groups_empty_entries.plist").unwrap();
+        let data = std::fs::read("testdata/groups_empty_entries.plist").unwrap();
+        let group = deserialize_groups(&data).unwrap();
         assert_eq!(group.get("derpy_group").unwrap()[0], "hi");
     }
 }

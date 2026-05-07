@@ -1,5 +1,4 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::path::Path;
 
 use serde::Deserialize;
 
@@ -120,7 +119,7 @@ fn find_known_kerning_groups(groups: &Groups) -> (HashSet<Name>, HashSet<Name>) 
 ///
 /// [1]: https://github.com/robotools/defcon/blob/76a7ac408e62f68c09eaf24ca6d9ad04523dd19c/Lib/defcon/objects/font.py#L1571-L1629
 pub(crate) fn upconvert_ufov1_robofab_data(
-    lib_path: &Path,
+    lib_bytes: &[u8],
     lib: &mut plist::Dictionary,
     font_info: &mut FontInfo,
 ) -> Result<Option<String>, FontLoadError> {
@@ -152,8 +151,8 @@ pub(crate) fn upconvert_ufov1_robofab_data(
         v_stems: Option<Vec<f64>>,
     }
 
-    // Read lib.plist again because it is easier than pulling out the data manually.
-    let lib_data: LibData = plist::from_file(lib_path)
+    // Re-parse lib.plist because it is easier than pulling out the data manually.
+    let lib_data: LibData = plist::from_bytes(lib_bytes)
         .map_err(|source| FontLoadError::ParsePlist { name: LIB_FILE, source })?;
 
     // Convert features.
