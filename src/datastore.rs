@@ -8,15 +8,15 @@ use std::{
 };
 
 use crate::error::{StoreEntryError, StoreError};
+use crate::font_source::FontSource;
 
 /// A generic file store for UFO [data][spec_data] and [images][spec_images],
 /// mapping [`PathBuf`] keys to [`Vec<u8>`] values.
 ///
 /// The store provides a basic HashMap-like interface for checking data in and out.
-/// If initialized from disk, data can be loaded eagerly or lazily, as in, on access.
-/// It will remember the root data directory for this purpose. This complicates the
-/// accessor methods somewhat, because 1. access can fail with an IO error and 2.
-/// insertion can fail. Data is wrapped in a [`std::sync::Arc`] to help on-demand loading.
+/// If initialized from a filesystem-backed source, data is loaded lazily on access.
+/// Otherwise, data is loaded eagerly during construction.
+/// Data is wrapped in a [`std::sync::Arc`] to help on-demand loading.
 ///
 /// Note that it tracks files, not directories. Data paths you insert must not have
 /// any existing path in the store as an ancestor, or you would nest a file under a
@@ -67,7 +67,9 @@ use crate::error::{StoreEntryError, StoreError};
 #[derive(Debug, Clone)]
 pub struct Store<T> {
     items: HashMap<PathBuf, RefCell<Item>>,
-    ufo_root: PathBuf,
+    /// When `Some`, the source is filesystem-backed and lazy loading is used.
+    /// When `None`, all items were eagerly loaded during construction.
+    ufo_root: Option<PathBuf>,
     impl_type: T,
 }
 
@@ -90,8 +92,8 @@ pub type ImageStore = Store<Image>;
 /// Defines custom behavior for data and images stores.
 #[doc(hidden)]
 pub trait DataType: Default {
-    fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, StoreEntryError>;
-    fn try_load_item(&self, ufo_root: &Path, path: &Path) -> Result<Vec<u8>, StoreError>;
+    fn try_list_contents(&self, source: &dyn FontSource) -> Result<Vec<PathBuf>, StoreEntryError>;
+    fn try_load_item(&self, source: &dyn FontSource, path: &Path) -> Result<Vec<u8>, StoreError>;
     fn validate_entry(
         &self,
         path: &Path,
@@ -116,7 +118,7 @@ where
     T: Default,
 {
     fn default() -> Self {
-        Self { items: Default::default(), ufo_root: Default::default(), impl_type: T::default() }
+        Self { items: Default::default(), ufo_root: None, impl_type: T::default() }
     }
 }
 
@@ -129,29 +131,23 @@ impl<T: DataType> PartialEq for Store<T> {
 }
 
 impl DataType for Data {
-    fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, StoreEntryError> {
-        let source_root = ufo_root.join(crate::font::DATA_DIR);
+    fn try_list_contents(&self, source: &dyn FontSource) -> Result<Vec<PathBuf>, StoreEntryError> {
+        let source_root = Path::new(crate::font::DATA_DIR);
         let mut paths = Vec::new();
 
-        let mut dir_queue: Vec<PathBuf> = vec![source_root.clone()];
+        let mut dir_queue: Vec<PathBuf> = vec![source_root.to_path_buf()];
         while let Some(dir_path) = dir_queue.pop() {
-            for entry in std::fs::read_dir(&dir_path)
-                .map_err(|e| StoreEntryError::new(dir_path.clone(), e.into()))?
-            {
-                let entry = entry.map_err(|e| StoreEntryError::new(dir_path.clone(), e.into()))?;
-                let path = entry.path();
-                let attributes = entry
-                    .metadata() // "will not traverse symlinks"
-                    .map_err(|e| StoreEntryError::new(entry.path(), e.into()))?;
+            let entries = source
+                .list_dir(&dir_path)
+                .map_err(|e| StoreEntryError::new(dir_path.clone(), e.into()))?;
 
-                if attributes.is_file() {
-                    let key = path.strip_prefix(&source_root).unwrap().to_path_buf();
-                    paths.push(key);
-                } else if attributes.is_dir() {
-                    dir_queue.push(path);
+            for (entry_name, is_dir) in entries {
+                let full_rel = dir_path.join(&entry_name);
+                if is_dir {
+                    dir_queue.push(full_rel);
                 } else {
-                    // The spec forbids symlinks.
-                    return Err(StoreEntryError::new(path, StoreError::NotPlainFileOrDir));
+                    let key = full_rel.strip_prefix(source_root).unwrap().to_path_buf();
+                    paths.push(key);
                 }
             }
         }
@@ -159,8 +155,8 @@ impl DataType for Data {
         Ok(paths)
     }
 
-    fn try_load_item(&self, ufo_root: &Path, path: &Path) -> Result<Vec<u8>, StoreError> {
-        std::fs::read(ufo_root.join(crate::font::DATA_DIR).join(path)).map_err(|e| e.into())
+    fn try_load_item(&self, source: &dyn FontSource, path: &Path) -> Result<Vec<u8>, StoreError> {
+        source.read(&Path::new(crate::font::DATA_DIR).join(path)).map_err(Into::into)
     }
 
     fn validate_entry(
@@ -186,36 +182,30 @@ impl DataType for Data {
 }
 
 impl DataType for Image {
-    fn try_list_contents(&self, ufo_root: &Path) -> Result<Vec<PathBuf>, StoreEntryError> {
-        let source_root = ufo_root.join(crate::font::IMAGES_DIR);
+    fn try_list_contents(&self, source: &dyn FontSource) -> Result<Vec<PathBuf>, StoreEntryError> {
+        let source_root = Path::new(crate::font::IMAGES_DIR);
         let mut paths = Vec::new();
 
-        for entry in std::fs::read_dir(&source_root)
-            .map_err(|e| StoreEntryError::new(source_root.clone(), e.into()))?
-        {
-            let entry = entry.map_err(|e| StoreEntryError::new(source_root.clone(), e.into()))?;
-            let path = entry.path();
-            let attributes = entry
-                .metadata() // "will not traverse symlinks"
-                .map_err(|e| StoreEntryError::new(path.clone(), e.into()))?;
+        let entries = source
+            .list_dir(source_root)
+            .map_err(|e| StoreEntryError::new(source_root.to_path_buf(), e.into()))?;
 
-            if attributes.is_file() {
-                let key = path.strip_prefix(&source_root).unwrap().to_path_buf();
-                paths.push(key);
-            } else if attributes.is_dir() {
-                // The spec forbids directories...
-                return Err(StoreEntryError::new(path, StoreError::Subdir));
+        for (entry_name, is_dir) in entries {
+            let full_rel = source_root.join(&entry_name);
+            if is_dir {
+                // The spec forbids directories.
+                return Err(StoreEntryError::new(full_rel, StoreError::Subdir));
             } else {
-                // ... and symlinks.
-                return Err(StoreEntryError::new(path, StoreError::NotPlainFile));
+                let key = full_rel.strip_prefix(source_root).unwrap().to_path_buf();
+                paths.push(key);
             }
         }
 
         Ok(paths)
     }
 
-    fn try_load_item(&self, ufo_root: &Path, path: &Path) -> Result<Vec<u8>, StoreError> {
-        std::fs::read(ufo_root.join(crate::font::IMAGES_DIR).join(path)).map_err(|e| e.into())
+    fn try_load_item(&self, source: &dyn FontSource, path: &Path) -> Result<Vec<u8>, StoreError> {
+        source.read(&Path::new(crate::font::IMAGES_DIR).join(path)).map_err(Into::into)
     }
 
     fn validate_entry(
@@ -243,12 +233,28 @@ impl DataType for Image {
 }
 
 impl<T: DataType> Store<T> {
-    pub(crate) fn new(ufo_root: &Path) -> Result<Self, StoreEntryError> {
+    pub(crate) fn new(source: &dyn FontSource) -> Result<Self, StoreEntryError> {
         let impl_type = T::default();
-        let dir_contents = impl_type.try_list_contents(ufo_root)?;
-        let items =
-            dir_contents.into_iter().map(|path| (path, RefCell::new(Item::default()))).collect();
-        Ok(Store { items, ufo_root: ufo_root.to_path_buf(), impl_type })
+        let paths = impl_type.try_list_contents(source)?;
+
+        if let Some(ufo_root) = source.as_path() {
+            // Filesystem-backed: record paths as NotLoaded, defer reading to access time.
+            let items = paths.into_iter().map(|p| (p, RefCell::new(Item::NotLoaded))).collect();
+            Ok(Store { items, ufo_root: Some(ufo_root.to_path_buf()), impl_type })
+        } else {
+            // Non-filesystem: eagerly load everything now.
+            let mut items = HashMap::new();
+            for path in paths {
+                let data = impl_type
+                    .try_load_item(source, &path)
+                    .map_err(|e| StoreEntryError::new(path.clone(), e))?;
+                impl_type
+                    .validate_entry(&path, &items, &data)
+                    .map_err(|e| StoreEntryError::new(path.clone(), e))?;
+                items.insert(path, RefCell::new(Item::Loaded(data.into())));
+            }
+            Ok(Store { items, ufo_root: None, impl_type })
+        }
     }
 
     /// Returns `true` if the store contains data for the specified path.
@@ -280,12 +286,12 @@ impl<T: DataType> Store<T> {
     pub fn get(&self, path: &Path) -> Option<Result<Arc<[u8]>, StoreError>> {
         let cell = self.items.get(path)?;
 
-        // If item isn't loaded, try to load it, saving the data or the error
+        // If item isn't loaded, try to load it, saving the data or the error.
         // NOTE: Figure out whether the item is unloaded and immediately drop the
         //       read borrow so we can take the write borrow. Otherwise, we panic.
         if matches!(*cell.borrow(), Item::NotLoaded) {
-            *cell.borrow_mut() =
-                Self::load_item(&self.impl_type, &self.ufo_root, path, &self.items);
+            let ufo_root = self.ufo_root.as_deref().expect("NotLoaded item without ufo_root");
+            *cell.borrow_mut() = Self::load_item(&self.impl_type, &ufo_root, path, &self.items);
         }
 
         match &*cell.borrow() {
@@ -297,11 +303,11 @@ impl<T: DataType> Store<T> {
 
     fn load_item(
         impl_type: &T,
-        ufo_root: &Path,
+        source: &dyn FontSource,
         path: &Path,
         items: &HashMap<PathBuf, RefCell<Item>>,
     ) -> Item {
-        match impl_type.try_load_item(ufo_root, path) {
+        match impl_type.try_load_item(source, path) {
             Ok(data) => match impl_type.validate_entry(path, items, &data) {
                 Ok(_) => Item::Loaded(data.into()),
                 Err(e) => Item::Error(e),
@@ -473,7 +479,8 @@ mod tests {
 
     #[test]
     fn lazy_data_loading() {
-        let mut store = DataStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref()).unwrap();
+        let source = Path::new(UFO_DATA_IMAGE_TEST_PATH);
+        let mut store = DataStore::new(&source).unwrap();
 
         let mut paths: Vec<&Path> = store.keys().map(|p| p.as_ref()).collect();
         paths.sort();
@@ -522,7 +529,8 @@ mod tests {
 
     #[test]
     fn lazy_image_loading() {
-        let mut store = ImageStore::new(UFO_DATA_IMAGE_TEST_PATH.as_ref()).unwrap();
+        let source = Path::new(UFO_DATA_IMAGE_TEST_PATH);
+        let mut store = ImageStore::new(&source).unwrap();
 
         assert!(!store.is_empty());
         let mut paths: Vec<_> = store.keys().collect();
@@ -546,9 +554,9 @@ mod tests {
 
     #[test]
     fn store_equality() {
-        let ufo_path = UFO_DATA_IMAGE_TEST_PATH.as_ref();
-        let store1 = DataStore::new(ufo_path).unwrap();
-        let store2 = DataStore::new(ufo_path).unwrap();
+        let source = Path::new(UFO_DATA_IMAGE_TEST_PATH);
+        let store1 = DataStore::new(&source).unwrap();
+        let store2 = DataStore::new(&source).unwrap();
 
         assert_eq!(store1, store2);
     }
@@ -594,7 +602,7 @@ mod tests {
     #[test]
     fn data_items_not_loaded_until_accessed() {
         let dir = make_data_dir(&[("file1.txt", b"hello"), ("file2.txt", b"world")]);
-        let store = DataStore::new(dir.path()).unwrap();
+        let store = DataStore::new(&dir.path()).unwrap();
 
         assert_eq!(store.len(), 2);
         for cell in store.items.values() {
@@ -619,7 +627,7 @@ mod tests {
         let img1 = png_data(b"img1");
         let img2 = png_data(b"img2");
         let dir = make_images_dir(&[("a.png", &img1), ("b.png", &img2)]);
-        let store = ImageStore::new(dir.path()).unwrap();
+        let store = ImageStore::new(&dir.path()).unwrap();
 
         assert_eq!(store.len(), 2);
         for cell in store.items.values() {
@@ -635,7 +643,7 @@ mod tests {
     #[test]
     fn contains_key_does_not_trigger_load() {
         let dir = make_data_dir(&[("file.txt", b"data")]);
-        let store = DataStore::new(dir.path()).unwrap();
+        let store = DataStore::new(&dir.path()).unwrap();
 
         assert!(store.contains_key(Path::new("file.txt")));
         assert!(!store.contains_key(Path::new("nope.txt")));
@@ -649,7 +657,7 @@ mod tests {
     #[test]
     fn iter_forces_loading_all_items() {
         let dir = make_data_dir(&[("a.txt", b"aaa"), ("b.txt", b"bbb")]);
-        let store = DataStore::new(dir.path()).unwrap();
+        let store = DataStore::new(&dir.path()).unwrap();
 
         for cell in store.items.values() {
             assert!(matches!(*cell.borrow(), Item::NotLoaded));
@@ -668,7 +676,7 @@ mod tests {
     #[test]
     fn data_error_cached_on_load_failure() {
         let dir = make_data_dir(&[("ephemeral.txt", b"will vanish")]);
-        let store = DataStore::new(dir.path()).unwrap();
+        let store = DataStore::new(&dir.path()).unwrap();
 
         assert!(store.contains_key(Path::new("ephemeral.txt")));
 
@@ -691,7 +699,7 @@ mod tests {
     #[test]
     fn image_invalid_png_returns_error_on_access() {
         let dir = make_images_dir(&[("bad.png", b"not a png at all")]);
-        let store = ImageStore::new(dir.path()).unwrap();
+        let store = ImageStore::new(&dir.path()).unwrap();
 
         assert!(store.contains_key(Path::new("bad.png")));
 
@@ -706,7 +714,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         std::fs::create_dir(dir.path().join(crate::font::DATA_DIR)).unwrap();
 
-        let store = DataStore::new(dir.path()).unwrap();
+        let store = DataStore::new(&dir.path()).unwrap();
         assert!(store.is_empty());
         assert_eq!(store.len(), 0);
         assert_eq!(store.keys().count(), 0);
@@ -717,7 +725,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         std::fs::create_dir(dir.path().join(crate::font::IMAGES_DIR)).unwrap();
 
-        let store = ImageStore::new(dir.path()).unwrap();
+        let store = ImageStore::new(&dir.path()).unwrap();
         assert!(store.is_empty());
         assert_eq!(store.len(), 0);
     }
@@ -725,13 +733,13 @@ mod tests {
     #[test]
     fn missing_data_directory_is_error() {
         let dir = TempDir::new().unwrap();
-        assert!(DataStore::new(dir.path()).is_err());
+        assert!(DataStore::new(&dir.path()).is_err());
     }
 
     #[test]
     fn missing_images_directory_is_error() {
         let dir = TempDir::new().unwrap();
-        assert!(ImageStore::new(dir.path()).is_err());
+        assert!(ImageStore::new(&dir.path()).is_err());
     }
 
     // --- Nested data directories ---
@@ -743,7 +751,7 @@ mod tests {
             ("a/middle.txt", b"middle"),
             ("a/b/c/deep.txt", b"deep"),
         ]);
-        let store = DataStore::new(dir.path()).unwrap();
+        let store = DataStore::new(&dir.path()).unwrap();
 
         assert_eq!(store.len(), 3);
         assert!(store.contains_key(Path::new("top.txt")));
@@ -760,7 +768,7 @@ mod tests {
     #[test]
     fn data_store_clear_resets() {
         let dir = make_data_dir(&[("a.txt", b"aaa"), ("b.txt", b"bbb")]);
-        let mut store = DataStore::new(dir.path()).unwrap();
+        let mut store = DataStore::new(&dir.path()).unwrap();
 
         assert_eq!(store.len(), 2);
         store.clear();
@@ -774,16 +782,16 @@ mod tests {
         let dir1 = make_data_dir(&[("a.txt", b"aaa")]);
         let dir2 = make_data_dir(&[("b.txt", b"bbb")]);
 
-        let store1 = DataStore::new(dir1.path()).unwrap();
-        let store2 = DataStore::new(dir2.path()).unwrap();
+        let store1 = DataStore::new(&dir1.path()).unwrap();
+        let store2 = DataStore::new(&dir2.path()).unwrap();
         assert_ne!(store1, store2);
     }
 
     #[test]
     fn equality_ignores_load_state() {
         let dir = make_data_dir(&[("x.txt", b"xxx")]);
-        let store1 = DataStore::new(dir.path()).unwrap();
-        let store2 = DataStore::new(dir.path()).unwrap();
+        let store1 = DataStore::new(&dir.path()).unwrap();
+        let store2 = DataStore::new(&dir.path()).unwrap();
 
         // Load in store1 but not store2.
         let _ = store1.get(Path::new("x.txt"));
@@ -792,5 +800,114 @@ mod tests {
 
         // Equality is path-based, so they're still equal.
         assert_eq!(store1, store2);
+    }
+
+    // --- MemorySource for testing eager (non-filesystem) loading ---
+
+    /// A FontSource backed by in-memory data, with `as_path() -> None`.
+    /// This triggers the eager-loading branch in `Store::new`.
+    struct MemorySource {
+        files: HashMap<PathBuf, Vec<u8>>,
+        dirs: HashMap<PathBuf, Vec<(PathBuf, bool)>>,
+    }
+
+    impl MemorySource {
+        fn new() -> Self {
+            MemorySource { files: HashMap::new(), dirs: HashMap::new() }
+        }
+
+        fn add_file(&mut self, path: impl Into<PathBuf>, data: Vec<u8>) {
+            self.files.insert(path.into(), data);
+        }
+
+        fn add_dir(&mut self, path: impl Into<PathBuf>, entries: Vec<(PathBuf, bool)>) {
+            self.dirs.insert(path.into(), entries);
+        }
+    }
+
+    impl FontSource for MemorySource {
+        fn try_read(&self, path: &Path) -> Option<Result<Vec<u8>, std::io::Error>> {
+            self.files.get(path).cloned().map(Ok)
+        }
+
+        fn list_dir(&self, path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
+            self.dirs.get(path).cloned().ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::NotFound, format!("{path:?} not found"))
+            })
+        }
+    }
+
+    // --- Eager loading tests ---
+
+    #[test]
+    fn data_eager_loading_from_memory_source() {
+        let mut source = MemorySource::new();
+        source.add_dir(
+            "data",
+            vec![(PathBuf::from("a.txt"), false), (PathBuf::from("b.txt"), false)],
+        );
+        source.add_file("data/a.txt", b"aaa".to_vec());
+        source.add_file("data/b.txt", b"bbb".to_vec());
+
+        let store = DataStore::new(&source).unwrap();
+
+        // All items should be Loaded immediately (no lazy loading).
+        assert_eq!(store.len(), 2);
+        assert!(store.ufo_root.is_none());
+        for cell in store.items.values() {
+            assert!(matches!(*cell.borrow(), Item::Loaded(_)));
+        }
+
+        assert_eq!(&*store.get(Path::new("a.txt")).unwrap().unwrap(), b"aaa");
+        assert_eq!(&*store.get(Path::new("b.txt")).unwrap().unwrap(), b"bbb");
+    }
+
+    #[test]
+    fn image_eager_loading_from_memory_source() {
+        let img = png_data(b"test");
+        let mut source = MemorySource::new();
+        source.add_dir("images", vec![(PathBuf::from("x.png"), false)]);
+        source.add_file("images/x.png", img.clone());
+
+        let store = ImageStore::new(&source).unwrap();
+
+        assert_eq!(store.len(), 1);
+        assert!(store.ufo_root.is_none());
+        assert!(matches!(*store.items.get(Path::new("x.png")).unwrap().borrow(), Item::Loaded(_)));
+        assert_eq!(&*store.get(Path::new("x.png")).unwrap().unwrap(), &img[..]);
+    }
+
+    #[test]
+    fn eager_load_invalid_image_fails_at_construction() {
+        let mut source = MemorySource::new();
+        source.add_dir("images", vec![(PathBuf::from("bad.png"), false)]);
+        source.add_file("images/bad.png", b"not a png".to_vec());
+
+        // Eager loading validates during construction, so this should fail.
+        let result = ImageStore::new(&source);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn eager_load_nested_data_from_memory_source() {
+        let mut source = MemorySource::new();
+        source
+            .add_dir("data", vec![(PathBuf::from("top.txt"), false), (PathBuf::from("sub"), true)]);
+        source.add_dir("data/sub", vec![(PathBuf::from("deep.txt"), false)]);
+        source.add_file("data/top.txt", b"top".to_vec());
+        source.add_file("data/sub/deep.txt", b"deep".to_vec());
+
+        let store = DataStore::new(&source).unwrap();
+
+        assert_eq!(store.len(), 2);
+        assert_eq!(&*store.get(Path::new("top.txt")).unwrap().unwrap(), b"top");
+        assert_eq!(&*store.get(Path::new("sub/deep.txt")).unwrap().unwrap(), b"deep");
+    }
+
+    #[test]
+    fn closure_source_returns_unsupported() {
+        let source = |_path: &Path| -> Option<Result<Vec<u8>, std::io::Error>> { None };
+        let result = DataStore::new(&source);
+        assert!(result.is_err());
     }
 }

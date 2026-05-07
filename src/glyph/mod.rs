@@ -73,6 +73,11 @@ impl Glyph {
         parse::GlifParser::from_xml(xml)
     }
 
+    /// Parse a glyph from raw XML bytes.
+    pub(crate) fn parse(data: &[u8]) -> Result<Self, GlifLoadError> {
+        parse::GlifParser::from_xml(data)
+    }
+
     #[doc(hidden)]
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), GlifWriteError> {
         let path = path.as_ref();
