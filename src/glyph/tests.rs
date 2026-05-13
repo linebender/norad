@@ -392,10 +392,17 @@ fn if_no_one_uses_your_lib_is_it_broken() {
 }
 
 #[test]
-fn parse_note() {
+fn roundtrip_note() {
     let bytes = include_bytes!("../../testdata/note.glif");
     let glyph = parse_glyph(bytes).unwrap();
     assert_eq!(glyph.note, Some(".notdef".to_string()));
+
+    let buf = glyph.encode_xml().expect("encode failed");
+    let buf = std::str::from_utf8(&buf).unwrap();
+    assert!(
+        buf.find("<note>\n.notdef\n</note>").is_some(),
+        "Notes should have newlines like ufoLib does it."
+    );
 }
 
 #[test]
