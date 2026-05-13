@@ -552,4 +552,245 @@ mod tests {
 
         assert_eq!(store1, store2);
     }
+
+    // --- Helpers for synthetic on-disk stores ---
+
+    const PNG_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
+
+    fn png_data(extra: &[u8]) -> Vec<u8> {
+        let mut v = PNG_HEADER.to_vec();
+        v.extend_from_slice(extra);
+        v
+    }
+
+    /// Create a temp dir with a `data/` subdirectory containing the given files.
+    fn make_data_dir(files: &[(&str, &[u8])]) -> TempDir {
+        let dir = TempDir::new().unwrap();
+        let data_dir = dir.path().join(crate::font::DATA_DIR);
+        std::fs::create_dir(&data_dir).unwrap();
+        for (rel_path, content) in files {
+            let full = data_dir.join(rel_path);
+            if let Some(parent) = full.parent() {
+                std::fs::create_dir_all(parent).unwrap();
+            }
+            std::fs::write(full, content).unwrap();
+        }
+        dir
+    }
+
+    /// Create a temp dir with an `images/` subdirectory containing the given files.
+    fn make_images_dir(files: &[(&str, &[u8])]) -> TempDir {
+        let dir = TempDir::new().unwrap();
+        let images_dir = dir.path().join(crate::font::IMAGES_DIR);
+        std::fs::create_dir(&images_dir).unwrap();
+        for (name, content) in files {
+            std::fs::write(images_dir.join(name), content).unwrap();
+        }
+        dir
+    }
+
+    // --- Lazy loading verification ---
+
+    #[test]
+    fn data_items_not_loaded_until_accessed() {
+        let dir = make_data_dir(&[("file1.txt", b"hello"), ("file2.txt", b"world")]);
+        let store = DataStore::new(dir.path()).unwrap();
+
+        assert_eq!(store.len(), 2);
+        for cell in store.items.values() {
+            assert!(matches!(*cell.borrow(), Item::NotLoaded));
+        }
+
+        // Access one item — only it should become Loaded.
+        let data = store.get(Path::new("file1.txt")).unwrap().unwrap();
+        assert_eq!(&*data, b"hello");
+        assert!(matches!(
+            *store.items.get(Path::new("file1.txt")).unwrap().borrow(),
+            Item::Loaded(_)
+        ));
+        assert!(matches!(
+            *store.items.get(Path::new("file2.txt")).unwrap().borrow(),
+            Item::NotLoaded
+        ));
+    }
+
+    #[test]
+    fn image_items_not_loaded_until_accessed() {
+        let img1 = png_data(b"img1");
+        let img2 = png_data(b"img2");
+        let dir = make_images_dir(&[("a.png", &img1), ("b.png", &img2)]);
+        let store = ImageStore::new(dir.path()).unwrap();
+
+        assert_eq!(store.len(), 2);
+        for cell in store.items.values() {
+            assert!(matches!(*cell.borrow(), Item::NotLoaded));
+        }
+
+        let data = store.get(Path::new("a.png")).unwrap().unwrap();
+        assert_eq!(&*data, &img1[..]);
+        assert!(matches!(*store.items.get(Path::new("a.png")).unwrap().borrow(), Item::Loaded(_)));
+        assert!(matches!(*store.items.get(Path::new("b.png")).unwrap().borrow(), Item::NotLoaded));
+    }
+
+    #[test]
+    fn contains_key_does_not_trigger_load() {
+        let dir = make_data_dir(&[("file.txt", b"data")]);
+        let store = DataStore::new(dir.path()).unwrap();
+
+        assert!(store.contains_key(Path::new("file.txt")));
+        assert!(!store.contains_key(Path::new("nope.txt")));
+
+        assert!(matches!(
+            *store.items.get(Path::new("file.txt")).unwrap().borrow(),
+            Item::NotLoaded
+        ));
+    }
+
+    #[test]
+    fn iter_forces_loading_all_items() {
+        let dir = make_data_dir(&[("a.txt", b"aaa"), ("b.txt", b"bbb")]);
+        let store = DataStore::new(dir.path()).unwrap();
+
+        for cell in store.items.values() {
+            assert!(matches!(*cell.borrow(), Item::NotLoaded));
+        }
+
+        let results: Vec<_> = store.iter().collect();
+        assert_eq!(results.len(), 2);
+
+        for cell in store.items.values() {
+            assert!(matches!(*cell.borrow(), Item::Loaded(_)));
+        }
+    }
+
+    // --- Error caching ---
+
+    #[test]
+    fn data_error_cached_on_load_failure() {
+        let dir = make_data_dir(&[("ephemeral.txt", b"will vanish")]);
+        let store = DataStore::new(dir.path()).unwrap();
+
+        assert!(store.contains_key(Path::new("ephemeral.txt")));
+
+        // Delete the file after the store listed it.
+        std::fs::remove_file(dir.path().join(crate::font::DATA_DIR).join("ephemeral.txt")).unwrap();
+
+        // First access: IO error.
+        let r1 = store.get(Path::new("ephemeral.txt")).unwrap();
+        assert!(r1.is_err());
+        assert!(matches!(
+            *store.items.get(Path::new("ephemeral.txt")).unwrap().borrow(),
+            Item::Error(_)
+        ));
+
+        // verify that the error is persisted
+        let r2 = store.items.get(Path::new("ephemeral.txt")).unwrap();
+        assert!(matches!(*r2.borrow(), Item::Error(_)));
+    }
+
+    #[test]
+    fn image_invalid_png_returns_error_on_access() {
+        let dir = make_images_dir(&[("bad.png", b"not a png at all")]);
+        let store = ImageStore::new(dir.path()).unwrap();
+
+        assert!(store.contains_key(Path::new("bad.png")));
+
+        let result = store.get(Path::new("bad.png")).unwrap();
+        assert!(matches!(result, Err(StoreError::InvalidImage)));
+    }
+
+    // --- Empty and missing directories ---
+
+    #[test]
+    fn empty_data_directory() {
+        let dir = TempDir::new().unwrap();
+        std::fs::create_dir(dir.path().join(crate::font::DATA_DIR)).unwrap();
+
+        let store = DataStore::new(dir.path()).unwrap();
+        assert!(store.is_empty());
+        assert_eq!(store.len(), 0);
+        assert_eq!(store.keys().count(), 0);
+    }
+
+    #[test]
+    fn empty_images_directory() {
+        let dir = TempDir::new().unwrap();
+        std::fs::create_dir(dir.path().join(crate::font::IMAGES_DIR)).unwrap();
+
+        let store = ImageStore::new(dir.path()).unwrap();
+        assert!(store.is_empty());
+        assert_eq!(store.len(), 0);
+    }
+
+    #[test]
+    fn missing_data_directory_is_error() {
+        let dir = TempDir::new().unwrap();
+        assert!(DataStore::new(dir.path()).is_err());
+    }
+
+    #[test]
+    fn missing_images_directory_is_error() {
+        let dir = TempDir::new().unwrap();
+        assert!(ImageStore::new(dir.path()).is_err());
+    }
+
+    // --- Nested data directories ---
+
+    #[test]
+    fn nested_data_directories_discovered() {
+        let dir = make_data_dir(&[
+            ("top.txt", b"top"),
+            ("a/middle.txt", b"middle"),
+            ("a/b/c/deep.txt", b"deep"),
+        ]);
+        let store = DataStore::new(dir.path()).unwrap();
+
+        assert_eq!(store.len(), 3);
+        assert!(store.contains_key(Path::new("top.txt")));
+        assert!(store.contains_key(Path::new("a/middle.txt")));
+        assert!(store.contains_key(Path::new("a/b/c/deep.txt")));
+
+        assert_eq!(&*store.get(Path::new("top.txt")).unwrap().unwrap(), b"top");
+        assert_eq!(&*store.get(Path::new("a/middle.txt")).unwrap().unwrap(), b"middle");
+        assert_eq!(&*store.get(Path::new("a/b/c/deep.txt")).unwrap().unwrap(), b"deep");
+    }
+
+    // --- Mutation after lazy init ---
+
+    #[test]
+    fn data_store_clear_resets() {
+        let dir = make_data_dir(&[("a.txt", b"aaa"), ("b.txt", b"bbb")]);
+        let mut store = DataStore::new(dir.path()).unwrap();
+
+        assert_eq!(store.len(), 2);
+        store.clear();
+        assert_eq!(store.len(), 0);
+        assert!(store.is_empty());
+        assert!(store.get(Path::new("a.txt")).is_none());
+    }
+
+    #[test]
+    fn store_inequality() {
+        let dir1 = make_data_dir(&[("a.txt", b"aaa")]);
+        let dir2 = make_data_dir(&[("b.txt", b"bbb")]);
+
+        let store1 = DataStore::new(dir1.path()).unwrap();
+        let store2 = DataStore::new(dir2.path()).unwrap();
+        assert_ne!(store1, store2);
+    }
+
+    #[test]
+    fn equality_ignores_load_state() {
+        let dir = make_data_dir(&[("x.txt", b"xxx")]);
+        let store1 = DataStore::new(dir.path()).unwrap();
+        let store2 = DataStore::new(dir.path()).unwrap();
+
+        // Load in store1 but not store2.
+        let _ = store1.get(Path::new("x.txt"));
+        assert!(matches!(*store1.items.get(Path::new("x.txt")).unwrap().borrow(), Item::Loaded(_)));
+        assert!(matches!(*store2.items.get(Path::new("x.txt")).unwrap().borrow(), Item::NotLoaded));
+
+        // Equality is path-based, so they're still equal.
+        assert_eq!(store1, store2);
+    }
 }
