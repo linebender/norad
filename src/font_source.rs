@@ -92,7 +92,7 @@ pub trait FontSource: Sync {
 }
 
 /// The name of a file or directory, relative to a parent (not a full path!)
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DirEntry {
     /// A file, carrying its name relative to the parent directory.
     File(PathBuf),
