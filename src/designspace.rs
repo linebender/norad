@@ -3,7 +3,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::BufReader, path::Path};
+use std::path::Path;
 
 use plist::Dictionary;
 
@@ -335,7 +335,15 @@ pub struct Dimension {
 impl DesignSpaceDocument {
     /// Load a designspace.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<DesignSpaceDocument, DesignSpaceLoadError> {
-        let reader = BufReader::new(File::open(path).map_err(DesignSpaceLoadError::Io)?);
+        let reader =
+            std::io::BufReader::new(std::fs::File::open(path).map_err(DesignSpaceLoadError::Io)?);
+        Self::load_from_reader(reader)
+    }
+
+    /// Load a designspace from a reader.
+    pub fn load_from_reader(
+        reader: impl std::io::BufRead,
+    ) -> Result<DesignSpaceDocument, DesignSpaceLoadError> {
         quick_xml::de::from_reader(reader).map_err(DesignSpaceLoadError::DeError)
     }
 
@@ -523,6 +531,14 @@ mod tests {
 
     fn dim_name_xvalue(name: &str, xvalue: f32) -> Dimension {
         Dimension { name: name.to_string(), uservalue: None, xvalue: Some(xvalue), yvalue: None }
+    }
+
+    #[test]
+    fn load_from_reader_matches_load() {
+        let from_path = DesignSpaceDocument::load("testdata/wght.designspace").unwrap();
+        let bytes = std::fs::read("testdata/wght.designspace").unwrap();
+        let from_reader = DesignSpaceDocument::load_from_reader(bytes.as_slice()).unwrap();
+        assert_eq!(from_path, from_reader);
     }
 
     #[test]
