@@ -251,11 +251,13 @@ pub struct FontInfo {
     pub postscript_font_name: Option<String>,
     /// Boolean value that indicates how Type 1/CFF ForceBold should
     /// be set (postscriptForceBold).
+    #[serde(default, deserialize_with = "serde_impls::de_bool_or_bool_int")]
     pub postscript_force_bold: Option<bool>,
     /// Type 1/CFF table FullName field (postscriptFullName).
     pub postscript_full_name: Option<String>,
     /// Boolean that indicates if a font is monospaced
     /// (postscriptIsFixedPitch).
+    #[serde(default, deserialize_with = "serde_impls::de_bool_or_bool_int")]
     pub postscript_is_fixed_pitch: Option<bool>,
     /// Glyph nominal width (postscriptNominalWidthX).
     #[serde(serialize_with = "serde_impls::ser_opt_int_or_float")]
@@ -414,8 +416,10 @@ struct FontInfoV2 {
     postscriptFamilyBlues: Option<Vec<IntegerOrFloat>>,
     postscriptFamilyOtherBlues: Option<Vec<IntegerOrFloat>>,
     postscriptFontName: Option<String>,
+    #[serde(default, deserialize_with = "serde_impls::de_bool_or_bool_int")]
     postscriptForceBold: Option<bool>,
     postscriptFullName: Option<String>,
+    #[serde(default, deserialize_with = "serde_impls::de_bool_or_bool_int")]
     postscriptIsFixedPitch: Option<bool>,
     postscriptNominalWidthX: Option<IntegerOrFloat>,
     postscriptOtherBlues: Option<Vec<IntegerOrFloat>>,
@@ -1123,7 +1127,7 @@ impl<'de> Deserialize<'de> for NonNegativeIntegerOrFloat {
 }
 
 mod serde_impls {
-    use serde::{ser::SerializeSeq, Serialize, Serializer};
+    use serde::{ser::SerializeSeq, Deserializer, Serialize, Serializer};
 
     struct IntegerOrFloat(f64);
 
@@ -1161,6 +1165,38 @@ mod serde_impls {
                 seq.end()
             }
         }
+    }
+
+    pub(crate) fn de_bool_or_bool_int<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<bool>, D::Error> {
+        struct BoolOrIntVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for BoolOrIntVisitor {
+            type Value = Option<bool>;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a boolean or an integer (0 or 1)")
+            }
+
+            fn visit_bool<E: serde::de::Error>(self, v: bool) -> Result<Self::Value, E> {
+                Ok(Some(v))
+            }
+
+            fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                match v {
+                    0 => Ok(Some(false)),
+                    1 => Ok(Some(true)),
+                    _ => Err(E::invalid_value(serde::de::Unexpected::Unsigned(v), &"0 or 1")),
+                }
+            }
+
+            fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+                Ok(None)
+            }
+        }
+
+        deserializer.deserialize_any(BoolOrIntVisitor)
     }
 }
 
@@ -1996,5 +2032,37 @@ mod tests {
             fi.validate(),
             Err(FontInfoErrorKind::InvalidPostscriptListLength { name: _, max_len: _, len: _ })
         ));
+    }
+
+    #[test]
+    fn de_bool_or_bool_int() {
+        fn fontinfo_plist(value: &str) -> Vec<u8> {
+            format!(
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+                 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \
+                 \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n\
+                 <plist version=\"1.0\"><dict>\
+                 <key>postscriptForceBold</key>{value}\
+                 </dict></plist>"
+            )
+            .into_bytes()
+        }
+
+        let parse =
+            |value: &str| -> FontInfo { plist::from_bytes(&fontinfo_plist(value)).unwrap() };
+
+        assert_eq!(parse("<true/>").postscript_force_bold, Some(true));
+        assert_eq!(parse("<false/>").postscript_force_bold, Some(false));
+        assert_eq!(parse("<integer>1</integer>").postscript_force_bold, Some(true));
+        assert_eq!(parse("<integer>0</integer>").postscript_force_bold, Some(false));
+        assert!(plist::from_bytes::<FontInfo>(&fontinfo_plist("<integer>2</integer>")).is_err());
+
+        // Missing field → None.
+        let empty = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+            <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \
+            \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n\
+            <plist version=\"1.0\"><dict></dict></plist>";
+        let fi: FontInfo = plist::from_bytes(empty).unwrap();
+        assert_eq!(fi.postscript_force_bold, None);
     }
 }
