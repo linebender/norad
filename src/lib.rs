@@ -84,6 +84,8 @@ mod shared_types;
 mod upconversion;
 pub(crate) mod util;
 mod write;
+#[cfg(feature = "ufoz")]
+mod zip_source;
 
 pub use data_request::DataRequest;
 pub use font::{Font, FormatVersion, MetaInfo};

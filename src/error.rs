@@ -143,6 +143,10 @@ pub enum FontLoadError {
         /// The underlying error.
         source: PlistError,
     },
+    /// The file is not a valid zip archive.
+    #[cfg(feature = "ufoz")]
+    #[error("failed to open UFO as zip archive")]
+    InvalidZipFile(#[source] zip::result::ZipError),
     /// Norad can currently only open UFO (directory) packages.
     #[error("only UFO (directory) packages are supported")]
     UfoNotADir,

@@ -1,7 +1,6 @@
 //! A small program that times the loading and saving of a UFO file.
 
 use std::env;
-use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
@@ -58,11 +57,7 @@ struct Args {
 impl Args {
     fn get_from_env_or_exit() -> Self {
         let mut args = env::args().skip(1);
-        let path = match args.next().map(PathBuf::from) {
-            Some(ref p) if p.exists() && p.extension() == Some(OsStr::new("ufo")) => p.to_owned(),
-            Some(ref p) => exit_err!("path {:?} is not an existing .ufo file, exiting", p),
-            None => exit_err!("Please supply a path to a .ufo file"),
-        };
+        let path = args.next().map(PathBuf::from).expect("missing path argument");
 
         let outpath = args.next().map(PathBuf::from);
         if outpath.as_ref().map(|p| p.exists()).unwrap_or(false) {
