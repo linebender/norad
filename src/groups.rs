@@ -3,6 +3,8 @@
 use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 
+use serde::Deserialize;
+
 use crate::error::{FontLoadError, GroupsValidationError};
 use crate::Name;
 
@@ -16,29 +18,38 @@ pub const SECOND_KERNING_GROUP_PREFIX: &str = "public.kern2.";
 /// We use a [`BTreeMap`] because we need sorting for serialization.
 pub type Groups = BTreeMap<Name, Vec<Name>>;
 
-pub(crate) fn deserialize_groups<P: AsRef<Path>>(path: P) -> Result<Groups, FontLoadError> {
-    struct GroupsDeHelper(Groups);
+struct GroupsDeHelper(Groups);
 
-    impl<'de> serde::Deserialize<'de> for GroupsDeHelper {
-        fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-            // Values decoded as Vec<String> so Name validation doesn't reject empty entries;
-            // we filter them out and parse the rest, using serde's error type throughout.
-            BTreeMap::<Name, Vec<String>>::deserialize(deserializer)?
-                .into_iter()
-                .map(|(k, v)| {
-                    let members = v
-                        .into_iter()
-                        .filter(|s| !s.is_empty())
-                        .map(|s| s.parse::<Name>().map_err(serde::de::Error::custom))
-                        .collect::<Result<_, _>>()?;
-                    Ok((k, members))
-                })
-                .collect::<Result<Groups, _>>()
-                .map(GroupsDeHelper)
-        }
+impl<'de> Deserialize<'de> for GroupsDeHelper {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        // Values decoded as Vec<String> so Name validation doesn't reject empty entries;
+        // we filter them out and parse the rest, using serde's error type throughout.
+        BTreeMap::<Name, Vec<String>>::deserialize(deserializer)?
+            .into_iter()
+            .map(|(k, v)| {
+                let members = v
+                    .into_iter()
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.parse::<Name>().map_err(serde::de::Error::custom))
+                    .collect::<Result<_, _>>()?;
+                Ok((k, members))
+            })
+            .collect::<Result<Groups, _>>()
+            .map(GroupsDeHelper)
     }
+}
 
+pub(crate) fn deserialize_groups<P: AsRef<Path>>(path: P) -> Result<Groups, FontLoadError> {
     plist::from_file::<_, GroupsDeHelper>(path.as_ref())
+        .map(|h| h.0)
+        .map_err(|source| FontLoadError::ParsePlist { name: "groups.plist", source })
+}
+
+#[cfg(feature = "no-fs")]
+pub(crate) fn deserialize_groups_from_reader(
+    reader: impl std::io::Read + std::io::Seek,
+) -> Result<Groups, FontLoadError> {
+    plist::from_reader::<_, GroupsDeHelper>(reader)
         .map(|h| h.0)
         .map_err(|source| FontLoadError::ParsePlist { name: "groups.plist", source })
 }

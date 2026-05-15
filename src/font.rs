@@ -26,12 +26,12 @@ use crate::upconversion;
 use crate::write::{self, WriteOptions};
 use crate::DataRequest;
 
-static METAINFO_FILE: &str = "metainfo.plist";
-static FONTINFO_FILE: &str = "fontinfo.plist";
+pub(crate) static METAINFO_FILE: &str = "metainfo.plist";
+pub(crate) static FONTINFO_FILE: &str = "fontinfo.plist";
 pub(crate) static LIB_FILE: &str = "lib.plist";
-static GROUPS_FILE: &str = "groups.plist";
-static KERNING_FILE: &str = "kerning.plist";
-static FEATURES_FILE: &str = "features.fea";
+pub(crate) static GROUPS_FILE: &str = "groups.plist";
+pub(crate) static KERNING_FILE: &str = "kerning.plist";
+pub(crate) static FEATURES_FILE: &str = "features.fea";
 static DEFAULT_METAINFO_CREATOR: &str = "org.linebender.norad";
 pub(crate) static DATA_DIR: &str = "data";
 pub(crate) static IMAGES_DIR: &str = "images";
@@ -212,6 +212,44 @@ impl Font {
         request: DataRequest,
     ) -> Result<Font, FontLoadError> {
         Self::load_impl(path.as_ref(), request)
+    }
+
+    /// Returns a [`Font`] loaded from a non-filesystem [`FontSource`].
+    ///
+    /// This allows loading a UFO that exists in memory (e.g. from a HashMap,
+    /// a zip archive, or a WASM virtual filesystem) without requiring disk access.
+    ///
+    /// Only UFO v3 is supported through this path. Data and image stores are not
+    /// loaded (they will be empty in the returned [`Font`]).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// use std::path::Path;
+    /// use norad::{DataRequest, Font};
+    ///
+    /// # fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut files: HashMap<String, String> = HashMap::new();
+    /// // ... populate files ...
+    ///
+    /// let source = |path: &Path| {
+    ///     Ok::<_, std::convert::Infallible>(
+    ///         files.get(path.to_str().unwrap_or("")).cloned()
+    ///     )
+    /// };
+    /// let font = Font::load_from_source(DataRequest::all(), &source)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// [`FontSource`]: crate::FontSource
+    #[cfg(feature = "no-fs")]
+    pub fn load_from_source(
+        request: DataRequest,
+        source: &impl crate::FontSource,
+    ) -> Result<Font, FontLoadError> {
+        crate::load_from_source::load_font(source, request)
     }
 
     fn load_impl(path: &Path, request: DataRequest) -> Result<Font, FontLoadError> {

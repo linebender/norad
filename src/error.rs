@@ -1,5 +1,7 @@
 //! Error types.
 
+#[cfg(feature = "no-fs")]
+use std::error::Error as StdError;
 use std::{io::Error as IoError, path::PathBuf};
 
 use plist::Error as PlistError;
@@ -143,6 +145,26 @@ pub enum FontLoadError {
         /// The underlying error.
         source: PlistError,
     },
+    /// A required file was not present in the source.
+    #[cfg(feature = "no-fs")]
+    #[error("required file '{path}' was not found in source")]
+    MissingFile {
+        /// The path that was requested.
+        path: PathBuf,
+    },
+    /// A file could not be read from the non-file source.
+    #[cfg(feature = "no-fs")]
+    #[error("failed to read '{path}' from source: {source}")]
+    Source {
+        /// The path that was requested.
+        path: PathBuf,
+        /// The underlying error.
+        source: Box<dyn StdError + Send + Sync>,
+    },
+    /// Non-file loading currently supports only UFO v3.
+    #[cfg(feature = "no-fs")]
+    #[error("non-file loading currently supports only UFO v3")]
+    SourceUnsupportedFormatVersion,
     /// Norad can currently only open UFO (directory) packages.
     #[error("only UFO (directory) packages are supported")]
     UfoNotADir,
@@ -172,6 +194,15 @@ pub enum LayerLoadError {
         name: &'static str,
         /// The underlying error.
         source: PlistError,
+    },
+    /// Failed to read a layer file from a non-file source.
+    #[cfg(feature = "no-fs")]
+    #[error("failed to read '{path}' from source: {source}")]
+    Source {
+        /// The path that was requested.
+        path: PathBuf,
+        /// The underlying error.
+        source: Box<dyn StdError + Send + Sync>,
     },
 }
 

@@ -91,6 +91,14 @@ impl LayerContents {
         Ok(LayerContents { layers, path_set: HashSet::new() })
     }
 
+    /// Construct a [`LayerContents`] from a pre-built list of layers.
+    ///
+    /// The first layer in the vec must be the default layer.
+    #[cfg(feature = "no-fs")]
+    pub(crate) fn from_layers(layers: Vec<Layer>) -> Self {
+        LayerContents { layers, path_set: HashSet::new() }
+    }
+
     /// Returns the number of layers in the set.
     ///
     /// This is always non-zero.
@@ -290,6 +298,20 @@ impl Layer {
         }
     }
 
+    /// Returns a new [`Layer`] constructed from pre-loaded data.
+    #[cfg(feature = "no-fs")]
+    pub(crate) fn new_with_data(
+        name: Name,
+        path: PathBuf,
+        glyphs: BTreeMap<Name, crate::Glyph>,
+        contents: BTreeMap<Name, PathBuf>,
+        path_set: HashSet<String>,
+        color: Option<Color>,
+        lib: Plist,
+    ) -> Self {
+        Layer { glyphs, name, path, contents, path_set, color, lib }
+    }
+
     /// Returns a new [`Layer`] that is loaded from `path` with the provided `name`.
     ///
     /// Internal callers should use `load_impl` directly, so that glyph names
@@ -353,7 +375,6 @@ impl Layer {
     }
 
     fn parse_layer_info(path: &Path) -> Result<(Option<Color>, Plist), LayerLoadError> {
-        // Pluck apart the data found in the file, as we want to insert it into `Layer`.
         #[derive(Deserialize)]
         struct LayerInfoHelper {
             color: Option<Color>,
@@ -361,6 +382,21 @@ impl Layer {
             lib: Plist,
         }
         let layerinfo: LayerInfoHelper = plist::from_file(path)
+            .map_err(|source| LayerLoadError::ParsePlist { name: LAYER_INFO_FILE, source })?;
+        Ok((layerinfo.color, layerinfo.lib))
+    }
+
+    #[cfg(feature = "no-fs")]
+    pub(crate) fn parse_layer_info_from_reader(
+        reader: impl std::io::Read + std::io::Seek,
+    ) -> Result<(Option<Color>, Plist), LayerLoadError> {
+        #[derive(Deserialize)]
+        struct LayerInfoHelper {
+            color: Option<Color>,
+            #[serde(default)]
+            lib: Plist,
+        }
+        let layerinfo: LayerInfoHelper = plist::from_reader(reader)
             .map_err(|source| LayerLoadError::ParsePlist { name: LAYER_INFO_FILE, source })?;
         Ok((layerinfo.color, layerinfo.lib))
     }

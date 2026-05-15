@@ -15,7 +15,7 @@ exclude = [
 ]
 
 [package.metadata.docs.rs]
-features = ["kurbo"]
+features = ["kurbo", "no-fs"]
 
 [features]
 default = ["object-libs"]
@@ -23,6 +23,8 @@ default = ["object-libs"]
 object-libs = ["uuid"]
 kurbo = ["dep:kurbo"]
 rayon = ["dep:rayon"]
+# Enable loading fonts from non-filesystem sources (e.g. in-memory, WASM).
+no-fs = []
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 uuid = { version = "1.2", features = ["v4"], optional = true }
