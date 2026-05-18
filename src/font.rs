@@ -12,6 +12,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use crate::data_request::LayerFilter;
 use crate::datastore::{DataStore, ImageStore};
 use crate::error::{FontLoadError, FontWriteError};
+use crate::font_source::FontSource;
 use crate::fontinfo::FontInfo;
 use crate::glyph::Glyph;
 use crate::groups::{
@@ -220,58 +221,96 @@ impl Font {
             return Err(FontLoadError::UfoNotADir);
         }
 
-        let meta_path = path.join(METAINFO_FILE);
-        if !meta_path.exists() {
-            return Err(FontLoadError::MissingMetaInfoFile);
-        }
-        let mut meta: MetaInfo = plist::from_file(&meta_path)
+        Self::load_from_source(&request, &path)
+    }
+
+    /// Returns a [`Font`] loaded from the given [`FontSource`].
+    ///
+    /// This allows loading a UFO from any source that implements the
+    /// [`FontSource`] trait, such as an in-memory store or a zip archive.
+    ///
+    /// Data and image stores are populated if the source supports directory
+    /// enumeration (i.e. [`FontSource::list_dir`]). Sources that do not
+    /// support enumeration will have empty data/image stores.
+    pub fn load_from_source(
+        request: &DataRequest,
+        source: &dyn FontSource,
+    ) -> Result<Font, FontLoadError> {
+        let meta_path = Path::new(METAINFO_FILE);
+        let meta_data = source
+            .try_read(meta_path)
+            .ok_or(FontLoadError::MissingMetaInfoFile)?
+            .map_err(FontLoadError::AccessUfoDir)?;
+        let mut meta: MetaInfo = plist::from_bytes(&meta_data)
             .map_err(|source| FontLoadError::ParsePlist { name: METAINFO_FILE, source })?;
 
-        let lib_path = path.join(LIB_FILE);
-        let mut lib =
-            if request.lib && lib_path.exists() { load_lib(&lib_path)? } else { Plist::new() };
-
-        let fontinfo_path = path.join(FONTINFO_FILE);
-        let mut font_info = if fontinfo_path.exists() {
-            load_fontinfo(&fontinfo_path, &meta, &mut lib)?
+        let lib_path = Path::new(LIB_FILE);
+        let mut lib = if request.lib {
+            match source.try_read(lib_path) {
+                Some(data) => load_lib(&data.map_err(FontLoadError::AccessUfoDir)?)?,
+                None => Plist::new(),
+            }
         } else {
-            Default::default()
+            Plist::new()
         };
 
-        let groups_path = path.join(GROUPS_FILE);
-        let groups = if request.groups && groups_path.exists() {
-            Some(load_groups(&groups_path)?)
-        } else {
-            None
-        };
-
-        let kerning_path = path.join(KERNING_FILE);
-        let kerning = if request.kerning && kerning_path.exists() {
-            Some(load_kerning(&kerning_path)?)
+        // Keep the raw lib bytes around for the v1 upconversion path.
+        let lib_bytes = if meta.format_version == FormatVersion::V1 {
+            match source.try_read(lib_path) {
+                Some(data) => Some(data.map_err(FontLoadError::AccessUfoDir)?),
+                None => None,
+            }
         } else {
             None
         };
 
-        let features_path = path.join(FEATURES_FILE);
-        let mut features = if request.features && features_path.exists() {
-            load_features(&features_path)?
+        let fontinfo_path = Path::new(FONTINFO_FILE);
+        let mut font_info = match source.try_read(fontinfo_path) {
+            Some(data) => {
+                load_fontinfo(&data.map_err(FontLoadError::AccessUfoDir)?, &meta, &mut lib)?
+            }
+            None => Default::default(),
+        };
+
+        let groups_path = Path::new(GROUPS_FILE);
+        let groups = if request.groups {
+            match source.try_read(groups_path) {
+                Some(data) => Some(load_groups(&data.map_err(FontLoadError::AccessUfoDir)?)?),
+                None => None,
+            }
+        } else {
+            None
+        };
+
+        let kerning_path = Path::new(KERNING_FILE);
+        let kerning = if request.kerning {
+            match source.try_read(kerning_path) {
+                Some(data) => Some(load_kerning(&data.map_err(FontLoadError::AccessUfoDir)?)?),
+                None => None,
+            }
+        } else {
+            None
+        };
+
+        let features_path = Path::new(FEATURES_FILE);
+        let mut features = if request.features {
+            match source.try_read(features_path) {
+                Some(data) => {
+                    let data = data.map_err(FontLoadError::FeatureFile)?;
+                    String::from_utf8(data).map_err(|e| {
+                        FontLoadError::FeatureFile(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            e,
+                        ))
+                    })?
+                }
+                None => Default::default(),
+            }
         } else {
             Default::default()
         };
 
-        let layers = load_layer_set(path, &meta, &request.layers)?;
-
-        let data = if request.data && path.join(DATA_DIR).exists() {
-            DataStore::new(path).map_err(FontLoadError::DataStore)?
-        } else {
-            Default::default()
-        };
-
-        let images = if request.images && path.join(IMAGES_DIR).exists() {
-            ImageStore::new(path).map_err(FontLoadError::ImagesStore)?
-        } else {
-            Default::default()
-        };
+        let layers = load_layer_set(source, &meta, &request.layers)?;
 
         // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
         // a groups.plist file, while a kerning.plist is optional.
@@ -290,9 +329,9 @@ impl Font {
 
         // The v1 format stores some Postscript hinting related data in the lib,
         // which we only import into fontinfo if we're reading a v1 UFO.
-        if meta.format_version == FormatVersion::V1 && lib_path.exists() {
+        if let Some(lib_bytes) = lib_bytes {
             if let Some(features_upgraded) =
-                upconversion::upconvert_ufov1_robofab_data(&lib_path, &mut lib, &mut font_info)?
+                upconversion::upconvert_ufov1_robofab_data(&lib_bytes, &mut lib, &mut font_info)?
             {
                 if !features_upgraded.is_empty() {
                     features = features_upgraded;
@@ -301,6 +340,26 @@ impl Font {
         }
 
         meta.format_version = FormatVersion::V3;
+
+        let data = if request.data {
+            match DataStore::new(source) {
+                Ok(store) => store,
+                Err(e) if e.is_missing_or_unsupported() => Default::default(),
+                Err(e) => return Err(FontLoadError::DataStore(e)),
+            }
+        } else {
+            Default::default()
+        };
+
+        let images = if request.images {
+            match ImageStore::new(source) {
+                Ok(store) => store,
+                Err(e) if e.is_missing_or_unsupported() => Default::default(),
+                Err(e) => return Err(FontLoadError::ImagesStore(e)),
+            }
+        } else {
+            Default::default()
+        };
 
         Ok(Font {
             layers,
@@ -655,50 +714,47 @@ impl Font {
     }
 }
 
-fn load_lib(lib_path: &Path) -> Result<plist::Dictionary, FontLoadError> {
-    plist::Value::from_file(lib_path)
+fn load_lib(data: &[u8]) -> Result<plist::Dictionary, FontLoadError> {
+    plist::Value::from_reader_xml(std::io::Cursor::new(data))
         .map_err(|source| FontLoadError::ParsePlist { name: LIB_FILE, source })?
         .into_dictionary()
         .ok_or(FontLoadError::LibFileMustBeDictionary)
 }
 
 fn load_fontinfo(
-    fontinfo_path: &Path,
+    data: &[u8],
     meta: &MetaInfo,
     lib: &mut plist::Dictionary,
 ) -> Result<FontInfo, FontLoadError> {
-    let font_info: FontInfo = FontInfo::from_file(fontinfo_path, meta.format_version, lib)
-        .map_err(FontLoadError::FontInfo)?;
+    let font_info: FontInfo =
+        FontInfo::from_bytes(data, meta.format_version, lib).map_err(FontLoadError::FontInfo)?;
     Ok(font_info)
 }
 
-fn load_groups(groups_path: &Path) -> Result<Groups, FontLoadError> {
-    let groups: Groups = crate::groups::deserialize_groups(groups_path)?;
+fn load_groups(data: &[u8]) -> Result<Groups, FontLoadError> {
+    let groups: Groups = crate::groups::deserialize_groups(data)?;
     validate_groups(&groups).map_err(FontLoadError::InvalidGroups)?;
     Ok(groups)
 }
 
-fn load_kerning(kerning_path: &Path) -> Result<Kerning, FontLoadError> {
-    let kerning: Kerning = plist::from_file(kerning_path)
+fn load_kerning(data: &[u8]) -> Result<Kerning, FontLoadError> {
+    let kerning: Kerning = plist::from_bytes(data)
         .map_err(|source| FontLoadError::ParsePlist { name: KERNING_FILE, source })?;
     Ok(kerning)
 }
 
-fn load_features(features_path: &Path) -> Result<String, FontLoadError> {
-    let features = fs::read_to_string(features_path).map_err(FontLoadError::FeatureFile)?;
-    Ok(features)
-}
-
 fn load_layer_set(
-    ufo_path: &Path,
+    source: &dyn FontSource,
     meta: &MetaInfo,
     filter: &LayerFilter,
 ) -> Result<LayerContents, FontLoadError> {
-    let layercontents_path = ufo_path.join(LAYER_CONTENTS_FILE);
-    if meta.format_version == FormatVersion::V3 && !layercontents_path.exists() {
-        return Err(FontLoadError::MissingLayerContentsFile);
+    if meta.format_version == FormatVersion::V3 {
+        let layercontents_path = Path::new(LAYER_CONTENTS_FILE);
+        if source.try_read(layercontents_path).is_none() {
+            return Err(FontLoadError::MissingLayerContentsFile);
+        }
     }
-    LayerContents::load(ufo_path, filter)
+    LayerContents::load(source, filter)
 }
 
 #[cfg(test)]
