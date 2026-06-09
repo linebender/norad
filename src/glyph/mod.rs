@@ -12,12 +12,14 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "kurbo")]
 use crate::error::ConvertContourError;
 
-use crate::error::{ErrorKind, GlifLoadError, GlifWriteError, StoreError};
+use crate::error::{ErrorKind, GlifLoadError, GlifWriteError, LibRetrievalError, StoreError};
 use crate::name::Name;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
 
 pub use codepoints::Codepoints;
+
+pub static PUBLIC_VERTICAL_ORIGIN: &str = "public.verticalOrigin";
 
 /// A glyph, loaded from a [`.glif` file][glif].
 ///
@@ -232,6 +234,42 @@ impl Glyph {
         }
 
         object_libs
+    }
+
+    /// Try parsing the vertical origin from the lib data of the glyph, if it
+    /// exists. See `public.verticalOrigin` in the  [Common Key Registry].
+    ///
+    /// [Common Key Registry]:
+    ///     https://unifiedfontobject.org/versions/ufo3/glyphs/glif/#publicverticalorigin
+    pub fn vertical_origin(&self) -> Option<Result<f64, LibRetrievalError>> {
+        let plist = self.lib.get(PUBLIC_VERTICAL_ORIGIN)?;
+        let parsed = match plist {
+            plist::Value::Real(real) => Some(*real),
+            plist::Value::Integer(integer) => integer.as_signed().map(|v| v as f64),
+            _ => None,
+        };
+        Some(parsed.ok_or(LibRetrievalError::InvalidData(
+            PUBLIC_VERTICAL_ORIGIN,
+            "an integer or float of reasonable size",
+        )))
+    }
+
+    /// Set the vertical origin of the glyph. Use a value of `None` to unset it.
+    /// See `public.verticalOrigin` in the [Common Key Registry].
+    ///
+    /// [Common Key Registry]:
+    ///     https://unifiedfontobject.org/versions/ufo3/glyphs/glif/#publicverticalorigin
+    pub fn set_vertical_origin(&mut self, value: Option<f64>) {
+        if let Some(real) = value {
+            let plist = if (real - real.round()).abs() < f64::EPSILON {
+                plist::Value::Integer((real as i64).into())
+            } else {
+                plist::Value::Real(real)
+            };
+            self.lib.insert(PUBLIC_VERTICAL_ORIGIN.into(), plist);
+        } else {
+            self.lib.remove(PUBLIC_VERTICAL_ORIGIN);
+        }
     }
 }
 

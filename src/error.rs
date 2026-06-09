@@ -656,3 +656,12 @@ impl From<IoError> for StoreError {
         StoreError::Io(std::sync::Arc::new(src))
     }
 }
+
+/// Errors for when retrieving lib data.
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum LibRetrievalError {
+    /// A lib key has unexpected data.
+    #[error("the glif lib key '{0}' has invalid data, expected {1}")]
+    InvalidData(&'static str, &'static str),
+}
