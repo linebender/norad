@@ -917,7 +917,7 @@ fn v1_glyph_with_note() {
 }
 
 #[test]
-fn get_vertical_orgin() {
+fn get_vertical_origin() {
     let bytes = include_bytes!("../../testdata/cid61855.glif");
     let mut glyph = parse_glyph(bytes).unwrap();
 
