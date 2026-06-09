@@ -915,3 +915,71 @@ fn v1_glyph_with_note() {
     let glyph = parse_glyph(glyph_xml.as_bytes()).unwrap();
     assert!(glyph.note.is_none());
 }
+
+#[test]
+fn get_vertical_orgin() {
+    let bytes = include_bytes!("../../testdata/cid61855.glif");
+    let mut glyph = parse_glyph(bytes).unwrap();
+
+    assert_eq!(glyph.vertical_origin().unwrap().unwrap(), 880.);
+
+    glyph.set_vertical_origin(Some(1234.));
+
+    assert_eq!(glyph.vertical_origin().unwrap().unwrap(), 1234.);
+
+    glyph
+        .lib
+        .insert(crate::glyph::PUBLIC_VERTICAL_ORIGIN.into(), plist::Value::String("hello".into()));
+
+    assert!(glyph.vertical_origin().unwrap().is_err());
+}
+
+#[test]
+fn set_vertical_origin() {
+    let glyph_xml = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="hello" format="1">
+</glyph>
+"#;
+    let mut glyph = parse_glyph(glyph_xml.as_bytes()).unwrap();
+
+    glyph.set_vertical_origin(Some(1234.));
+    let output = glyph.encode_xml().unwrap();
+    let output = std::str::from_utf8(&output).unwrap();
+
+    assert_eq!(
+        output,
+        r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="hello" format="2">
+	<lib>
+		<dict>
+			<key>public.verticalOrigin</key>
+			<integer>1234</integer>
+		</dict>
+	</lib>
+</glyph>
+"#
+        .trim_start()
+    );
+
+    glyph.set_vertical_origin(Some(1234.5678));
+    let output = glyph.encode_xml().unwrap();
+    let output = std::str::from_utf8(&output).unwrap();
+
+    assert_eq!(
+        output,
+        r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="hello" format="2">
+	<lib>
+		<dict>
+			<key>public.verticalOrigin</key>
+			<real>1234.5678</real>
+		</dict>
+	</lib>
+</glyph>
+"#
+        .trim_start()
+    );
+}
