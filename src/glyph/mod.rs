@@ -248,10 +248,10 @@ impl Glyph {
             plist::Value::Integer(integer) => integer.as_signed().map(|v| v as f64),
             _ => None,
         };
-        Some(parsed.ok_or(LibRetrievalError::InvalidData(
-            PUBLIC_VERTICAL_ORIGIN,
-            "an integer or float of reasonable size",
-        )))
+        Some(parsed.ok_or(LibRetrievalError::InvalidData {
+            key: PUBLIC_VERTICAL_ORIGIN,
+            expectation: "an integer or float of reasonable size",
+        }))
     }
 
     /// Set the vertical origin of the glyph. Use a value of `None` to unset it.
