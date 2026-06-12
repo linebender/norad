@@ -987,7 +987,7 @@ fn set_vertical_origin() {
     let output = glyph.encode_xml().unwrap();
     let output = std::str::from_utf8(&output).unwrap();
 
-    assert_eq!(value, Some(1234.5678));
+    assert_eq!(value.unwrap().unwrap(), 1234.5678);
     assert_eq!(
         output,
         r#"
