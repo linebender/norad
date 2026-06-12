@@ -662,6 +662,11 @@ impl From<IoError> for StoreError {
 #[non_exhaustive]
 pub enum LibRetrievalError {
     /// A lib key has unexpected data.
-    #[error("the glif lib key '{0}' has invalid data, expected {1}")]
-    InvalidData(&'static str, &'static str),
+    #[error("the glif lib key '{key}' has invalid data, expected {expectation}")]
+    InvalidData {
+        /// They sought after lib key.
+        key: &'static str,
+        /// What data type was expected.
+        expectation: &'static str,
+    },
 }
