@@ -121,15 +121,19 @@ impl Glyph {
         }
 
         if let Some(ref note) = self.note {
-            writer
-                .write_event(Event::Start(BytesStart::new("note")))
-                .map_err(GlifWriteError::Buffer)?;
-            writer
-                .write_event(Event::Text(BytesText::new(note)))
-                .map_err(GlifWriteError::Buffer)?;
-            writer
-                .write_event(Event::End(BytesEnd::new("note")))
-                .map_err(GlifWriteError::Buffer)?;
+            // fontTools's ufoLib will trim a note and wrap it in newlines
+            // before writing it out, do the same here. They are stripped out on
+            // load, like in ufoLib.
+            // https://github.com/fonttools/fonttools/blob/c5d5359f7ab9989306ee0ff5897d834d0f1b5c29/Lib/fontTools/ufoLib/glifLib.py#L949-L956
+            for event in [
+                Event::Start(BytesStart::new("note")),
+                Event::Text(BytesText::new("\n")),
+                Event::Text(BytesText::new(note.trim())),
+                Event::Text(BytesText::new("\n")),
+                Event::End(BytesEnd::new("note")),
+            ] {
+                writer.write_event(event).map_err(GlifWriteError::Buffer)?;
+            }
         }
 
         writer.write_event(Event::End(BytesEnd::new("glyph"))).map_err(GlifWriteError::Buffer)?;

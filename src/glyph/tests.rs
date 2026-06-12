@@ -94,7 +94,9 @@ fn serialize_with_default_formatting() {
 			<string>I am a creative professional :)</string>
 		</dict>
 	</lib>
-	<note>durp</note>
+	<note>
+durp
+</note>
 </glyph>
 "#
     );
@@ -125,7 +127,9 @@ fn serialize_with_custom_whitespace() {
       <string>I am a creative professional :)</string>
     </dict>
   </lib>
-  <note>durp</note>
+  <note>
+durp
+</note>
 </glyph>
 "#
     );
@@ -155,7 +159,9 @@ fn serialize_with_single_quote_style() {
 			<string>I am a creative professional :)</string>
 		</dict>
 	</lib>
-	<note>durp</note>
+	<note>
+durp
+</note>
 </glyph>
 "#
     );
@@ -187,7 +193,9 @@ fn serialize_with_custom_whitespace_and_single_quote_style() {
       <string>I am a creative professional :)</string>
     </dict>
   </lib>
-  <note>durp</note>
+  <note>
+durp
+</note>
 </glyph>
 "#
     );
