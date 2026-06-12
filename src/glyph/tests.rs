@@ -923,7 +923,7 @@ fn get_vertical_origin() {
 
     assert_eq!(glyph.vertical_origin().unwrap().unwrap(), 880.);
 
-    glyph.set_vertical_origin(Some(1234.));
+    glyph.set_vertical_origin(1234.);
 
     assert_eq!(glyph.vertical_origin().unwrap().unwrap(), 1234.);
 
@@ -943,7 +943,7 @@ fn set_vertical_origin() {
 "#;
     let mut glyph = parse_glyph(glyph_xml.as_bytes()).unwrap();
 
-    glyph.set_vertical_origin(Some(1234.));
+    glyph.set_vertical_origin(1234.);
     let output = glyph.encode_xml().unwrap();
     let output = std::str::from_utf8(&output).unwrap();
 
@@ -963,7 +963,7 @@ fn set_vertical_origin() {
         .trim_start()
     );
 
-    glyph.set_vertical_origin(Some(1234.5678));
+    glyph.set_vertical_origin(1234.5678);
     let output = glyph.encode_xml().unwrap();
     let output = std::str::from_utf8(&output).unwrap();
 
@@ -978,6 +978,21 @@ fn set_vertical_origin() {
 			<real>1234.5678</real>
 		</dict>
 	</lib>
+</glyph>
+"#
+        .trim_start()
+    );
+
+    let value = glyph.remove_vertical_origin();
+    let output = glyph.encode_xml().unwrap();
+    let output = std::str::from_utf8(&output).unwrap();
+
+    assert_eq!(value, Some(1234.5678));
+    assert_eq!(
+        output,
+        r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="hello" format="2">
 </glyph>
 "#
         .trim_start()

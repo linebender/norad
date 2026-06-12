@@ -259,16 +259,24 @@ impl Glyph {
     ///
     /// [Common Key Registry]:
     ///     https://unifiedfontobject.org/versions/ufo3/glyphs/glif/#publicverticalorigin
-    pub fn set_vertical_origin(&mut self, value: Option<f64>) {
-        if let Some(real) = value {
-            let plist = if (real - real.round()).abs() < f64::EPSILON {
-                plist::Value::Integer((real as i64).into())
-            } else {
-                plist::Value::Real(real)
-            };
-            self.lib.insert(PUBLIC_VERTICAL_ORIGIN.into(), plist);
+    pub fn set_vertical_origin(&mut self, value: f64) {
+        let plist = if (value - value.round()).abs() < f64::EPSILON {
+            plist::Value::Integer((value as i64).into())
         } else {
-            self.lib.remove(PUBLIC_VERTICAL_ORIGIN);
+            plist::Value::Real(value)
+        };
+        self.lib.insert(PUBLIC_VERTICAL_ORIGIN.into(), plist);
+    }
+
+    /// Remove the vertical origin lib key data and return its value, if any.
+    ///
+    /// Returns None if the data cannot be parsed into a number of reasonable
+    /// size.
+    pub fn remove_vertical_origin(&mut self) -> Option<f64> {
+        match self.lib.remove(PUBLIC_VERTICAL_ORIGIN) {
+            Some(plist::Value::Real(real)) => Some(real),
+            Some(plist::Value::Integer(integer)) => integer.as_signed().map(|v| v as f64),
+            _ => None,
         }
     }
 }
