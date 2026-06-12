@@ -237,7 +237,7 @@ impl Glyph {
     }
 
     /// Try parsing the vertical origin from the lib data of the glyph, if it
-    /// exists. See `public.verticalOrigin` in the  [Common Key Registry].
+    /// exists. See `public.verticalOrigin` in the [Common Key Registry].
     ///
     /// [Common Key Registry]:
     ///     https://unifiedfontobject.org/versions/ufo3/glyphs/glif/#publicverticalorigin
@@ -254,24 +254,29 @@ impl Glyph {
         }))
     }
 
-    /// Set the vertical origin of the glyph. Use a value of `None` to unset it.
-    /// See `public.verticalOrigin` in the [Common Key Registry].
+    /// Set the vertical origin of the glyph and return the old number, if any
+    /// and if it can be parsed. See `public.verticalOrigin` in the [Common Key
+    /// Registry].
     ///
     /// [Common Key Registry]:
     ///     https://unifiedfontobject.org/versions/ufo3/glyphs/glif/#publicverticalorigin
-    pub fn set_vertical_origin(&mut self, value: f64) {
+    pub fn set_vertical_origin(&mut self, value: f64) -> Option<f64> {
         let plist = if (value - value.round()).abs() < f64::EPSILON {
             plist::Value::Integer((value as i64).into())
         } else {
             plist::Value::Real(value)
         };
-        self.lib.insert(PUBLIC_VERTICAL_ORIGIN.into(), plist);
+        match self.lib.insert(PUBLIC_VERTICAL_ORIGIN.into(), plist) {
+            Some(plist::Value::Real(real)) => Some(real),
+            Some(plist::Value::Integer(integer)) => integer.as_signed().map(|v| v as f64),
+            _ => None,
+        }
     }
 
     /// Remove the vertical origin lib key data and return its value, if any.
     ///
     /// Returns None if the data cannot be parsed into a number of reasonable
-    /// size.
+    /// size, but will remove the data anyway.
     pub fn remove_vertical_origin(&mut self) -> Option<f64> {
         match self.lib.remove(PUBLIC_VERTICAL_ORIGIN) {
             Some(plist::Value::Real(real)) => Some(real),
