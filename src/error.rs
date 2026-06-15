@@ -661,12 +661,10 @@ impl From<IoError> for StoreError {
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum LibRetrievalError {
-    /// A lib key has unexpected data.
-    #[error("the glif lib key '{key}' has invalid data, expected {expectation}")]
-    InvalidData {
-        /// They sought after lib key.
-        key: &'static str,
-        /// What data type was expected.
-        expectation: &'static str,
+    /// The `public.verticalOrigin` key has unexpected data.
+    #[error("'public.verticalOrigin' must be a number of reasonable size, but was '{value:?}'")]
+    BadVerticalOrigin {
+        /// The unexpected value.
+        value: plist::Value,
     },
 }
