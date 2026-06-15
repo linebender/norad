@@ -279,10 +279,7 @@ fn plist_to_vertical_origin(plist: &plist::Value) -> Result<f64, LibRetrievalErr
         plist::Value::Integer(integer) => integer.as_signed().map(|v| v as f64),
         _ => None,
     };
-    parsed.ok_or(LibRetrievalError::InvalidData {
-        key: PUBLIC_VERTICAL_ORIGIN,
-        expectation: "an integer or float of reasonable size",
-    })
+    parsed.ok_or(LibRetrievalError::BadVerticalOrigin { value: plist.clone() })
 }
 
 /// A reference position in a glyph, such as for attaching accents.
