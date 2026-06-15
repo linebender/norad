@@ -408,7 +408,7 @@ fn roundtrip_note() {
     let buf = glyph.encode_xml().expect("encode failed");
     let buf = std::str::from_utf8(&buf).unwrap();
     assert!(
-        buf.find("<note>\n.notdef\n</note>").is_some(),
+        buf.contains("<note>\n.notdef\n</note>"),
         "Notes should have newlines like ufoLib does it."
     );
 }
