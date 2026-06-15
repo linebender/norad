@@ -983,7 +983,7 @@ fn set_vertical_origin() {
         .trim_start()
     );
 
-    let value = glyph.remove_vertical_origin();
+    let value = glyph.set_vertical_origin(None);
     let output = glyph.encode_xml().unwrap();
     let output = std::str::from_utf8(&output).unwrap();
 

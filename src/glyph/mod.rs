@@ -247,28 +247,31 @@ impl Glyph {
     }
 
     /// Set the vertical origin of the glyph, and returns an attempted parse of
-    /// its previous value, if present. See `public.verticalOrigin` in the
-    /// [Common Key Registry].
+    /// its previous value, if present. If passing None, remove the vertical
+    /// origin of the glyph, and returns an attempted parse of its previous
+    /// value, if present. See `public.verticalOrigin` in the [Common Key
+    /// Registry].
     ///
     /// [Common Key Registry]:
     ///     https://unifiedfontobject.org/versions/ufo3/glyphs/glif/#publicverticalorigin
-    pub fn set_vertical_origin(&mut self, value: f64) -> Option<Result<f64, LibRetrievalError>> {
-        let plist = if (value - value.round()).abs() < f64::EPSILON {
-            plist::Value::Integer((value as i64).into())
+    pub fn set_vertical_origin(
+        &mut self,
+        value: impl Into<Option<f64>>,
+    ) -> Option<Result<f64, LibRetrievalError>> {
+        let value = value.into();
+        if let Some(value) = value {
+            let plist = if value.fract() == 0.0 {
+                plist::Value::Integer((value as i64).into())
+            } else {
+                plist::Value::Real(value)
+            };
+            self.lib
+                .insert(PUBLIC_VERTICAL_ORIGIN.into(), plist)
+                .as_ref()
+                .map(plist_to_vertical_origin)
         } else {
-            plist::Value::Real(value)
-        };
-        self.lib.insert(PUBLIC_VERTICAL_ORIGIN.into(), plist).as_ref().map(plist_to_vertical_origin)
-    }
-
-    /// Remove the vertical origin of the glyph, and returns an attempted parse
-    /// of its previous value, if present. See `public.verticalOrigin` in the
-    /// [Common Key Registry].
-    ///
-    /// [Common Key Registry]:
-    ///     https://unifiedfontobject.org/versions/ufo3/glyphs/glif/#publicverticalorigin
-    pub fn remove_vertical_origin(&mut self) -> Option<Result<f64, LibRetrievalError>> {
-        self.lib.remove(PUBLIC_VERTICAL_ORIGIN).as_ref().map(plist_to_vertical_origin)
+            self.lib.remove(PUBLIC_VERTICAL_ORIGIN).as_ref().map(plist_to_vertical_origin)
+        }
     }
 }
 
