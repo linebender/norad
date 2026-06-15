@@ -259,19 +259,17 @@ impl Glyph {
         value: impl Into<Option<f64>>,
     ) -> Option<Result<f64, LibRetrievalError>> {
         let value = value.into();
-        if let Some(value) = value {
+        let old = if let Some(value) = value {
             let plist = if value.fract() == 0.0 {
                 plist::Value::Integer((value as i64).into())
             } else {
                 plist::Value::Real(value)
             };
-            self.lib
-                .insert(PUBLIC_VERTICAL_ORIGIN.into(), plist)
-                .as_ref()
-                .map(plist_to_vertical_origin)
+            self.lib.insert(PUBLIC_VERTICAL_ORIGIN.into(), plist)
         } else {
-            self.lib.remove(PUBLIC_VERTICAL_ORIGIN).as_ref().map(plist_to_vertical_origin)
-        }
+            self.lib.remove(PUBLIC_VERTICAL_ORIGIN)
+        };
+        old.as_ref().map(plist_to_vertical_origin)
     }
 }
 
