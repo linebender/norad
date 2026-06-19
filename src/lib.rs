@@ -1,4 +1,5 @@
-#![doc = include_str!("../README.md")]
+// Share module docs with README, and continue not running doctests there.
+#![cfg_attr(not(doctest), doc = include_str!("../README.md"))]
 #![warn(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links, unsafe_code)]
 
