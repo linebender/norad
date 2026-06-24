@@ -2,7 +2,6 @@
 //!
 //! [`fontinfo.plist`]: https://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
 
-use std::path::Path;
 use std::{collections::HashSet, convert::TryFrom, ops::Deref};
 
 use serde::de::Deserializer;
@@ -492,24 +491,6 @@ struct FontInfoV1 {
 }
 
 impl FontInfo {
-    /// Returns [`FontInfo`] from a file, upgrading from the supplied `format_version` to the highest
-    /// internally supported version.
-    ///
-    /// The conversion follows what ufoLib and defcon are doing, e.g. various fields that were
-    /// implicitly signed integers before and are unsigned integers in the newest spec, are
-    /// converted by taking their absolute value. Fields that could be floats before and are
-    /// integers now are rounded. Fields that could be floats before and are unsigned integers
-    /// now are rounded before taking their absolute value.
-    #[allow(dead_code)]
-    pub(crate) fn from_file<P: AsRef<Path>>(
-        path: P,
-        format_version: FormatVersion,
-        lib: &mut Plist,
-    ) -> Result<Self, FontInfoLoadError> {
-        let data = std::fs::read(path.as_ref()).map_err(FontInfoLoadError::Io)?;
-        Self::from_bytes(&data, format_version, lib)
-    }
-
     pub(crate) fn from_bytes(
         data: &[u8],
         format_version: FormatVersion,

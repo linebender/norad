@@ -12,8 +12,24 @@ use std::path::{Path, PathBuf};
 /// Paths passed to methods are always relative to the UFO root, e.g.
 /// `"metainfo.plist"`, `"glyphs/contents.plist"`, `"glyphs/A_.glif"`.
 ///
-/// A filesystem directory (a `&Path`) implements this trait directly, so you
-/// can pass a path wherever a `FontSource` is expected.
+/// Two implementations are provided out of the box:
+///
+/// - A filesystem directory (a `&Path`) implements this trait directly, so you
+///   can pass a path wherever a `FontSource` is expected.
+/// - Any closure `Fn(&Path) -> Option<Result<Vec<u8>, io::Error>>` implements it
+///   too, which is handy for a quick ad-hoc source without defining a type:
+///
+/// ```
+/// use std::io;
+/// use std::path::Path;
+/// use norad::{DataRequest, Font};
+///
+/// # fn example(lookup: impl Fn(&Path) -> Option<Vec<u8>> + Sync) -> Result<(), Box<dyn std::error::Error>> {
+/// let source = |path: &Path| lookup(path).map(Ok::<_, io::Error>);
+/// let font = Font::load_from_source(&DataRequest::all(), &source)?;
+/// # Ok(())
+/// # }
+/// ```
 ///
 /// # Implementing
 ///
@@ -60,19 +76,28 @@ pub trait FontSource: Sync {
 
     /// List entries in a directory at the given relative path.
     ///
-    /// Returns `(entry_name, is_dir)` pairs, where `entry_name` is the name
-    /// of each entry (not a full path). Callers should join with the directory
-    /// path to get the full relative path.
+    /// Returns a [`DirEntry`] for each entry, carrying the entry name (not a
+    /// full path). Callers should join with the directory path to get the full
+    /// relative path.
     ///
     /// The default implementation returns [`io::ErrorKind::Unsupported`],
     /// meaning this source does not support directory enumeration. Data and
     /// image stores will be empty for such sources.
-    fn list_dir(&self, _path: &Path) -> Result<Vec<(PathBuf, bool)>, io::Error> {
+    fn list_dir(&self, _path: &Path) -> Result<Vec<DirEntry>, io::Error> {
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
             "this FontSource does not support directory listing",
         ))
     }
+}
+
+/// The name of a file or directory, relative to a parent (not a full path!)
+#[derive(Clone, Debug)]
+pub enum DirEntry {
+    /// A file, carrying its name relative to the parent directory.
+    File(PathBuf),
+    /// A subdirectory, carrying its name relative to the parent directory.
+    Dir(PathBuf),
 }
 
 /// A directory on disk implements [`FontSource`] directly.
@@ -89,14 +114,18 @@ impl FontSource for &Path {
         Some(self)
     }
 
-    fn list_dir(&self, path: &Path) -> Result<Vec<(PathBuf, bool)>, io::Error> {
+    fn list_dir(&self, path: &Path) -> Result<Vec<DirEntry>, io::Error> {
         let full = self.join(path);
         let mut entries = Vec::new();
         for entry in std::fs::read_dir(&full)? {
             let entry = entry?;
             let metadata = entry.metadata()?;
             let name = PathBuf::from(entry.file_name());
-            entries.push((name, metadata.is_dir()));
+            entries.push(if metadata.is_dir() {
+                DirEntry::Dir(name)
+            } else {
+                DirEntry::File(name)
+            });
         }
         Ok(entries)
     }

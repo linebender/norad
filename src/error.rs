@@ -163,7 +163,7 @@ pub enum LayerLoadError {
         source: GlifLoadError,
     },
     /// An [`std::io::Error`].
-    #[error("failed to read layer data")]
+    #[error("failed to read layer data: '{0}'")]
     Io(#[from] IoError),
     /// Could not find the layer's contents.plist.
     #[error("cannot find the contents.plist file")]
@@ -192,7 +192,7 @@ pub enum FontInfoLoadError {
     #[error("fontinfo.plist contains invalid data: {0}")]
     InvalidData(FontInfoErrorKind),
     /// An [`std::io::Error`].
-    #[error("failed to read fontinfo.plist file")]
+    #[error("failed to read fontinfo.plist file: '{0}'")]
     Io(#[from] IoError),
     /// Could not parse the UFO's fontinfo.plist.
     #[error("failed to parse fontinfo.plist file")]
@@ -313,8 +313,11 @@ impl StoreEntryError {
     /// Returns `true` if the store could not be populated because the source
     /// does not support directory listing or the directory does not exist.
     pub(crate) fn is_missing_or_unsupported(&self) -> bool {
-        matches!(&self.source, StoreError::Io(e)
-            if matches!(e.kind(), std::io::ErrorKind::Unsupported | std::io::ErrorKind::NotFound))
+        if let StoreError::Io(e) = &self.source {
+            matches!(e.kind(), std::io::ErrorKind::Unsupported | std::io::ErrorKind::NotFound)
+        } else {
+            false
+        }
     }
 }
 
