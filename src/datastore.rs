@@ -8,7 +8,7 @@ use std::{
 };
 
 use crate::error::{StoreEntryError, StoreError};
-use crate::font_source::FontSource;
+use crate::font_source::{DirEntry, FontSource};
 
 /// A generic file store for UFO [data][spec_data] and [images][spec_images],
 /// mapping [`PathBuf`] keys to [`Vec<u8>`] values.
@@ -141,13 +141,14 @@ impl DataType for Data {
                 .list_dir(&dir_path)
                 .map_err(|e| StoreEntryError::new(dir_path.clone(), e.into()))?;
 
-            for (entry_name, is_dir) in entries {
-                let full_rel = dir_path.join(&entry_name);
-                if is_dir {
-                    dir_queue.push(full_rel);
-                } else {
-                    let key = full_rel.strip_prefix(source_root).unwrap().to_path_buf();
-                    paths.push(key);
+            for entry in entries {
+                match entry {
+                    DirEntry::Dir(name) => dir_queue.push(dir_path.join(name)),
+                    DirEntry::File(name) => {
+                        let full_rel = dir_path.join(name);
+                        let key = full_rel.strip_prefix(source_root).unwrap().to_path_buf();
+                        paths.push(key);
+                    }
                 }
             }
         }
@@ -190,14 +191,11 @@ impl DataType for Image {
             .list_dir(source_root)
             .map_err(|e| StoreEntryError::new(source_root.to_path_buf(), e.into()))?;
 
-        for (entry_name, is_dir) in entries {
-            let full_rel = source_root.join(&entry_name);
-            if is_dir {
+        for entry in entries {
+            match entry {
                 // The spec forbids directories.
-                return Err(StoreEntryError::new(full_rel, StoreError::Subdir));
-            } else {
-                let key = full_rel.strip_prefix(source_root).unwrap().to_path_buf();
-                paths.push(key);
+                DirEntry::Dir(name) => return Err(StoreEntryError::new(name, StoreError::Subdir)),
+                DirEntry::File(name) => paths.push(name),
             }
         }
 
@@ -806,21 +804,18 @@ mod tests {
 
     /// A FontSource backed by in-memory data, with `as_path() -> None`.
     /// This triggers the eager-loading branch in `Store::new`.
+    #[derive(Default)]
     struct MemorySource {
         files: HashMap<PathBuf, Vec<u8>>,
-        dirs: HashMap<PathBuf, Vec<(PathBuf, bool)>>,
+        dirs: HashMap<PathBuf, Vec<DirEntry>>,
     }
 
     impl MemorySource {
-        fn new() -> Self {
-            MemorySource { files: HashMap::new(), dirs: HashMap::new() }
-        }
-
         fn add_file(&mut self, path: impl Into<PathBuf>, data: Vec<u8>) {
             self.files.insert(path.into(), data);
         }
 
-        fn add_dir(&mut self, path: impl Into<PathBuf>, entries: Vec<(PathBuf, bool)>) {
+        fn add_dir(&mut self, path: impl Into<PathBuf>, entries: Vec<DirEntry>) {
             self.dirs.insert(path.into(), entries);
         }
     }
@@ -830,7 +825,7 @@ mod tests {
             self.files.get(path).cloned().map(Ok)
         }
 
-        fn list_dir(&self, path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
+        fn list_dir(&self, path: &Path) -> Result<Vec<DirEntry>, std::io::Error> {
             self.dirs.get(path).cloned().ok_or_else(|| {
                 std::io::Error::new(std::io::ErrorKind::NotFound, format!("{path:?} not found"))
             })
@@ -841,11 +836,9 @@ mod tests {
 
     #[test]
     fn data_eager_loading_from_memory_source() {
-        let mut source = MemorySource::new();
-        source.add_dir(
-            "data",
-            vec![(PathBuf::from("a.txt"), false), (PathBuf::from("b.txt"), false)],
-        );
+        let mut source = MemorySource::default();
+        source
+            .add_dir("data", vec![DirEntry::File("a.txt".into()), DirEntry::File("b.txt".into())]);
         source.add_file("data/a.txt", b"aaa".to_vec());
         source.add_file("data/b.txt", b"bbb".to_vec());
 
@@ -865,8 +858,8 @@ mod tests {
     #[test]
     fn image_eager_loading_from_memory_source() {
         let img = png_data(b"test");
-        let mut source = MemorySource::new();
-        source.add_dir("images", vec![(PathBuf::from("x.png"), false)]);
+        let mut source = MemorySource::default();
+        source.add_dir("images", vec![DirEntry::File("x.png".into())]);
         source.add_file("images/x.png", img.clone());
 
         let store = ImageStore::new(&source).unwrap();
@@ -879,8 +872,8 @@ mod tests {
 
     #[test]
     fn eager_load_invalid_image_fails_at_construction() {
-        let mut source = MemorySource::new();
-        source.add_dir("images", vec![(PathBuf::from("bad.png"), false)]);
+        let mut source = MemorySource::default();
+        source.add_dir("images", vec![DirEntry::File("bad.png".into())]);
         source.add_file("images/bad.png", b"not a png".to_vec());
 
         // Eager loading validates during construction, so this should fail.
@@ -890,10 +883,9 @@ mod tests {
 
     #[test]
     fn eager_load_nested_data_from_memory_source() {
-        let mut source = MemorySource::new();
-        source
-            .add_dir("data", vec![(PathBuf::from("top.txt"), false), (PathBuf::from("sub"), true)]);
-        source.add_dir("data/sub", vec![(PathBuf::from("deep.txt"), false)]);
+        let mut source = MemorySource::default();
+        source.add_dir("data", vec![DirEntry::File("top.txt".into()), DirEntry::Dir("sub".into())]);
+        source.add_dir("data/sub", vec![DirEntry::File("deep.txt".into())]);
         source.add_file("data/top.txt", b"top".to_vec());
         source.add_file("data/sub/deep.txt", b"deep".to_vec());
 
