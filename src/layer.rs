@@ -8,7 +8,8 @@ use rayon::prelude::*;
 use serde::Deserialize;
 
 use crate::data_request::LayerFilter;
-use crate::error::{FontLoadError, LayerLoadError, LayerWriteError, NamingError};
+use crate::error::{FontLoadError, GlifLoadError, LayerLoadError, LayerWriteError, NamingError};
+use crate::font_source::FontSource;
 use crate::shared_types::Color;
 use crate::Name;
 use crate::{util, Glyph, Plist, WriteOptions};
@@ -53,26 +54,33 @@ impl LayerContents {
     /// we will assume the pre-UFOv3 behaviour, and expect a single glyphs dir.
     ///
     pub(crate) fn load(
-        base_dir: &Path,
+        source: &dyn FontSource,
         filter: &LayerFilter,
     ) -> Result<LayerContents, FontLoadError> {
-        let layer_contents_path = base_dir.join(LAYER_CONTENTS_FILE);
-        let to_load: Vec<(Name, PathBuf)> = if layer_contents_path.exists() {
-            plist::from_file(&layer_contents_path)
-                .map_err(|source| FontLoadError::ParsePlist { name: LAYER_CONTENTS_FILE, source })?
-        } else {
-            vec![(Name::new_raw(DEFAULT_LAYER_NAME), PathBuf::from(DEFAULT_GLYPHS_DIRNAME))]
+        let layer_contents_path = Path::new(LAYER_CONTENTS_FILE);
+        let to_load: Vec<(Name, PathBuf)> = match source.try_read(layer_contents_path) {
+            Some(data) => {
+                let data = data.map_err(FontLoadError::AccessUfoDir)?;
+                plist::from_bytes(&data).map_err(|source| FontLoadError::ParsePlist {
+                    name: LAYER_CONTENTS_FILE,
+                    source,
+                })?
+            }
+            None => {
+                vec![(Name::new_raw(DEFAULT_LAYER_NAME), PathBuf::from(DEFAULT_GLYPHS_DIRNAME))]
+            }
         };
 
         let mut layers: Vec<_> = to_load
             .into_iter()
             .filter(|(name, path)| filter.should_load(name, path))
             .map(|(name, path)| {
-                let layer_path = base_dir.join(path);
-                Layer::load_impl(&layer_path, name.clone()).map_err(|source| FontLoadError::Layer {
-                    name: name.to_string(),
-                    path: layer_path,
-                    source: Box::new(source),
+                Layer::load_impl(source, &path, name.clone()).map_err(|source| {
+                    FontLoadError::Layer {
+                        name: name.to_string(),
+                        path: path.clone(),
+                        source: Box::new(source),
+                    }
                 })
             })
             .collect::<Result<_, _>>()?;
@@ -300,19 +308,28 @@ impl Layer {
     #[cfg(test)]
     pub(crate) fn load(path: impl AsRef<Path>, name: &str) -> Result<Layer, LayerLoadError> {
         let path = path.as_ref();
+        // The path points to the layer directory (e.g. "testdata/font.ufo/glyphs").
+        // We need a FontSource rooted at the parent, and the layer_dir is the last component.
+        let parent = path.parent().unwrap_or(path);
+        let layer_dir = Path::new(path.file_name().unwrap());
         let name = Name::new_raw(name);
-        Layer::load_impl(path, name)
+        Layer::load_impl(&parent, layer_dir, name)
     }
 
     /// The actual loading logic.
-    pub(crate) fn load_impl(path: &Path, name: Name) -> Result<Layer, LayerLoadError> {
-        let contents_path = path.join(CONTENTS_FILE);
-        if !contents_path.exists() {
-            return Err(LayerLoadError::MissingContentsFile);
-        }
+    pub(crate) fn load_impl(
+        source: &dyn FontSource,
+        layer_dir: &Path,
+        name: Name,
+    ) -> Result<Layer, LayerLoadError> {
+        let contents_rel = layer_dir.join(CONTENTS_FILE);
+        let contents_data = source
+            .try_read(&contents_rel)
+            .ok_or(LayerLoadError::MissingContentsFile)?
+            .map_err(LayerLoadError::Io)?;
         // these keys are never used; a future optimization would be to skip the
         // names and deserialize to a vec; that would not be a one-liner, though.
-        let contents: BTreeMap<Name, PathBuf> = plist::from_file(&contents_path)
+        let contents: BTreeMap<Name, PathBuf> = plist::from_bytes(&contents_data)
             .map_err(|source| LayerLoadError::ParsePlist { name: CONTENTS_FILE, source })?;
         let path_set = contents.values().map(|p| p.to_string_lossy().to_lowercase()).collect();
 
@@ -324,12 +341,15 @@ impl Layer {
         let glyphs = iter
             .map(|(name, glyph_path)| {
                 let name = name.clone();
-                let glyph_path = path.join(glyph_path);
+                let full_path = layer_dir.join(glyph_path);
 
-                Glyph::load(&glyph_path)
+                source
+                    .read(&full_path)
+                    .map_err(GlifLoadError::Io)
+                    .and_then(|data| Glyph::parse(&data))
                     .map_err(|source| LayerLoadError::Glyph {
                         name: name.to_string(),
-                        path: glyph_path,
+                        path: full_path,
                         source,
                     })
                     .map(|mut glyph| {
@@ -339,20 +359,18 @@ impl Layer {
             })
             .collect::<Result<_, _>>()?;
 
-        let layerinfo_path = path.join(LAYER_INFO_FILE);
-        let (color, lib) = if layerinfo_path.exists() {
-            Self::parse_layer_info(&layerinfo_path)?
-        } else {
-            (None, Plist::new())
+        let layerinfo_rel = layer_dir.join(LAYER_INFO_FILE);
+        let (color, lib) = match source.try_read(&layerinfo_rel) {
+            Some(data) => Self::parse_layer_info(&data.map_err(LayerLoadError::Io)?)?,
+            None => (None, Plist::new()),
         };
 
-        // for us to get this far, the path must have a file name
-        let path = path.file_name().unwrap().into();
+        let path = layer_dir.into();
 
         Ok(Layer { glyphs, name, path, contents, path_set, color, lib })
     }
 
-    fn parse_layer_info(path: &Path) -> Result<(Option<Color>, Plist), LayerLoadError> {
+    fn parse_layer_info(data: &[u8]) -> Result<(Option<Color>, Plist), LayerLoadError> {
         // Pluck apart the data found in the file, as we want to insert it into `Layer`.
         #[derive(Deserialize)]
         struct LayerInfoHelper {
@@ -360,7 +378,7 @@ impl Layer {
             #[serde(default)]
             lib: Plist,
         }
-        let layerinfo: LayerInfoHelper = plist::from_file(path)
+        let layerinfo: LayerInfoHelper = plist::from_bytes(data)
             .map_err(|source| LayerLoadError::ParsePlist { name: LAYER_INFO_FILE, source })?;
         Ok((layerinfo.color, layerinfo.lib))
     }
@@ -850,35 +868,34 @@ mod tests {
 
     #[test]
     fn test_filter() {
-        static UFO_DIR: &str = "testdata/MutatorSansLightWide.ufo/";
-        let ufo_path = Path::new(UFO_DIR);
+        let ufo_path = Path::new("testdata/MutatorSansLightWide.ufo");
 
         let request = DataRequest::all();
-        let layerset = LayerContents::load(ufo_path, &request.layers).unwrap();
+        let layerset = LayerContents::load(&ufo_path, &request.layers).unwrap();
         assert_eq!(layerset.len(), 2);
         assert_eq!(layerset.default_layer().len(), 48);
 
         let request = DataRequest::none();
-        let layerset = LayerContents::load(ufo_path, &request.layers).unwrap();
+        let layerset = LayerContents::load(&ufo_path, &request.layers).unwrap();
         // default layer is always present
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 0);
 
         let request = DataRequest::none().default_layer(true);
-        let layerset = LayerContents::load(ufo_path, &request.layers).unwrap();
+        let layerset = LayerContents::load(&ufo_path, &request.layers).unwrap();
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 48);
 
         // all is overridden by default_layer
         let request = DataRequest::all().default_layer(true);
-        let layerset = LayerContents::load(ufo_path, &request.layers).unwrap();
+        let layerset = LayerContents::load(&ufo_path, &request.layers).unwrap();
         // default layer is always present
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 48);
 
         let layer_name = String::from("background");
         let request = DataRequest::none().filter_layers(|name, _path| name == layer_name);
-        let layerset = LayerContents::load(ufo_path, &request.layers).unwrap();
+        let layerset = LayerContents::load(&ufo_path, &request.layers).unwrap();
         // default layer is always present
         assert_eq!(layerset.len(), 2);
         assert_eq!(layerset.default_layer().len(), 0);

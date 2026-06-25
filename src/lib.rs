@@ -8,6 +8,7 @@ pub mod datastore;
 pub mod designspace;
 pub mod error;
 mod font;
+mod font_source;
 pub mod fontinfo;
 mod glyph;
 pub mod groups;
@@ -24,6 +25,7 @@ mod write;
 
 pub use data_request::DataRequest;
 pub use font::{Font, FormatVersion, MetaInfo};
+pub use font_source::{DirEntry, FontSource};
 pub use fontinfo::FontInfo;
 pub use glyph::{
     AffineTransform, Anchor, Codepoints, Component, Contour, ContourPoint, Glyph, Image, PointType,

@@ -2,7 +2,6 @@
 //!
 //! [`fontinfo.plist`]: https://unifiedfontobject.org/versions/ufo3/fontinfo.plist/
 
-use std::path::Path;
 use std::{collections::HashSet, convert::TryFrom, ops::Deref};
 
 use serde::de::Deserializer;
@@ -492,31 +491,22 @@ struct FontInfoV1 {
 }
 
 impl FontInfo {
-    /// Returns [`FontInfo`] from a file, upgrading from the supplied `format_version` to the highest
-    /// internally supported version.
-    ///
-    /// The conversion follows what ufoLib and defcon are doing, e.g. various fields that were
-    /// implicitly signed integers before and are unsigned integers in the newest spec, are
-    /// converted by taking their absolute value. Fields that could be floats before and are
-    /// integers now are rounded. Fields that could be floats before and are unsigned integers
-    /// now are rounded before taking their absolute value.
-    pub(crate) fn from_file<P: AsRef<Path>>(
-        path: P,
+    pub(crate) fn from_bytes(
+        data: &[u8],
         format_version: FormatVersion,
         lib: &mut Plist,
     ) -> Result<Self, FontInfoLoadError> {
-        let path = path.as_ref();
         match format_version {
             FormatVersion::V3 => {
                 let mut fontinfo: FontInfo =
-                    plist::from_file(path).map_err(FontInfoLoadError::ParsePlist)?;
+                    plist::from_bytes(data).map_err(FontInfoLoadError::ParsePlist)?;
                 fontinfo.validate().map_err(FontInfoLoadError::InvalidData)?;
                 fontinfo.load_object_libs(lib)?;
                 Ok(fontinfo)
             }
             FormatVersion::V2 => {
                 let fontinfo_v2: FontInfoV2 =
-                    plist::from_file(path).map_err(FontInfoLoadError::ParsePlist)?;
+                    plist::from_bytes(data).map_err(FontInfoLoadError::ParsePlist)?;
                 let fontinfo = FontInfo {
                     ascender: fontinfo_v2.ascender,
                     cap_height: fontinfo_v2.capHeight,
@@ -671,7 +661,7 @@ impl FontInfo {
             }
             FormatVersion::V1 => {
                 let fontinfo_v1: FontInfoV1 =
-                    plist::from_file(path).map_err(FontInfoLoadError::ParsePlist)?;
+                    plist::from_bytes(data).map_err(FontInfoLoadError::ParsePlist)?;
                 let fontinfo = FontInfo {
                     ascender: fontinfo_v1.ascender,
                     cap_height: fontinfo_v1.capHeight,
