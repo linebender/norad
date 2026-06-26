@@ -23,6 +23,7 @@ default = ["object-libs"]
 object-libs = ["uuid"]
 kurbo = ["dep:kurbo"]
 rayon = ["dep:rayon"]
+ufoz = ["zip"]
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 uuid = { version = "1.2", features = ["v4"], optional = true }
@@ -43,6 +44,7 @@ base64 = "0.22"
 close_already = "0.3"
 log = "0.4"
 smol_str = { version = "0.3", features = ["serde"] }
+zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
 
 [dev-dependencies]
 failure = "0.1.6"

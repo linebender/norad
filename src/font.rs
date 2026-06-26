@@ -217,11 +217,17 @@ impl Font {
 
     fn load_impl(path: &Path, request: DataRequest) -> Result<Font, FontLoadError> {
         let metadata = path.metadata().map_err(FontLoadError::AccessUfoDir)?;
-        if !metadata.is_dir() {
-            return Err(FontLoadError::UfoNotADir);
+        if metadata.is_dir() {
+            return Self::load_from_source(&request, &path);
         }
 
-        Self::load_from_source(&request, &path)
+        #[cfg(feature = "ufoz")]
+        if metadata.is_file() {
+            let source = crate::zip_source::ZipSource::open(path)?;
+            return Self::load_from_source(&request, &source);
+        }
+
+        Err(FontLoadError::UfoNotADir)
     }
 
     /// Returns a [`Font`] loaded from the given [`FontSource`].
