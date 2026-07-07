@@ -392,14 +392,6 @@ pub enum FontWriteError {
     /// Cannot clean up previous UFO package before writing out new one.
     #[error("failed to remove target directory before overwriting")]
     Cleanup(#[source] IoError),
-    /// Failed to create the images directory.
-    #[error("failed to create store directory '{path}'")]
-    CreateStoreDir {
-        /// The path to the entry.
-        path: PathBuf,
-        /// The underlying error.
-        source: IoError,
-    },
     /// Failed to create the UFO package directory.
     #[error("failed to create target font directory")]
     CreateUfoDir(#[source] IoError),
@@ -469,9 +461,6 @@ pub enum LayerWriteError {
     /// Failed to write out the contents.plist file
     #[error("failed to write contents.plist file")]
     Contents(#[source] CustomSerializationError),
-    /// Failed to create the layer's directory.
-    #[error("cannot create layer directory")]
-    CreateDir(#[source] IoError),
     /// Failed to write out a glyph.
     #[error("failed to write glyph '{name}' to '{path}'")]
     Glyph {

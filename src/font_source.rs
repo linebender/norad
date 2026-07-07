@@ -24,7 +24,7 @@ use std::path::{Path, PathBuf};
 /// use std::path::Path;
 /// use norad::{DataRequest, Font};
 ///
-/// # fn example(lookup: impl Fn(&Path) -> Option<Vec<u8>> + Sync) -> Result<(), Box<dyn std::error::Error>> {
+/// # fn example(lookup: impl Fn(&Path) -> Option<Vec<u8>> + Send + Sync) -> Result<(), Box<dyn std::error::Error>> {
 /// let source = |path: &Path| lookup(path).map(Ok::<_, io::Error>);
 /// let font = Font::load_from_source(&DataRequest::all(), &source)?;
 /// # Ok(())
@@ -49,7 +49,7 @@ use std::path::{Path, PathBuf};
 ///     }
 /// }
 /// ```
-pub trait FontSource: Sync {
+pub trait FontSource: Send + Sync {
     /// Try to read the contents of a file at the given relative path.
     ///
     /// Returns `None` if the file does not exist, `Some(Ok(data))` if the
@@ -134,7 +134,7 @@ impl FontSource for &Path {
 // Allow closures as FontSource for convenience.
 impl<F> FontSource for F
 where
-    F: Fn(&Path) -> Option<Result<Vec<u8>, io::Error>> + Sync,
+    F: Fn(&Path) -> Option<Result<Vec<u8>, io::Error>> + Send + Sync,
 {
     fn try_read(&self, path: &Path) -> Option<Result<Vec<u8>, io::Error>> {
         self(path)

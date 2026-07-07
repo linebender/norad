@@ -1,5 +1,4 @@
 use std::collections::{BTreeMap, HashSet};
-use std::fs;
 use std::path::{Path, PathBuf};
 
 #[cfg(feature = "rayon")]
@@ -9,6 +8,7 @@ use serde::Deserialize;
 
 use crate::data_request::LayerFilter;
 use crate::error::{FontLoadError, GlifLoadError, LayerLoadError, LayerWriteError, NamingError};
+use crate::font_sink::FontSink;
 use crate::font_source::FontSource;
 use crate::shared_types::Color;
 use crate::Name;
@@ -383,9 +383,10 @@ impl Layer {
         Ok((layerinfo.color, layerinfo.lib))
     }
 
-    fn layerinfo_to_file_if_needed(
+    fn layerinfo_to_sink_if_needed(
         &self,
-        path: &Path,
+        layer_dir: &Path,
+        sink: &dyn FontSink,
         options: &WriteOptions,
     ) -> Result<(), LayerWriteError> {
         if self.color.is_none() && self.lib.is_empty() {
@@ -403,34 +404,33 @@ impl Layer {
 
         util::recursive_sort_plist_keys(&mut dict);
 
-        crate::write::write_xml_to_file(&path.join(LAYER_INFO_FILE), &dict, options)
+        crate::write::write_xml_to_sink(sink, &layer_dir.join(LAYER_INFO_FILE), &dict, options)
             .map_err(LayerWriteError::LayerInfo)
     }
 
     /// Serialize this layer to the given path with the default
     /// [`WriteOptions`] serialization format configuration.
-    ///
-    /// The path should not exist.
     #[cfg(test)]
     pub(crate) fn save(&self, path: impl AsRef<Path>) -> Result<(), LayerWriteError> {
         let options = WriteOptions::default();
-        self.save_with_options(path.as_ref(), &options)
+        let path = path.as_ref();
+        self.write_with_options(Path::new(""), &path, &options)
     }
 
-    /// Serialize this layer to the given `path` with a custom
+    /// Serialize this layer to the given [`FontSink`] with a custom
     /// [`WriteOptions`] serialization format configuration.
     ///
-    /// The path should not exist.
-    pub(crate) fn save_with_options(
+    /// `layer_dir` is the layer's directory, relative to the sink root.
+    pub(crate) fn write_with_options(
         &self,
-        path: &Path,
+        layer_dir: &Path,
+        sink: &dyn FontSink,
         opts: &WriteOptions,
     ) -> Result<(), LayerWriteError> {
-        fs::create_dir(path).map_err(LayerWriteError::CreateDir)?;
-        crate::write::write_xml_to_file(&path.join(CONTENTS_FILE), &self.contents, opts)
+        crate::write::write_xml_to_sink(sink, &layer_dir.join(CONTENTS_FILE), &self.contents, opts)
             .map_err(LayerWriteError::Contents)?;
 
-        self.layerinfo_to_file_if_needed(path, opts)?;
+        self.layerinfo_to_sink_if_needed(layer_dir, sink, opts)?;
 
         #[cfg(feature = "rayon")]
         let iter = self.contents.par_iter();
@@ -439,11 +439,9 @@ impl Layer {
 
         iter.try_for_each(|(name, glyph_path)| {
             let glyph = self.glyphs.get(name).expect("all glyphs in contents must exist.");
-            let glyph_path = path.join(glyph_path);
-            glyph.save_with_options(&glyph_path, opts).map_err(|source| LayerWriteError::Glyph {
-                name: glyph.name.to_string(),
-                path: glyph_path,
-                source,
+            let glyph_path = layer_dir.join(glyph_path);
+            glyph.write_with_options(&glyph_path, sink, opts).map_err(|source| {
+                LayerWriteError::Glyph { name: glyph.name.to_string(), path: glyph_path, source }
             })
         })
     }
@@ -595,6 +593,7 @@ mod tests {
     use crate::{Codepoints, DataRequest};
 
     use super::*;
+    use std::fs;
     use std::path::Path;
     use tempfile::TempDir;
 
