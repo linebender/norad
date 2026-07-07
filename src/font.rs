@@ -12,6 +12,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use crate::data_request::LayerFilter;
 use crate::datastore::{DataStore, ImageStore};
 use crate::error::{FontLoadError, FontWriteError};
+use crate::font_sink::FontSink;
 use crate::font_source::FontSource;
 use crate::fontinfo::FontInfo;
 use crate::glyph::Glyph;
@@ -488,7 +489,48 @@ impl Font {
         self.save_impl(path, options)
     }
 
+    /// Serialize a [`Font`] to the given [`FontSink`], with custom
+    /// [`WriteOptions`] serialization format settings.
+    ///
+    /// This is the destination-agnostic sibling of
+    /// [`save_with_options`][Self::save_with_options], for use in situations
+    /// where there is no direct file system access, such as wasm.
+    ///
+    /// This only ever writes files; it never removes anything. If the sink's
+    /// backing store may contain files that are not part of this font (such
+    /// as a previously saved UFO), clearing it first is the caller's
+    /// responsibility.
+    ///
+    /// This _will_ fail if either the global or any glyph lib contains the
+    /// `public.objectLibs` key, as object lib management must currently be done
+    /// by norad.
+    pub fn save_to_sink(
+        &self,
+        sink: &dyn FontSink,
+        options: &WriteOptions,
+    ) -> Result<(), FontWriteError> {
+        self.prepare_save()?;
+        self.write_to_sink_impl(sink, options)
+    }
+
     fn save_impl(&self, path: &Path, options: &WriteOptions) -> Result<(), FontWriteError> {
+        self.prepare_save()?;
+
+        // Now do the actual writing.
+        if path.exists() {
+            fs::remove_dir_all(path).map_err(FontWriteError::Cleanup)?;
+        }
+        fs::create_dir(path).map_err(FontWriteError::CreateUfoDir)?;
+
+        self.write_to_sink_impl(&path, options)
+    }
+
+    /// Run pre-save validation, including forcing any lazy data/images store
+    /// entries into memory.
+    ///
+    /// This must happen before the save target is touched, so that a font
+    /// loaded lazily from the path it is being saved to does not lose data.
+    fn prepare_save(&self) -> Result<(), FontWriteError> {
         if self.meta.format_version != FormatVersion::V3 {
             return Err(FontWriteError::Downgrade);
         }
@@ -497,7 +539,6 @@ impl Font {
             return Err(FontWriteError::PreexistingPublicObjectLibsKey);
         }
 
-        // Run various validators before touching the file system.
         validate_groups(&self.groups).map_err(FontWriteError::InvalidGroups)?;
         self.font_info.validate().map_err(FontWriteError::InvalidFontInfo)?;
 
@@ -510,26 +551,27 @@ impl Font {
         }
 
         // TODO: run glif validation up front?
+        Ok(())
+    }
 
-        // Now do the actual writing.
-        if path.exists() {
-            fs::remove_dir_all(path).map_err(FontWriteError::Cleanup)?;
-        }
-        fs::create_dir(path).map_err(FontWriteError::CreateUfoDir)?;
-
+    fn write_to_sink_impl(
+        &self,
+        sink: &dyn FontSink,
+        options: &WriteOptions,
+    ) -> Result<(), FontWriteError> {
         // we want to always set ourselves as the creator when serializing,
         // but we also don't have mutable access to self.
-        let metainfo_path = path.join(METAINFO_FILE);
+        let metainfo_path = Path::new(METAINFO_FILE);
         if self.meta.creator == Some(DEFAULT_METAINFO_CREATOR.into()) {
-            write::write_xml_to_file(&metainfo_path, &self.meta, options)
+            write::write_xml_to_sink(sink, metainfo_path, &self.meta, options)
                 .map_err(|source| FontWriteError::CustomFile { name: METAINFO_FILE, source })?;
         } else {
-            write::write_xml_to_file(&metainfo_path, &MetaInfo::default(), options)
+            write::write_xml_to_sink(sink, metainfo_path, &MetaInfo::default(), options)
                 .map_err(|source| FontWriteError::CustomFile { name: METAINFO_FILE, source })?;
         }
 
         if !self.font_info.is_empty() {
-            write::write_xml_to_file(&path.join(FONTINFO_FILE), &self.font_info, options)
+            write::write_xml_to_sink(sink, Path::new(FONTINFO_FILE), &self.font_info, options)
                 .map_err(|source| FontWriteError::CustomFile { name: FONTINFO_FILE, source })?;
         }
 
@@ -547,75 +589,65 @@ impl Font {
         }
         if !lib.is_empty() {
             crate::util::recursive_sort_plist_keys(&mut lib);
-            write::write_xml_to_file(&path.join(LIB_FILE), &lib, options)
+            write::write_xml_to_sink(sink, Path::new(LIB_FILE), &lib, options)
                 .map_err(|source| FontWriteError::CustomFile { name: LIB_FILE, source })?;
         }
 
         if !self.groups.is_empty() {
-            write::write_xml_to_file(&path.join(GROUPS_FILE), &self.groups, options)
+            write::write_xml_to_sink(sink, Path::new(GROUPS_FILE), &self.groups, options)
                 .map_err(|source| FontWriteError::CustomFile { name: GROUPS_FILE, source })?;
         }
 
         if !self.kerning.is_empty() {
             let kerning_serializer = crate::kerning::KerningSerializer { kerning: &self.kerning };
-            write::write_xml_to_file(&path.join(KERNING_FILE), &kerning_serializer, options)
+            write::write_xml_to_sink(sink, Path::new(KERNING_FILE), &kerning_serializer, options)
                 .map_err(|source| FontWriteError::CustomFile { name: KERNING_FILE, source })?;
         }
 
         if !self.features.is_empty() {
             // Normalize feature files with line feed line endings
             // This is consistent with the line endings serialized in glif and plist files
-            let feature_file_path = path.join(FEATURES_FILE);
+            let features_path = Path::new(FEATURES_FILE);
             if self.features.as_bytes().contains(&b'\r') {
-                close_already::fs::write(&feature_file_path, self.features.replace("\r\n", "\n"))
+                sink.write(features_path, self.features.replace("\r\n", "\n").as_bytes())
                     .map_err(FontWriteError::FeatureFile)?;
             } else {
-                close_already::fs::write(&feature_file_path, &self.features)
+                sink.write(features_path, self.features.as_bytes())
                     .map_err(FontWriteError::FeatureFile)?;
             }
         }
 
         let contents: Vec<(&str, &PathBuf)> =
             self.layers.iter().map(|l| (l.name.as_ref(), &l.path)).collect();
-        write::write_xml_to_file(&path.join(LAYER_CONTENTS_FILE), &contents, options)
+        write::write_xml_to_sink(sink, Path::new(LAYER_CONTENTS_FILE), &contents, options)
             .map_err(|source| FontWriteError::CustomFile { name: LAYER_CONTENTS_FILE, source })?;
 
         for layer in self.layers.iter() {
-            let layer_path = path.join(&layer.path);
-            layer.save_with_options(&layer_path, options).map_err(|source| {
+            layer.write_with_options(&layer.path, sink, options).map_err(|source| {
                 FontWriteError::Layer {
                     name: layer.name.to_string(),
-                    path: layer_path,
+                    path: layer.path.clone(),
                     source: Box::new(source),
                 }
             })?;
         }
 
         if !self.data.is_empty() {
-            let data_dir = path.join(DATA_DIR);
+            let data_dir = Path::new(DATA_DIR);
             for (data_path, contents) in self.data.iter() {
                 let data = contents.expect("internal error: should have been checked");
                 let destination = data_dir.join(data_path);
-                let destination_parent = destination.parent().unwrap();
-                fs::create_dir_all(destination_parent).map_err(|source| {
-                    FontWriteError::CreateStoreDir { path: destination_parent.into(), source }
-                })?;
-                close_already::fs::write(&destination, &*data)
+                sink.write(&destination, &data)
                     .map_err(|source| FontWriteError::Data { path: destination, source })?;
             }
         }
 
         if !self.images.is_empty() {
-            let images_dir = path.join(IMAGES_DIR);
-            fs::create_dir(&images_dir) // Only a flat directory.
-                .map_err(|source| FontWriteError::CreateStoreDir {
-                    path: images_dir.clone(),
-                    source,
-                })?;
+            let images_dir = Path::new(IMAGES_DIR); // Only a flat directory.
             for (image_path, contents) in self.images.iter() {
                 let data = contents.expect("internal error: should have been checked");
                 let destination = images_dir.join(image_path);
-                close_already::fs::write(&destination, &*data)
+                sink.write(&destination, &data)
                     .map_err(|source| FontWriteError::Image { path: destination, source })?;
             }
         }

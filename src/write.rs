@@ -1,15 +1,10 @@
 //! Customize serialization behaviour
 
-use std::{borrow::Cow, fs::File, io::BufWriter, path::Path};
-
-#[cfg(target_family = "unix")]
-use std::os::unix::prelude::FileExt;
-
-use close_already::FastCloseable;
-#[cfg(target_family = "windows")]
-use std::os::windows::prelude::*;
+use std::{borrow::Cow, path::Path};
 
 use plist::XmlWriteOptions;
+
+use crate::font_sink::FontSink;
 
 /// Options that can be set when writing the UFO to disk.
 ///
@@ -147,32 +142,45 @@ pub enum QuoteChar {
     Double,
 }
 
-/// Write any `Serialize` to file, providing custom options.
-pub(crate) fn write_xml_to_file(
+/// Dump any `Serialize` to an in-memory XML plist, providing custom options.
+pub(crate) fn serialize_xml(
+    value: &impl serde::Serialize,
+    options: &WriteOptions,
+) -> Result<Vec<u8>, CustomSerializationError> {
+    let mut buf = Vec::new();
+    plist::to_writer_xml_with_options(&mut buf, value, options.xml_options())
+        .map_err(CustomSerializationError::SerializePlist)?;
+    apply_quote_style(&mut buf, options)?;
+    Ok(buf)
+}
+
+/// Dump any `Serialize` to an XML plist and write it to the sink.
+pub(crate) fn write_xml_to_sink(
+    sink: &dyn FontSink,
     path: &Path,
     value: &impl serde::Serialize,
     options: &WriteOptions,
 ) -> Result<(), CustomSerializationError> {
-    let mut file = File::create(path).map_err(CustomSerializationError::CreateFile)?.fast_close();
-    let buf_writer = BufWriter::new(&mut file);
-    plist::to_writer_xml_with_options(buf_writer, value, options.xml_options())
-        .map_err(CustomSerializationError::SerializePlist)?;
-    write_quote_style(&file, options).map_err(CustomSerializationError::WriteQuotes)?;
-    file.sync_all().map_err(CustomSerializationError::Sync)?;
-    Ok(())
+    let data = serialize_xml(value, options)?;
+    sink.write(path, &data).map_err(CustomSerializationError::Write)
 }
 
-/// Write XML declarations with custom quote formatting options.
-fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), std::io::Error> {
-    // Optionally modify the XML declaration quote style
+/// Rewrite the XML declaration with custom quote formatting options.
+fn apply_quote_style(
+    xml: &mut [u8],
+    options: &WriteOptions,
+) -> Result<(), CustomSerializationError> {
+    const DOUBLE_QUOTE_DECL: &[u8] = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+    const SINGLE_QUOTE_DECL: &[u8] = b"<?xml version='1.0' encoding='UTF-8'?>";
     match options.quote_style {
         QuoteChar::Single => {
-            // Unix platform specific write
-            #[cfg(target_family = "unix")]
-            file.write_at(b"<?xml version='1.0' encoding='UTF-8'?>", 0)?;
-            // Windows platform specific write
-            #[cfg(target_family = "windows")]
-            file.seek_write(b"<?xml version='1.0' encoding='UTF-8'?>", 0)?;
+            // the plist crate always writes the double-quoted declaration,
+            // which is the same length as the single-quoted one; but don't
+            // overwrite it blindly in case that ever changes
+            if !xml.starts_with(DOUBLE_QUOTE_DECL) {
+                return Err(CustomSerializationError::UnexpectedXmlDeclaration);
+            }
+            xml[..SINGLE_QUOTE_DECL.len()].copy_from_slice(SINGLE_QUOTE_DECL);
         }
         QuoteChar::Double => (), // double quote is the default style
     }
@@ -182,38 +190,39 @@ fn write_quote_style(file: &File, options: &WriteOptions) -> Result<(), std::io:
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum CustomSerializationError {
-    #[error("failed to create file")]
-    CreateFile(#[source] std::io::Error),
     #[error("failed to serialize Plist")]
     SerializePlist(#[source] plist::Error),
-    #[error("failed to rewrite quote style")]
-    WriteQuotes(#[source] std::io::Error),
-    #[error("failed to sync file to disk")]
-    Sync(#[source] std::io::Error),
+    #[error("plist serialization emitted an unrecognized XML declaration, please open an issue")]
+    UnexpectedXmlDeclaration,
+    #[error("failed to write file")]
+    Write(#[source] std::io::Error),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use plist::Value;
-    use std::fs;
-    use tempfile::TempDir;
+
+    /// Write `value` to a file on disk through the `&Path` sink, and read it
+    /// back, so that these tests exercise the actual save-to-disk path.
+    fn write_and_read_back(value: &Value, options: &WriteOptions) -> String {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let root = tmp.path();
+        write_xml_to_sink(&root, Path::new("test.plist"), value, options).unwrap();
+        std::fs::read_to_string(root.join("test.plist")).unwrap()
+    }
 
     #[test]
     fn write_lib_plist_default() {
         let opt = WriteOptions::default();
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/lib.plist")
             .expect("failed to read plist");
-        let tmp = TempDir::new().unwrap();
-        let filepath = tmp.path().join("lib.plist");
-        write_xml_to_file(&filepath, &plist_read, &opt).unwrap();
-        let plist_write = fs::read_to_string(filepath).unwrap();
+        let plist_write = write_and_read_back(&plist_read, &opt);
         let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
         assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
         assert_eq!(str_list[4], "\t<key>com.defcon.sortDescriptor</key>"); // single tab spacing by default
         assert_eq!(str_list[6], "\t\t<dict>"); // second level should use two tab char
-        tmp.close().unwrap();
     }
 
     #[test]
@@ -221,16 +230,12 @@ mod tests {
         let opt = WriteOptions::default().indent(WriteOptions::SPACE, 2);
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/lib.plist")
             .expect("failed to read plist");
-        let tmp = TempDir::new().unwrap();
-        let filepath = tmp.path().join("lib.plist");
-        write_xml_to_file(&filepath, &plist_read, &opt).unwrap();
-        let plist_write = fs::read_to_string(filepath).unwrap();
+        let plist_write = write_and_read_back(&plist_read, &opt);
         let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
         assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
         assert_eq!(str_list[4], "  <key>com.defcon.sortDescriptor</key>"); // should use two space char
         assert_eq!(str_list[6], "    <dict>"); // second level should use four space char
-        tmp.close().unwrap();
     }
 
     #[test]
@@ -239,16 +244,12 @@ mod tests {
             WriteOptions::default().indent(WriteOptions::SPACE, 2).quote_char(QuoteChar::Single);
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/lib.plist")
             .expect("failed to read plist");
-        let tmp = TempDir::new().unwrap();
-        let filepath = tmp.path().join("lib.plist");
-        write_xml_to_file(&filepath, &plist_read, &opt).unwrap();
-        let plist_write = fs::read_to_string(filepath).unwrap();
+        let plist_write = write_and_read_back(&plist_read, &opt);
         let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version='1.0' encoding='UTF-8'?>"); // should use single quotes
         assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
         assert_eq!(str_list[4], "  <key>com.defcon.sortDescriptor</key>"); // should use two space char
         assert_eq!(str_list[6], "    <dict>"); // second level should use four space char
-        tmp.close().unwrap();
     }
 
     #[test]
@@ -256,12 +257,8 @@ mod tests {
         let opt = WriteOptions::default();
         let plist_read = Value::from_file("testdata/lineendings/Tester-LineEndings.ufo/lib.plist")
             .expect("failed to read plist");
-        let tmp = TempDir::new().unwrap();
-        let filepath = tmp.path().join("lib.plist");
-        write_xml_to_file(&filepath, &plist_read, &opt).unwrap();
-        let plist_write = fs::read_to_string(filepath).unwrap();
+        let plist_write = write_and_read_back(&plist_read, &opt);
         assert!(plist_write.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"));
-        tmp.close().unwrap();
     }
 
     #[test]
@@ -269,15 +266,11 @@ mod tests {
         let opt = WriteOptions::default();
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
             .expect("failed to read plist");
-        let tmp = TempDir::new().unwrap();
-        let filepath = tmp.path().join("fontinfo.plist");
-        write_xml_to_file(&filepath, &plist_read, &opt).unwrap();
-        let plist_write = fs::read_to_string(filepath).unwrap();
+        let plist_write = write_and_read_back(&plist_read, &opt);
         let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
         assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
         assert_eq!(str_list[4], "\t<key>ascender</key>"); // single tab level spacing by default
-        tmp.close().unwrap();
     }
 
     #[test]
@@ -285,15 +278,11 @@ mod tests {
         let opt = WriteOptions::default().indent(WriteOptions::SPACE, 2);
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
             .expect("failed to read plist");
-        let tmp = TempDir::new().unwrap();
-        let filepath = tmp.path().join("fontinfo.plist");
-        write_xml_to_file(&filepath, &plist_read, &opt).unwrap();
-        let plist_write = fs::read_to_string(filepath).unwrap();
+        let plist_write = write_and_read_back(&plist_read, &opt);
         let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); // default uses double quotes
         assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
         assert_eq!(str_list[4], "  <key>ascender</key>"); // should use two space char
-        tmp.close().unwrap();
     }
 
     #[test]
@@ -302,15 +291,11 @@ mod tests {
             WriteOptions::default().indent(WriteOptions::SPACE, 2).quote_char(QuoteChar::Single);
         let plist_read = Value::from_file("testdata/MutatorSansLightWide.ufo/fontinfo.plist")
             .expect("failed to read plist");
-        let tmp = TempDir::new().unwrap();
-        let filepath = tmp.path().join("fontinfo.plist");
-        write_xml_to_file(&filepath, &plist_read, &opt).unwrap();
-        let plist_write = fs::read_to_string(filepath).unwrap();
+        let plist_write = write_and_read_back(&plist_read, &opt);
         let str_list = plist_write.split('\n').collect::<Vec<&str>>();
         assert_eq!(str_list[0], "<?xml version='1.0' encoding='UTF-8'?>"); // should use single quotes
         assert_eq!(str_list[3], "<dict>"); // no space char at first dict tag
         assert_eq!(str_list[4], "  <key>ascender</key>"); // should use two space char
-        tmp.close().unwrap();
     }
 
     #[test]
@@ -319,11 +304,7 @@ mod tests {
         let plist_read =
             Value::from_file("testdata/lineendings/Tester-LineEndings.ufo/fontinfo.plist")
                 .expect("failed to read plist");
-        let tmp = TempDir::new().unwrap();
-        let filepath = tmp.path().join("fontinfo.plist");
-        write_xml_to_file(&filepath, &plist_read, &opt).unwrap();
-        let plist_write = fs::read_to_string(filepath).unwrap();
+        let plist_write = write_and_read_back(&plist_read, &opt);
         assert!(plist_write.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"));
-        tmp.close().unwrap();
     }
 }

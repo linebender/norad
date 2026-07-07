@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use crate::error::ConvertContourError;
 
 use crate::error::{ErrorKind, GlifLoadError, GlifWriteError, LibRetrievalError, StoreError};
+use crate::font_sink::FontSink;
 use crate::name::Name;
 use crate::shared_types::PUBLIC_OBJECT_LIBS_KEY;
 use crate::{Color, Guideline, Identifier, Line, Plist, WriteOptions};
@@ -80,14 +81,15 @@ impl Glyph {
 
     #[doc(hidden)]
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), GlifWriteError> {
-        let path = path.as_ref();
         let opts = WriteOptions::default();
-        self.save_with_options(path, &opts)
+        self.write_with_options(path.as_ref(), &Path::new(""), &opts)
     }
 
-    pub(crate) fn save_with_options(
+    /// Serialize the glyph and write it to the [`FontSink`] at `path`.
+    pub(crate) fn write_with_options(
         &self,
         path: &Path,
+        sink: &dyn FontSink,
         opts: &WriteOptions,
     ) -> Result<(), GlifWriteError> {
         if self.lib.contains_key(PUBLIC_OBJECT_LIBS_KEY) {
@@ -95,9 +97,7 @@ impl Glyph {
         }
 
         let data = self.encode_xml_with_options(opts)?;
-        close_already::fs::write(path, data).map_err(GlifWriteError::Io)?;
-
-        Ok(())
+        sink.write(path, &data).map_err(GlifWriteError::Io)
     }
 
     /// Returns a new, "empty" [`Glyph`] with the given `name`.
