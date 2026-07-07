@@ -3,7 +3,7 @@
 use std::{
     cell::RefCell,
     collections::HashMap,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     sync::Arc,
 };
 
@@ -172,6 +172,10 @@ impl DataType for Data {
         if path.is_absolute() {
             return Err(StoreError::PathIsAbsolute);
         }
+        // Reject `.` and `..` components (no read/write outside UFO root)
+        if path.components().any(|c| matches!(c, Component::ParentDir | Component::CurDir)) {
+            return Err(StoreError::NonNormalizedPath);
+        }
         for ancestor in path.ancestors().skip(1) {
             if !ancestor.as_os_str().is_empty() && items.contains_key(ancestor) {
                 return Err(StoreError::DirUnderFile);
@@ -322,7 +326,8 @@ impl<T: DataType> Store<T> {
     /// In a data store, returns a [`StoreError`] if:
     /// 1. The path is empty.
     /// 2. The path is absolute.
-    /// 3. Any of the path's ancestors is already tracked in the store, implying
+    /// 3. The path contains a `.` or `..` component.
+    /// 4. Any of the path's ancestors is already tracked in the store, implying
     ///    the path to be nested under a file.
     ///
     /// In an images store, returns an [`StoreError`] if:
@@ -384,6 +389,23 @@ mod tests {
             store.insert(PathBuf::from("C:\\a"), vec![]),
             Err(StoreError::PathIsAbsolute)
         ));
+
+        // Paths with `.` or `..` components are rejected so they cannot escape
+        // the data directory when joined at save time. (Interior `.` such as
+        // `a/./b` is normalized away by `Path::components` and is harmless, so
+        // it isn't listed here.)
+        for bogus in ["../x", "a/../../x", "./x", "..", "a/.."] {
+            assert!(
+                matches!(
+                    store.insert(PathBuf::from(bogus), vec![]),
+                    Err(StoreError::NonNormalizedPath)
+                ),
+                "expected NonNormalizedPath for {bogus:?}"
+            );
+        }
+
+        // A legitimately nested key is still accepted.
+        store.insert(PathBuf::from("com.example/state.bin"), vec![]).unwrap();
 
         store.insert(PathBuf::from("a"), vec![]).unwrap();
         assert!(matches!(
@@ -901,5 +923,23 @@ mod tests {
         let source = |_path: &Path| -> Option<Result<Vec<u8>, std::io::Error>> { None };
         let result = DataStore::new(&source);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn eager_load_rejects_zip_slip_data_key() {
+        // A non-filesystem source (e.g. a zip) whose entry names contain `..`
+        // must not produce an escaping key: construction validates eagerly and
+        // fails rather than yielding a store that would write outside the UFO
+        // root at save time.
+        let mut source = MemorySource::default();
+        source.add_dir("data", vec![DirEntry::File("../pwnd.bin".into())]);
+        source.add_file("data/../pwnd.bin", b"pwned".to_vec());
+
+        let err = DataStore::new(&source).unwrap_err();
+        let inner = std::error::Error::source(&err).and_then(|e| e.downcast_ref::<StoreError>());
+        assert!(
+            matches!(inner, Some(StoreError::NonNormalizedPath)),
+            "expected NonNormalizedPath, got {err:?}"
+        );
     }
 }

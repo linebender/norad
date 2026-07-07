@@ -337,6 +337,10 @@ pub enum StoreError {
     /// The path was absolute; only relative paths are allowed.
     #[error("the path must be relative")]
     PathIsAbsolute,
+    /// The path contained a `.` or `..` component; keys must be normalized so
+    /// they cannot escape the store directory when joined at save time.
+    #[error("the path must not contain '.' or '..' components")]
+    NonNormalizedPath,
     /// The path was not a plain file, but e.g. a directory or symlink.
     #[error("only plain files are allowed, no symlinks")]
     NotPlainFile,
