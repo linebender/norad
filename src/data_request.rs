@@ -79,9 +79,47 @@ impl LayerFilter<'_> {
     pub(crate) fn includes_default_layer(&self) -> bool {
         self.all || self.load_default
     }
+
+    /// `true` if this glyph-layer directory should be loaded, judged by path
+    /// alone (conservatively `true` for custom filters).
+    #[cfg(feature = "ufoz")]
+    fn should_load_dir(&self, dir: &Path) -> bool {
+        self.all || self.custom.is_some() || (self.load_default && dir == Path::new("glyphs"))
+    }
 }
 
 impl<'a> DataRequest<'a> {
+    /// `true` if the file at this UFO-relative path is needed for this request.
+    ///
+    /// Judged by path alone, and conservative: it keeps root-level files and
+    /// anything it can't rule out, so a caller (e.g. the zip loader) never
+    /// skips data that would later be read.
+    #[cfg(feature = "ufoz")]
+    pub(crate) fn should_load_path(&self, path: &Path) -> bool {
+        let mut components = path.components();
+        let Some(first) = components.next() else { return false };
+
+        // Root-level file: always keep (cheap, and gating filenames buys nothing).
+        if components.next().is_none() {
+            return true;
+        }
+
+        let first = Path::new(first.as_os_str());
+        if first == Path::new("data") {
+            return self.data;
+        }
+        if first == Path::new("images") {
+            return self.images;
+        }
+        // UFO3 glyph-set directories are named "glyphs" or "glyphs.*".
+        if first == Path::new("glyphs") || first.to_str().is_some_and(|s| s.starts_with("glyphs."))
+        {
+            return self.layers.should_load_dir(first);
+        }
+        // Unknown subdirectory: keep, to stay safe.
+        true
+    }
+
     fn from_bool(b: bool) -> Self {
         DataRequest {
             layers: LayerFilter::from_bool(b),

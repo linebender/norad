@@ -223,7 +223,7 @@ impl Font {
 
         #[cfg(feature = "ufoz")]
         if metadata.is_file() {
-            let source = crate::zip_source::ZipSource::open(path)?;
+            let source = crate::zip_source::ZipSource::open(path, &request)?;
             return Self::load_from_source(&request, &source);
         }
 

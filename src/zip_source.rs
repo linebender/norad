@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::error::FontLoadError;
 use crate::font_source::{DirEntry, FontSource};
+use crate::DataRequest;
 
 /// A UFO source backed by a zip archive loaded into memory.
 pub(crate) struct ZipSource {
@@ -13,8 +14,13 @@ pub(crate) struct ZipSource {
 }
 
 impl ZipSource {
-    /// Open a zip archive at the given path and load all file entries into memory.
-    pub fn open(path: &Path) -> Result<Self, FontLoadError> {
+    /// Open a zip archive at the given path and load file entries into memory.
+    ///
+    /// Only entries the `request` may read are decompressed: the heavy subtrees
+    /// (`data/`, `images/`, and unwanted glyph layers) are skipped when the
+    /// request excludes them, so a sparse request doesn't pay to inflate data it
+    /// will never use. See [`DataRequest::should_load_path`].
+    pub(crate) fn open(path: &Path, request: &DataRequest) -> Result<Self, FontLoadError> {
         let file = std::fs::File::open(path).map_err(FontLoadError::AccessUfoDir)?;
         let mut archive = zip::ZipArchive::new(file).map_err(FontLoadError::InvalidZipFile)?;
 
@@ -28,11 +34,11 @@ impl ZipSource {
                 continue;
             }
 
-            let raw_path = PathBuf::from(entry.name().to_string());
+            let raw_path = Path::new(entry.name());
 
             let rel_path = if let Some(ref pfx) = prefix {
                 match raw_path.strip_prefix(pfx) {
-                    Ok(stripped) => stripped.to_path_buf(),
+                    Ok(stripped) => stripped,
                     Err(_) => continue,
                 }
             } else {
@@ -43,7 +49,14 @@ impl ZipSource {
                 continue;
             }
 
+            // Skip entries this request will never read, so we don't pay to
+            // decompress or buffer them.
+            if !request.should_load_path(rel_path) {
+                continue;
+            }
+
             let mut data = Vec::with_capacity(entry.size() as usize);
+            let rel_path = rel_path.to_path_buf();
             entry.read_to_end(&mut data).map_err(FontLoadError::AccessUfoDir)?;
             entries.insert(rel_path, data);
         }
@@ -92,11 +105,8 @@ impl FontSource for ZipSource {
 ///
 /// If so, return that directory name as the prefix to strip. Otherwise return
 /// `None`, meaning the zip contents are at the root level.
-pub(crate) fn detect_zip_root<R: io::Read + io::Seek>(
-    archive: &mut zip::ZipArchive<R>,
-) -> Option<PathBuf> {
-    let mut top_level_dirs = HashSet::new();
-    let mut has_root_files = false;
+fn detect_zip_root<R: io::Read + io::Seek>(archive: &mut zip::ZipArchive<R>) -> Option<PathBuf> {
+    let mut prefix: Option<PathBuf> = None;
 
     for i in 0..archive.len() {
         let Ok(entry) = archive.by_index_raw(i) else { continue };
@@ -107,22 +117,24 @@ pub(crate) fn detect_zip_root<R: io::Read + io::Seek>(
             continue;
         }
 
-        let path = PathBuf::from(name);
+        let path = Path::new(name);
         let mut components = path.components();
-        if let Some(first) = components.next() {
-            if components.next().is_none() && !entry.is_dir() {
-                has_root_files = true;
-            } else {
-                top_level_dirs.insert(PathBuf::from(first.as_os_str()));
-            }
+        let Some(first) = components.next() else { continue };
+
+        // A root-level file means there's no single wrapping directory.
+        if components.next().is_none() && !entry.is_dir() {
+            return None;
+        }
+
+        let first = Path::new(first.as_os_str());
+        match &prefix {
+            None => prefix = Some(first.to_path_buf()),
+            Some(p) if *p != first => return None,
+            Some(_) => (),
         }
     }
 
-    if !has_root_files && top_level_dirs.len() == 1 {
-        top_level_dirs.into_iter().next()
-    } else {
-        None
-    }
+    prefix
 }
 
 #[cfg(test)]
@@ -182,7 +194,7 @@ mod tests {
             ("glyphs/contents.plist", &contents),
         ]);
 
-        let source = ZipSource::open(tmp.path()).unwrap();
+        let source = ZipSource::open(tmp.path(), &DataRequest::all()).unwrap();
         assert_eq!(source.entries.len(), 3);
         assert!(source.entries.contains_key(Path::new("metainfo.plist")));
         assert!(source.entries.contains_key(Path::new("layercontents.plist")));
@@ -197,7 +209,7 @@ mod tests {
             ("MyFont.ufo/glyphs/contents.plist", &minimal_contents()),
         ]);
 
-        let source = ZipSource::open(tmp.path()).unwrap();
+        let source = ZipSource::open(tmp.path(), &DataRequest::all()).unwrap();
         assert!(source.entries.contains_key(Path::new("metainfo.plist")));
         assert!(source.entries.contains_key(Path::new("glyphs/contents.plist")));
         assert!(!source.entries.keys().any(|k| k.starts_with("MyFont.ufo")));
@@ -206,7 +218,7 @@ mod tests {
     #[test]
     fn detect_root_no_strip_when_multiple_top_dirs() {
         let tmp = write_zip_to_tempfile(&[("A/file1", b"a"), ("B/file2", b"b")]);
-        let source = ZipSource::open(tmp.path()).unwrap();
+        let source = ZipSource::open(tmp.path(), &DataRequest::all()).unwrap();
         assert!(source.entries.contains_key(Path::new("A/file1")));
         assert!(source.entries.contains_key(Path::new("B/file2")));
     }
@@ -215,7 +227,7 @@ mod tests {
     fn detect_root_no_strip_when_root_files_exist() {
         let tmp =
             write_zip_to_tempfile(&[("readme.txt", b"hi"), ("MyFont.ufo/metainfo.plist", b"x")]);
-        let source = ZipSource::open(tmp.path()).unwrap();
+        let source = ZipSource::open(tmp.path(), &DataRequest::all()).unwrap();
         assert!(source.entries.contains_key(Path::new("readme.txt")));
         assert!(source.entries.contains_key(Path::new("MyFont.ufo/metainfo.plist")));
     }
@@ -223,7 +235,7 @@ mod tests {
     #[test]
     fn try_read_missing() {
         let tmp = write_zip_to_tempfile(&[("metainfo.plist", b"x")]);
-        let source = ZipSource::open(tmp.path()).unwrap();
+        let source = ZipSource::open(tmp.path(), &DataRequest::all()).unwrap();
         assert!(source.try_read(Path::new("nonexistent")).is_none());
     }
 
@@ -240,7 +252,7 @@ mod tests {
             ("data/foo.txt", b"hello"),
         ]);
 
-        let source = ZipSource::open(tmp.path()).unwrap();
+        let source = ZipSource::open(tmp.path(), &DataRequest::all()).unwrap();
         let entries = source.list_dir(Path::new("")).unwrap();
         assert!(entries.contains(&DirEntry::Dir("data".into())));
         assert!(entries.contains(&DirEntry::Dir("glyphs".into())));
@@ -256,7 +268,7 @@ mod tests {
             ("glyphs/A_.glif", b"y"),
         ]);
 
-        let source = ZipSource::open(tmp.path()).unwrap();
+        let source = ZipSource::open(tmp.path(), &DataRequest::all()).unwrap();
         let mut entries = source.list_dir(Path::new("glyphs")).unwrap();
         entries.sort();
 
@@ -268,7 +280,7 @@ mod tests {
     #[test]
     fn list_dir_empty() {
         let tmp = write_zip_to_tempfile(&[("metainfo.plist", b"x")]);
-        let source = ZipSource::open(tmp.path()).unwrap();
+        let source = ZipSource::open(tmp.path(), &DataRequest::all()).unwrap();
         let entries = source.list_dir(Path::new("images")).unwrap();
         assert!(entries.is_empty());
     }
@@ -277,13 +289,14 @@ mod tests {
     fn open_invalid_zip() {
         let tmp = NamedTempFile::new().unwrap();
         std::fs::write(tmp.path(), b"not a zip file at all").unwrap();
-        let result = ZipSource::open(tmp.path());
+        let result = ZipSource::open(tmp.path(), &DataRequest::all());
         assert!(matches!(result, Err(FontLoadError::InvalidZipFile(_))));
     }
 
     #[test]
     fn open_nonexistent_file() {
-        let result = ZipSource::open(Path::new("/tmp/norad_test_nonexistent_ufoz.zip"));
+        let result =
+            ZipSource::open(Path::new("/tmp/norad_test_nonexistent_ufoz.zip"), &DataRequest::all());
         assert!(matches!(result, Err(FontLoadError::AccessUfoDir(_))));
     }
 
@@ -320,10 +333,65 @@ mod tests {
             writer.finish().unwrap();
         }
 
-        let source = ZipSource::open(tmp.path()).unwrap();
+        let source = ZipSource::open(tmp.path(), &DataRequest::all()).unwrap();
         // Should have only file entries, not directory entries.
         assert_eq!(source.entries.len(), 2);
         assert!(source.entries.contains_key(Path::new("glyphs/A_.glif")));
         assert!(source.entries.contains_key(Path::new("metainfo.plist")));
+    }
+
+    #[test]
+    fn open_skips_unrequested_data_and_images() {
+        let mut request = DataRequest::all();
+        request.data = false;
+        request.images = false;
+        let tmp = write_zip_to_tempfile(&[
+            ("metainfo.plist", b"meta"),
+            ("glyphs/contents.plist", b"c"),
+            ("data/foo.txt", b"hello"),
+            ("images/bar.png", b"png"),
+        ]);
+
+        let source = ZipSource::open(tmp.path(), &request).unwrap();
+        // Root plists and glyphs are still requested.
+        assert!(source.entries.contains_key(Path::new("metainfo.plist")));
+        assert!(source.entries.contains_key(Path::new("glyphs/contents.plist")));
+        // The excluded subtrees are never decompressed.
+        assert!(!source.entries.contains_key(Path::new("data/foo.txt")));
+        assert!(!source.entries.contains_key(Path::new("images/bar.png")));
+    }
+
+    #[test]
+    fn open_none_skips_glyphs_but_keeps_root() {
+        let tmp = write_zip_to_tempfile(&[
+            ("metainfo.plist", b"meta"),
+            ("layercontents.plist", b"lc"),
+            ("glyphs/contents.plist", b"c"),
+            ("glyphs/A_.glif", b"g"),
+            ("data/foo.txt", b"hello"),
+        ]);
+
+        let source = ZipSource::open(tmp.path(), &DataRequest::none()).unwrap();
+        // Root files are always kept, regardless of the request.
+        assert!(source.entries.contains_key(Path::new("metainfo.plist")));
+        assert!(source.entries.contains_key(Path::new("layercontents.plist")));
+        // No layers, data, or images requested — those entries are skipped.
+        assert!(!source.entries.contains_key(Path::new("glyphs/contents.plist")));
+        assert!(!source.entries.contains_key(Path::new("glyphs/A_.glif")));
+        assert!(!source.entries.contains_key(Path::new("data/foo.txt")));
+    }
+
+    #[test]
+    fn open_default_layer_keeps_glyphs_skips_other_layers() {
+        let tmp = write_zip_to_tempfile(&[
+            ("metainfo.plist", b"meta"),
+            ("glyphs/A_.glif", b"g"),
+            ("glyphs.background/A_.glif", b"bg"),
+        ]);
+
+        let source = ZipSource::open(tmp.path(), &DataRequest::none().default_layer(true)).unwrap();
+        // The default layer is kept; non-default glyph layers are skipped.
+        assert!(source.entries.contains_key(Path::new("glyphs/A_.glif")));
+        assert!(!source.entries.contains_key(Path::new("glyphs.background/A_.glif")));
     }
 }
