@@ -349,7 +349,7 @@ impl DesignSpaceDocument {
 
     /// Save a designspace.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<(), DesignSpaceSaveError> {
-        close_already::fs::write(path, self.serialize_xml()?)?;
+        close_already::fs::write(path, self.serialize_to_string()?)?;
         Ok(())
     }
 
@@ -358,11 +358,12 @@ impl DesignSpaceDocument {
         &self,
         mut writer: impl std::io::Write,
     ) -> Result<(), DesignSpaceSaveError> {
-        writer.write_all(self.serialize_xml()?.as_bytes())?;
+        writer.write_all(self.serialize_to_string()?.as_bytes())?;
         Ok(())
     }
 
-    fn serialize_xml(&self) -> Result<String, DesignSpaceSaveError> {
+    /// Serialize the XML to a string.
+    pub fn serialize_to_string(&self) -> Result<String, DesignSpaceSaveError> {
         let mut buf = String::from("<?xml version='1.0' encoding='UTF-8'?>\n");
         let mut xml_writer = quick_xml::se::Serializer::new(&mut buf);
         xml_writer.indent(' ', 2);
