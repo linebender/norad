@@ -52,7 +52,7 @@ use std::path::Path;
 /// ```
 ///
 /// [`Font::save`]: crate::Font::save
-pub trait FontSink: Send + Sync {
+pub trait FontSink: Sync {
     /// Write `data` to the file at the given relative path.
     ///
     /// This creates any missing intermediate directories, and replaces any
@@ -74,7 +74,7 @@ impl FontSink for &Path {
 // Allow closures as FontSink for convenience.
 impl<F> FontSink for F
 where
-    F: Fn(&Path, &[u8]) -> Result<(), io::Error> + Send + Sync,
+    F: Fn(&Path, &[u8]) -> Result<(), io::Error> + Sync,
 {
     fn write(&self, path: &Path, data: &[u8]) -> Result<(), io::Error> {
         self(path, data)
