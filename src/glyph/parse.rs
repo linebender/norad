@@ -504,6 +504,9 @@ impl GlifParser {
                     }
                     angle = Some(angle_value);
                 }
+                // The name is optional, and some real-world fonts write it as
+                // an explicit empty string; treat that as no name.
+                b"name" if value.is_empty() => (),
                 b"name" => name = Some(Name::new(&value).map_err(|_| ErrorKind::InvalidName)?),
                 b"color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
                 b"identifier" => {

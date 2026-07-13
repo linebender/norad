@@ -1725,6 +1725,16 @@ mod tests {
     }
 
     #[test]
+    fn fontinfo_empty_guideline_name() {
+        let path = "testdata/fontinfo_empty_guideline_name.plist";
+        let font_info: FontInfo = plist::from_file(path).expect("failed to load fontinfo");
+        let guidelines = font_info.guidelines.expect("guidelines should be present");
+        assert_eq!(guidelines.len(), 2);
+        assert_eq!(guidelines[0].name, None);
+        assert_eq!(guidelines[1].name, Some(Name::new_raw("ascender")));
+    }
+
+    #[test]
     fn fontinfo2() {
         let path = "testdata/fontinfotest.ufo/fontinfo.plist";
         let font_info: FontInfo = plist::from_file(path).expect("failed to load fontinfo");

@@ -254,6 +254,19 @@ fn guidelines() {
 }
 
 #[test]
+fn empty_guideline_name() {
+    let data = r#"
+<?xml version="1.0" encoding="UTF-8"?>
+<glyph name="period" format="2">
+  <guideline y="495" name=""/>
+</glyph>
+"#;
+    let glyph = parse_glyph(data.as_bytes()).unwrap();
+    assert_eq!(glyph.guidelines.len(), 1);
+    assert_eq!(glyph.guidelines[0].name, None);
+}
+
+#[test]
 #[should_panic(expected = "MissingClose")]
 fn missing_close() {
     let data = r#"
