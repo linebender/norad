@@ -94,9 +94,22 @@ struct RawGuideline {
     x: Option<f64>,
     y: Option<f64>,
     angle: Option<f64>,
+    #[serde(default, deserialize_with = "deserialize_optional_name")]
     name: Option<Name>,
     color: Option<Color>,
     identifier: Option<Identifier>,
+}
+
+// The name is optional, and some real-world fonts write it as an explicit
+// empty string; treat that as no name instead of failing the load.
+fn deserialize_optional_name<'de, D>(deserializer: D) -> Result<Option<Name>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Option::<String>::deserialize(deserializer)? {
+        Some(name) if !name.is_empty() => name.parse::<Name>().map(Some).map_err(de::Error::custom),
+        _ => Ok(None),
+    }
 }
 
 impl Serialize for Guideline {
@@ -171,7 +184,7 @@ impl<'de> Deserialize<'de> for Guideline {
 mod tests {
     use super::*;
 
-    use serde_test::{assert_tokens, Token};
+    use serde_test::{assert_de_tokens, assert_tokens, Token};
 
     #[test]
     fn guideline_parsing() {
@@ -203,6 +216,24 @@ mod tests {
                 Token::Str("identifier"),
                 Token::Some,
                 Token::Str("abcABC123"),
+                Token::StructEnd,
+            ],
+        );
+    }
+
+    #[test]
+    fn empty_guideline_name_is_no_name() {
+        let expected = Guideline::new(Line::Vertical(495.0), None, None, None);
+        assert_de_tokens(
+            &expected,
+            &[
+                Token::Struct { name: "RawGuideline", len: 2 },
+                Token::Str("x"),
+                Token::Some,
+                Token::F64(495.0),
+                Token::Str("name"),
+                Token::Some,
+                Token::Str(""),
                 Token::StructEnd,
             ],
         );
