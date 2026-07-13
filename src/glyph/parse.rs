@@ -8,7 +8,7 @@ use crate::glyph::builder::OutlineBuilder;
 
 use quick_xml::{
     events::{BytesStart, Event},
-    Reader,
+    Reader, XmlVersion,
 };
 
 #[cfg(test)]
@@ -225,7 +225,7 @@ impl GlifParser {
                 return Err(ErrorKind::UnexpectedAttribute.into());
             }
             let attr = attr?;
-            let value = attr.unescape_value()?;
+            let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
             match attr.key.as_ref() {
                 b"identifier" => identifier = Some(self.parse_identifier(&value)?),
                 _other => return Err(ErrorKind::UnexpectedAttribute.into()),
@@ -260,7 +260,7 @@ impl GlifParser {
 
         for attr in start.attributes() {
             let attr = attr?;
-            let value = attr.unescape_value()?;
+            let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
             let kind = ErrorKind::BadNumber;
             match attr.key.as_ref() {
                 b"xScale" => transform.x_scale = value.parse().map_err(|_| kind)?,
@@ -363,7 +363,7 @@ impl GlifParser {
 
         for attr in data.attributes() {
             let attr = attr?;
-            let value = attr.unescape_value()?;
+            let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
             match attr.key.as_ref() {
                 b"x" => {
                     x = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
@@ -409,7 +409,7 @@ impl GlifParser {
             let attr = attr?;
             match attr.key.as_ref() {
                 b"width" | b"height" => {
-                    let value = attr.unescape_value()?;
+                    let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
                     let value: f64 = value.parse().map_err(|_| ErrorKind::BadNumber)?;
                     match attr.key.as_ref() {
                         b"width" => width = value,
@@ -431,7 +431,7 @@ impl GlifParser {
             let attr = attr?;
             match attr.key.as_ref() {
                 b"hex" => {
-                    let value = attr.unescape_value()?;
+                    let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
                     let chr = u32::from_str_radix(&value, 16)
                         .map_err(|_| value.to_string())
                         .and_then(|n| char::try_from(n).map_err(|_| value.to_string()))
@@ -453,7 +453,7 @@ impl GlifParser {
 
         for attr in data.attributes() {
             let attr = attr?;
-            let value = attr.unescape_value()?;
+            let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
             match attr.key.as_ref() {
                 b"x" => {
                     x = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
@@ -489,7 +489,7 @@ impl GlifParser {
 
         for attr in data.attributes() {
             let attr = attr?;
-            let value = attr.unescape_value()?;
+            let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
             match attr.key.as_ref() {
                 b"x" => {
                     x = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
@@ -534,7 +534,7 @@ impl GlifParser {
 
         for attr in data.attributes() {
             let attr = attr?;
-            let value = attr.unescape_value()?;
+            let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
             let kind = ErrorKind::BadNumber;
             match attr.key.as_ref() {
                 b"xScale" => transform.x_scale = value.parse().map_err(|_| kind)?,
@@ -576,7 +576,7 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<(Name, Version
                 let mut format_minor = 0;
                 for attr in start.attributes() {
                     let attr = attr?;
-                    let value = attr.unescape_value()?;
+                    let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
                     match attr.key.as_ref() {
                         b"name" => {
                             let value = Name::new(&value).map_err(|_| ErrorKind::InvalidName)?;
