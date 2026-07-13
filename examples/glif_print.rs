@@ -14,7 +14,7 @@ use std::{env, fs, io};
 use failure::Error;
 use quick_xml::{
     events::{attributes::Attribute, Event},
-    Reader,
+    Reader, XmlVersion,
 };
 
 use norad::Glyph;
@@ -72,7 +72,7 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
                 for attr in start.attributes() {
                     let attr = attr?;
                     let key = std::str::from_utf8(attr.key.as_ref())?;
-                    let value = attr.unescape_value()?;
+                    let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
                     eprint!(" {key}=\"{value}\"");
                 }
                 eprintln!(">");
