@@ -490,6 +490,8 @@ struct FontInfoV1 {
     year: Option<Integer>,           // Does not appear in spec but ufoLib.
 }
 
+// TODO: add from_bytes method for loading fontinfo from designspace libs
+
 impl FontInfo {
     pub(crate) fn from_bytes(
         data: &[u8],
