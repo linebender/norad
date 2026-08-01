@@ -23,6 +23,8 @@ pub struct DesignSpaceDocument {
     pub axes: Vec<Axis>,
     /// Optional avar2-style axis mappings.
     pub axis_mappings: Option<AxisMappings>,
+    /// Optional freestanding location labels.
+    pub location_labels: Vec<LocationLabel>,
     /// One or more rules.
     pub rules: Rules,
     /// Zero or more variable fonts.
@@ -71,18 +73,27 @@ pub struct Axis {
     /// Mapping between user space coordinates and design space coordinates.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub map: Option<Vec<AxisMapping>>,
-    /// ...
+    /// Localised UI strings for the axis name.
     #[serde(rename = "labelname", default, skip_serializing_if = "Vec::is_empty")]
-    pub label_names: Vec<LabelName>,
-    /// ...
-    #[serde(with = "serde_impls::labels", default, skip_serializing_if = "Vec::is_empty")]
-    pub labels: Vec<Label>,
+    pub label_names: Vec<LocalizedString>,
+    /// UI strings for axis stops.
+    // TODO: Get rid of AxisLabels and hoist content into this struct.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub labels: Option<AxisLabels>,
 }
-
 
 /// ...
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct Label {
+pub struct AxisLabels {
+    #[serde(rename = "ordering", default, skip_serializing_if = "Option::is_none")]
+    pub axis_ordering: Option<u32>,
+    #[serde(with = "serde_impls::axis_label", default, skip_serializing_if = "Vec::is_empty")]
+    pub labels: Vec<AxisLabel>,
+}
+
+/// ...
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct AxisLabel {
     /// ...
     #[serde(rename = "@name")]
     pub name: String,
@@ -106,9 +117,22 @@ pub struct Label {
     pub linked_user_value: Option<f32>,
     /// ...
     #[serde(rename = "labelname", default, skip_serializing_if = "Vec::is_empty")]
-    pub names: Vec<LabelName>,
+    pub label_names: Vec<LocalizedString>,
 }
 
+/// ...
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct LocationLabel {
+    /// ...
+    #[serde(rename = "@name")]
+    pub name: String,
+    /// ...
+    #[serde(rename = "labelname", default, skip_serializing_if = "Vec::is_empty")]
+    pub label_names: Vec<LocalizedString>,
+    /// ...
+    #[serde(with = "serde_impls::location")]
+    pub location: Vec<Dimension>,
+}
 fn is_false(value: &bool) -> bool {
     !(*value)
 }
@@ -362,6 +386,8 @@ pub struct Source {
     /// Location in designspace coordinates.
     #[serde(with = "serde_impls::location")]
     pub location: Vec<Dimension>,
+    #[serde(rename = "familyname", skip_serializing_if = "Vec::is_empty")]
+    pub localised_familynames: Vec<LocalizedString>,
 }
 
 /// An [instance].
@@ -476,6 +502,8 @@ struct RawDesignSpaceDocument {
     format: f32,
     #[serde(default, skip_serializing_if = "RawAxes::is_empty")]
     axes: RawAxes,
+    #[serde(default, with = "serde_impls::location_labels", skip_serializing_if = "Vec::is_empty")]
+    location_labels: Vec<LocationLabel>,
     #[serde(default, skip_serializing_if = "Rules::is_empty")]
     rules: Rules,
     #[serde(default, with = "serde_impls::sources", skip_serializing_if = "Vec::is_empty")]
@@ -489,6 +517,8 @@ struct RawDesignSpaceDocument {
 /// Internal container for axes and their optional mappings.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 struct RawAxes {
+    #[serde(default, rename = "elidedfallbackname", skip_serializing_if = "Option::is_none")]
+    elided_fallback_name: Option<String>,
     #[serde(default, rename = "axis")]
     axis: Vec<Axis>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -621,7 +651,9 @@ mod serde_impls {
     serde_from_field!(sources, source, crate::designspace::Source);
     serde_from_field!(variable_fonts, variable_font, crate::designspace::VariableFont);
     serde_from_field!(axis_subsets, axis_subset, crate::designspace::AxisSubset);
-    serde_from_field!(labels, label, crate::designspace::Label);
+    serde_from_field!(labels, label, crate::designspace::AxisLabels);
+    serde_from_field!(axis_label, label, crate::designspace::AxisLabel);
+    serde_from_field!(location_labels, label, crate::designspace::LocationLabel);
 }
 
 #[cfg(test)]

@@ -29,7 +29,6 @@
         <label uservalue="400" name="Regular" elidable="true" linkeduservalue="700"/>
         <label uservalue="700" name="Bold" linkeduservalue="400"/>
       </labels>
-
     </axis>
 
     <axis tag="wdth" name="Width" minimum="50" maximum="150" default="100" hidden="1">
