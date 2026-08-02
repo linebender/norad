@@ -424,6 +424,8 @@ pub struct Instance {
     /// Arbitrary data about this instance
     #[serde(default, with = "serde_plist", skip_serializing_if = "Dictionary::is_empty")]
     pub lib: Dictionary,
+    #[serde(rename = "@location", skip_serializing_if = "Option::is_none")]
+    pub named_location: Option<String>,
 }
 
 /// A design space dimension.
