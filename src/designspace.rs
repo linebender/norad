@@ -47,19 +47,19 @@ pub struct Axis {
     pub tag: String,
     /// The default value for this axis, in user space coordinates.
     #[serde(rename = "@default")]
-    pub default: f32,
+    pub default: f64,
     /// Records whether this axis needs to be hidden in interfaces.
     #[serde(default, rename = "@hidden", skip_serializing_if = "is_false")]
     pub hidden: bool,
     /// The minimum value for a continuous axis, in user space coordinates.
     #[serde(rename = "@minimum", skip_serializing_if = "Option::is_none")]
-    pub minimum: Option<f32>,
+    pub minimum: Option<f64>,
     /// The maximum value for a continuous axis, in user space coordinates.
     #[serde(rename = "@maximum", skip_serializing_if = "Option::is_none")]
-    pub maximum: Option<f32>,
+    pub maximum: Option<f64>,
     /// The possible values for a discrete axis, in user space coordinates.
     #[serde(rename = "@values", skip_serializing_if = "Option::is_none")]
-    pub values: Option<Vec<f32>>,
+    pub values: Option<Vec<f64>>,
     /// Mapping between user space coordinates and design space coordinates.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub map: Option<Vec<AxisMapping>>,
@@ -92,10 +92,10 @@ pub struct LocalizedString {
 pub struct AxisMapping {
     /// user space coordinate
     #[serde(rename = "@input")]
-    pub input: f32,
+    pub input: f64,
     /// designspace coordinate
     #[serde(rename = "@output")]
-    pub output: f32,
+    pub output: f64,
 }
 
 /// A group of [axis mappings] for avar2-style mappings.
@@ -240,10 +240,10 @@ pub struct Condition {
     pub name: String,
     /// Lower bounds in design space coordinates.
     #[serde(rename = "@minimum", default, skip_serializing_if = "Option::is_none")]
-    pub minimum: Option<f32>,
+    pub minimum: Option<f64>,
     /// Upper bounds in design space coordinates.
     #[serde(rename = "@maximum", default, skip_serializing_if = "Option::is_none")]
-    pub maximum: Option<f32>,
+    pub maximum: Option<f64>,
 }
 
 /// A [source].
@@ -323,13 +323,13 @@ pub struct Dimension {
     pub name: String,
     /// Value on the axis in user coordinates.
     #[serde(rename = "@uservalue", skip_serializing_if = "Option::is_none")]
-    pub uservalue: Option<f32>,
+    pub uservalue: Option<f64>,
     /// Value on the axis in designcoordinates.
     #[serde(rename = "@xvalue", skip_serializing_if = "Option::is_none")]
-    pub xvalue: Option<f32>,
+    pub xvalue: Option<f64>,
     /// Separate value for anisotropic interpolations.
     #[serde(rename = "@yvalue", skip_serializing_if = "Option::is_none")]
-    pub yvalue: Option<f32>,
+    pub yvalue: Option<f64>,
 }
 
 impl DesignSpaceDocument {
@@ -543,7 +543,7 @@ mod tests {
 
     use super::*;
 
-    fn dim_name_xvalue(name: &str, xvalue: f32) -> Dimension {
+    fn dim_name_xvalue(name: &str, xvalue: f64) -> Dimension {
         Dimension { name: name.to_string(), uservalue: None, xvalue: Some(xvalue), yvalue: None }
     }
 
@@ -885,5 +885,84 @@ mod tests {
     fn designspace_without_mappings_has_none() {
         let ds = DesignSpaceDocument::load("testdata/wght.designspace").unwrap();
         assert!(ds.axis_mappings.is_none());
+    }
+
+    const DECIMAL_VALUES: &str = r#"<?xml version='1.0' encoding='UTF-8'?>
+<designspace format="5.0">
+  <axes>
+    <axis name="Weight" tag="wght" minimum="-1" default="-0.55" maximum="1.125">
+      <map input="100" output="-1"/>
+      <map input="400" output="-0.55"/>
+      <map input="500" output="0.1"/>
+      <map input="900" output="1.125"/>
+    </axis>
+  </axes>
+  <rules>
+    <rule name="alt">
+      <conditionset>
+        <condition name="Weight" minimum="0.1" maximum="0.55"/>
+      </conditionset>
+      <sub name="a" with="a.alt"/>
+    </rule>
+  </rules>
+  <sources>
+    <source filename="Light.ufo">
+      <location>
+        <dimension name="Weight" xvalue="-0.55"/>
+      </location>
+    </source>
+  </sources>
+  <instances>
+    <instance filename="Thin.ufo">
+      <location>
+        <dimension name="Weight" uservalue="400" xvalue="0.1" yvalue="-0.55"/>
+      </location>
+    </instance>
+  </instances>
+</designspace>
+"#;
+
+    #[test]
+    fn read_decimal_values_exactly() {
+        let ds: DesignSpaceDocument = quick_xml::de::from_str(DECIMAL_VALUES).unwrap();
+        let axis = &ds.axes[0];
+        assert_eq!(axis.default, -0.55_f64);
+        assert_eq!(axis.maximum, Some(1.125_f64));
+        let map = axis.map.as_ref().unwrap();
+        assert_eq!(map[1].output, -0.55_f64);
+        assert_eq!(map[2].output, 0.1_f64);
+        let condition = &ds.rules.rules[0].condition_sets[0].conditions[0];
+        assert_eq!(condition.minimum, Some(0.1_f64));
+        assert_eq!(condition.maximum, Some(0.55_f64));
+        assert_eq!(ds.sources[0].location[0].xvalue, Some(-0.55_f64));
+        let dim = &ds.instances[0].location[0];
+        assert_eq!(dim.uservalue, Some(400.0_f64));
+        assert_eq!(dim.xvalue, Some(0.1_f64));
+        assert_eq!(dim.yvalue, Some(-0.55_f64));
+    }
+
+    #[test]
+    fn save_decimal_values_exactly() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("decimal.designspace");
+        let ds: DesignSpaceDocument = quick_xml::de::from_str(DECIMAL_VALUES).unwrap();
+        ds.save(&path).unwrap();
+
+        let saved = std::fs::read_to_string(&path).unwrap();
+        assert!(saved.contains(r#"default="-0.55""#));
+        assert!(saved.contains(r#"output="0.1""#));
+        assert!(saved.contains(r#"minimum="0.1""#));
+        assert!(saved.contains(r#"xvalue="-0.55""#));
+        assert!(!saved.contains("0.550000011920929"));
+        assert!(!saved.contains("0.10000000149011612"));
+        assert_eq!(ds, DesignSpaceDocument::load(&path).unwrap());
+    }
+
+    #[test]
+    fn save_preserves_more_than_f32_precision() {
+        let ds = DesignSpaceDocument::load("testdata/MutatorSans.designspace").unwrap();
+        let saved = quick_xml::se::to_string(&ds).unwrap();
+        assert!(saved.contains(r#"xvalue="35.329171""#));
+        assert!(saved.contains(r#"xvalue="854.834192""#));
     }
 }
