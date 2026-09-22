@@ -9,9 +9,9 @@ use std::{fs, iter};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use crate::data_request::LayerFilter;
 use crate::datastore::{DataStore, ImageStore};
 use crate::error::{FontLoadError, FontWriteError};
+use crate::font_reader::{self, FontReader, LayerIndex};
 use crate::font_sink::FontSink;
 use crate::font_source::FontSource;
 use crate::fontinfo::FontInfo;
@@ -213,22 +213,7 @@ impl Font {
         path: impl AsRef<Path>,
         request: DataRequest,
     ) -> Result<Font, FontLoadError> {
-        Self::load_impl(path.as_ref(), request)
-    }
-
-    fn load_impl(path: &Path, request: DataRequest) -> Result<Font, FontLoadError> {
-        let metadata = path.metadata().map_err(FontLoadError::AccessUfoDir)?;
-        if metadata.is_dir() {
-            return Self::load_from_source(&request, &path);
-        }
-
-        #[cfg(feature = "ufoz")]
-        if metadata.is_file() {
-            let source = crate::zip_source::ZipSource::open(path, &request)?;
-            return Self::load_from_source(&request, &source);
-        }
-
-        Err(FontLoadError::UfoNotADir)
+        FontReader::open_requested(path.as_ref(), &request)?.load(&request)
     }
 
     /// Returns a [`Font`] loaded from the given [`FontSource`].
@@ -243,13 +228,19 @@ impl Font {
         request: &DataRequest,
         source: &dyn FontSource,
     ) -> Result<Font, FontLoadError> {
-        let meta_path = Path::new(METAINFO_FILE);
-        let meta_data = source
-            .try_read(meta_path)
-            .ok_or(FontLoadError::MissingMetaInfoFile)?
-            .map_err(FontLoadError::AccessUfoDir)?;
-        let mut meta: MetaInfo = plist::from_bytes(&meta_data)
-            .map_err(|source| FontLoadError::ParsePlist { name: METAINFO_FILE, source })?;
+        let (meta, layers) = font_reader::read_index(source, request)?;
+        Self::load_indexed(source, &meta, &layers, request)
+    }
+
+    /// Loads the parts of a font selected by `request`, given its already-read
+    /// metainfo and layer index.
+    pub(crate) fn load_indexed(
+        source: &dyn FontSource,
+        meta: &MetaInfo,
+        layer_index: &[LayerIndex],
+        request: &DataRequest,
+    ) -> Result<Font, FontLoadError> {
+        let mut meta = meta.clone();
 
         let lib_path = Path::new(LIB_FILE);
         let mut lib = if request.lib {
@@ -317,7 +308,7 @@ impl Font {
             Default::default()
         };
 
-        let layers = load_layer_set(source, &meta, &request.layers)?;
+        let layers = LayerContents::load(source, layer_index, &request.layers)?;
 
         // Upconvert UFO v1 or v2 kerning data if necessary. To upconvert, we need at least
         // a groups.plist file, while a kerning.plist is optional.
@@ -781,18 +772,13 @@ fn load_kerning(data: &[u8]) -> Result<Kerning, FontLoadError> {
     Ok(kerning)
 }
 
-fn load_layer_set(
-    source: &dyn FontSource,
-    meta: &MetaInfo,
-    filter: &LayerFilter,
-) -> Result<LayerContents, FontLoadError> {
-    if meta.format_version == FormatVersion::V3 {
-        let layercontents_path = Path::new(LAYER_CONTENTS_FILE);
-        if source.try_read(layercontents_path).is_none() {
-            return Err(FontLoadError::MissingLayerContentsFile);
-        }
-    }
-    LayerContents::load(source, filter)
+pub(crate) fn load_meta(source: &dyn FontSource) -> Result<MetaInfo, FontLoadError> {
+    let meta_data = source
+        .try_read(Path::new(METAINFO_FILE))
+        .ok_or(FontLoadError::MissingMetaInfoFile)?
+        .map_err(FontLoadError::AccessUfoDir)?;
+    plist::from_bytes(&meta_data)
+        .map_err(|source| FontLoadError::ParsePlist { name: METAINFO_FILE, source })
 }
 
 #[cfg(test)]

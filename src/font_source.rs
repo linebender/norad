@@ -131,6 +131,21 @@ impl FontSource for &Path {
     }
 }
 
+/// An owned directory path implements [`FontSource`] like a `&Path`.
+impl FontSource for PathBuf {
+    fn try_read(&self, path: &Path) -> Option<Result<Vec<u8>, io::Error>> {
+        self.as_path().try_read(path)
+    }
+
+    fn as_path(&self) -> Option<&Path> {
+        Some(self)
+    }
+
+    fn list_dir(&self, path: &Path) -> Result<Vec<DirEntry>, io::Error> {
+        self.as_path().list_dir(path)
+    }
+}
+
 // Allow closures as FontSource for convenience.
 impl<F> FontSource for F
 where

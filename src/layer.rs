@@ -8,6 +8,8 @@ use serde::Deserialize;
 
 use crate::data_request::LayerFilter;
 use crate::error::{FontLoadError, GlifLoadError, LayerLoadError, LayerWriteError, NamingError};
+use crate::font::{FormatVersion, MetaInfo};
+use crate::font_reader::LayerIndex;
 use crate::font_sink::FontSink;
 use crate::font_source::FontSource;
 use crate::shared_types::Color;
@@ -48,39 +50,28 @@ impl PartialEq for LayerContents {
 
 #[allow(clippy::len_without_is_empty)] // never empty
 impl LayerContents {
-    /// Returns a [`LayerContents`] from the provided `path`.
+    /// Returns a [`LayerContents`] with the layers in `index` admitted by `filter`.
     ///
-    /// If a `layercontents.plist` file exists, it will be used, otherwise
-    /// we will assume the pre-UFOv3 behaviour, and expect a single glyphs dir.
-    ///
+    /// `index` must be in `layercontents.plist` order.
     pub(crate) fn load(
         source: &dyn FontSource,
+        index: &[LayerIndex],
         filter: &LayerFilter,
     ) -> Result<LayerContents, FontLoadError> {
-        let layer_contents_path = Path::new(LAYER_CONTENTS_FILE);
-        let to_load: Vec<(Name, PathBuf)> = match source.try_read(layer_contents_path) {
-            Some(data) => {
-                let data = data.map_err(FontLoadError::AccessUfoDir)?;
-                plist::from_bytes(&data).map_err(|source| FontLoadError::ParsePlist {
-                    name: LAYER_CONTENTS_FILE,
+        let mut layers: Vec<_> = index
+            .iter()
+            .filter(|layer| filter.should_load(&layer.name, &layer.path))
+            .map(|layer| {
+                Layer::load_from_contents(
                     source,
-                })?
-            }
-            None => {
-                vec![(Name::new_raw(DEFAULT_LAYER_NAME), PathBuf::from(DEFAULT_GLYPHS_DIRNAME))]
-            }
-        };
-
-        let mut layers: Vec<_> = to_load
-            .into_iter()
-            .filter(|(name, path)| filter.should_load(name, path))
-            .map(|(name, path)| {
-                Layer::load_impl(source, &path, name.clone()).map_err(|source| {
-                    FontLoadError::Layer {
-                        name: name.to_string(),
-                        path: path.clone(),
-                        source: Box::new(source),
-                    }
+                    &layer.path,
+                    layer.name.clone(),
+                    layer.contents.clone(),
+                )
+                .map_err(|source| FontLoadError::Layer {
+                    name: layer.name.to_string(),
+                    path: layer.path.clone(),
+                    source: Box::new(source),
                 })
             })
             .collect::<Result<_, _>>()?;
@@ -250,6 +241,30 @@ impl LayerContents {
     }
 }
 
+/// Returns the `(name, directory)` pairs listed in `layercontents.plist`, in file order.
+///
+/// UFO v1 and v2 have a single `glyphs` directory; for v3 the file is required.
+///
+/// A v1 or v2 UFO's `layercontents.plist` is ignored, as ufoLib does: some
+/// tools (such as AFDKO) leave one behind that doesn't list the default layer.
+pub(crate) fn read_layer_contents(
+    source: &dyn FontSource,
+    meta: &MetaInfo,
+) -> Result<Vec<(Name, PathBuf)>, FontLoadError> {
+    if meta.format_version != FormatVersion::V3 {
+        return Ok(vec![(
+            Name::new_raw(DEFAULT_LAYER_NAME),
+            PathBuf::from(DEFAULT_GLYPHS_DIRNAME),
+        )]);
+    }
+    let data = source
+        .try_read(Path::new(LAYER_CONTENTS_FILE))
+        .ok_or(FontLoadError::MissingLayerContentsFile)?
+        .map_err(FontLoadError::AccessUfoDir)?;
+    plist::from_bytes(&data)
+        .map_err(|source| FontLoadError::ParsePlist { name: LAYER_CONTENTS_FILE, source })
+}
+
 impl Default for LayerContents {
     fn default() -> Self {
         let layers = vec![Layer::default()];
@@ -300,9 +315,6 @@ impl Layer {
 
     /// Returns a new [`Layer`] that is loaded from `path` with the provided `name`.
     ///
-    /// Internal callers should use `load_impl` directly, so that glyph names
-    /// can be reused between layers.
-    ///
     /// You generally shouldn't need this; instead prefer to load all layers
     /// with [`LayerContents::load`] and then get the layer you need from there.
     #[cfg(test)]
@@ -313,24 +325,46 @@ impl Layer {
         let parent = path.parent().unwrap_or(path);
         let layer_dir = Path::new(path.file_name().unwrap());
         let name = Name::new_raw(name);
-        Layer::load_impl(&parent, layer_dir, name)
+        let contents = Layer::read_contents(&parent, layer_dir)?;
+        Layer::load_from_contents(&parent, layer_dir, name, contents)
     }
 
-    /// The actual loading logic.
-    pub(crate) fn load_impl(
+    /// Reads the `contents.plist` of the layer at `layer_dir`.
+    pub(crate) fn read_contents(
+        source: &dyn FontSource,
+        layer_dir: &Path,
+    ) -> Result<BTreeMap<Name, PathBuf>, LayerLoadError> {
+        let contents_data = source
+            .try_read(&layer_dir.join(CONTENTS_FILE))
+            .ok_or(LayerLoadError::MissingContentsFile)?
+            .map_err(LayerLoadError::Io)?;
+        plist::from_bytes(&contents_data)
+            .map_err(|source| LayerLoadError::ParsePlist { name: CONTENTS_FILE, source })
+    }
+
+    /// Parses the glyph stored at `glif_path` within `layer_dir`.
+    ///
+    /// The glyph is given `name` (its `contents.plist` key), whatever the
+    /// `.glif` file says.
+    pub(crate) fn load_one_glyph(
+        source: &dyn FontSource,
+        layer_dir: &Path,
+        name: &Name,
+        glif_path: &Path,
+    ) -> Result<Glyph, GlifLoadError> {
+        let data = source.read(&layer_dir.join(glif_path)).map_err(GlifLoadError::Io)?;
+        let mut glyph = Glyph::parse(&data)?;
+        glyph.name = name.clone();
+        Ok(glyph)
+    }
+
+    /// Loads every glyph in `contents`, and the layer's `layerinfo.plist`.
+    pub(crate) fn load_from_contents(
         source: &dyn FontSource,
         layer_dir: &Path,
         name: Name,
+        contents: BTreeMap<Name, PathBuf>,
     ) -> Result<Layer, LayerLoadError> {
-        let contents_rel = layer_dir.join(CONTENTS_FILE);
-        let contents_data = source
-            .try_read(&contents_rel)
-            .ok_or(LayerLoadError::MissingContentsFile)?
-            .map_err(LayerLoadError::Io)?;
-        // these keys are never used; a future optimization would be to skip the
-        // names and deserialize to a vec; that would not be a one-liner, though.
-        let contents: BTreeMap<Name, PathBuf> = plist::from_bytes(&contents_data)
-            .map_err(|source| LayerLoadError::ParsePlist { name: CONTENTS_FILE, source })?;
         let path_set = contents.values().map(|p| p.to_string_lossy().to_lowercase()).collect();
 
         #[cfg(feature = "rayon")]
@@ -340,21 +374,12 @@ impl Layer {
 
         let glyphs = iter
             .map(|(name, glyph_path)| {
-                let name = name.clone();
-                let full_path = layer_dir.join(glyph_path);
-
-                source
-                    .read(&full_path)
-                    .map_err(GlifLoadError::Io)
-                    .and_then(|data| Glyph::parse(&data))
+                Self::load_one_glyph(source, layer_dir, name, glyph_path)
+                    .map(|glyph| (name.clone(), glyph))
                     .map_err(|source| LayerLoadError::Glyph {
                         name: name.to_string(),
-                        path: full_path,
+                        path: layer_dir.join(glyph_path),
                         source,
-                    })
-                    .map(|mut glyph| {
-                        glyph.name = name.clone();
-                        (name, glyph)
                     })
             })
             .collect::<Result<_, _>>()?;
@@ -596,6 +621,13 @@ mod tests {
     use std::fs;
     use std::path::Path;
     use tempfile::TempDir;
+
+    fn load_filtered(ufo_path: &Path, request: &DataRequest) -> LayerContents {
+        let index =
+            crate::font_reader::read_layer_index(&ufo_path, &MetaInfo::default(), &request.layers)
+                .unwrap();
+        LayerContents::load(&ufo_path, &index, &request.layers).unwrap()
+    }
 
     #[test]
     #[allow(clippy::float_cmp)]
@@ -870,31 +902,31 @@ mod tests {
         let ufo_path = Path::new("testdata/MutatorSansLightWide.ufo");
 
         let request = DataRequest::all();
-        let layerset = LayerContents::load(&ufo_path, &request.layers).unwrap();
+        let layerset = load_filtered(ufo_path, &request);
         assert_eq!(layerset.len(), 2);
         assert_eq!(layerset.default_layer().len(), 48);
 
         let request = DataRequest::none();
-        let layerset = LayerContents::load(&ufo_path, &request.layers).unwrap();
+        let layerset = load_filtered(ufo_path, &request);
         // default layer is always present
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 0);
 
         let request = DataRequest::none().default_layer(true);
-        let layerset = LayerContents::load(&ufo_path, &request.layers).unwrap();
+        let layerset = load_filtered(ufo_path, &request);
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 48);
 
         // all is overridden by default_layer
         let request = DataRequest::all().default_layer(true);
-        let layerset = LayerContents::load(&ufo_path, &request.layers).unwrap();
+        let layerset = load_filtered(ufo_path, &request);
         // default layer is always present
         assert_eq!(layerset.len(), 1);
         assert_eq!(layerset.default_layer().len(), 48);
 
         let layer_name = String::from("background");
         let request = DataRequest::none().filter_layers(|name, _path| name == layer_name);
-        let layerset = LayerContents::load(&ufo_path, &request.layers).unwrap();
+        let layerset = load_filtered(ufo_path, &request);
         // default layer is always present
         assert_eq!(layerset.len(), 2);
         assert_eq!(layerset.default_layer().len(), 0);
