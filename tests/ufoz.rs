@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use norad::error::FontLoadError;
-use norad::{DataRequest, Font};
+use norad::{DataRequest, Font, FontReader};
 use tempfile::NamedTempFile;
 
 /// Walk a `.ufo` directory on disk and write all files into a zip archive.
@@ -182,4 +182,49 @@ fn load_zip_missing_metainfo() {
 
     let result = Font::load(tmp.path());
     assert!(matches!(result, Err(FontLoadError::MissingMetaInfoFile)));
+}
+
+#[test]
+fn font_reader_ufoz_matches_directory() {
+    let ufo_path = Path::new("testdata/MutatorSansLightWide.ufo");
+    let dir_font = Font::load(ufo_path).unwrap();
+
+    for wrap_in_dir in [None, Some("MutatorSansLightWide.ufo")] {
+        let zip_file = ufo_dir_to_zip(ufo_path, wrap_in_dir);
+        let reader = FontReader::open(zip_file.path()).unwrap();
+        assert!(reader.path().is_none());
+        assert!(reader.source().try_read(Path::new("features.fea")).is_some());
+
+        assert_eq!(reader.layers().count(), dir_font.layers.len());
+        for (layer, dir_layer) in reader.layers().zip(dir_font.iter_layers()) {
+            assert_eq!(layer.name(), dir_layer.name());
+            assert_eq!(layer.path(), dir_layer.path());
+            assert!(layer.glyph_names().eq(dir_layer.iter().map(|g| g.name())));
+        }
+
+        let default = reader.default_layer().unwrap();
+        for name in ["A", "B", "S"] {
+            let glyph = default.load_glyph(name).unwrap().unwrap();
+            assert_eq!(&glyph, dir_font.get_glyph(name).unwrap());
+        }
+        assert!(default.load_glyph("nope").is_none());
+
+        assert_eq!(reader.load(&DataRequest::all()).unwrap(), dir_font);
+    }
+}
+
+#[test]
+fn font_reader_ufoz_opened_with_none() {
+    let ufo_path = Path::new("testdata/MutatorSansLightWide.ufo");
+    let zip_file = ufo_dir_to_zip(ufo_path, None);
+
+    let reader = FontReader::open_requested(zip_file.path(), &DataRequest::none()).unwrap();
+    assert!(reader.default_layer().is_none());
+    assert!(reader.source().try_read(Path::new("glyphs/contents.plist")).is_none());
+
+    let request = || DataRequest::none().kerning(true).groups(true);
+    assert_eq!(
+        reader.load(&request()).unwrap(),
+        Font::load_requested_data(ufo_path, request()).unwrap()
+    );
 }
