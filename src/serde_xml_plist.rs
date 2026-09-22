@@ -78,12 +78,12 @@ mod de {
                 map.next_value::<ArrayWrapper>().map(|x| Value::Array(x.0))
             }
             Some(ValueKeyword::Data) => {
-                let b64_str = map.next_value::<&str>()?;
-                decode_plist_data(b64_str).map(Value::Data).map_err(A::Error::custom)
+                let b64_str = map.next_value::<String>()?;
+                decode_plist_data(&b64_str).map(Value::Data).map_err(A::Error::custom)
             }
             Some(ValueKeyword::Date) => {
-                let date_str = map.next_value::<&str>()?;
-                plist::Date::from_xml_format(date_str).map_err(A::Error::custom).map(Value::Date)
+                let date_str = map.next_value::<String>()?;
+                plist::Date::from_xml_format(&date_str).map_err(A::Error::custom).map(Value::Date)
             }
             Some(ValueKeyword::Real) => map.next_value::<f64>().map(Value::Real),
             Some(ValueKeyword::Integer) => {
@@ -312,11 +312,12 @@ mod de {
     fn decode_plist_data(s: &str) -> Result<Vec<u8>, String> {
         let s = s.trim();
         // apple plist data blocks are formatted so that there are 68 chars
-        // per line. If this is multiline, we need to reformat to remove those
-        // newlines before decoding:
+        // per line, and other writers (e.g. python's plistlib) also indent
+        // each line. If this is multiline, we need to strip all of that
+        // whitespace before decoding:
         // <https://github.com/cmyr/rust-plist/blob/5d6f53da/src/stream/xml_writer.rs#L248-L252>
-        let s = if s.as_bytes().contains(&b'\n') {
-            Cow::Owned(s.bytes().filter(|b| *b != b'\n').collect())
+        let s = if s.bytes().any(|b| b.is_ascii_whitespace()) {
+            Cow::Owned(s.bytes().filter(|b| !b.is_ascii_whitespace()).collect())
         } else {
             Cow::Borrowed(s.as_bytes())
         };
@@ -620,9 +621,54 @@ mod tests {
     }
 
     #[test]
+    fn data_and_date_load_via_reader() {
+        // Exercises a fix for `<data>`/`<date>` elements loaded through
+        // `quick_xml::de::from_reader` (as opposed to `from_str`), which previously
+        // failed with "expected a borrowed string".
+        let xml = r#"<designspace format="5.0">
+  <lib>
+    <dict>
+      <key>d</key>
+      <data>
+      PGJpbmFyeSBndW5rPg==
+      </data>
+      <key>t</key>
+      <date>2021-01-02T03:04:05Z</date>
+    </dict>
+  </lib>
+</designspace>"#;
+        let ds = crate::designspace::DesignSpaceDocument::load_from_reader(xml.as_bytes())
+            .expect("should load via reader");
+        assert_eq!(ds.lib.get("d").and_then(Value::as_data), Some(b"<binary gunk>".as_slice()));
+        let date = ds.lib.get("t").and_then(Value::as_date).expect("should have a date");
+        assert_eq!(date.to_xml_format(), "2021-01-02T03:04:05Z");
+
+        // Same, but with the base64 payload split over two indented lines, the way
+        // python's plistlib writes it.
+        let xml_split = r#"<designspace format="5.0">
+  <lib>
+    <dict>
+      <key>d</key>
+      <data>
+      PGJpbmFy
+      eSBndW5rPg==
+      </data>
+    </dict>
+  </lib>
+</designspace>"#;
+        let ds_split =
+            crate::designspace::DesignSpaceDocument::load_from_reader(xml_split.as_bytes())
+                .expect("should load via reader");
+        assert_eq!(
+            ds_split.lib.get("d").and_then(Value::as_data),
+            Some(b"<binary gunk>".as_slice())
+        );
+    }
+
+    #[test]
     fn deserialize_data() {
         let our_data = b"\
-                                  this here is a big dumb ole string of bytes i'm typin in here\n\
+                                  this here is a big dumb ole string of bytes i was typing here\n\
                                   I reckon lots of folks don't know I can type this many simple\n\
                                   ascii-only characters down here in this little block of derpy\n\
                                   text while making every line the same length just bc it's fun\n\
