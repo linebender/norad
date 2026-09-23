@@ -75,8 +75,16 @@ impl LayerContents {
                 })
             })
             .collect::<Result<_, _>>()?;
-        // we always need a default layer, so add an empty one if it's filtered
-        if !filter.includes_default_layer() {
+        // We always need a default layer, so add an empty placeholder if none
+        // was loaded.
+        //
+        // We don't do this if the default layer was explicitly requested (via
+        // `all`/`default_layer`) but is absent from the UFO: in that case we
+        // want the lookup below to fail with `MissingDefaultLayer`, instead of
+        // masking a malformed UFO with an empty layer.
+        let has_default_layer =
+            layers.iter().any(|l| l.path.to_str() == Some(DEFAULT_GLYPHS_DIRNAME));
+        if !has_default_layer && !filter.includes_default_layer() {
             layers.push(Layer::default());
         }
 
@@ -933,6 +941,39 @@ mod tests {
 
         let bglayer = layerset.get("background").unwrap();
         assert_eq!(bglayer.len(), 1);
+    }
+
+    /// A custom filter that admits the default layer (by name or by path)
+    /// must not also get a synthesized empty placeholder pushed alongside it.
+    ///
+    /// Regression test for a bug where a custom filter admitting the UFO's
+    /// real default layer would still get an empty `Layer::default()` pushed
+    /// on top, since the check only looked at `all`/`load_default`, not at
+    /// what the filter actually admitted. That produced two layers pointing
+    /// at the `glyphs` directory, and on save the empty one could clobber the
+    /// real one's `contents.plist`.
+    #[test]
+    fn test_filter_admits_default_layer_no_duplicate() {
+        let ufo_path = "testdata/MutatorSansLightWide.ufo";
+        let request = DataRequest::none()
+            .filter_layers(|name, _path| name == "public.default" || name == "foreground");
+        let font = crate::Font::load_requested_data(ufo_path, request).unwrap();
+
+        let glyphs_dir_layers: Vec<_> =
+            font.layers.iter().filter(|l| l.path() == Path::new("glyphs")).collect();
+        assert_eq!(
+            glyphs_dir_layers.len(),
+            1,
+            "expected exactly one layer with the default glyphs directory"
+        );
+        assert_eq!(font.layers.default_layer().len(), 48);
+
+        let dir = TempDir::new().unwrap();
+        let save_path = dir.path().join("Test.ufo");
+        font.save(&save_path).unwrap();
+
+        let reloaded = crate::Font::load(&save_path).unwrap();
+        assert_eq!(reloaded.layers.default_layer().len(), 48);
     }
 
     #[test]
