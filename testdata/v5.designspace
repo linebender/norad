@@ -76,7 +76,7 @@
   <!-- Freestanding labels are analogues of STAT format 4 entries.
         They give names to freestyle locations. -->
   <labels>
-    <label name="Some Style">
+    <label name="Some Style" oldersibling="true">
       <labelname xml:lang="fr">Un Style</labelname>
       <location>
         <dimension name="Weight" uservalue="300"/>
@@ -84,7 +84,7 @@
         <dimension name="Italic" uservalue="0"/>
       </location>
     </label>
-    <label name="Other">
+    <label name="Other" elidable="true">
       <location>
         <dimension name="Weight" uservalue="700"/>
         <dimension name="Width" uservalue="100"/>
