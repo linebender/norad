@@ -276,12 +276,14 @@ pub struct VariableFont {
 
 /// An [axis subset] of a variable font.
 ///
-/// An `<axis-subset>` element takes one of three forms, distinguished by its
-/// attributes; see [`SubsetValue`].
+/// An `<axis-subset>` element covers either a range of the axis (by default
+/// the whole axis) or a single value on it, distinguished by its attributes;
+/// see [`SubsetValue`].
 ///
 /// ```xml
 /// <axis-subset name="Weight"/>
 /// <axis-subset name="Width" userminimum="75" userdefault="100" usermaximum="125"/>
+/// <axis-subset name="Optical" userminimum="12"/>
 /// <axis-subset name="Italic" uservalue="0"/>
 /// ```
 ///
@@ -296,24 +298,45 @@ pub struct AxisSubset {
 }
 
 /// The portion of an axis included in a variable font.
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SubsetValue {
-    /// The full axis (no attributes).
-    #[default]
-    Full,
-    /// A sub-range of the axis, in user coordinates.
+    /// A range of the axis, in user coordinates.
     ///
-    /// This is the `userminimum`/`userdefault`/`usermaximum` form.
+    /// This is the `userminimum`/`userdefault`/`usermaximum` form. Each value
+    /// is optional, and missing values are taken from the parent axis; if all
+    /// are missing, the subset is the whole axis (see [`SubsetValue::is_full`]).
     Range {
         /// The lower end of the range, in user coordinates.
-        minimum: f64,
+        ///
+        /// If missing, this is the axis minimum.
+        minimum: Option<f64>,
         /// The default value, in user coordinates.
-        default: f64,
+        ///
+        /// If missing, this is the axis default, clamped to the range.
+        default: Option<f64>,
         /// The upper end of the range, in user coordinates.
-        maximum: f64,
+        ///
+        /// If missing, this is the axis maximum.
+        maximum: Option<f64>,
     },
     /// A single point on the axis, in user coordinates (`uservalue`).
     Discrete(f64),
+}
+
+impl Default for SubsetValue {
+    fn default() -> Self {
+        SubsetValue::Range { minimum: None, default: None, maximum: None }
+    }
+}
+
+impl SubsetValue {
+    /// Returns `true` if this subset covers the whole axis.
+    ///
+    /// This is the case when it is a [`SubsetValue::Range`] with no values
+    /// set, which is written as an `<axis-subset>` with only a name.
+    pub fn is_full(&self) -> bool {
+        *self == SubsetValue::default()
+    }
 }
 
 /// Internal struct matching the XML structure of an `<axis-subset>` element.
@@ -356,16 +379,10 @@ impl TryFrom<RawAxisSubset> for AxisSubset {
                 }
                 SubsetValue::Discrete(user_value)
             }
-            None => match (user_minimum, user_default, user_maximum) {
-                (Some(minimum), Some(default), Some(maximum)) => {
-                    SubsetValue::Range { minimum, default, maximum }
-                }
-                (None, None, None) => SubsetValue::Full,
-                _ => {
-                    return Err(AxisSubsetError(
-                        "axis-subset element must have min/max/default values or none at all",
-                    ))
-                }
+            None => SubsetValue::Range {
+                minimum: user_minimum,
+                default: user_default,
+                maximum: user_maximum,
             },
         };
         Ok(AxisSubset { name, value })
@@ -376,12 +393,11 @@ impl From<AxisSubset> for RawAxisSubset {
     fn from(subset: AxisSubset) -> Self {
         let AxisSubset { name, value } = subset;
         match value {
-            SubsetValue::Full => RawAxisSubset { name, ..Default::default() },
             SubsetValue::Range { minimum, default, maximum } => RawAxisSubset {
                 name,
-                user_minimum: Some(minimum),
-                user_default: Some(default),
-                user_maximum: Some(maximum),
+                user_minimum: minimum,
+                user_default: default,
+                user_maximum: maximum,
                 user_value: None,
             },
             SubsetValue::Discrete(user_value) => {
@@ -1604,14 +1620,17 @@ mod tests {
                 (
                     "Test_WghtWdth",
                     Some("Test_WghtWdth_different_from_name.ttf"),
-                    vec![subset("Weight", SubsetValue::Full), subset("Width", SubsetValue::Full)],
+                    vec![
+                        subset("Weight", SubsetValue::default()),
+                        subset("Width", SubsetValue::default())
+                    ],
                 ),
-                ("Test_Wght", None, vec![subset("Weight", SubsetValue::Full)]),
+                ("Test_Wght", None, vec![subset("Weight", SubsetValue::default())]),
                 (
                     "TestCd_Wght",
                     None,
                     vec![
-                        subset("Weight", SubsetValue::Full),
+                        subset("Weight", SubsetValue::default()),
                         subset("Width", SubsetValue::Discrete(0.0)),
                     ],
                 ),
@@ -1619,7 +1638,7 @@ mod tests {
                     "TestWd_Wght",
                     None,
                     vec![
-                        subset("Weight", SubsetValue::Full),
+                        subset("Weight", SubsetValue::default()),
                         subset("Width", SubsetValue::Discrete(1000.0)),
                     ],
                 ),
@@ -1627,7 +1646,7 @@ mod tests {
                     "TestItalic_Wght",
                     None,
                     vec![
-                        subset("Weight", SubsetValue::Full),
+                        subset("Weight", SubsetValue::default()),
                         subset("Italic", SubsetValue::Discrete(1.0)),
                     ],
                 ),
@@ -1637,7 +1656,11 @@ mod tests {
                     vec![
                         subset(
                             "Weight",
-                            SubsetValue::Range { minimum: 400.0, default: 400.0, maximum: 700.0 }
+                            SubsetValue::Range {
+                                minimum: Some(400.0),
+                                default: Some(400.0),
+                                maximum: Some(700.0),
+                            }
                         ),
                         subset("Italic", SubsetValue::Discrete(0.0)),
                     ],
@@ -1800,10 +1823,18 @@ mod tests {
             name: "vf".into(),
             filename: None,
             axis_subsets: vec![
-                AxisSubset { name: "Whole".into(), value: SubsetValue::Full },
+                AxisSubset { name: "Whole".into(), value: SubsetValue::default() },
                 AxisSubset {
                     name: "Tent".into(),
-                    value: SubsetValue::Range { minimum: 1.0, default: 2.0, maximum: 3.0 },
+                    value: SubsetValue::Range {
+                        minimum: Some(1.0),
+                        default: Some(2.0),
+                        maximum: Some(3.0),
+                    },
+                },
+                AxisSubset {
+                    name: "Partial".into(),
+                    value: SubsetValue::Range { minimum: Some(5.0), default: None, maximum: None },
                 },
                 AxisSubset { name: "Discrete".into(), value: SubsetValue::Discrete(4.0) },
             ],
@@ -1817,11 +1848,13 @@ mod tests {
 
         // Then
         assert_eq!(vf, round_tripped);
-
-        // An axis-subset with only some of userminimum/userdefault/usermaximum is invalid.
-        let partial_tent = r#"<variable-font name="x"><axis-subsets><axis-subset name="a" userminimum="1"/></axis-subsets></variable-font>"#;
-        let err = quick_xml::de::from_str::<VariableFont>(partial_tent).unwrap_err();
-        assert!(err.to_string().contains("axis-subset"), "unexpected error: {err}");
+        assert!(xml.contains(r#"<axis-subset name="Whole"/>"#), "unexpected xml: {xml}");
+        assert!(
+            xml.contains(r#"<axis-subset name="Partial" userminimum="5"/>"#),
+            "unexpected xml: {xml}"
+        );
+        let full: Vec<bool> = vf.axis_subsets.iter().map(|subset| subset.value.is_full()).collect();
+        assert_eq!(full, [true, false, false, false]);
 
         // An axis-subset can't mix uservalue with userminimum/userdefault/usermaximum.
         let mixed = r#"<variable-font name="x"><axis-subsets><axis-subset name="a" uservalue="1" userminimum="1" userdefault="1" usermaximum="2"/></axis-subsets></variable-font>"#;
