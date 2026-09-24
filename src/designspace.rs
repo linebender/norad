@@ -1566,6 +1566,7 @@ mod tests {
             vec![
                 LocationLabel {
                     name: "Some Style".into(),
+                    older_sibling: true,
                     label_names: vec![lstr("fr", "Un Style")],
                     location: vec![
                         dim_uservalue("Weight", 300.0),
@@ -1576,6 +1577,7 @@ mod tests {
                 },
                 LocationLabel {
                     name: "Other".into(),
+                    elidable: true,
                     location: vec![
                         dim_uservalue("Weight", 700.0),
                         dim_uservalue("Width", 100.0),
