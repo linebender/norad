@@ -65,21 +65,21 @@ impl GlifParser {
             match reader.read_event_into(buf)? {
                 // outline, lib and note are expected to be start element tags.
                 Event::Start(start) => match start.name().as_ref() {
-                    b"outline" if seen_outline => {
+                    "outline" if seen_outline => {
                         return Err(ErrorKind::DuplicateElement("outline").into());
                     }
-                    b"outline" => {
+                    "outline" => {
                         seen_outline = true;
                         self.parse_outline(reader, buf)?;
                     }
-                    b"lib" if seen_lib => {
+                    "lib" if seen_lib => {
                         return Err(ErrorKind::DuplicateElement("lib").into());
                     }
-                    b"lib" => {
+                    "lib" => {
                         seen_lib = true;
                         self.parse_lib(reader, raw_xml, buf)?;
                     }
-                    b"note" if self.version == VERSION_1 => {
+                    "note" if self.version == VERSION_1 => {
                         log::warn!(
                             "v1 .glif '{}' contains unexpected 'note' field",
                             self.glyph.name
@@ -88,46 +88,46 @@ impl GlifParser {
                         // drop the note
                         self.glyph.note = None;
                     }
-                    b"note" if self.glyph.note.is_some() => {
+                    "note" if self.glyph.note.is_some() => {
                         return Err(ErrorKind::DuplicateElement("note").into());
                     }
-                    b"note" => self.parse_note(reader, buf)?,
+                    "note" => self.parse_note(reader, buf)?,
                     _other => return Err(ErrorKind::UnexpectedElement.into()),
                 },
                 // The rest are expected to be empty element tags (exception: outline) with attributes.
                 Event::Empty(start) => match start.name().as_ref() {
-                    b"outline" if seen_outline => {
+                    "outline" if seen_outline => {
                         return Err(ErrorKind::DuplicateElement("outline").into());
                     }
-                    b"outline" => {
+                    "outline" => {
                         seen_outline = true;
                     }
-                    b"advance" if seen_advance => {
+                    "advance" if seen_advance => {
                         return Err(ErrorKind::DuplicateElement("advance").into());
                     }
-                    b"advance" => {
+                    "advance" => {
                         seen_advance = true;
                         self.parse_advance(start)?;
                     }
-                    b"unicode" => self.parse_unicode(start)?,
-                    b"anchor" if self.version == VERSION_1 => {
+                    "unicode" => self.parse_unicode(start)?,
+                    "anchor" if self.version == VERSION_1 => {
                         return Err(ErrorKind::UnexpectedV1Element("anchor").into());
                     }
-                    b"anchor" => self.parse_anchor(start)?,
-                    b"guideline" if self.version == VERSION_1 => {
+                    "anchor" => self.parse_anchor(start)?,
+                    "guideline" if self.version == VERSION_1 => {
                         return Err(ErrorKind::UnexpectedV1Element("guideline").into());
                     }
-                    b"guideline" => self.parse_guideline(start)?,
-                    b"image" if self.version == VERSION_1 => {
+                    "guideline" => self.parse_guideline(start)?,
+                    "image" if self.version == VERSION_1 => {
                         return Err(ErrorKind::UnexpectedV1Element("image").into());
                     }
-                    b"image" if self.glyph.image.is_some() => {
+                    "image" if self.glyph.image.is_some() => {
                         return Err(ErrorKind::DuplicateElement("image").into());
                     }
-                    b"image" => self.parse_image(start)?,
+                    "image" => self.parse_image(start)?,
                     _other => return Err(ErrorKind::UnexpectedElement.into()),
                 },
-                Event::End(ref end) if end.name().as_ref() == b"glyph" => break,
+                Event::End(ref end) if end.name().as_ref() == "glyph" => break,
                 _other => return Err(ErrorKind::MissingCloseTag.into()),
             }
             buf.clear();
@@ -153,7 +153,7 @@ impl GlifParser {
                 Event::Start(start) => {
                     let mut new_buf = Vec::new(); // borrowck :/
                     match start.name().as_ref() {
-                        b"contour" => {
+                        "contour" => {
                             self.parse_contour(start, reader, &mut new_buf, &mut outline_builder)?;
                         }
                         _other => return Err(ErrorKind::UnexpectedElement.into()),
@@ -161,12 +161,12 @@ impl GlifParser {
                 }
                 Event::Empty(start) => {
                     match start.name().as_ref() {
-                        b"contour" => (), // Empty contours are meaningless.
-                        b"component" => self.parse_component(start, &mut outline_builder)?,
+                        "contour" => (), // Empty contours are meaningless.
+                        "component" => self.parse_component(start, &mut outline_builder)?,
                         _other => return Err(ErrorKind::UnexpectedElement.into()),
                     }
                 }
-                Event::End(ref end) if end.name().as_ref() == b"outline" => break,
+                Event::End(ref end) if end.name().as_ref() == "outline" => break,
                 Event::Eof => return Err(ErrorKind::UnexpectedEof.into()),
                 _other => return Err(ErrorKind::UnexpectedElement.into()),
             }
@@ -227,7 +227,7 @@ impl GlifParser {
             let attr = attr?;
             let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
             match attr.key.as_ref() {
-                b"identifier" => identifier = Some(self.parse_identifier(&value)?),
+                "identifier" => identifier = Some(self.parse_identifier(&value)?),
                 _other => return Err(ErrorKind::UnexpectedAttribute.into()),
             }
         }
@@ -235,8 +235,8 @@ impl GlifParser {
         outline_builder.begin_path(identifier)?;
         loop {
             match reader.read_event_into(buf)? {
-                Event::End(ref end) if end.name().as_ref() == b"contour" => break,
-                Event::Empty(ref start) if start.name().as_ref() == b"point" => {
+                Event::End(ref end) if end.name().as_ref() == "contour" => break,
+                Event::Empty(ref start) if start.name().as_ref() == "point" => {
                     self.parse_point(start, outline_builder)?;
                 }
                 Event::Eof => return Err(ErrorKind::UnexpectedEof.into()),
@@ -263,20 +263,20 @@ impl GlifParser {
             let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
             let kind = ErrorKind::BadNumber;
             match attr.key.as_ref() {
-                b"xScale" => transform.x_scale = value.parse().map_err(|_| kind)?,
-                b"xyScale" => transform.xy_scale = value.parse().map_err(|_| kind)?,
-                b"yxScale" => transform.yx_scale = value.parse().map_err(|_| kind)?,
-                b"yScale" => transform.y_scale = value.parse().map_err(|_| kind)?,
-                b"xOffset" => transform.x_offset = value.parse().map_err(|_| kind)?,
-                b"yOffset" => transform.y_offset = value.parse().map_err(|_| kind)?,
-                b"base" if value.is_empty() => {
+                "xScale" => transform.x_scale = value.parse().map_err(|_| kind)?,
+                "xyScale" => transform.xy_scale = value.parse().map_err(|_| kind)?,
+                "yxScale" => transform.yx_scale = value.parse().map_err(|_| kind)?,
+                "yScale" => transform.y_scale = value.parse().map_err(|_| kind)?,
+                "xOffset" => transform.x_offset = value.parse().map_err(|_| kind)?,
+                "yOffset" => transform.y_offset = value.parse().map_err(|_| kind)?,
+                "base" if value.is_empty() => {
                     return Err(ErrorKind::ComponentEmptyBase.into());
                 }
-                b"base" => {
+                "base" => {
                     let name = Name::new(&value).map_err(|_| ErrorKind::InvalidName)?;
                     base = Some(name);
                 }
-                b"identifier" => {
+                "identifier" => {
                     identifier = Some(self.parse_identifier(&value)?);
                 }
                 _other => return Err(ErrorKind::UnexpectedComponentField.into()),
@@ -305,7 +305,7 @@ impl GlifParser {
         let mut end = start;
         loop {
             match reader.read_event_into(buf)? {
-                Event::End(ref end) if end.name().as_ref() == b"lib" => break,
+                Event::End(ref end) if end.name().as_ref() == "lib" => break,
                 Event::Eof => return Err(ErrorKind::UnexpectedEof.into()),
                 _other => end = reader.buffer_position() as usize,
             }
@@ -337,9 +337,9 @@ impl GlifParser {
     ) -> Result<(), GlifLoadError> {
         loop {
             match reader.read_event_into(buf)? {
-                Event::End(ref end) if end.name().as_ref() == b"note" => break,
+                Event::End(ref end) if end.name().as_ref() == "note" => break,
                 Event::Text(text) => {
-                    self.glyph.note = Some(text.decode()?.into_owned());
+                    self.glyph.note = Some(text.into_inner().into_owned());
                 }
                 Event::Eof => return Err(ErrorKind::UnexpectedEof.into()),
                 _other => (),
@@ -365,18 +365,18 @@ impl GlifParser {
             let attr = attr?;
             let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
             match attr.key.as_ref() {
-                b"x" => {
+                "x" => {
                     x = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
                 }
-                b"y" => {
+                "y" => {
                     y = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
                 }
-                b"name" => name = Some(Name::new(&value).map_err(|_| ErrorKind::InvalidName)?),
-                b"type" => {
+                "name" => name = Some(Name::new(&value).map_err(|_| ErrorKind::InvalidName)?),
+                "type" => {
                     typ = value.parse()?;
                 }
-                b"smooth" => smooth = value == "yes",
-                b"identifier" => {
+                "smooth" => smooth = value == "yes",
+                "identifier" => {
                     identifier = Some(self.parse_identifier(&value)?);
                 }
                 _other => return Err(ErrorKind::UnexpectedPointField.into()),
@@ -408,12 +408,12 @@ impl GlifParser {
         for attr in data.attributes() {
             let attr = attr?;
             match attr.key.as_ref() {
-                b"width" | b"height" => {
+                "width" | "height" => {
                     let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
                     let value: f64 = value.parse().map_err(|_| ErrorKind::BadNumber)?;
                     match attr.key.as_ref() {
-                        b"width" => width = value,
-                        b"height" => height = value,
+                        "width" => width = value,
+                        "height" => height = value,
                         _other => unreachable!(),
                     };
                 }
@@ -430,7 +430,7 @@ impl GlifParser {
         for attr in data.attributes() {
             let attr = attr?;
             match attr.key.as_ref() {
-                b"hex" => {
+                "hex" => {
                     let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
                     let chr = u32::from_str_radix(&value, 16)
                         .map_err(|_| value.to_string())
@@ -455,15 +455,15 @@ impl GlifParser {
             let attr = attr?;
             let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
             match attr.key.as_ref() {
-                b"x" => {
+                "x" => {
                     x = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
                 }
-                b"y" => {
+                "y" => {
                     y = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
                 }
-                b"name" => name = Some(Name::new(&value).map_err(|_| ErrorKind::InvalidName)?),
-                b"color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
-                b"identifier" => {
+                "name" => name = Some(Name::new(&value).map_err(|_| ErrorKind::InvalidName)?),
+                "color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
+                "identifier" => {
                     identifier = Some(self.parse_identifier(&value)?);
                 }
                 _other => return Err(ErrorKind::UnexpectedAnchorField.into()),
@@ -491,13 +491,13 @@ impl GlifParser {
             let attr = attr?;
             let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
             match attr.key.as_ref() {
-                b"x" => {
+                "x" => {
                     x = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
                 }
-                b"y" => {
+                "y" => {
                     y = Some(value.parse().map_err(|_| ErrorKind::BadNumber)?);
                 }
-                b"angle" => {
+                "angle" => {
                     let angle_value = value.parse().map_err(|_| ErrorKind::BadNumber)?;
                     if !(0.0..=360.0).contains(&angle_value) {
                         return Err(ErrorKind::BadAngle.into());
@@ -506,10 +506,10 @@ impl GlifParser {
                 }
                 // The name is optional, and some real-world fonts write it as
                 // an explicit empty string; treat that as no name.
-                b"name" if value.is_empty() => (),
-                b"name" => name = Some(Name::new(&value).map_err(|_| ErrorKind::InvalidName)?),
-                b"color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
-                b"identifier" => {
+                "name" if value.is_empty() => (),
+                "name" => name = Some(Name::new(&value).map_err(|_| ErrorKind::InvalidName)?),
+                "color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
+                "identifier" => {
                     identifier = Some(self.parse_identifier(&value)?);
                 }
                 _other => return Err(ErrorKind::UnexpectedGuidelineField.into()),
@@ -537,14 +537,14 @@ impl GlifParser {
             let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
             let kind = ErrorKind::BadNumber;
             match attr.key.as_ref() {
-                b"xScale" => transform.x_scale = value.parse().map_err(|_| kind)?,
-                b"xyScale" => transform.xy_scale = value.parse().map_err(|_| kind)?,
-                b"yxScale" => transform.yx_scale = value.parse().map_err(|_| kind)?,
-                b"yScale" => transform.y_scale = value.parse().map_err(|_| kind)?,
-                b"xOffset" => transform.x_offset = value.parse().map_err(|_| kind)?,
-                b"yOffset" => transform.y_offset = value.parse().map_err(|_| kind)?,
-                b"color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
-                b"fileName" => filename = Some(PathBuf::from(value.to_string())),
+                "xScale" => transform.x_scale = value.parse().map_err(|_| kind)?,
+                "xyScale" => transform.xy_scale = value.parse().map_err(|_| kind)?,
+                "yxScale" => transform.yx_scale = value.parse().map_err(|_| kind)?,
+                "yScale" => transform.y_scale = value.parse().map_err(|_| kind)?,
+                "xOffset" => transform.x_offset = value.parse().map_err(|_| kind)?,
+                "yOffset" => transform.y_offset = value.parse().map_err(|_| kind)?,
+                "color" => color = Some(value.parse().map_err(|_| ErrorKind::BadColor)?),
+                "fileName" => filename = Some(PathBuf::from(value.to_string())),
                 _other => return Err(ErrorKind::UnexpectedImageField.into()),
             }
         }
@@ -570,7 +570,7 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<(Name, Version
         match reader.read_event_into(buf)? {
             Event::Comment(_) => (),
             Event::Decl(_decl) => (),
-            Event::Start(ref start) if start.name().as_ref() == b"glyph" => {
+            Event::Start(ref start) if start.name().as_ref() == "glyph" => {
                 let mut name: Option<Name> = None;
                 let mut format_major = 0;
                 let mut format_minor = 0;
@@ -578,14 +578,14 @@ fn start(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<(Name, Version
                     let attr = attr?;
                     let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
                     match attr.key.as_ref() {
-                        b"name" => {
+                        "name" => {
                             let value = Name::new(&value).map_err(|_| ErrorKind::InvalidName)?;
                             name = Some(value);
                         }
-                        b"format" => {
+                        "format" => {
                             format_major = value.parse().map_err(|_| ErrorKind::BadNumber)?;
                         }
-                        b"formatMinor" => {
+                        "formatMinor" => {
                             format_minor = value.parse().map_err(|_| ErrorKind::BadNumber)?;
                         }
                         _other => return Err(ErrorKind::UnexpectedAttribute.into()),

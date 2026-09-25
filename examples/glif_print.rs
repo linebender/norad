@@ -58,20 +58,16 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Decl(decl)) => {
                 let version = decl.version()?;
-                let version = std::str::from_utf8(&version)?;
-
                 let encoding = decl.encoding().transpose()?.unwrap_or_default();
-                let encoding = std::str::from_utf8(&encoding)?;
 
                 eprintln!("xml version {version} encoding {encoding}");
             }
             Ok(Event::Start(start)) => {
-                let name = start.name();
-                let name = std::str::from_utf8(name.as_ref())?;
+                let name = start.name().0;
                 eprint!("{}<{}", spaces_for_level(level), name);
                 for attr in start.attributes() {
                     let attr = attr?;
-                    let key = std::str::from_utf8(attr.key.as_ref())?;
+                    let key = attr.key.as_ref();
                     let value = attr.normalized_value(XmlVersion::Implicit1_0)?;
                     eprint!(" {key}=\"{value}\"");
                 }
@@ -80,18 +76,15 @@ fn print_tokens(xml: &str) -> Result<(), Error> {
             }
             Ok(Event::End(end)) => {
                 level -= 1;
-                let name = end.name();
-                let name = std::str::from_utf8(name.as_ref())?;
+                let name = end.name().0;
                 eprintln!("{}</{}>", spaces_for_level(level), name);
             }
             Ok(Event::Empty(start)) => {
-                let name = start.name();
-                let name = std::str::from_utf8(name.as_ref())?;
+                let name = start.name().0;
                 eprint!("{}<{}", spaces_for_level(level), name);
                 for attr in start.attributes() {
                     let Attribute { key, value } = attr?;
-                    let key = std::str::from_utf8(key.as_ref())?;
-                    let value = std::str::from_utf8(&value)?;
+                    let key = key.as_ref();
                     eprint!(" {key}=\"{value}\"");
                 }
                 eprintln!("/>");
