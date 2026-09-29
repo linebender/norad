@@ -1,0 +1,3 @@
+feature liga {
+    sub A B by space;
+} liga;

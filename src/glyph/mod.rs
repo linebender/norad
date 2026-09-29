@@ -160,7 +160,7 @@ impl Glyph {
 
     /// Move libs from the lib's `public.objectLibs` into the actual objects.
     /// The key will be removed from the glyph lib.
-    fn load_object_libs(&mut self) -> Result<(), GlifLoadError> {
+    pub(crate) fn load_object_libs(&mut self) -> Result<(), GlifLoadError> {
         // Use a macro to reduce boilerplate, to avoid having to mess with the typing system.
         macro_rules! transfer_lib {
             ($object:expr, $object_libs:expr) => {

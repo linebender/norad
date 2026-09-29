@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<glyph name="offcurves" format="2">
+  <advance width="100"/>
+  <outline>
+    <contour>
+      <point x="0" y="0"/>
+      <point x="20" y="20"/>
+      <point x="40" y="0"/>
+    </contour>
+  </outline>
+</glyph>

@@ -16,6 +16,8 @@ mod glyph;
 pub mod groups;
 mod guideline;
 mod identifier;
+#[cfg(feature = "unstable-json")]
+mod json;
 pub mod kerning;
 mod layer;
 mod name;

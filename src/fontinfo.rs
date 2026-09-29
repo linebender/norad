@@ -500,8 +500,7 @@ impl FontInfo {
             FormatVersion::V3 => {
                 let mut fontinfo: FontInfo =
                     plist::from_bytes(data).map_err(FontInfoLoadError::ParsePlist)?;
-                fontinfo.validate().map_err(FontInfoLoadError::InvalidData)?;
-                fontinfo.load_object_libs(lib)?;
+                fontinfo.validate_and_load_object_libs(lib)?;
                 Ok(fontinfo)
             }
             FormatVersion::V2 => {
@@ -994,6 +993,17 @@ impl FontInfo {
         }
 
         Ok(())
+    }
+
+    /// Validate freshly loaded UFO v3 font info and move its object libs out of `lib`.
+    ///
+    /// This is the part of loading shared by every source of v3 font info.
+    pub(crate) fn validate_and_load_object_libs(
+        &mut self,
+        lib: &mut Plist,
+    ) -> Result<(), FontInfoLoadError> {
+        self.validate().map_err(FontInfoLoadError::InvalidData)?;
+        self.load_object_libs(lib)
     }
 
     /// Move libs from the font lib's `public.objectLibs` key into the actual objects.

@@ -9,6 +9,8 @@ use quick_xml::{
 use smol_str::SmolStr;
 use thiserror::Error;
 
+#[cfg(feature = "unstable-json")]
+pub use crate::json::JsonLoadError;
 pub use crate::shared_types::ColorError;
 use crate::{write::CustomSerializationError, Name};
 

@@ -1,0 +1,104 @@
+{
+  "layers": [
+    {
+      "name": "public.default"
+    }
+  ],
+  "info": {
+    "familyName": "Some Font (Family Name)",
+    "styleName": "Regular (Style Name)",
+    "styleMapFamilyName": "Some Font Regular (Style Map Family Name)",
+    "styleMapStyleName": "regular",
+    "versionMajor": 1,
+    "versionMinor": 0,
+    "copyright": "Copyright Some Foundry.",
+    "trademark": "Trademark Some Foundry",
+    "unitsPerEm": 1000,
+    "descender": -250,
+    "xHeight": 500,
+    "capHeight": 750,
+    "ascender": 750,
+    "italicAngle": -12.5,
+    "note": "A note.",
+    "openTypeNameDesigner": "Some Designer",
+    "openTypeNameDesignerURL": "http://somedesigner.com",
+    "openTypeNameManufacturer": "Some Foundry",
+    "openTypeNameManufacturerURL": "http://somefoundry.com",
+    "openTypeNameLicense": "License info for Some Foundry.",
+    "openTypeNameLicenseURL": "http://somefoundry.com/license",
+    "openTypeNameVersion": "OpenType name Table Version",
+    "openTypeNameUniqueID": "OpenType name Table Unique ID",
+    "openTypeNameDescription": "Some Font by Some Designer for Some Foundry.",
+    "openTypeNamePreferredFamilyName": "Some Font (Preferred Family Name)",
+    "openTypeNamePreferredSubfamilyName": "Regular (Preferred Subfamily Name)",
+    "openTypeNameCompatibleFullName": "Some Font Regular (Compatible Full Name)",
+    "openTypeOS2WidthClass": 5,
+    "openTypeOS2WeightClass": 500,
+    "openTypeOS2VendorID": "SOME",
+    "postscriptFontName": "SomeFont-Regular (Postscript Font Name)",
+    "postscriptFullName": "Some Font-Regular (Postscript Full Name)",
+    "postscriptSlantAngle": -12.5,
+    "postscriptUniqueID": 4000000,
+    "postscriptBlueValues": [
+      -10,
+      0,
+      482,
+      492,
+      694,
+      704,
+      739,
+      749
+    ],
+    "postscriptOtherBlues": [
+      -260,
+      -250
+    ],
+    "postscriptFamilyBlues": [
+      500,
+      510
+    ],
+    "postscriptFamilyOtherBlues": [
+      -260,
+      -250
+    ],
+    "postscriptStemSnapH": [
+      100,
+      120
+    ],
+    "postscriptStemSnapV": [
+      80,
+      90
+    ],
+    "postscriptBlueFuzz": 1,
+    "postscriptBlueShift": 7,
+    "postscriptBlueScale": 0.039625,
+    "postscriptForceBold": true,
+    "postscriptDefaultWidthX": 400,
+    "postscriptWeightName": "Medium",
+    "postscriptWindowsCharacterSet": 1,
+    "macintoshFONDName": "SomeFont Regular (FOND Name)",
+    "macintoshFONDFamilyID": 15000,
+    "year": 2008
+  },
+  "features": "@myClass = [A B];\n\nfeature liga {\n    sub A A by b;\n} liga;\n",
+  "groups": {
+    "group1": [
+      "A"
+    ],
+    "group2": [
+      "A",
+      "B"
+    ]
+  },
+  "kerning": {
+    "A": {
+      "B": 100
+    },
+    "B": {
+      "A": -200
+    }
+  },
+  "lib": {
+    "org.robofab.testFontLibData": "Foo Bar"
+  }
+}
