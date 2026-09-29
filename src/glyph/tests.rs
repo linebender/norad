@@ -426,6 +426,72 @@ fn roundtrip_note() {
     );
 }
 
+fn glif_with_note(note: &str) -> String {
+    format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<glyph name=\"a\" format=\"2\">\n<note>{note}</note>\n</glyph>\n"
+    )
+}
+
+fn parse_note(note: &str) -> Option<String> {
+    parse_glyph(glif_with_note(note).as_bytes()).unwrap().note
+}
+
+#[test]
+fn note_with_entities() {
+    assert_eq!(parse_note("a &amp; b").as_deref(), Some("a & b"));
+    assert_eq!(
+        parse_note("&lt;a&gt; &quot;b&quot; &apos;c&apos;").as_deref(),
+        Some("<a> \"b\" 'c'")
+    );
+    assert_eq!(parse_note("a &amp; b &lt; c &gt; d").as_deref(), Some("a & b < c > d"));
+}
+
+#[test]
+fn note_entity_at_start_and_end() {
+    assert_eq!(parse_note("&amp; b").as_deref(), Some("& b"));
+    assert_eq!(parse_note("a &amp;").as_deref(), Some("a &"));
+    assert_eq!(parse_note("  &amp;  ").as_deref(), Some("&"));
+    assert_eq!(parse_note("\n&lt;\n").as_deref(), Some("<"));
+}
+
+#[test]
+fn note_char_refs() {
+    assert_eq!(parse_note("a&#233;b a&#xE9;b").as_deref(), Some("a\u{e9}b a\u{e9}b"));
+}
+
+#[test]
+fn note_multiline_with_entity() {
+    let note = "\n  first &amp; second\n    indented &amp; more\n\n  last\n";
+    assert_eq!(parse_note(note).as_deref(), Some("first & second\n    indented & more\n\n  last"));
+}
+
+#[test]
+fn note_cdata() {
+    assert_eq!(parse_note("a <![CDATA[<b> & c]]> &amp; d").as_deref(), Some("a <b> & c & d"));
+}
+
+#[test]
+fn note_unknown_entity_is_error() {
+    let glif = glif_with_note("a &foo; b");
+    assert!(parse_glyph(glif.as_bytes()).is_err());
+}
+
+#[test]
+fn note_without_entities_unchanged() {
+    assert_eq!(parse_note("\n  hello   world \n").as_deref(), Some("hello   world"));
+    assert_eq!(parse_note("   ").as_deref(), None);
+    assert_eq!(parse_note("").as_deref(), None);
+}
+
+#[test]
+fn roundtrip_note_with_special_chars() {
+    let mut glyph = Glyph::new("a");
+    glyph.note = Some("if a < b && b > c\n  then \"x\" & 'y'".into());
+    let buf = glyph.encode_xml().unwrap();
+    let glyph2 = parse_glyph(&buf).unwrap();
+    assert_eq!(glyph.note, glyph2.note);
+}
+
 #[test]
 #[allow(clippy::float_cmp)]
 fn save() {
