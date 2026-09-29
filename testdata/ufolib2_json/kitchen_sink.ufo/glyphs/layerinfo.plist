@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>lib</key>
+    <dict>
+      <key>com.example.bool</key>
+      <true/>
+      <key>com.example.dict</key>
+      <dict>
+        <key>a</key>
+        <integer>1</integer>
+        <key>nested</key>
+        <dict>
+          <key>b</key>
+          <array>
+            <true/>
+            <dict>
+              <key>c</key>
+              <string>deep</string>
+            </dict>
+          </array>
+        </dict>
+      </dict>
+      <key>com.example.float</key>
+      <real>1.5</real>
+      <key>com.example.int</key>
+      <integer>42</integer>
+      <key>com.example.integral-float</key>
+      <real>2.0</real>
+      <key>com.example.layer-note</key>
+      <string>default layer lib</string>
+      <key>com.example.list</key>
+      <array>
+        <integer>1</integer>
+        <real>2.5</real>
+        <string>three</string>
+        <false/>
+        <array>
+          <integer>4</integer>
+          <integer>5</integer>
+        </array>
+      </array>
+      <key>com.example.string</key>
+      <string>héllo</string>
+    </dict>
+  </dict>
+</plist>

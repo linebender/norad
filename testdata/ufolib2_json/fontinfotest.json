@@ -1,0 +1,447 @@
+{
+  "layers": [
+    {
+      "name": "public.default",
+      "glyphs": {
+        "a": {
+          "width": 600,
+          "unicodes": [
+            97
+          ],
+          "guidelines": [
+            {
+              "x": 177,
+              "y": 401,
+              "angle": 0,
+              "name": "f"
+            },
+            {
+              "x": 187,
+              "y": 433,
+              "angle": 0
+            },
+            {
+              "x": 180,
+              "y": 347,
+              "angle": 0,
+              "name": "s"
+            },
+            {
+              "x": 287.039603960396,
+              "y": 204.48514851485146,
+              "angle": 0,
+              "name": "a"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "info": {
+    "familyName": "a",
+    "styleName": "b",
+    "styleMapFamilyName": "c",
+    "styleMapStyleName": "bold",
+    "versionMajor": 1,
+    "versionMinor": 234,
+    "copyright": "e",
+    "trademark": "h",
+    "unitsPerEm": 1000,
+    "descender": -250,
+    "xHeight": 500,
+    "capHeight": 700,
+    "ascender": 750,
+    "italicAngle": 2.2,
+    "note": "",
+    "guidelines": [
+      {
+        "x": 82,
+        "y": 720,
+        "angle": 90
+      },
+      {
+        "x": 372
+      },
+      {
+        "y": 123
+      },
+      {
+        "x": 1,
+        "y": 2,
+        "angle": 0,
+        "name": " [locked]",
+        "color": "1,1,1,1",
+        "identifier": "abc"
+      }
+    ],
+    "openTypeGaspRangeRecords": [
+      {
+        "rangeMaxPPEM": 1,
+        "rangeGaspBehavior": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    ],
+    "openTypeHeadCreated": "2019/11/07 21:14:44",
+    "openTypeHeadLowestRecPPEM": 1,
+    "openTypeHeadFlags": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      11,
+      12,
+      13,
+      14
+    ],
+    "openTypeHheaAscender": 1,
+    "openTypeHheaDescender": 2,
+    "openTypeHheaLineGap": 3,
+    "openTypeHheaCaretSlopeRise": 4,
+    "openTypeHheaCaretSlopeRun": 4,
+    "openTypeHheaCaretOffset": -6,
+    "openTypeNameDesigner": "a",
+    "openTypeNameDesignerURL": "b",
+    "openTypeNameManufacturer": "c",
+    "openTypeNameManufacturerURL": "d",
+    "openTypeNameLicense": "f",
+    "openTypeNameLicenseURL": "g",
+    "openTypeNameVersion": "f",
+    "openTypeNameUniqueID": "g",
+    "openTypeNameDescription": "h",
+    "openTypeNamePreferredFamilyName": "a",
+    "openTypeNamePreferredSubfamilyName": "b",
+    "openTypeNameCompatibleFullName": "c",
+    "openTypeNameSampleText": "i",
+    "openTypeNameWWSFamilyName": "d",
+    "openTypeNameWWSSubfamilyName": "e",
+    "openTypeNameRecords": [
+      {
+        "nameID": 1,
+        "platformID": 2,
+        "encodingID": 3,
+        "languageID": 4,
+        "string": "abc"
+      }
+    ],
+    "openTypeOS2WidthClass": 5,
+    "openTypeOS2WeightClass": 400,
+    "openTypeOS2Selection": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      9
+    ],
+    "openTypeOS2VendorID": "sabd",
+    "openTypeOS2Panose": [
+      2,
+      2,
+      2,
+      2,
+      6,
+      5,
+      11,
+      4,
+      2,
+      5
+    ],
+    "openTypeOS2FamilyClass": [
+      0,
+      0
+    ],
+    "openTypeOS2UnicodeRanges": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      21,
+      22,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      44,
+      45,
+      46,
+      47,
+      71,
+      92,
+      122
+    ],
+    "openTypeOS2CodePageRanges": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      17,
+      18,
+      19,
+      20,
+      21,
+      31,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      59,
+      60
+    ],
+    "openTypeOS2TypoAscender": -5,
+    "openTypeOS2TypoDescender": -9,
+    "openTypeOS2TypoLineGap": -1,
+    "openTypeOS2WinAscent": 6,
+    "openTypeOS2WinDescent": 1,
+    "openTypeOS2Type": [
+      1,
+      8,
+      9
+    ],
+    "openTypeOS2SubscriptXSize": -9,
+    "openTypeOS2SubscriptYSize": -11,
+    "openTypeOS2SubscriptXOffset": -4,
+    "openTypeOS2SubscriptYOffset": -1,
+    "openTypeOS2SuperscriptXSize": 31,
+    "openTypeOS2SuperscriptYSize": -2,
+    "openTypeOS2SuperscriptXOffset": -3,
+    "openTypeOS2SuperscriptYOffset": -10,
+    "openTypeOS2StrikeoutSize": -4,
+    "openTypeOS2StrikeoutPosition": -14,
+    "openTypeVheaVertTypoAscender": -6,
+    "openTypeVheaVertTypoDescender": -2,
+    "openTypeVheaVertTypoLineGap": -3,
+    "openTypeVheaCaretSlopeRise": -2,
+    "openTypeVheaCaretSlopeRun": -6,
+    "openTypeVheaCaretOffset": 4,
+    "postscriptFontName": "ddd",
+    "postscriptFullName": "df",
+    "postscriptSlantAngle": 6.8,
+    "postscriptUniqueID": 13434,
+    "postscriptUnderlineThickness": 9,
+    "postscriptUnderlinePosition": 5,
+    "postscriptIsFixedPitch": true,
+    "postscriptBlueValues": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      14,
+      15
+    ],
+    "postscriptOtherBlues": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "postscriptFamilyBlues": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      14,
+      15
+    ],
+    "postscriptFamilyOtherBlues": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "postscriptStemSnapH": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "postscriptStemSnapV": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "postscriptBlueFuzz": 4.4,
+    "postscriptBlueShift": 1.2,
+    "postscriptBlueScale": 5.5,
+    "postscriptForceBold": true,
+    "postscriptDefaultWidthX": -3,
+    "postscriptNominalWidthX": 1,
+    "postscriptWeightName": "ghj",
+    "postscriptDefaultCharacter": "a",
+    "postscriptWindowsCharacterSet": 6,
+    "macintoshFONDName": "abc",
+    "macintoshFONDFamilyID": 32,
+    "year": 1452,
+    "woffMajorVersion": 1,
+    "woffMinorVersion": 234,
+    "woffMetadataUniqueID": {
+      "id": "abc"
+    },
+    "woffMetadataVendor": {
+      "name": "a",
+      "url": "b",
+      "dir": "rtl",
+      "class": "c"
+    },
+    "woffMetadataCredits": {
+      "credits": [
+        {
+          "name": "Name",
+          "url": "http://url.com",
+          "role": "Role",
+          "dir": "ltr",
+          "class": "ccc"
+        }
+      ]
+    },
+    "woffMetadataDescription": {
+      "url": "d",
+      "text": [
+        {
+          "text": "Text",
+          "language": "de",
+          "class": "ccc"
+        }
+      ]
+    },
+    "woffMetadataLicense": {
+      "url": "a",
+      "id": "b",
+      "text": [
+        {
+          "text": "Text",
+          "language": "en"
+        }
+      ]
+    },
+    "woffMetadataCopyright": {
+      "text": [
+        {
+          "text": "Text",
+          "language": "en",
+          "class": "cddf"
+        }
+      ]
+    },
+    "woffMetadataTrademark": {
+      "text": [
+        {
+          "text": "Text",
+          "language": "fr"
+        }
+      ]
+    },
+    "woffMetadataLicensee": {
+      "name": "a",
+      "dir": "ltr",
+      "class": "ddd"
+    },
+    "woffMetadataExtensions": [
+      {
+        "id": "a",
+        "names": [
+          {
+            "text": "a"
+          }
+        ],
+        "items": [
+          {
+            "id": "item",
+            "names": [
+              {
+                "text": "name"
+              }
+            ],
+            "values": [
+              {
+                "text": "value"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "lib": {
+    "public.glyphOrder": [
+      "a"
+    ]
+  }
+}

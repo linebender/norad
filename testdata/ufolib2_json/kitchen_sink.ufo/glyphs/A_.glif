@@ -1,0 +1,132 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<glyph name="A" format="2">
+  <advance height="800" width="600"/>
+  <unicode hex="0041"/>
+  <unicode hex="00C0"/>
+  <unicode hex="0391"/>
+  <note>
+A glyph with everything.
+</note>
+  <image fileName="image1.png" xScale="0.5" yScale="0.5" xOffset="10" yOffset="20" color="0.5,0.5,0.5,1"/>
+  <guideline x="250" name="vertical" color="0,1,0,1" identifier="g-x"/>
+  <guideline y="-20" identifier="g-y"/>
+  <guideline x="10" y="20" angle="45.5" name="angled" identifier="g-angle"/>
+  <anchor x="300" y="800" name="top" color="1,0,0,0.5" identifier="a-top"/>
+  <anchor x="300" y="-50" name="bottom" color="0,0.5,1,1"/>
+  <anchor x="1.5" y="2.5"/>
+  <outline>
+    <contour identifier="c-closed">
+      <point x="0" y="0" type="line" identifier="p-line"/>
+      <point x="0" y="500" type="line" smooth="yes" name="top-left"/>
+      <point x="100" y="700"/>
+      <point x="200" y="700"/>
+      <point x="300" y="700" type="curve" smooth="yes" identifier="p-curve"/>
+      <point x="400" y="700"/>
+      <point x="500" y="600" type="qcurve"/>
+      <point x="500" y="0" type="line"/>
+    </contour>
+    <contour identifier="c-open">
+      <point x="50" y="50" type="move" identifier="p-move"/>
+      <point x="100" y="100" type="line"/>
+      <point x="150" y="60" type="qcurve" name="qc"/>
+    </contour>
+    <component base="B"/>
+    <component base="B" xScale="0.5" xyScale="0.1" yxScale="-0.1" yScale="0.75" xOffset="20" yOffset="30" identifier="comp-xf"/>
+  </outline>
+  <lib>
+    <dict>
+      <key>com.example.bool</key>
+      <true/>
+      <key>com.example.data</key>
+      <data>
+      AAEC/f7/
+      </data>
+      <key>com.example.datalist</key>
+      <dict>
+        <key>items</key>
+        <array>
+          <integer>1</integer>
+          <data>
+          AP9hYmM=
+          </data>
+          <dict>
+            <key>inner</key>
+            <data>
+            eHl6
+            </data>
+          </dict>
+        </array>
+      </dict>
+      <key>com.example.dict</key>
+      <dict>
+        <key>a</key>
+        <integer>1</integer>
+        <key>nested</key>
+        <dict>
+          <key>b</key>
+          <array>
+            <true/>
+            <dict>
+              <key>c</key>
+              <string>deep</string>
+            </dict>
+          </array>
+        </dict>
+      </dict>
+      <key>com.example.float</key>
+      <real>1.5</real>
+      <key>com.example.int</key>
+      <integer>42</integer>
+      <key>com.example.integral-float</key>
+      <real>2.0</real>
+      <key>com.example.list</key>
+      <array>
+        <integer>1</integer>
+        <real>2.5</real>
+        <string>three</string>
+        <false/>
+        <array>
+          <integer>4</integer>
+          <integer>5</integer>
+        </array>
+      </array>
+      <key>com.example.string</key>
+      <string>héllo</string>
+      <key>public.objectLibs</key>
+      <dict>
+        <key>a-top</key>
+        <dict>
+          <key>com.example.anchor</key>
+          <array>
+            <integer>1</integer>
+            <integer>2</integer>
+            <integer>3</integer>
+          </array>
+        </dict>
+        <key>c-closed</key>
+        <dict>
+          <key>com.example.contour</key>
+          <string>on a contour</string>
+        </dict>
+        <key>comp-xf</key>
+        <dict>
+          <key>com.example.component</key>
+          <integer>7</integer>
+        </dict>
+        <key>g-angle</key>
+        <dict>
+          <key>com.example.guideline</key>
+          <dict>
+            <key>k</key>
+            <true/>
+          </dict>
+        </dict>
+        <key>p-line</key>
+        <dict>
+          <key>com.example.point</key>
+          <string>on a point</string>
+        </dict>
+      </dict>
+    </dict>
+  </lib>
+</glyph>

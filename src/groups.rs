@@ -20,26 +20,37 @@ pub(crate) fn deserialize_groups(data: &[u8]) -> Result<Groups, FontLoadError> {
 
     impl<'de> serde::Deserialize<'de> for GroupsDeHelper {
         fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-            // Values decoded as Vec<String> so Name validation doesn't reject empty entries;
-            // we filter them out and parse the rest, using serde's error type throughout.
-            BTreeMap::<Name, Vec<String>>::deserialize(deserializer)?
-                .into_iter()
-                .map(|(k, v)| {
-                    let members = v
-                        .into_iter()
-                        .filter(|s| !s.is_empty())
-                        .map(|s| s.parse::<Name>().map_err(serde::de::Error::custom))
-                        .collect::<Result<_, _>>()?;
-                    Ok((k, members))
-                })
-                .collect::<Result<Groups, _>>()
-                .map(GroupsDeHelper)
+            deserialize_groups_skipping_empty_members(deserializer).map(GroupsDeHelper)
         }
     }
 
     plist::from_bytes::<GroupsDeHelper>(data)
         .map(|h| h.0)
         .map_err(|source| FontLoadError::ParsePlist { name: "groups.plist", source })
+}
+
+/// Deserialize groups from any format, skipping empty member names.
+pub(crate) fn deserialize_groups_skipping_empty_members<'de, D>(
+    deserializer: D,
+) -> Result<Groups, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+
+    // Values decoded as Vec<String> so Name validation doesn't reject empty entries;
+    // we filter them out and parse the rest, using serde's error type throughout.
+    BTreeMap::<Name, Vec<String>>::deserialize(deserializer)?
+        .into_iter()
+        .map(|(k, v)| {
+            let members = v
+                .into_iter()
+                .filter(|s| !s.is_empty())
+                .map(|s| s.parse::<Name>().map_err(serde::de::Error::custom))
+                .collect::<Result<_, _>>()?;
+            Ok((k, members))
+        })
+        .collect()
 }
 
 /// Validate the contents of the groups.plist file according to the rules in the

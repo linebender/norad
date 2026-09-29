@@ -1,0 +1,126 @@
+{
+  "layers": [
+    {
+      "name": "public.default",
+      "glyphs": {
+        "component": {},
+        "test": {
+          "lib": {
+            "public.objectLibs": {
+              "90b7eb80-e21a-4a79-a8c0-7634c25ddc18": {
+                "com.test.anchorTool": true
+              },
+              "9bf0591d-6281-4c76-8c13-9ff3d93eec4f": {
+                "com.test.foo": "a"
+              },
+              "a50e8ccd-2ba4-4279-a011-4c82a8075dd9": {
+                "com.test.foo": "b"
+              },
+              "c76955c2-e9f2-4adf-8b51-1ae03da11dca": {
+                "com.test.foo": 4321
+              },
+              "f32ac0e8-4ec8-45f6-88b1-0e49390b8f5b": {
+                "com.test.foo": "c"
+              },
+              "ignore-me": {
+                "com.test.foo": "d"
+              }
+            }
+          },
+          "anchors": [
+            {
+              "x": 1,
+              "y": 2,
+              "name": "top"
+            },
+            {
+              "x": 3,
+              "y": 4,
+              "name": "bottom",
+              "identifier": "90b7eb80-e21a-4a79-a8c0-7634c25ddc18"
+            }
+          ],
+          "components": [
+            {
+              "baseGlyph": "component",
+              "identifier": "a50e8ccd-2ba4-4279-a011-4c82a8075dd9"
+            },
+            {
+              "baseGlyph": "component"
+            }
+          ],
+          "contours": [
+            {
+              "points": [
+                {
+                  "x": 0,
+                  "y": 0,
+                  "type": "line"
+                },
+                {
+                  "x": 100,
+                  "y": 200,
+                  "type": "line"
+                },
+                {
+                  "x": 200,
+                  "y": 400,
+                  "type": "line"
+                }
+              ],
+              "identifier": "9bf0591d-6281-4c76-8c13-9ff3d93eec4f"
+            },
+            {
+              "points": [
+                {
+                  "x": 1000,
+                  "y": 1000,
+                  "type": "line",
+                  "identifier": "f32ac0e8-4ec8-45f6-88b1-0e49390b8f5b"
+                },
+                {
+                  "x": 1000,
+                  "y": 2000,
+                  "type": "line"
+                },
+                {
+                  "x": 2000,
+                  "y": 4000,
+                  "type": "line",
+                  "identifier": "spare-id"
+                }
+              ]
+            }
+          ],
+          "guidelines": [
+            {
+              "x": 300
+            },
+            {
+              "y": 400,
+              "identifier": "c76955c2-e9f2-4adf-8b51-1ae03da11dca"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "info": {
+    "guidelines": [
+      {
+        "x": 100
+      },
+      {
+        "y": 200,
+        "identifier": "3f0f37d1-52d6-429c-aff4-3f81aed4abf0"
+      }
+    ]
+  },
+  "lib": {
+    "public.objectLibs": {
+      "3f0f37d1-52d6-429c-aff4-3f81aed4abf0": {
+        "com.test.foo": 1234
+      }
+    }
+  }
+}
