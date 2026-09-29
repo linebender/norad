@@ -7,6 +7,7 @@ use crate::error::{ErrorKind, GlifLoadError};
 use crate::glyph::builder::OutlineBuilder;
 
 use quick_xml::{
+    escape::{resolve_predefined_entity, EscapeError},
     events::{BytesStart, Event},
     Reader, XmlVersion,
 };
@@ -330,23 +331,66 @@ impl GlifParser {
         Ok(())
     }
 
+    /// Parse the text content of a `<note>` element.
+    ///
+    /// The note is the element's full text with entity and character references
+    /// resolved, trimmed of leading and trailing XML whitespace. Interior
+    /// whitespace is preserved.
+    ///
+    /// The reader's `trim_text` option is disabled while reading, because it
+    /// trims each text event separately and would eat the whitespace next to
+    /// an entity reference (`a &amp; b` would become `a&b`).
     fn parse_note(
         &mut self,
         reader: &mut Reader<&[u8]>,
         buf: &mut Vec<u8>,
     ) -> Result<(), GlifLoadError> {
+        // this is the same set of characters that `trim_text` removes.
+        const XML_WHITESPACE: [char; 4] = [' ', '\t', '\r', '\n'];
+
+        reader.config_mut().trim_text(false);
+        let result = Self::read_note_text(reader, buf);
+        reader.config_mut().trim_text(true);
+        let text = result?;
+
+        let text = text.trim_matches(XML_WHITESPACE);
+        if !text.is_empty() {
+            self.glyph.note = Some(text.to_owned());
+        }
+        Ok(())
+    }
+
+    /// Read the text of a `<note>` element, up to its end tag.
+    ///
+    /// Character data, CDATA sections, and entity and character references are
+    /// concatenated; anything else is ignored.
+    fn read_note_text(
+        reader: &mut Reader<&[u8]>,
+        buf: &mut Vec<u8>,
+    ) -> Result<String, GlifLoadError> {
+        let mut text = String::new();
         loop {
             match reader.read_event_into(buf)? {
                 Event::End(ref end) if end.name().as_ref() == "note" => break,
-                Event::Text(text) => {
-                    self.glyph.note = Some(text.into_inner().into_owned());
+                Event::Text(t) => text.push_str(&t.into_inner()),
+                Event::CData(c) => text.push_str(&c.into_inner()),
+                Event::GeneralRef(r) => {
+                    if let Some(ch) = r.resolve_char_ref().map_err(GlifLoadError::Xml)? {
+                        text.push(ch);
+                    } else if let Some(s) = resolve_predefined_entity(&r) {
+                        text.push_str(s);
+                    } else {
+                        let name = r.into_inner().into_owned();
+                        let err = EscapeError::UnrecognizedEntity(0..name.len(), name);
+                        return Err(GlifLoadError::Xml(err.into()));
+                    }
                 }
                 Event::Eof => return Err(ErrorKind::UnexpectedEof.into()),
                 _other => (),
             }
             buf.clear();
         }
-        Ok(())
+        Ok(text)
     }
 
     fn parse_point(
