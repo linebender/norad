@@ -1620,7 +1620,7 @@ pub struct WoffMetadataVendor {
     /// Vendor name.
     pub name: String,
     /// Vendor URL.
-    pub url: String,
+    pub url: Option<String>,
     /// Writing direction.
     pub dir: Option<WoffAttributeDirection>,
     /// Class.
@@ -1788,7 +1788,7 @@ mod tests {
             font_info.woff_metadata_vendor,
             Some(WoffMetadataVendor {
                 name: "a".to_string(),
-                url: "b".to_string(),
+                url: Some("b".to_string()),
                 dir: Some(WoffAttributeDirection::RightToLeft),
                 class: Some("c".to_string()),
             })
