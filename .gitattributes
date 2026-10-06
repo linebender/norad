@@ -1,3 +1,2 @@
-*.fea binary
-*.glif binary
-*.plist binary
+# Fixtures are compared byte-for-byte; never convert their line endings.
+testdata/** -text
