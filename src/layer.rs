@@ -955,25 +955,29 @@ mod tests {
     #[test]
     fn test_filter_admits_default_layer_no_duplicate() {
         let ufo_path = "testdata/MutatorSansLightWide.ufo";
-        let request = DataRequest::none()
-            .filter_layers(|name, _path| name == "public.default" || name == "foreground");
-        let font = crate::Font::load_requested_data(ufo_path, request).unwrap();
+        // the default layer in this UFO is named "foreground"
+        let by_name = DataRequest::none().filter_layers(|name, _path| name == "foreground");
+        let by_path = DataRequest::none().filter_layers(|_name, path| path == Path::new("glyphs"));
 
-        let glyphs_dir_layers: Vec<_> =
-            font.layers.iter().filter(|l| l.path() == Path::new("glyphs")).collect();
-        assert_eq!(
-            glyphs_dir_layers.len(),
-            1,
-            "expected exactly one layer with the default glyphs directory"
-        );
-        assert_eq!(font.layers.default_layer().len(), 48);
+        for (filter, request) in [("by name", by_name), ("by path", by_path)] {
+            let font = crate::Font::load_requested_data(ufo_path, request).unwrap();
 
-        let dir = TempDir::new().unwrap();
-        let save_path = dir.path().join("Test.ufo");
-        font.save(&save_path).unwrap();
+            let glyphs_dir_layers: Vec<_> =
+                font.layers.iter().filter(|l| l.path() == Path::new("glyphs")).collect();
+            assert_eq!(
+                glyphs_dir_layers.len(),
+                1,
+                "filter {filter}: expected exactly one layer with the default glyphs directory"
+            );
+            assert_eq!(font.layers.default_layer().len(), 48, "filter {filter}");
 
-        let reloaded = crate::Font::load(&save_path).unwrap();
-        assert_eq!(reloaded.layers.default_layer().len(), 48);
+            let dir = TempDir::new().unwrap();
+            let save_path = dir.path().join("Test.ufo");
+            font.save(&save_path).unwrap();
+
+            let reloaded = crate::Font::load(&save_path).unwrap();
+            assert_eq!(reloaded.layers.default_layer().len(), 48, "filter {filter}");
+        }
     }
 
     #[test]
