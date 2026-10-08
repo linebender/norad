@@ -41,6 +41,8 @@ use crate::{
 
 /// The `type` of the object ufoLib2 wraps binary lib data in.
 static DATA_WRAPPER_TYPE: &str = "com.github.fonttools.ufoLib2.lib.plist.data";
+/// The `type` of the object ufoLib2 wraps lib dates in.
+static DATE_WRAPPER_TYPE: &str = "com.github.fonttools.ufoLib2.lib.plist.date";
 
 impl Font {
     /// Load a font from a file in ufoLib2's JSON format.
@@ -75,8 +77,9 @@ impl Font {
     ///   so they only match the `.ufo` where norad's algorithm agrees with
     ///   the tool that wrote it.
     /// - `tempLib` on the font, layers and glyphs is discarded.
-    /// - Plist dates arrive as strings, because ufoLib2 writes them as ISO
-    ///   8601 strings (and fails to write them at all without orjson).
+    /// - Plist dates written by older ufoLib2 versions arrive as strings:
+    ///   these wrote them as bare ISO 8601 strings (and failed to write them
+    ///   at all without orjson).
     /// - Lib integers too large for an `i64` or `u64` become reals.
     /// - Notes are trimmed like the `.glif` parser trims them, but features
     ///   are whatever ufoLib2 read: unlike norad, it normalizes line endings.
@@ -961,27 +964,37 @@ impl<'de> Visitor<'de> for LibValueVisitor {
 
     fn visit_map<A: MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
         let dict = LibVisitor.visit_map(map)?;
-        unwrap_data(dict).map_err(de::Error::custom)
+        unwrap(dict).map_err(de::Error::custom)
     }
 }
 
-/// Turn ufoLib2's wrapper for binary data back into data.
+/// Turn ufoLib2's wrappers for binary data and dates back into data and dates.
 ///
-/// The wrapper is an object with exactly the keys `type` and `data`, where
-/// `type` is [`DATA_WRAPPER_TYPE`]; anything else is a dictionary.
-fn unwrap_data(dict: Plist) -> Result<plist::Value, String> {
-    let is_wrapper = dict.len() == 2
-        && dict.contains_key("data")
-        && dict.get("type").and_then(plist::Value::as_string) == Some(DATA_WRAPPER_TYPE);
-    if !is_wrapper {
-        return Ok(plist::Value::Dictionary(dict));
-    }
-    match dict.get("data") {
-        Some(plist::Value::String(encoded)) => BASE64
-            .decode(encoded)
-            .map(plist::Value::Data)
-            .map_err(|e| format!("invalid base64 in lib data: {e}")),
-        _ => Err("lib data must be a base64 string".into()),
+/// A wrapper is an object with exactly the keys `type` and `data`, where
+/// `type` is [`DATA_WRAPPER_TYPE`], or `type` and `date`, where `type` is
+/// [`DATE_WRAPPER_TYPE`]; anything else is a dictionary.
+fn unwrap(dict: Plist) -> Result<plist::Value, String> {
+    let wrapper_type = match dict.get("type") {
+        Some(plist::Value::String(t)) if dict.len() == 2 => t.as_str(),
+        _ => return Ok(plist::Value::Dictionary(dict)),
+    };
+    if wrapper_type == DATA_WRAPPER_TYPE && dict.contains_key("data") {
+        match dict.get("data") {
+            Some(plist::Value::String(encoded)) => BASE64
+                .decode(encoded)
+                .map(plist::Value::Data)
+                .map_err(|e| format!("invalid base64 in lib data: {e}")),
+            _ => Err("lib data must be a base64 string".into()),
+        }
+    } else if wrapper_type == DATE_WRAPPER_TYPE && dict.contains_key("date") {
+        match dict.get("date") {
+            Some(plist::Value::String(date)) => plist::Date::from_xml_format(date)
+                .map(plist::Value::Date)
+                .map_err(|_| format!("invalid lib date '{date}'")),
+            _ => Err("lib date must be a string".into()),
+        }
+    } else {
+        Ok(plist::Value::Dictionary(dict))
     }
 }
 
@@ -1063,6 +1076,35 @@ mod tests {
     }
 
     #[test]
+    fn date_wrapper_at_any_depth() {
+        let date =
+            plist::Value::Date(plist::Date::from_xml_format("2020-01-02T03:04:05Z").unwrap());
+        let font = load(
+            r#"{"lib": {
+                "top": {"type": "com.github.fonttools.ufoLib2.lib.plist.date", "date": "2020-01-02T03:04:05Z"},
+                "nested": [{"deeper": {"date": "2020-01-02T03:04:05Z", "type": "com.github.fonttools.ufoLib2.lib.plist.date"}}],
+                "extra": {"type": "com.github.fonttools.ufoLib2.lib.plist.date", "date": "2020-01-02T03:04:05Z", "x": 1},
+                "mixed": {"type": "com.github.fonttools.ufoLib2.lib.plist.date", "data": "AAE="},
+                "bare": "2020-01-02T03:04:05Z"
+            }}"#,
+        )
+        .unwrap();
+        let lib = &font.lib;
+        assert_eq!(lib["top"], date);
+        let nested = lib["nested"].as_array().unwrap()[0].as_dictionary().unwrap();
+        assert_eq!(nested["deeper"], date);
+        assert_eq!(lib["extra"].as_dictionary().unwrap().len(), 3);
+        assert_eq!(lib["mixed"].as_dictionary().unwrap().len(), 2);
+        assert_eq!(lib["bare"], plist::Value::String("2020-01-02T03:04:05Z".into()));
+
+        let glyph = load_glyph(
+            r#"{"lib": {"k": {"type": "com.github.fonttools.ufoLib2.lib.plist.date", "date": "2020-01-02T03:04:05Z"}}}"#,
+        )
+        .unwrap();
+        assert_eq!(glyph.lib["k"], date);
+    }
+
+    #[test]
     fn lib_itself_is_never_data() {
         let font = load(
             r#"{"lib": {"type": "com.github.fonttools.ufoLib2.lib.plist.data", "data": "AAE="}}"#,
@@ -1114,6 +1156,18 @@ mod tests {
                 r#"{"lib": {"a": {"type": "com.github.fonttools.ufoLib2.lib.plist.data", "data": 1}}}"#,
             ),
             "must be a base64 string",
+        );
+        assert_json_error(
+            load(
+                r#"{"lib": {"a": {"type": "com.github.fonttools.ufoLib2.lib.plist.date", "date": "2020-01-02"}}}"#,
+            ),
+            "invalid lib date",
+        );
+        assert_json_error(
+            load(
+                r#"{"lib": {"a": {"type": "com.github.fonttools.ufoLib2.lib.plist.date", "date": 1}}}"#,
+            ),
+            "lib date must be a string",
         );
     }
 
