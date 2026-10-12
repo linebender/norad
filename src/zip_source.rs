@@ -34,7 +34,8 @@ impl ZipSource {
                 continue;
             }
 
-            let raw_path = Path::new(entry.name());
+            let name = entry.name().map_err(FontLoadError::InvalidZipFile)?;
+            let raw_path = Path::new(&*name);
 
             let rel_path = if let Some(ref pfx) = prefix {
                 match raw_path.strip_prefix(pfx) {
@@ -110,14 +111,14 @@ fn detect_zip_root<R: io::Read + io::Seek>(archive: &mut zip::ZipArchive<R>) -> 
 
     for i in 0..archive.len() {
         let Ok(entry) = archive.by_index_raw(i) else { continue };
-        let name = entry.name();
+        let Ok(name) = entry.name() else { continue };
 
         // Skip macOS metadata.
         if name.starts_with("__MACOSX") {
             continue;
         }
 
-        let path = Path::new(name);
+        let path = Path::new(&*name);
         let mut components = path.components();
         let Some(first) = components.next() else { continue };
 
