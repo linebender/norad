@@ -149,6 +149,10 @@ pub enum FontLoadError {
     #[cfg(feature = "ufoz")]
     #[error("failed to open UFO as zip archive")]
     InvalidZipFile(#[source] zip::result::ZipError),
+    /// The file is not a valid font in ufoLib2's JSON format.
+    #[cfg(feature = "unstable-json")]
+    #[error("failed to load UFO from ufoLib2 JSON file")]
+    InvalidJsonFile(#[source] JsonLoadError),
     /// Norad can currently only open UFO (directory) packages.
     #[error("only UFO (directory) packages are supported")]
     UfoNotADir,

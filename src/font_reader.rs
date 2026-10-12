@@ -21,7 +21,8 @@ use crate::{DataRequest, Glyph, Name};
 /// This is useful when you want to parse glyphs individually (for instance
 /// from several threads, or only some of them) instead of loading a whole
 /// [`Font`] up front. It works the same for UFO directories, zipped UFOs (with
-/// the `ufoz` feature) and any other [`FontSource`].
+/// the `ufoz` feature), ufoLib2 JSON files (with the `unstable-json` feature)
+/// and any other [`FontSource`].
 ///
 /// # Examples
 ///
@@ -66,7 +67,9 @@ pub struct LayerReader<'a> {
 impl FontReader {
     /// Returns a [`FontReader`] for the UFO at `path`.
     ///
-    /// `path` is a UFO directory or, with the `ufoz` feature, a zip archive.
+    /// `path` is a UFO directory; with the `ufoz` feature, a zip archive; or,
+    /// with the `unstable-json` feature, a file with a `.json` extension in
+    /// ufoLib2's JSON format, which is read with a `JsonSource`.
     ///
     /// This is equivalent to [`FontReader::open_requested`] with
     /// [`DataRequest::all`].
@@ -79,7 +82,7 @@ impl FontReader {
     ///
     /// For a zip archive, only the entries that `request` may read are
     /// decompressed; see [`FontReader::load`] for what that means for later
-    /// requests.
+    /// requests. A JSON file is always converted in full.
     pub fn open_requested(
         path: impl AsRef<Path>,
         request: &DataRequest,
@@ -88,6 +91,16 @@ impl FontReader {
         let metadata = path.metadata().map_err(FontLoadError::AccessUfoDir)?;
         if metadata.is_dir() {
             return Self::from_source_requested(path.to_path_buf(), request);
+        }
+
+        #[cfg(feature = "unstable-json")]
+        if metadata.is_file()
+            && path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+        {
+            let bytes = std::fs::read(path).map_err(FontLoadError::AccessUfoDir)?;
+            let source =
+                crate::JsonSource::from_bytes(&bytes).map_err(FontLoadError::InvalidJsonFile)?;
+            return Self::from_source_requested(source, request);
         }
 
         #[cfg(feature = "ufoz")]

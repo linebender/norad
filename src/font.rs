@@ -148,7 +148,9 @@ impl Font {
     /// Returns a [`Font`] object with data from a UFO directory `path`.
     ///
     /// `path` must point to a directory with the structure described in
-    /// [v3 of the Unified Font Object][v3] spec.
+    /// [v3 of the Unified Font Object][v3] spec. With the `ufoz` feature, it
+    /// can also be a zip archive, and with the `unstable-json` feature a file
+    /// with a `.json` extension in ufoLib2's JSON format.
     ///
     /// # Examples
     ///

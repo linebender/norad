@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use norad::error::JsonLoadError;
+use norad::error::{FontLoadError, JsonLoadError};
 use norad::{Color, DataRequest, Font, FontReader, Glyph, JsonSource};
 use plist::Value;
 use pretty_assertions::assert_eq;
@@ -261,6 +261,34 @@ fn font_reader_over_source() {
     let font = reader.load(&request).unwrap();
     assert!(!font.data.is_empty());
     assert_eq!(font.data, direct.data);
+}
+
+/// `Font::load` and `FontReader::open` read a `.json` path through a `JsonSource`.
+#[test]
+fn load_json_path() {
+    let path = Path::new(JSON_DIR).join("kitchen_sink.json");
+    let source = JsonSource::open(&path).unwrap();
+    let from_source = Font::load_from_source(&DataRequest::all(), &source).unwrap();
+    assert_eq!(Font::load(&path).unwrap(), from_source);
+    assert_eq!(FontReader::open(&path).unwrap().load(&DataRequest::all()).unwrap(), from_source);
+
+    let request = || DataRequest::none().default_layer(true);
+    let font = Font::load_requested_data(&path, request()).unwrap();
+    assert_eq!(font, Font::load_from_source(&request(), &source).unwrap());
+    assert_eq!(font.layers.len(), 1);
+    assert!(font.data.is_empty());
+}
+
+#[test]
+fn load_invalid_json_path() {
+    let file = tempfile::Builder::new().suffix(".json").tempfile().unwrap();
+    std::fs::write(file.path(), b"not json").unwrap();
+    assert!(matches!(
+        Font::load(file.path()),
+        Err(FontLoadError::InvalidJsonFile(JsonLoadError::Json(_)))
+    ));
+    let missing = Path::new(JSON_DIR).join("does_not_exist.json");
+    assert!(matches!(Font::load(missing), Err(FontLoadError::AccessUfoDir(_))));
 }
 
 // Targeted checks on decoded values, so a pass doesn't rely on both loaders
