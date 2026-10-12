@@ -545,7 +545,7 @@ impl Font {
         Ok(())
     }
 
-    fn write_to_sink_impl(
+    pub(crate) fn write_to_sink_impl(
         &self,
         sink: &dyn FontSink,
         options: &WriteOptions,

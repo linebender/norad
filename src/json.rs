@@ -28,7 +28,7 @@ use thiserror::Error;
 
 use crate::datastore::{DataType, Store};
 use crate::error::{
-    ColorError, ErrorKind, FontInfoErrorKind, FontInfoLoadError, GlifLoadError,
+    ColorError, ErrorKind, FontInfoErrorKind, FontInfoLoadError, FontWriteError, GlifLoadError,
     GroupsValidationError, NamingError, StoreEntryError,
 };
 use crate::glyph::builder::OutlineBuilder;
@@ -215,6 +215,11 @@ pub enum JsonLoadError {
     /// An entry in the images store is invalid.
     #[error("failed to load images store")]
     ImagesStore(#[source] StoreEntryError),
+    /// The font could not be written out as UFO files for a [`JsonSource`].
+    ///
+    /// [`JsonSource`]: crate::JsonSource
+    #[error("failed to write the font as UFO files")]
+    Write(#[source] FontWriteError),
 }
 
 /// The root object of the document.

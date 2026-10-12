@@ -18,6 +18,8 @@ mod guideline;
 mod identifier;
 #[cfg(feature = "unstable-json")]
 mod json;
+#[cfg(feature = "unstable-json")]
+mod json_source;
 pub mod kerning;
 mod layer;
 mod name;
@@ -38,6 +40,8 @@ pub use fontinfo::FontInfo;
 pub use glyph::{
     AffineTransform, Anchor, Codepoints, Component, Contour, ContourPoint, Glyph, Image, PointType,
 };
+#[cfg(feature = "unstable-json")]
+pub use json_source::JsonSource;
 
 pub use name::Name;
 

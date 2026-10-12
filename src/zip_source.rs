@@ -1,11 +1,11 @@
 //! [`FontSource`] implementation for reading UFO data from zip archives.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use crate::error::FontLoadError;
-use crate::font_source::{DirEntry, FontSource};
+use crate::font_source::{list_dir_of_files, DirEntry, FontSource};
 use crate::DataRequest;
 
 /// A UFO source backed by a zip archive loaded into memory.
@@ -72,33 +72,7 @@ impl FontSource for ZipSource {
     }
 
     fn list_dir(&self, path: &Path) -> Result<Vec<DirEntry>, io::Error> {
-        let mut dirs = HashSet::new();
-        let mut files = Vec::new();
-
-        for key in self.entries.keys() {
-            let rel = match key.strip_prefix(path) {
-                Ok(r) => r,
-                Err(_) => continue,
-            };
-
-            let mut components = rel.components();
-            let first = match components.next() {
-                Some(c) => c,
-                None => continue,
-            };
-
-            if components.next().is_some() {
-                // Has more components — first is a directory.
-                dirs.insert(PathBuf::from(first.as_os_str()));
-            } else {
-                // Single component — it's a file.
-                files.push(DirEntry::File(PathBuf::from(first.as_os_str())));
-            }
-        }
-
-        let mut result: Vec<DirEntry> = dirs.into_iter().map(DirEntry::Dir).collect();
-        result.append(&mut files);
-        Ok(result)
+        Ok(list_dir_of_files(self.entries.keys().map(PathBuf::as_path), path))
     }
 }
 
