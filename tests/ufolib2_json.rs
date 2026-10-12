@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use norad::error::JsonLoadError;
-use norad::{Color, Font, Glyph};
+use norad::{Color, DataRequest, Font, FontReader, Glyph, JsonSource};
 use plist::Value;
 use pretty_assertions::assert_eq;
 
@@ -211,6 +211,56 @@ fn invalid_json_is_an_error() {
     assert!(matches!(Font::from_ufolib2_json(b"[]"), Err(JsonLoadError::Json(_))));
     let missing = Path::new(JSON_DIR).join("does_not_exist.json");
     assert!(matches!(Font::load_ufolib2_json(missing), Err(JsonLoadError::Io(_))));
+}
+
+fn json_fixtures() -> Vec<PathBuf> {
+    let mut paths: Vec<_> = std::fs::read_dir(JSON_DIR)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "json"))
+        .collect();
+    paths.sort();
+    assert!(!paths.is_empty());
+    paths
+}
+
+/// Loading through a `JsonSource` gives the same font as loading the JSON
+/// directly, including the layer and glyph file paths the loader made up.
+#[test]
+fn source_matches_direct_load() {
+    for path in json_fixtures() {
+        let bytes = std::fs::read(&path).unwrap();
+        let direct = Font::from_ufolib2_json(&bytes).unwrap();
+        let source = JsonSource::from_bytes(&bytes).unwrap();
+        let from_source = Font::load_from_source(&DataRequest::all(), &source).unwrap();
+        assert_eq!(direct, from_source, "{} differs", path.display());
+    }
+}
+
+#[test]
+fn font_reader_over_source() {
+    let path = Path::new(JSON_DIR).join("kitchen_sink.json");
+    let direct = Font::load_ufolib2_json(&path).unwrap();
+    let reader = FontReader::from_source(JsonSource::open(&path).unwrap()).unwrap();
+
+    let layer_names: Vec<_> = reader.layers().map(|layer| layer.name().clone()).collect();
+    let direct_names: Vec<_> = direct.iter_layers().map(|layer| layer.name().clone()).collect();
+    assert_eq!(layer_names, direct_names);
+    for layer in reader.layers() {
+        let direct_layer = direct.layers.get(layer.name()).unwrap();
+        assert_eq!(layer.path(), direct_layer.path());
+        assert_eq!(layer.len(), direct_layer.len());
+        for name in layer.glyph_names() {
+            let glyph = layer.load_glyph(name).unwrap().unwrap();
+            assert_eq!(&glyph, direct_layer.get_glyph(name).unwrap());
+        }
+    }
+
+    let mut request = DataRequest::none();
+    request.data = true;
+    let font = reader.load(&request).unwrap();
+    assert!(!font.data.is_empty());
+    assert_eq!(font.data, direct.data);
 }
 
 // Targeted checks on decoded values, so a pass doesn't rely on both loaders

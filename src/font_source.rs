@@ -100,6 +100,44 @@ pub enum DirEntry {
     Dir(PathBuf),
 }
 
+/// List the entries of `dir` in a source that holds its files in memory.
+///
+/// `paths` are the paths of all files in the source, which imply the
+/// directories that contain them.
+#[cfg(any(feature = "ufoz", feature = "unstable-json"))]
+pub(crate) fn list_dir_of_files<'a>(
+    paths: impl Iterator<Item = &'a Path>,
+    dir: &Path,
+) -> Vec<DirEntry> {
+    let mut dirs = std::collections::HashSet::new();
+    let mut files = Vec::new();
+
+    for path in paths {
+        let rel = match path.strip_prefix(dir) {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+
+        let mut components = rel.components();
+        let first = match components.next() {
+            Some(c) => c,
+            None => continue,
+        };
+
+        if components.next().is_some() {
+            // Has more components — first is a directory.
+            dirs.insert(PathBuf::from(first.as_os_str()));
+        } else {
+            // Single component — it's a file.
+            files.push(DirEntry::File(PathBuf::from(first.as_os_str())));
+        }
+    }
+
+    let mut result: Vec<DirEntry> = dirs.into_iter().map(DirEntry::Dir).collect();
+    result.append(&mut files);
+    result
+}
+
 /// A directory on disk implements [`FontSource`] directly.
 impl FontSource for &Path {
     fn try_read(&self, path: &Path) -> Option<Result<Vec<u8>, io::Error>> {
