@@ -20,10 +20,12 @@ use crate::{Font, WriteOptions};
 /// [`Font::save`] would write for that font. All of them are built up front
 /// and held in memory.
 ///
-/// Loading from this source, with [`Font::load_from_source`] or a
-/// [`FontReader`], gives the font that saving and reloading the result of
-/// [`Font::from_ufolib2_json`] would: for instance, line endings in the
-/// features become `\n`.
+/// [`Font::load`] uses this for paths with a `.json` extension, as does
+/// `FontReader::open`.
+///
+/// Loading from this source gives the font that saving and reloading the
+/// result of [`Font::from_ufolib2_json`] would: for instance, line endings in
+/// the features become `\n`.
 ///
 /// ```no_run
 /// use norad::{FontReader, JsonSource};
@@ -33,7 +35,6 @@ use crate::{Font, WriteOptions};
 /// ```
 ///
 /// [ufoLib2]: https://github.com/fonttools/ufoLib2
-/// [`FontReader`]: crate::FontReader
 pub struct JsonSource {
     files: HashMap<PathBuf, Vec<u8>>,
 }
