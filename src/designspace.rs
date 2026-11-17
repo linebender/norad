@@ -869,7 +869,11 @@ struct RawDesignSpaceDocument {
         skip_serializing_if = "Vec::is_empty"
     )]
     location_labels: Vec<LocationLabel>,
-    #[serde(default, skip_serializing_if = "Rules::is_empty")]
+    #[serde(
+        default,
+        deserialize_with = "serde_impls::deserialize_rules",
+        skip_serializing_if = "Rules::is_empty"
+    )]
     rules: Rules,
     #[serde(default, with = "serde_impls::sources", skip_serializing_if = "Vec::is_empty")]
     sources: Vec<Source>,
@@ -943,6 +947,25 @@ impl From<DesignSpaceDocument> for RawDesignSpaceDocument {
 }
 
 mod serde_impls {
+    pub(super) fn deserialize_rules<'de, D>(deserializer: D) -> Result<super::Rules, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::{de::Error, Deserialize};
+
+        let mut blocks = Vec::<super::Rules>::deserialize(deserializer)?.into_iter();
+        let mut rules = blocks.next().unwrap_or_default();
+        for block in blocks {
+            if block.processing != rules.processing {
+                return Err(D::Error::custom(
+                    "<rules> processing attributes must agree across all <rules> elements",
+                ));
+            }
+            rules.rules.extend(block.rules);
+        }
+        Ok(rules)
+    }
+
     /// Produces a self-contained module to (de)serialise an XML list of a given type
     ///
     /// Example usage:
@@ -1322,6 +1345,87 @@ mod tests {
                 ]
             }
         );
+    }
+
+    #[test]
+    fn multiple_rules_round_trip() {
+        for (first, second, processing) in [
+            ("", "", RuleProcessing::First),
+            ("", r#" processing="first""#, RuleProcessing::First),
+            (r#" processing="first""#, "", RuleProcessing::First),
+            (r#" processing="first""#, r#" processing="first""#, RuleProcessing::First),
+            (r#" processing="last""#, r#" processing="last""#, RuleProcessing::Last),
+        ] {
+            let xml = format!(
+                r#"<designspace format="5.0">
+                    <rules{first}><rule name="one"><sub name="a" with="b"/></rule></rules>
+                    <rules{second}><rule name="two"><sub name="b" with="c"/></rule></rules>
+                </designspace>"#
+            );
+            let doc = DesignSpaceDocument::load_from_reader(xml.as_bytes()).unwrap();
+            assert_eq!(doc.rules.processing, processing);
+            let rules = &doc.rules.rules;
+            assert_eq!(
+                rules.iter().map(|r| r.name.as_deref()).collect::<Vec<_>>(),
+                [Some("one"), Some("two")]
+            );
+            assert_eq!(
+                rules[0].substitutions,
+                [Substitution { name: "a".into(), with: "b".into() }]
+            );
+            assert_eq!(
+                rules[1].substitutions,
+                [Substitution { name: "b".into(), with: "c".into() }]
+            );
+
+            let saved = doc.serialize_to_string().unwrap();
+            assert_eq!(saved.matches("<rules").count(), 1);
+            assert_eq!(doc, DesignSpaceDocument::load_from_reader(saved.as_bytes()).unwrap());
+        }
+    }
+
+    #[test]
+    fn multiple_rules_with_intervening_sources() {
+        let xml = r#"<designspace format="5.0">
+            <rules><rule name="one"/></rules>
+            <sources><source filename="Regular.ufo"/></sources>
+            <rules><rule name="two"/></rules>
+        </designspace>"#;
+        let doc = DesignSpaceDocument::load_from_reader(xml.as_bytes()).unwrap();
+        assert_eq!(
+            doc.rules.rules.iter().map(|r| r.name.as_deref()).collect::<Vec<_>>(),
+            [Some("one"), Some("two")]
+        );
+        assert_eq!(doc.sources[0].filename, "Regular.ufo");
+    }
+
+    #[test]
+    fn multiple_rules_conflicting_processing() {
+        for (first, second) in [
+            (r#" processing="first""#, r#" processing="last""#),
+            (r#" processing="last""#, r#" processing="first""#),
+            ("", r#" processing="last""#),
+            (r#" processing="last""#, ""),
+        ] {
+            let xml = format!(
+                r#"<designspace format="5.0"><rules{first}/><rules{second}/></designspace>"#
+            );
+            let err = DesignSpaceDocument::load_from_reader(xml.as_bytes()).unwrap_err();
+            assert!(err.to_string().contains("processing attributes must agree"), "{err}");
+        }
+    }
+
+    #[test]
+    fn multiple_rules_invalid_processing() {
+        for invalid in ["", "middle"] {
+            for (first, second) in [(invalid, "first"), ("first", invalid)] {
+                let xml = format!(
+                    r#"<designspace format="5.0"><rules processing="{first}"/><rules processing="{second}"/></designspace>"#
+                );
+                let err = DesignSpaceDocument::load_from_reader(xml.as_bytes()).unwrap_err();
+                assert!(err.to_string().contains("unknown variant"), "{err}");
+            }
+        }
     }
 
     #[test]
